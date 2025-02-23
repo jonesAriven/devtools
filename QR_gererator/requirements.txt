@@ -1,0 +1,6 @@
+qrcode
+pillow
+pyzbar
+opencv-python
+keyboard
+numpy 
