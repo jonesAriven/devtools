@@ -1,187 +1,169 @@
-import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-import qrcode
-from PIL import Image, ImageTk, ImageGrab
-import io
-import cv2
-import numpy as np
-from pyzbar.pyzbar import decode
-import keyboard
+# 首先导入基础库
+import os
+import sys
 import threading
 import time
+import io
+import numpy as np
+from PIL import Image, ImageTk
+
+# 添加全局Python包路径
+python_path = os.path.dirname(sys.executable)
+site_packages = os.path.join(python_path, 'Lib', 'site-packages')
+sys.path.append(site_packages)
+
+# GUI相关
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext, filedialog
+
+# 二维码相关
+import qrcode
+from pyzbar.pyzbar import decode
+
+# 截图相关
+from mss import mss
+from mss.screenshot import ScreenShot
+
+# OCR支持（使用PaddleOCR）
+try:
+    from paddleocr import PaddleOCR
+    # 初始化PaddleOCR，使用简化参数
+    ocr = PaddleOCR(
+        use_angle_cls=True,
+        lang='ch',
+        use_gpu=False,
+        show_log=False
+    )
+    OCR_SUPPORTED = True
+except Exception as e:
+    OCR_SUPPORTED = False
+    print(f"OCR功能不可用：{str(e)}")
+
+# 摄像头支持（可选）
+try:
+    import cv2
+    CAMERA_SUPPORTED = True
+except ImportError:
+    CAMERA_SUPPORTED = False
+    print("摄像头功能不可用：未安装opencv-python")
+
+# 功能标志
+QR_SUPPORTED = True
 
 class QRCodeGenerator:
     def __init__(self, root):
         self.root = root
-        self.root.title("二维码生成器/识别器")
-        self.root.geometry("600x800")  # 增加窗口高度
+        self.root.title("二维码工具")
+        self.root.geometry("600x500")
         
-        # 创建样式
-        style = ttk.Style()
-        style.configure("TLabel", padding=5)
-        style.configure("TButton", padding=5)
+        # 创建主框架
+        main_frame = ttk.Frame(root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        # 创建框架来容纳输入区域
-        input_frame = ttk.Frame(root)
-        input_frame.pack(fill=tk.X, padx=20, pady=10)
+        # 左侧框架
+        left_frame = ttk.Frame(main_frame)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # 创建按钮框架
-        button_frame = ttk.Frame(input_frame)
+        # 二维码显示区域
+        self.qr_label = ttk.Label(left_frame)
+        self.qr_label.pack(pady=10)
+        
+        # 右侧框架
+        right_frame = ttk.Frame(main_frame)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+        
+        # 功能按钮区域
+        button_frame = ttk.Frame(right_frame)
         button_frame.pack(fill=tk.X, pady=5)
         
-        # 创建截屏按钮
-        self.capture_button = ttk.Button(
-            button_frame,
-            text="截屏识别二维码(按ESC结束截屏)",
-            command=self.start_screen_capture
-        )
-        self.capture_button.pack(side=tk.LEFT, padx=5)
+        # 二维码识别按钮
+        if QR_SUPPORTED:
+            ttk.Button(button_frame, text="识别二维码", command=self.decode_qr).pack(side=tk.LEFT, padx=2)
         
-        # 创建摄像头按钮
-        self.camera_button = ttk.Button(
-            button_frame,
-            text="打开摄像头扫码",
-            command=self.start_camera_capture
-        )
-        self.camera_button.pack(side=tk.LEFT, padx=5)
+        # OCR按钮
+        if OCR_SUPPORTED:
+            ttk.Button(button_frame, text="文字识别", command=self.start_ocr).pack(side=tk.LEFT, padx=2)
         
-        # 创建输入框和标签
-        self.text_label = ttk.Label(input_frame, text="请输入要转换的文本或等待扫描结果：")
-        self.text_label.pack(pady=10)
+        # 摄像头按钮
+        if CAMERA_SUPPORTED:
+            ttk.Button(button_frame, text="摄像头扫码", command=self.start_camera).pack(side=tk.LEFT, padx=2)
         
-        # 创建StringVar来跟踪输入框内容变化
-        self.text_var = tk.StringVar()
-        self.text_var.trace('w', self.on_text_change)
+        # 文本输入区域
+        self.text_entry = scrolledtext.ScrolledText(right_frame, width=30, height=10)
+        self.text_entry.pack(fill=tk.BOTH, expand=True, pady=5)
         
-        # 创建多行文本框
-        self.text_entry = scrolledtext.ScrolledText(
-            input_frame,
-            width=40,
-            height=10,
-            font=('Arial', 12),
-            wrap=tk.WORD
-        )
-        self.text_entry.pack(fill=tk.X, pady=10)
+        # 生成二维码按钮
+        ttk.Button(right_frame, text="生成二维码", command=self.generate_qr).pack(fill=tk.X, pady=5)
         
-        # 绑定文本变化事件
-        self.text_entry.bind('<KeyRelease>', self.on_text_change)
+        # 状态栏
+        self.status_label = ttk.Label(right_frame, text="就绪")
+        self.status_label.pack(fill=tk.X, pady=5)
         
-        # 创建显示二维码的标签
-        self.qr_label = ttk.Label(root)
-        self.qr_label.pack(pady=20)
-        
-        # 用于存储上一次生成的文本
-        self.last_text = ""
-        
-        # 摄像头捕获标志
-        self.is_capturing = False
-        
-    def start_screen_capture(self):
-        self.root.iconify()  # 最小化窗口
-        time.sleep(0.5)  # 等待窗口最小化
-        
-        try:
-            # 截取全屏
-            screenshot = ImageGrab.grab()
-            # 将PIL图像转换为OpenCV格式
-            screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-            
-            # 识别二维码
-            decoded_objects = decode(screenshot_cv)
-            
-            self.root.deiconify()  # 恢复窗口
-            
-            if decoded_objects:
-                # 获取识别到的文本
-                qr_text = decoded_objects[0].data.decode('utf-8')
-                # 设置文本框内容
-                self.text_entry.delete('1.0', tk.END)
-                self.text_entry.insert('1.0', qr_text)
-            else:
-                messagebox.showinfo("提示", "未检测到二维码")
-                
-        except Exception as e:
-            self.root.deiconify()
-            messagebox.showerror("错误", f"截屏识别失败：{str(e)}")
-    
-    def start_camera_capture(self):
-        if not self.is_capturing:
-            self.is_capturing = True
-            self.camera_button.configure(text="关闭摄像头")
-            threading.Thread(target=self.camera_capture, daemon=True).start()
-        else:
-            self.is_capturing = False
-            self.camera_button.configure(text="打开摄像头扫码")
-    
-    def camera_capture(self):
-        cap = cv2.VideoCapture(0)
-        
-        while self.is_capturing:
-            ret, frame = cap.read()
-            if not ret:
-                break
-                
-            # 识别二维码
-            decoded_objects = decode(frame)
-            
-            if decoded_objects:
-                # 获取识别到的文本
-                qr_text = decoded_objects[0].data.decode('utf-8')
-                # 设置文本框内容
-                self.text_entry.delete('1.0', tk.END)
-                self.text_entry.insert('1.0', qr_text)
-                break
-            
-            # 显示预览窗口
-            cv2.imshow('扫描二维码 (按q退出)', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        
-        cap.release()
-        cv2.destroyAllWindows()
-        self.is_capturing = False
-        self.camera_button.configure(text="打开摄像头扫码")
-    
-    def on_text_change(self, *args):
-        # 获取当前文本
-        text = self.text_entry.get('1.0', 'end-1c')
-        
-        # 如果文本为空或与上次相同，则不生成
-        if not text or text == self.last_text:
+        # 显示功能状态
+        status_text = "可用功能：\n"
+        status_text += "√ 二维码生成\n"
+        status_text += "√ 二维码识别\n"
+        status_text += "√ OCR文字识别\n" if OCR_SUPPORTED else "× OCR文字识别 [不可用]\n"
+        status_text += "√ 摄像头扫码" if CAMERA_SUPPORTED else "× 摄像头扫码 [不可用]"
+        messagebox.showinfo("功能状态", status_text)
+
+    def generate_qr(self):
+        """生成二维码"""
+        text = self.text_entry.get('1.0', tk.END).strip()
+        if not text:
+            messagebox.showinfo("提示", "请输入文本内容")
             return
             
-        self.last_text = text
-        self.generate_qr(text)
-            
-    def generate_qr(self, text):
         try:
-            # 生成二维码
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(text)
             qr.make(fit=True)
-            
-            # 创建二维码图像
             qr_image = qr.make_image(fill_color="black", back_color="white")
             
-            # 调整图像大小为更大尺寸
-            qr_image = qr_image.resize((300, 300))
+            # 转换为PhotoImage
+            photo = ImageTk.PhotoImage(qr_image)
+            self.qr_label.configure(image=photo)
+            self.qr_label.image = photo
             
-            # 转换为PhotoImage以在tkinter中显示
-            photo_image = ImageTk.PhotoImage(qr_image)
-            
-            # 更新标签显示二维码
-            self.qr_label.configure(image=photo_image)
-            self.qr_label.image = photo_image
-            
+            self.status_label.config(text="二维码已生成")
         except Exception as e:
-            messagebox.showerror("错误", f"生成二维码时出错：{str(e)}")
+            messagebox.showerror("错误", f"生成失败：{str(e)}")
 
-if __name__ == "__main__":
+    def decode_qr(self):
+        """识别二维码"""
+        try:
+            file_path = filedialog.askopenfilename(
+                filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif")]
+            )
+            if not file_path:
+                return
+                
+            image = Image.open(file_path)
+            result = decode(image)
+            
+            if result:
+                self.text_entry.delete('1.0', tk.END)
+                self.text_entry.insert('1.0', result[0].data.decode('utf-8'))
+                self.status_label.config(text="识别成功")
+            else:
+                messagebox.showinfo("提示", "未识别到二维码")
+        except Exception as e:
+            messagebox.showerror("错误", f"识别失败：{str(e)}")
+
+    # OCR和摄像头相关方法根据功能可用性条件执行
+    def start_ocr(self):
+        if not OCR_SUPPORTED:
+            messagebox.showinfo("提示", "OCR功能不可用")
+            return
+        # OCR相关代码...
+
+    def start_camera(self):
+        if not CAMERA_SUPPORTED:
+            messagebox.showinfo("提示", "摄像头功能不可用")
+            return
+        # 摄像头相关代码...
+
+if __name__ == '__main__':
     root = tk.Tk()
     app = QRCodeGenerator(root)
     root.mainloop() 

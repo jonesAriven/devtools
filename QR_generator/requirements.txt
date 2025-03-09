@@ -1,6 +1,7 @@
 qrcode
 pillow
 pyzbar
+pytesseract
 opencv-python
-keyboard
-numpy 
+numpy
+pyautogui 

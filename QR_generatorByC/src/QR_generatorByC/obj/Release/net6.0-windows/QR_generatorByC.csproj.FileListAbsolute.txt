@@ -1,0 +1,5 @@
+D:\huliang\cursorProjects\devTools\QR_generatorByC\src\QR_generatorByC\obj\Release\net6.0-windows\QR_generatorByC.csproj.AssemblyReference.cache
+D:\huliang\cursorProjects\devTools\QR_generatorByC\src\QR_generatorByC\obj\Release\net6.0-windows\QR_generatorByC.GeneratedMSBuildEditorConfig.editorconfig
+D:\huliang\cursorProjects\devTools\QR_generatorByC\src\QR_generatorByC\obj\Release\net6.0-windows\QR_generatorByC.AssemblyInfoInputs.cache
+D:\huliang\cursorProjects\devTools\QR_generatorByC\src\QR_generatorByC\obj\Release\net6.0-windows\QR_generatorByC.AssemblyInfo.cs
+D:\huliang\cursorProjects\devTools\QR_generatorByC\src\QR_generatorByC\obj\Release\net6.0-windows\QR_generatorByC.csproj.CoreCompileInputs.cache

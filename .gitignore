@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+
+# 保留lib目录但忽略其中的文件
+QR_GENERATOR/lib/*
+!QR_GENERATOR/lib/.gitkeep 
