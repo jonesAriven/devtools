@@ -1,0 +1,28 @@
+ 
+Python版本: Python 3.6.8 
+qrcode源码下载成功 
+pillow源码下载成功 
+Invoke-WebRequest : NoSuchKeyThe specified key does not exist.packages/05/78/8707fa016f4c2f1b4cf4b1f56c7a800aa67a214703
+98896102bcd7b6b03c/pyzbar-0.1.9-py2.py3-none-any.whlVKETJRA5H6F40XNEU0th0ILXjR3YuqgUInVcciu5fnvdkuJewR6HerNy0PSvJSWEN3B
+DW3jLjwwPZ7sZm1rN8qdMaWE=
+At line:1 char:85
++ ... pe]::Tls12; Invoke-WebRequest -Uri 'https://files.pythonhosted.org/pa ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-WebRequest], WebExc 
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeWebRequestCommand
+pyzbar wheel下载失败 
+Invoke-WebRequest : NoSuchKeyThe specified key does not exist.packages/89/89/b173caedc517319419c979adc9153e47694bbfd342
+9cd134501e493a6346/numpy-1.24.3-cp310-cp310-win_amd64.whlMD6Q1APHZ3GNG24C+C2fsQAFRLZUaz2zD8f64In8bzsljnEhxkBVWgDHnX3FAh
+wQjqQYOJY3IMuj9WG4iMAaMQvdLok=
+At line:1 char:85
++ ... pe]::Tls12; Invoke-WebRequest -Uri 'https://files.pythonhosted.org/pa ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-WebRequest], WebExc 
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeWebRequestCommand
+numpy wheel下载失败 
+处理下载的源码和wheel文件... 
+python: can't open file 'setup.py': [Errno 2] No such file or directory
+File not found - *
+0 File(s) copied
