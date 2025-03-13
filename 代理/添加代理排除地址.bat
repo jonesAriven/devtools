@@ -31,12 +31,20 @@ powershell -Command "Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\Cu
 echo [原始输出结束]
 echo.
 
+:: 预设要排除的IP和域名列表
+set "defaultExclude=localhost;127.0.0.1;10.0.0.*;192.168.*;*.local;*.internal"
+
 :: 获取用户输入
-set /p "input=请输入要排除的IP或域名(多个请用分号;分隔): "
+echo [信息] 默认已排除以下地址: %defaultExclude%
+set /p "input=除了排除这些IP和域名之外，如还有新增，请输入(多个用分号;分隔)，如无请直接按回车: "
 
 if "%input%"=="" (
-    echo [错误] 未输入任何内容，操作取消
-    goto end
+    echo [信息] 未输入额外内容，将只使用默认排除列表
+    set "input=%defaultExclude%"
+) else (
+    set "input=%defaultExclude%;%input%"
+    :: 清理多余分号
+    set "input=!input:;;=;!"
 )
 
 :: 获取当前系统代理绕过列表
