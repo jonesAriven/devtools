@@ -14,3 +14,4 @@ ENV/
 # 保留lib目录但忽略其中的文件
 QR_GENERATOR/lib/*
 !QR_GENERATOR/lib/.gitkeep 
+QR_GENERATOR/logs/*
