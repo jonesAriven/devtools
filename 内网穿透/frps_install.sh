@@ -1,8 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-# 日志文件路径
-LOG_FILE="/var/log/frps_install.log"
+# 日志目录和文件路径
+LOG_DIR="/var/log/frps"
+LOG_FILE="$LOG_DIR/frps_install.log"
+
+# 创建日志目录
+mkdir -p "$LOG_DIR"
+touch "$LOG_FILE"
+chmod 755 "$LOG_DIR"
+chmod 644 "$LOG_FILE"
+
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 # 检查root权限
@@ -11,6 +19,36 @@ check_root() {
         echo "错误: 必须使用root权限运行本脚本" | tee -a "$LOG_FILE"
         exit 1
     fi
+}
+
+# 清理所有相关文件
+clean_all_files() {
+    echo "▄ 清理所有相关文件..." | tee -a "$LOG_FILE"
+    
+    # 停止并删除服务
+    if systemctl list-unit-files | grep -q frps.service; then
+        echo "停止并删除FRP服务..." | tee -a "$LOG_FILE"
+        systemctl stop frps || true
+        systemctl disable frps || true
+        rm -f /etc/systemd/system/frps.service
+        systemctl daemon-reload
+    fi
+    
+    # 删除程序文件
+    echo "删除程序文件..." | tee -a "$LOG_FILE"
+    rm -rf /usr/local/frp
+    rm -rf /etc/frp
+    
+    # 删除日志文件
+    echo "删除日志文件..." | tee -a "$LOG_FILE"
+    rm -f "$LOG_DIR/frps.log"
+    rm -f "$LOG_DIR/frps_error.log"
+    
+    # 删除临时文件
+    echo "删除临时文件..." | tee -a "$LOG_FILE"
+    rm -rf /tmp/frp*
+    
+    echo "✔️ 所有相关文件清理完成" | tee -a "$LOG_FILE"
 }
 
 # 卸载旧版本FRP
@@ -70,9 +108,23 @@ dashboard_pwd = MySecurePassword@2025
 token = YourStrongToken!
 vhost_http_port = 80
 vhost_https_port = 443
-
+allow_ports = 3381
+log_file = /var/log/frps/frps.log
+log_level = info
 EOF
     echo "✔️ 配置文件已创建 (/etc/frp/frps.ini)" | tee -a "$LOG_FILE"
+}
+
+# 创建日志文件
+create_log_files() {
+    echo "▄ 创建日志文件..." | tee -a "$LOG_FILE"
+    touch "$LOG_DIR/frps.log"
+    touch "$LOG_DIR/frps_error.log"
+    chmod 644 "$LOG_DIR/frps.log"
+    chmod 644 "$LOG_DIR/frps_error.log"
+    chown root:root "$LOG_DIR/frps.log"
+    chown root:root "$LOG_DIR/frps_error.log"
+    echo "✔️ 日志文件创建完成" | tee -a "$LOG_FILE"
 }
 
 # 创建系统服务
@@ -89,8 +141,8 @@ User=root
 ExecStart=/usr/local/frp/frps -c /etc/frp/frps.ini
 Restart=always
 RestartSec=10
-StandardOutput=append:/var/log/frps.log
-StandardError=append:/var/log/frps_error.log
+StandardOutput=append:/var/log/frps/frps.log
+StandardError=append:/var/log/frps/frps_error.log
 
 [Install]
 WantedBy=multi-user.target
@@ -102,6 +154,39 @@ EOF
     echo "✔️ 服务已创建并启动" | tee -a "$LOG_FILE"
 }
 
+# 配置防火墙
+configure_firewall() {
+    echo "▄ 配置防火墙规则..." | tee -a "$LOG_FILE"
+    
+    # 检查是否安装了firewalld
+    if command -v firewall-cmd &> /dev/null; then
+        echo "使用firewalld配置防火墙..." | tee -a "$LOG_FILE"
+        firewall-cmd --permanent --add-port=7000/tcp
+        firewall-cmd --permanent --add-port=7500/tcp
+        firewall-cmd --permanent --add-port=80/tcp
+        firewall-cmd --permanent --add-port=443/tcp
+        firewall-cmd --permanent --add-port=3381/tcp
+        firewall-cmd --reload
+    # 检查是否安装了iptables
+    elif command -v iptables &> /dev/null; then
+        echo "使用iptables配置防火墙..." | tee -a "$LOG_FILE"
+        iptables -A INPUT -p tcp --dport 7000 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 7500 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 3381 -j ACCEPT
+        
+        # 尝试保存iptables规则
+        if command -v iptables-save &> /dev/null; then
+            iptables-save > /etc/sysconfig/iptables
+        fi
+    else
+        echo "警告: 未检测到防火墙工具，请手动配置防火墙规则" | tee -a "$LOG_FILE"
+    fi
+    
+    echo "✔️ 防火墙规则配置完成" | tee -a "$LOG_FILE"
+}
+
 # 验证服务状态
 verify_install() {
     echo "▄ 验证安装..." | tee -a "$LOG_FILE"
@@ -110,9 +195,9 @@ verify_install() {
     if [ "$STATUS" = "active" ]; then
         echo "✔️ FRP服务正在运行" | tee -a "$LOG_FILE"
         echo "▄ 检查端口监听状态:" | tee -a "$LOG_FILE"
-        ss -tulnp | grep -E '7000|7500' || true
+        ss -tulnp | grep -E '7000|7500|3381' || true
     else
-        echo "警告: 服务未正常启动，检查日志 /var/log/frps_error.log" | tee -a "$LOG_FILE"
+        echo "警告: 服务未正常启动，检查日志 /var/log/frps/frps_error.log" | tee -a "$LOG_FILE"
     fi
 }
 
@@ -129,22 +214,37 @@ show_instructions() {
     echo "   - bind_port: 客户端连接端口 (默认7000)" | tee -a "$LOG_FILE"
     echo "   - dashboard_port/web界面管理端口 (7500)" | tee -a "$LOG_FILE"
     echo "   - token需要与客户端保持一致 (当前配置值为 YourStrongToken!)" | tee -a "$LOG_FILE"
+    echo "   - allow_ports: 允许的端口范围 (当前配置值为 3381)" | tee -a "$LOG_FILE"
     echo | tee -a "$LOG_FILE"
-    echo "4. 防火墙需放行端口:" | tee -a "$LOG_FILE"
-    echo "   firewall-cmd --permanent --add-port={7000,7500,80,443}/tcp" | tee -a "$LOG_FILE"
-    echo "   firewall-cmd --reload" | tee -a "$LOG_FILE"
+    echo "4. 防火墙已自动配置，开放了以下端口:" | tee -a "$LOG_FILE"
+    echo "   - 7000: FRP服务端口" | tee -a "$LOG_FILE"
+    echo "   - 7500: 管理面板端口" | tee -a "$LOG_FILE"
+    echo "   - 80/443: HTTP/HTTPS端口" | tee -a "$LOG_FILE"
+    echo "   - 3381: 远程桌面转发端口" | tee -a "$LOG_FILE"
+    echo | tee -a "$LOG_FILE"
+    echo "5. 日志文件位置:" | tee -a "$LOG_FILE"
+    echo "   - 安装日志: $LOG_FILE" | tee -a "$LOG_FILE"
+    echo "   - 运行日志: /var/log/frps/frps.log" | tee -a "$LOG_FILE"
+    echo "   - 错误日志: /var/log/frps/frps_error.log" | tee -a "$LOG_FILE"
+    echo | tee -a "$LOG_FILE"
+    echo "6. 管理面板访问:" | tee -a "$LOG_FILE"
+    echo "   - 地址: http://服务器IP:7500" | tee -a "$LOG_FILE"
+    echo "   - 用户名: admin" | tee -a "$LOG_FILE"
+    echo "   - 密码: MySecurePassword@2025" | tee -a "$LOG_FILE"
     echo | tee -a "$LOG_FILE"
     echo "完整日志见: $LOG_FILE"
 }
 
 main() {
     check_root
-    uninstall_old
+    clean_all_files  # 新增：在安装前清理所有相关文件
     install_deps
     get_latest_version
     install_frp
     create_config
+    create_log_files
     create_service
+    configure_firewall  # 新增：自动配置防火墙
     verify_install
     show_instructions
 }
