@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天界面</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #e6e6e6;  /* 修改整体背景色为更柔和的灰色 */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f7f7f7;  /* 修改聊天容器背景色 */
+            height: 100vh;
+        }
+
+        .chat-header {
+            background: #ededed;  /* 修改头部背景色 */
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .chat-header .more {
+            font-size: 20px;
+            color: #666;
+        }
+
+        .chat-messages {
+            padding: 20px;
+            overflow-y: auto;
+            height: calc(100vh - 60px);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.received {
+            flex-direction: row;
+        }
+
+        .message.sent {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 3px;
+            margin: 0 10px;
+        }
+
+        .message-content {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 3px;
+            max-width: 70%;
+        }
+
+        .received .message-content {
+            background: #ffffff;  /* 修改接收消息背景色 */
+        }
+
+        .sent .message-content {
+            background: #95ec69;  /* 保持发送消息的背景色不变 */
+        }
+
+        .message-text {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>魏永才</h1>
+            <span class="more">...</span>
+        </div>
+        <div class="chat-messages">
+            <div class="message received">
+                <img src="tree-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">叹 不愧谢不愧谢 死的心都有</p>
+                </div>
+            </div>
+            
+            <div class="message sent">
+                <img src="cloud-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">人生每一次经历 都是在修行，都是在渡劫，这是必不可少的</p>
+                </div>
+            </div>
+
+            <div class="message received">
+                <img src="tree-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">还好我老婆没有为了钱给我戴问 之前都是父母才那样的</p>
+                </div>
+            </div>
+
+            <div class="message sent">
+                <img src="cloud-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">所以你是不是因为这件事，也看到你老婆的好呢</p>
+                </div>
+            </div>
+
+            <div class="message received">
+                <img src="tree-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">我不想修行 只想远离世俗</p>
+                </div>
+            </div>
+
+            <div class="message sent">
+                <img src="cloud-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">在世俗中也是修行</p>
+                </div>
+            </div>
+
+            <div class="message received">
+                <img src="tree-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">你这修行的很有经验了呀😂</p>
+                </div>
+            </div>
+
+            <div class="message received">
+                <img src="tree-avatar.jpg" class="avatar" alt="头像">
+                <div class="message-content">
+                    <p class="message-text">最近工作怎么样</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
