@@ -102,15 +102,15 @@ echo ✔️ 文件复制完成 >> %LOG_FILE%
 :: 创建配置文件
 echo ▄ 创建配置文件...
 echo [common] > "%INSTALL_DIR%\frpc.ini"
-echo server_addr = 你的服务器IP >> "%INSTALL_DIR%\frpc.ini"
+echo server_addr = 120.26.66.182 >> "%INSTALL_DIR%\frpc.ini"
 echo server_port = 7000 >> "%INSTALL_DIR%\frpc.ini"
 echo token = YourStrongToken! >> "%INSTALL_DIR%\frpc.ini"
 echo. >> "%INSTALL_DIR%\frpc.ini"
-echo [ssh] >> "%INSTALL_DIR%\frpc.ini"
+echo [rdp] >> "%INSTALL_DIR%\frpc.ini"
 echo type = tcp >> "%INSTALL_DIR%\frpc.ini"
 echo local_ip = 127.0.0.1 >> "%INSTALL_DIR%\frpc.ini"
 echo local_port = 3389 >> "%INSTALL_DIR%\frpc.ini"
-echo remote_port = 7001 >> "%INSTALL_DIR%\frpc.ini"
+echo remote_port = 23389 >> "%INSTALL_DIR%\frpc.ini"
 echo ✔️ 配置文件创建完成 >> %LOG_FILE%
 
 :: 创建启动脚本
