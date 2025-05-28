@@ -132,6 +132,7 @@ if /i "%tag%"=="exit" (
 )
 
 cd /d !%app_name%_PATH!
+
 if "%branch_type%"=="lt" (
     git checkout %lt_branch%
 ) else (
@@ -143,7 +144,38 @@ if %errorlevel% neq 0 (
     pause
     exit /b
 )
+
+:: Check if the tag already exists locally
+git tag | findstr /C:"%tag%" >nul
+if %errorlevel% equ 0 (
+    echo Tag %tag% already exists locally, deleting it...
+    git tag -d %tag%
+    if %errorlevel% neq 0 (
+        echo Failed to delete local tag %tag%.
+        pause
+        exit /b
+    )
+)
+
+:: Check if the tag already exists remotely
+git ls-remote --tags origin | findstr /C:"refs/tags/%tag%" >nul
+if %errorlevel% equ 0 (
+    echo Tag %tag% already exists remotely, deleting it...
+    git push origin --delete %tag%
+    if %errorlevel% neq 0 (
+        echo Failed to delete remote tag %tag%.
+        pause
+        exit /b
+    )
+)
+
+:: Create and push the new tag
 git tag -a %tag% -m "%reason%"
+if %errorlevel% neq 0 (
+    echo Failed to create tag %tag%.
+    pause
+    exit /b
+)
 git push origin %tag%
 if %errorlevel% neq 0 (
     echo Failed to push %app_name% tag, please check if the tag already exists or network issues.
@@ -151,8 +183,6 @@ if %errorlevel% neq 0 (
     exit /b
 )
 goto :eof
-
-
 
 pause
 endlocal
