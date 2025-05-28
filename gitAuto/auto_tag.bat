@@ -74,9 +74,24 @@ if /i "%iteration%"=="exit" (
 set version=%iteration%
 
 :: 2. Input release reason
+:input_reason
 set /p reason="Please enter the release reason (e.g., lt, release) or type 'exit' to quit: "
-set  branch_type=%reason%
+if /i "%reason%"=="exit" (
+    echo Exiting script...
+    pause
+    exit /b
+)
 
+if /i "%reason%"=="lt" (
+    goto next
+) else if /i "%reason%"=="release" (
+    goto next
+) else (
+    echo Invalid release reason! Please enter either 'lt' or 'release'.
+    goto input_reason
+)
+
+:next
 :: Branch overwrite logic
 if "%branch_type%"=="lt" (
     :: Overwrite all branches
