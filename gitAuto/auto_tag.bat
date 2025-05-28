@@ -73,6 +73,18 @@ if /i "%iteration%"=="exit" (
 )
 set version=%iteration%
 
+for %%A in (ngcard ngcardh5 ngcardbo) do (
+        echo Overwriting %%A branch...
+        cd /d !%%A_PATH!
+        git fetch origin release-%%A-!version!
+        git fetch origin lt-%%A
+        git checkout lt-%%A
+        git checkout release-%%A-!version! -- .
+        git add .
+        git commit -m "Update lt-%%A to match release-%%A-!version!"
+        git push origin lt-%%A
+)
+
 :: 2. Input release reason
 :input_reason
 set /p reason="Please enter the release reason (e.g., lt, release) or type 'exit' to quit: "
@@ -90,23 +102,29 @@ if /i "%reason%"=="lt" (
     echo Invalid release reason! Please enter either 'lt' or 'release'.
     goto input_reason
 )
-
 :next
+
+set branch_type=%reason%
 :: Branch overwrite logic
 if "%branch_type%"=="lt" (
-    :: Overwrite all branches
+    :: checkout lt
     for %%A in (ngcard ngcardh5 ngcardbo) do (
-        echo Overwriting %%A branch...
+        echo checkout  %%A branch...
         cd /d !%%A_PATH!
-        git fetch origin release-%%A-!version!
+        :: git fetch origin release-%%A-!version!
         git fetch origin lt-%%A
         git checkout lt-%%A
-        git checkout release-%%A-!version! -- .
-        git add .
-        git commit -m "Update lt-%%A to match release-%%A-!version!"
-        git push origin lt-%%A
     )
-)
+)else if "%branch_type%"=="release" (
+     :: checkout release
+     for %%A in (ngcard ngcardh5 ngcardbo) do (
+         echo checkout %%A branch...
+         cd /d !%%A_PATH!
+         git fetch origin release-%%A-!version!
+         :: git fetch origin lt-%%A
+         git checkout release-%%A-!version!
+     )
+ )
 
 :: 3-5. Tagging logic
 call :process_tag ngcard lt-ngcard release-ngcard-!version!
