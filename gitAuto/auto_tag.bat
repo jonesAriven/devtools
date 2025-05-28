@@ -129,7 +129,7 @@ if %errorlevel% neq 0 (
     exit /b
 )
 git tag -a %tag% -m "%reason%"
-git push origin v%tag%
+git push origin %tag%
 if %errorlevel% neq 0 (
     echo Failed to push %app_name% tag, please check if the tag already exists or network issues.
     pause
