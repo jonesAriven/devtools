@@ -73,17 +73,39 @@ if /i "%iteration%"=="exit" (
 )
 set version=%iteration%
 
+:: 假设用户想在每个项目的 logs 子目录中写入日志文件
+
 for %%A in (ngcard ngcardh5 ngcardbo) do (
-        echo Overwriting %%A branch...
-        cd /d !%%A_PATH!
-        git fetch origin release-%%A-!version!
-        git fetch origin lt-%%A
-        git checkout lt-%%A
-        git checkout release-%%A-!version! -- .
-        git add .
-        git commit -m "Update lt-%%A to match release-%%A-!version!"
-        git push origin lt-%%A
+    echo Overwriting %%A branch...
+    cd /d !%%A_PATH!
+
+    :: 检查当前目录是否切换成功
+    if %errorlevel% neq 0 (
+        echo Failed to change directory to !%%A_PATH!
+        pause
+        exit /b
+    )
+
+    :: 创建 logs 子目录（如果不存在）
+    if not exist "logs" (
+        mkdir "logs"
+        if %errorlevel% neq 0 (
+            echo Failed to create logs directory in !%%A_PATH!
+            pause
+            exit /b
+        )
+    )
+
+    :: 使用绝对路径写入日志文件
+    echo [INFO] Processing branch for %%A at %date% %time% >> "!%%A_PATH!\logs\branch_update.log"
 )
+git fetch origin release-%%A-!version!
+git fetch origin lt-%%A
+git checkout lt-%%A
+git checkout release-%%A-!version! -- .
+git add .
+git commit -m "Update lt-%%A to match release-%%A-!version!"
+git push origin lt-%%A
 
 :: 2. Input release reason
 :input_reason
