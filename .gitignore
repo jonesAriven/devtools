@@ -15,3 +15,4 @@ ENV/
 QR_GENERATOR/lib/*
 !QR_GENERATOR/lib/.gitkeep 
 QR_GENERATOR/logs/*
+/*.iml
