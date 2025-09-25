@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoapUI 全面使用教程（中文版）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        nav {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        nav h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        nav li a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 8px 15px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        nav li a:hover {
+            background-color: #e3f2fd;
+        }
+        section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        section h2 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        section h3 {
+            font-size: 1.5rem;
+            color: #34495e;
+            margin: 25px 0 15px;
+        }
+        section p {
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+        }
+        section ul, section ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        section li {
+            margin-bottom: 10px;
+            font-size: 1.05rem;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+        code {
+            font-family: "Consolas", "Monaco", monospace;
+            color: #e74c3c;
+            font-size: 1rem;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .tip {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #dee2e6;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        table th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        .link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页头 -->
+    <header>
+        <h1>SoapUI 全面使用教程</h1>
+        <p>基于官方文档翻译与整理 | 涵盖基础操作、高级功能与自动化集成</p>
+    </header>
+
+    <!-- 导航栏 -->
+    <nav>
+        <h2>目录导航</h2>
+        <ul>
+            <li><a href="#1">1. SoapUI 简介与安装</a></li>
+            <li><a href="#2">2. 基础操作：创建与管理项目</a></li>
+            <li><a href="#3">3. 核心功能：发送请求与解析响应</a></li>
+            <li><a href="#4">4. 断言：验证响应正确性</a></li>
+            <li><a href="#5">5. 数据驱动测试：批量执行用例</a></li>
+            <li><a href="#6">6. Mock 服务：模拟接口响应</a></li>
+            <li><a href="#7">7. 性能测试（负载测试）</a></li>
+            <li><a href="#8">8. 持续集成：与 Jenkins/Maven 集成</a></li>
+            <li><a href="#9">9. 常见问题与社区资源</a></li>
+        </ul>
+    </nav>
+
+    <!-- 正文内容 -->
+    <main>
+        <!-- 1. SoapUI 简介与安装 -->
+        <section id="1">
+            <h2>1. SoapUI 简介与安装</h2>
+            <h3>1.1 什么是 SoapUI？</h3>
+            <p>SoapUI 是一款开源的 API 测试工具，支持 <strong>SOAP</strong>、<strong>REST</strong>、<strong>GraphQL</strong>、<strong>WebSocket</strong> 等多种协议，提供以下核心能力：</p>
+            <ul>
+                <li>功能测试：验证 API 的请求/响应逻辑</li>
+                <li>性能测试：模拟高并发场景，检测接口吞吐量与响应时间</li>
+                <li>Mock 服务：在后端接口未开发完成时，模拟返回预设响应</li>
+                <li>自动化测试：支持脚本（Groovy）扩展与持续集成</li>
+            </ul>
+            <p>SoapUI 分为两个版本：<strong>开源版（SoapUI Open Source）</strong> 和 <strong>商业版（ReadyAPI）</strong>，本教程以开源版为基础。</p>
+
+            <h3>1.2 系统要求</h3>
+            <table>
+                <tr>
+                    <th>操作系统</th>
+                    <th>Java 版本</th>
+                    <th>内存要求</th>
+                    <th>磁盘空间</th>
+                </tr>
+                <tr>
+                    <td>Windows 10/11、macOS 10.15+、Linux（Ubuntu 20.04+）</td>
+                    <td>Java 8 或 Java 11（推荐）</td>
+                    <td>至少 2GB RAM（性能测试建议 4GB+）</td>
+                    <td>至少 500MB 空闲空间</td>
+                </tr>
+            </table>
+
+            <h3>1.3 下载与安装步骤</h3>
+            <ol>
+                <li>访问 SoapUI 官方下载页：<a href="https://www.soapui.org/downloads/latest-release.html" target="_blank" class="link">https://www.soapui.org/downloads/latest-release.html</a></li>
+                <li>选择对应操作系统的安装包（开源版标注为「SoapUI Open Source」）：
+                    <ul>
+                        <li>Windows：下载 .exe 安装包，双击运行后按向导完成安装（默认勾选「添加环境变量」）</li>
+                        <li>macOS：下载 .dmg 镜像，拖拽 SoapUI 到「应用程序」文件夹</li>
+                        <li>Linux：下载 .tar.gz 压缩包，解压后运行 <code>bin/soapui.sh</code> 启动</li>
+                    </ul>
+                </li>
+                <li>启动 SoapUI：首次启动会弹出「欢迎向导」，可选择「创建新项目」或「跳过」</li>
+            </ol>
+            <div class="tip">
+                <strong>提示</strong>：若启动时提示「Java 未找到」，需手动配置 JAVA_HOME 环境变量，指向已安装的 Java 目录。
+            </div>
+        </section>
+
+        <!-- 2. 基础操作：创建与管理项目 -->
+        <section id="2">
+            <h2>2. 基础操作：创建与管理项目</h2>
+            <p>SoapUI 以「项目（Project）」为单位管理测试资源，一个项目可包含多个接口（Interface）、测试套件（Test Suite）、测试用例（Test Case）。</p>
+
+            <h3>2.1 创建 REST 项目</h3>
+            <p>REST 是目前最常用的 API 风格，SoapUI 支持通过 URL 或 API 文档（Swagger/OpenAPI）快速创建项目：</p>
+            <ol>
+                <li>打开 SoapUI，点击菜单栏 <code>File > New REST Project</code>（或快捷键 <code>Ctrl+N</code>）</li>
+                <li>在弹出的对话框中输入「初始 WADL/Swagger/OpenAPI URL」：
+                    <ul>
+                        <li>示例 1（直接输入接口 URL）：<code>https://petstore.swagger.io/v2/pet</code></li>
+                        <li>示例 2（导入 Swagger 文档）：<code>https://petstore.swagger.io/v2/swagger.json</code></li>
+                    </ul>
+                </li>
+                <li>勾选「Create Requests」（自动生成请求模板），点击「OK」</li>
+                <li>项目创建完成后，左侧「Navigator」面板会显示项目结构：
+                    <pre class="code-block">PetStore-REST（项目）
+├─ pet（接口）
+│  ├─ GET /pet/findByStatus（请求）
+│  ├─ POST /pet（请求）
+│  └─ DELETE /pet/{petId}（请求）
+└─ Test Suites（测试套件，默认空）</pre>
+                </li>
+            </ol>
+
+            <h3>2.2 创建 SOAP 项目</h3>
+            <p>SOAP 接口基于 XML 协议，需通过 WSDL（Web Services Description Language）文档创建项目：</p>
+            <ol>
+                <li>点击菜单栏 <code>File > New SOAP Project</code></li>
+                <li>输入项目名称（如「Weather-SOAP」），并在「Initial WSDL」中输入 WSDL 地址：
+                    <p>示例：<code>http://www.webservicex.com/globalweather.asmx?WSDL</code></p>
+                </li>
+                <li>勾选「Create Test Suite」（自动生成测试套件），点击「OK」</li>
+                <li>SoapUI 会解析 WSDL 并生成 SOAP  请求模板（包含 XML 格式的请求体）</li>
+            </ol>
+
+            <h3>2.3 项目管理基础</h3>
+            <ul>
+                <li>保存项目：点击菜单栏 <code>File > Save Project</code>，项目以 <code>.xml</code> 格式存储（如「PetStore.xml」）</li>
+                <li>导入项目：<code>File > Import Project</code>，选择本地的 <code>.xml</code> 项目文件</li>
+                <li>删除资源：在「Navigator」面板中右键点击目标（如请求、测试用例），选择「Delete」</li>
+                <li>复制资源：右键点击目标，选择「Duplicate」，快速创建相似用例</li>
+            </ul>
+        </section>
+
+        <!-- 3. 核心功能：发送请求与解析响应 -->
+        <section id="3">
+            <h2>3. 核心功能：发送请求与解析响应</h2>
+            <p>创建项目后，可通过 SoapUI 发送请求并查看响应，以下以 REST 接口为例说明。</p>
+
+            <h3>3.1 配置 REST 请求</h3>
+            <ol>
+                <li>在「Navigator」面板中，展开项目 > 接口，双击目标请求（如「GET /pet/findByStatus」）</li>
+                <li>在请求编辑界面，配置以下参数：
+                    <ul>
+                        <li><strong>Method</strong>：选择 HTTP 方法（GET、POST、PUT、DELETE 等）</li>
+                        <li><strong>Endpoint</strong>：接口的基础 URL（如 <code>https://petstore.swagger.io/v2</code>）</li>
+                        <li><strong>Resource</strong>：接口的路径（如 <code>/pet/findByStatus</code>）</li>
+                        <li><strong>Parameters</strong>：URL 参数（Query String），点击「+」添加键值对：
+                            <p>示例：Key = <code>status</code>，Value = <code>available</code>（查询「可用」状态的宠物）</p>
+                        </li>
+                        <li><strong>Headers</strong>：HTTP 头信息（如 Content-Type、Authorization），示例：
+                            <p>Key = <code>Content-Type</code>，Value = <code>application/json</code></p>
+                        </li>
+                        <li><strong>Request Body</strong>（POST/PUT 请求）：输入 JSON/XML 格式的请求体，示例（创建宠物）：
+                            <pre class="code-block">{
+  "id": 12345,
+  "name": "小狗",
+  "status": "available",
+  "category": {
+    "id": 1,
+    "name": "dog"
+  }
+}</pre>
+                        </li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>3.2 发送请求与查看响应</h3>
+            <ol>
+                <li>点击请求编辑界面左上角的 <strong>绿色箭头发送按钮</strong>（或快捷键 <code>Ctrl+Enter</code>）</li>
+                <li>右侧「Response」面板会显示响应结果，包含 4 个标签页：
+                    <ul>
+                        <li><strong>Raw</strong>：原始响应（包含 HTTP 状态行、响应头、响应体）</li>
+                        <li><strong>JSON/XML</strong>：格式化后的响应体（自动识别格式，便于阅读）</li>
+                        <li><strong>Headers</strong>：响应头信息（如 Server、Content-Length、Date）</li>
+                        <li><strong>Attachment</strong>：响应中的附件（如文件下载接口）</li>
+                    </ul>
+                </li>
+                <li>查看关键信息：
+                    <p>示例响应（JSON 格式）：
+                        <pre class="code-block">{
+  "id": 12345,
+  "name": "小狗",
+  "status": "available",
+  "category": {
+    "id": 1,
+    "name": "dog"
+  },
+  "tags": []
+}</pre>
+                    </p>
+                    <p>HTTP 状态码：<code>200 OK</code>（表示请求成功）</p>
+                </li>
+            </ol>
+
+            <div class="note">
+                <strong>注意</strong>：若请求失败（如 404 Not Found、500 Internal Server Error），可通过「Raw」标签页查看完整错误信息，排查 URL 是否正确、参数是否缺失、权限是否足够。
+            </div>
+        </section>
+
+        <!-- 4. 断言：验证响应正确性 -->
+        <section id="4">
+            <h2>4. 断言：验证响应正确性</h2>
+            <p>「断言（Assertion）」是 SoapUI 中验证响应是否符合预期的核心功能，通过断言可自动判断测试用例是否通过。</p>
+
+            <h3>4.1 常用断言类型</h3>
+            <table>
+                <tr>
+                    <th>断言类型</th>
+                    <th>用途</th>
+                    <th>适用场景</th>
+                </tr>
+                <tr>
+                    <td>Contains Assertion</td>
+                    <td>验证响应体/响应头中是否包含指定文本</td>
+                    <td>简单文本匹配（如响应中包含「success」）</td>
+                </tr>
+                <tr>
+                    <td>JSON Path Assertion</td>
+                    <td>通过 JSON Path 表达式提取响应字段，验证其值</td>
+                    <td>REST JSON 接口（如验证「name」字段值为「小狗」）</td>
+                </tr>
+                <tr>
+                    <td>XML Path Assertion</td>
+                    <td>通过 XPath 表达式提取 XML 响应字段，验证其值</td>
+                    <td>SOAP 接口或 XML 格式的 REST 接口</td>
+                </tr>
+                <tr>
+                    <td>Response Code Assertion</td>
+                    <td>验证 HTTP 响应状态码是否符合预期</td>
+                    <td>所有 HTTP 接口（如验证状态码为 200、400）</td>
+                </tr>
+                <tr>
+                    <td>Response Time Assertion</td>
+                    <td>验证响应时间是否小于指定阈值</td>
+                    <td>性能要求高的接口（如响应时间 &lt; 500ms）</td>
+                </tr>
+                <tr>
+                    <td>Script Assertion</td>
+                    <td>通过 Groovy 脚本自定义断言逻辑</td>
+                    <td>复杂场景（如动态计算字段值、多条件判断）</td>
+                </tr>
+            </table>
+
+            <h3>4.2 添加断言的步骤</h3>
+            <p>以「验证 REST 接口响应状态码为 200」为例：</p>
+            <ol>
+                <li>打开目标请求（如「GET /pet/findByStatus」），发送请求后，切换到「Assertions」标签页</li>
+                <li>点击「+」按钮（Add Assertion），在弹出的对话框中选择「Response Code Assertion」，点击「OK」</li>
+                <li>在断言配置界面，选择「Equals」，输入预期状态码「200」，点击「Save」</li>
+                <li>再次发送请求，断言会自动执行：
+                    <ul>
+                        <li>若通过：断言前显示 <strong>绿色对勾</strong></li>
+                        <li>若失败：断言前显示 <strong>红色叉号</strong>，鼠标悬停可查看失败原因</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>4.3 脚本断言示例（Groovy）</h3>
+            <p>场景：验证 JSON 响应中「status」字段值为「available」，且响应时间 &lt; 500ms</p>
+            <pre class="code-block">// 1. 获取响应体（JSON 格式）
+def responseJson = new groovy.json.JsonSlurper().parseText(messageExchange.responseContent)
+
+// 2. 验证 status 字段值
+assert responseJson.status == "available" : "状态不符合预期，实际为：" + responseJson.status
+
+// 3. 获取响应时间（单位：ms）
+def responseTime = messageExchange.timeTaken
+
+// 4. 验证响应时间
+assert responseTime < 500 : "响应时间过长，实际为：" + responseTime + "ms"
+
+// 5. 打印日志（可选）
+log.info("断言通过！响应时间：" + responseTime + "ms")</pre>
+            <div class="tip">
+                <strong>提示</strong>：脚本断言中，<code>messageExchange</code> 是 SoapUI 内置对象，可获取请求/响应信息；<code>log</code> 用于打印日志，日志可在「Log」标签页查看。
+            </div>
+        </section>
+
+        <!-- 5. 数据驱动测试：批量执行用例 -->
+        <section id="5">
+            <h2>5. 数据驱动测试：批量执行用例</h2>
+            <p>数据驱动测试（Data-Driven Testing）通过读取外部数据源（如 Excel、CSV）中的数据，自动参数化请求，实现批量执行测试用例，适用于多组输入场景（如登录、查询）。</p>
+
+            <h3>5.1 准备数据源（Excel 示例）</h3>
+            <p>创建 Excel 文件（如「pet_data.xlsx」），包含以下数据（测试不同宠物的查询场景）：</p>
+            <table>
+                <tr>
+                    <th>petId</th>
+                    <th>expectedName</th>
+                    <th>expectedStatus</th>
+                </tr>
+                <tr>
+                    <td>12345</td>
+                    <td>小狗</td>
+                    <td>available</td>
+                </tr>
+                <tr>
+                    <td>67890</td>
+                    <td>小猫</td>
+                    <td>pending</td>
+                </tr>
+                <tr>
+                    <td>11122</td>
+                    <td>小兔</td>
+                    <td>sold</td>
+                </tr>
+            </table>
+
+            <h3>5.2 配置数据驱动测试步骤</h3>
+            <p>以「批量查询宠物信息（GET /pet/{petId}）」为例：</p>
+            <ol>
+                <li>创建测试套件与测试用例：
+                    <ul>
+                        <li>右键点击项目 > 「New Test Suite」，输入名称（如「PetTestSuite」）</li>
+                        <li>右键点击测试套件 > 「New Test Case」，输入名称（如「PetQueryTestCase」）</li>
+                    </ul>
+                </li>
+                <li>添加「DataSource」步骤（读取 Excel 数据）：
+                    <ul>
+                        <li>右键点击测试用例 > 「Add Step」> 「DataSource」</li>
+                        <li>输入步骤名称（如「ExcelDataSource」），点击「OK」</li>
+                        <li>在「DataSource」配置界面：
+                            <p>- 选择「DataSource Type」为「Excel」</p>
+                            <p>- 点击「Browse」选择 Excel 文件（「pet_data.xlsx」）</p>
+                            <p>- 选择「Sheet Name」（如「Sheet1」）</p>
+                            <p>- 点击「Preview」预览数据，确认字段与 Excel 列匹配（petId、expectedName、expectedStatus）</p>
+                        </li>
+                    </ul>
+                </li>
+                <li>添加「REST Request」步骤（参数化请求）：
+                    <ul>
+                        <li>右键点击测试用例 > 「Add Step」> 「REST Request」</li>
+                        <li>选择目标接口（如「pet > GET /pet/{petId}」），点击「OK」</li>
+                        <li>在请求编辑界面，配置「Resource」中的 <code>{petId}</code> 参数：
+                            <p>1. 选中 <code>{petId}</code>，右键 > 「Get Data」</p>
+                            <p>2. 在弹出的对话框中，选择「ExcelDataSource」> 「petId」，点击「OK」</p>
+                            <p>3. 此时 <code>{petId}</code> 会替换为 <code>${ExcelDataSource#petId}</code>，表示从数据源读取 petId 值</p>
+                        </li>
+                    </ul>
+                </li>
+                <li>添加「DataSource Loop」步骤（循环读取数据）：
+                    <ul>
+                        <li>右键点击测试用例 > 「Add Step」> 「DataSource Loop」</li>
+                        <li>输入步骤名称（如「DataLoop」），点击「OK」</li>
+                        <li>在配置界面：
+                            <p>- 「DataSource」选择「ExcelDataSource」</p>
+                            <p>- 「Target Step」选择「REST Request」（表示循环执行该请求）</p>
+                            <p>- 点击「Save」</p>
+                        </li>
+                    </ul>
+                </li>
+                <li>添加断言（验证批量结果）：
+                    <ul>
+                        <li>打开「REST Request」的「Assertions」标签页，添加「JSON Path Assertion」</li>
+                        <li>配置 JSON Path 表达式：<code>$.name</code>，选择「Equals」，点击「Get Data」选择「ExcelDataSource#expectedName」</li>
+                        <li>重复上述步骤，添加对「status」字段的断言</li>
+                    </ul>
+                </li>
+                <li>执行测试用例：
+                    <p>右键点击测试用例 > 「Run」，SoapUI 会自动循环读取 Excel 中的 3 组数据，执行 3 次请求并验证断言</p>
+                </li>
+            </ol>
+
+            <div class="note">
+                <strong>注意</strong>：若使用 CSV 数据源，选择「DataSource Type」为「CSV」，并确保 CSV 文件编码为 UTF-8（避免中文乱码）。
+            </div>
+        </section>
+
+        <!-- 6. Mock 服务：模拟接口响应 -->
+        <section id="6">
+            <h2>6. Mock 服务：模拟接口响应</h2>
+            <p>Mock 服务（模拟服务）是在后端接口未开发完成时，由 SoapUI 模拟接口的行为，返回预设的响应数据，便于前端开发或测试用例编写。</p>
+
+            <h3>6.1 创建 REST Mock 服务</h3>
+            <ol>
+                <li>右键点击目标 REST 接口（如「pet」）> 「Generate REST Mock Service」</li>
+                <li>在弹出的对话框中，配置以下信息：
+                    <ul>
+                        <li>「Mock Service Name」：输入名称（如「PetMockService」）</li>
+                        <li>「Port」：设置 Mock 服务的端口（如 8080，确保端口未被占用）</li>
+                        <li>「Base Path」：设置基础路径（如「/mock/pet」）</li>
+                    </ul>
+                </li>
+                <li>点击「OK」，SoapUI 会自动生成 Mock 服务，并包含接口的所有请求方法（如 GET /pet/{petId}、POST /pet）</li>
+                <li>在「Navigator」面板中，展开「Mock Services > PetMockService」，可看到生成的 Mock 响应（如「GET /pet/{petId} - Response 1」）</li>
+            </ol>
+
+            <h3>6.2 配置 Mock 响应</h3>
+            <p>以「配置 GET /pet/{petId} 的 Mock 响应」为例：</p>
+            <ol>
+                <li>双击「GET /pet/{petId} - Response 1」，打开 Mock 响应编辑界面</li>
+                <li>配置响应参数：
+                    <ul>
+                        <li>「Response Status Code」：设置 HTTP 状态码（如 200）</li>
+                        <li>「Response Headers」：添加头信息（如 Content-Type: application/json）</li>
+                        <li>「Response Body」：输入预设的响应体（JSON 格式）：
+                            <pre class="code-block">{
+  "id": ${petId}, // ${petId} 表示引用请求中的 petId 参数
+  "name": "Mock宠物",
+  "status": "available",
+  "message": "这是Mock服务返回的响应"
+}</pre>
+                        </li>
+                    </ul>
+                </li>
+                <li>点击「Save」保存配置</li>
+            </ol>
+
+            <h3>6.3 启动与测试 Mock 服务</h3>
+            <ol>
+                <li>右键点击 Mock 服务（如「PetMockService」）> 「Start Mock Service」</li>
+                <li>若启动成功，状态栏会显示「Mock Service started on port 8080」</li>
+                <li>测试 Mock 服务：
+                    <ul>
+                        <li>方式 1：使用浏览器访问 Mock 地址：<code>http://localhost:8080/mock/pet/12345</code>，可看到预设的 JSON 响应</li>
+                        <li>方式 2：在 SoapUI 中创建新的 REST 请求，将 Endpoint 设置为 <code>http://localhost:8080/mock</code>，发送请求后可接收 Mock 响应</li>
+                    </ul>
+                </li>
+                <li>停止 Mock 服务：右键点击 Mock 服务 > 「Stop Mock Service」</li>
+            </ol>
+
+            <h3>6.4 动态 Mock 响应（Groovy 脚本）</h3>
+            <p>场景：根据请求中的 petId 参数，返回不同的响应（如 petId=123 返回「小狗」，petId=456 返回「小猫」）</p>
+            <ol>
+                <li>打开 Mock 响应编辑界面，切换到「Script」标签页</li>
+                <li>输入以下 Groovy 脚本：
+                    <pre class="code-block">// 1. 获取请求中的 petId 参数
+def petId = mockRequest.pathParameters.get("petId")
+
+// 2. 根据 petId 生成不同的响应
+def responseJson = ""
+if (petId == "123") {
+    responseJson = '''{
+        "id": 123,
+        "name": "小狗",
+        "status": "available"
+    }'''
+} else if (petId == "456") {
+    responseJson = '''{
+        "id": 456,
+        "name": "小猫",
+        "status": "pending"
+    }'''
+} else {
+    // 默认响应
+    responseJson = '''{
+        "id": ''' + petId + ''',
+        "name": "未知宠物",
+        "status": "sold"
+    }'''
+}
+
+// 3. 设置响应体
+mockResponse.content = responseJson
+
+// 4. 设置响应头
+mockResponse.addHeader("Content-Type", "application/json")
+
+// 5. 设置响应状态码
+mockResponse.statusCode = 200</pre>
+                </li>
+                <li>保存脚本后，启动 Mock 服务，分别访问 <code>http://localhost:8080/mock/pet/123</code> 和 <code>http://localhost:8080/mock/pet/456</code>，可看到不同的响应</li>
+            </ol>
+        </section>
+
+        <!-- 7. 性能测试（负载测试） -->
+        <section id="7">
+            <h2>7. 性能测试（负载测试）</h2>
+            <p>性能测试（又称负载测试）用于模拟高并发场景，检测接口在不同压力下的响应时间、吞吐量、错误率等指标，评估接口的性能极限。</p>
+
+            <h3>7.1 创建负载测试用例</h3>
+            <ol>
+                <li>右键点击已有的测试用例（如「PetQueryTestCase」）> 「New Load Test」</li>
+                <li>输入负载测试名称（如「PetLoadTest」），点击「OK」</li>
+                <li>打开负载测试编辑界面，包含「Load Profile」「Test Case」「Reports」等标签页</li>
+            </ol>
+
+            <h3>7.2 配置负载参数</h3>
+            <p>在「Load Profile」标签页中，配置以下核心参数：</p>
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>说明</th>
+                    <th>示例配置</th>
+                </tr>
+                <tr>
+                    <td>Load Type</td>
+                    <td>负载类型：<br>- Concurrent Users（并发用户数）<br>- Rate（每秒请求数）</td>
+                    <td>Concurrent Users</td>
+                </tr>
+                <tr>
+                    <td>Initial Users</td>
+                    <td>初始并发用户数</td>
+                    <td>10</td>
+                </tr>
+                <tr>
+                    <td>Max Users</td>
+                    <td>最大并发用户数</td>
+                    <td>100</td>
+                </tr>
+                <tr>
+                    <td>Ramp Up Time (sec)</td>
+                    <td>从初始用户数增加到最大用户数的时间</td>
+                    <td>60（1分钟内逐步增加到100用户）</td>
+                </tr>
+                <tr>
+                    <td>Hold Load For (sec)</td>
+                    <td>保持最大用户数的持续时间</td>
+                    <td>120（保持2分钟）</td>
+                </tr>
+                <tr>
+                    <td>Ramp Down Time (sec)</td>
+                    <td>从最大用户数减少到0的时间</td>
+                    <td>30（30秒内逐步减少到0用户）</td>
+                </tr>
+                <tr>
+                    <td>Test Duration (sec)</td>
+                    <td>测试总时长（优先级高于上述时间）</td>
+                    <td>210（总时长3分30秒）</td>
+                </tr>
+            </table>
+
+            <h3>7.3 执行负载测试与查看报告</h3>
+            <ol>
+                <li>点击负载测试编辑界面左上角的「Start」按钮，开始执行测试</li>
+                <li>执行过程中，「Live Statistics」面板会实时显示以下指标：
+                    <ul>
+                        <li>Concurrent Users：当前并发用户数</li>
+                        <li>Requests/sec：每秒请求数（吞吐量）</li>
+                        <li>Response Time (ms)：平均响应时间</li>
+                        <li>Error Rate (%)：错误率</li>
+                    </ul>
+                </li>
+                <li>测试结束后，切换到「Reports」标签页，可查看详细报告：
+                    <ul>
+                        <li>「Summary Report」：测试概要（总请求数、成功数、失败数、平均响应时间）</li>
+                        <li>「Response Time Distribution」：响应时间分布图表</li>
+                        <li>「Throughput Report」：吞吐量趋势图表</li>
+                    </ul>
+                </li>
+                <li>导出报告：点击「Export Report」，选择报告格式（HTML、PDF），保存到本地</li>
+            </ol>
+
+            <div class="tip">
+                <strong>提示</strong>：执行负载测试时，建议关闭其他占用资源的程序，避免影响测试结果；若需模拟分布式负载，可使用 SoapUI 商业版的「LoadUI Pro」功能。
+            </div>
+        </section>
+
+        <!-- 8. 持续集成：与 Jenkins/Maven 集成 -->
+        <section id="8">
+            <h2>8. 持续集成：与 Jenkins/Maven 集成</h2>
+            <p>将 SoapUI 测试用例集成到持续集成（CI）工具（如 Jenkins）中，可实现代码提交后自动执行 API 测试，及时发现问题。</p>
+
+            <h3>8.1 准备 Maven 项目</h3>
+            <p>SoapUI 支持通过 Maven 插件执行测试，需先创建 <code>pom.xml</code> 文件：</p>
+            <pre class="code-block"><?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>soapui-test</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <build>
+        <plugins>
+            <!-- SoapUI Maven 插件 -->
+            <plugin>
+                <groupId>com.smartbear.soapui</groupId>
+                <artifactId>soapui-maven-plugin</artifactId>
+                <version>5.7.0</version> <!-- 与 SoapUI 版本匹配 -->
+                <configuration>
+                    <!-- SoapUI 项目文件路径 -->
+                    <projectFile>${project.basedir}/PetStore.xml</projectFile>
+                    <!-- 测试套件名称（可选，不指定则执行所有套件） -->
+                    <testSuite>PetTestSuite</testSuite>
+                    <!-- 测试用例名称（可选，不指定则执行所有用例） -->
+                    <testCase>PetQueryTestCase</testCase>
+                    <!-- 生成测试报告 -->
+                    <outputFolder>${project.basedir}/target/soapui-reports</outputFolder>
+                    <reportFormat>HTML</reportFormat> <!-- 报告格式：HTML、PDF、XML -->
+                    <!-- 失败时停止构建 -->
+                    <failOnError>true</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project></pre>
+            <p>将 <code>pom.xml</code> 与 SoapUI 项目文件（如「PetStore.xml」）放在同一目录下。</p>
+
+            <h3>8.2 配置 Jenkins 集成</h3>
+            <ol>
+                <li>安装 Jenkins 并配置 Java 环境（确保 Java 版本与 SoapUI 兼容）</li>
+                <li>安装必要插件：
+                    <ul>
+                        <li>「Maven Integration plugin」：支持 Maven 项目构建</li>
+                        <li>「SoapUI Plugin」（可选）：提供 SoapUI 测试报告可视化</li>
+                    </ul>
+                    <p>安装方式：Jenkins 首页 > 「Manage Jenkins」> 「Plugins」> 「Available Plugins」，搜索插件并安装</p>
+                </li>
+                <li>创建 Jenkins 任务：
+                    <ul>
+                        <li>点击「New Item」，输入任务名称（如「SoapUI-API-Test」），选择「Maven project」，点击「OK」</li>
+                        <li>在「Source Code Management」中，配置代码仓库（如 Git），输入仓库 URL 和 credentials（若需）</li>
+                        <li>在「Build」部分，设置「Root POM」为 <code>pom.xml</code>，「Goals and options」为 <code>clean test</code></li>
+                        <li>点击「Save」保存配置</li>
+                    </ul>
+                </li>
+                <li>执行 Jenkins 任务：
+                    <p>点击任务名称 > 「Build Now」，Jenkins 会自动拉取代码、执行 Maven 命令、运行 SoapUI 测试用例</p>
+                </li>
+                <li>查看测试结果：
+                    <ul>
+                        <li>任务构建完成后，点击「Console Output」查看详细日志</li>
+                        <li>点击「SoapUI Report」（若安装了 SoapUI Plugin）查看可视化报告</li>
+                        <li>测试报告文件会保存在 Jenkins 工作空间的 <code>target/soapui-reports</code> 目录下</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>8.3 命令行执行 SoapUI 测试</h3>
+            <p>除了 Maven，也可通过 SoapUI 自带的 <code>testrunner.bat</code>（Windows）或 <code>testrunner.sh</code>（Linux/macOS）命令执行测试：</p>
+            <pre class="code-block">// Windows 示例
+cd C:\Program Files\SmartBear\SoapUI-5.7.0\bin
+testrunner.bat -s"PetTestSuite" -c"PetQueryTestCase" -r -f"C:\soapui-reports" C:\projects\PetStore.xml
+
+// Linux/macOS 示例
+cd /opt/SmartBear/SoapUI-5.7.0/bin
+./testrunner.sh -s"PetTestSuite" -c"PetQueryTestCase" -r -f"/home/soapui-reports" /home/projects/PetStore.xml</pre>
+            <p>参数说明：
+                <ul>
+                    <li><code>-s</code>：指定测试套件名称</li>
+                    <li><code>-c</code>：指定测试用例名称</li>
+                    <li><code>-r</code>：生成测试报告</li>
+                    <li><code>-f</code>：指定报告输出目录</li>
+                    <li>最后一个参数：SoapUI 项目文件路径</li>
+                </ul>
+            </p>
+        </section>
+
+        <!-- 9. 常见问题与社区资源 -->
+        <section id="9">
+            <h2>9. 常见问题与社区资源</h2>
+
+            <h3>9.1 常见问题（FAQ）</h3>
+            <ul>
+                <li>
+                    <strong>Q1：启动 SoapUI 时提示「Java 未找到」？</strong>
+                    <p>A1：手动配置 JAVA_HOME 环境变量，指向已安装的 Java 目录（如 <code>C:\Program Files\Java\jdk1.8.0_301</code>），并确保 <code>%JAVA_HOME%\bin</code> 已添加到 Path 环境变量。</p>
+                </li>
+                <li>
+                    <strong>Q2：发送请求时出现「SSLHandshakeException」（SSL 握手失败）？</strong>
+                    <p>A2：这是由于接口使用 HTTPS，但 SoapUI 未信任服务器证书。解决方案：
+                        <ul>
+                            <li>方式 1：在请求编辑界面，点击「SSL Settings」，勾选「Ignore SSL Errors」（仅测试环境使用）</li>
+                            <li>方式 2：导入服务器证书到 SoapUI 的信任库（适合生产环境）</li>
+                        </ul>
+                    </p>
+                </li>
+                <li>
+                    <strong>Q3：数据驱动测试中 Excel 中文乱码？</strong>
+                    <p>A3：确保 Excel 文件编码为 UTF-8，或在「DataSource」配置界面，将「Encoding」设置为「GBK」（Windows 默认编码）。</p>
+                </li>
+                <li>
+                    <strong>Q4：Mock 服务启动失败，提示「端口已被占用」？</strong>
+                    <p>A4：更换 Mock 服务的端口（如将 8080 改为 8081），或关闭占用该端口的程序（Windows 可通过 <code>netstat -ano | findstr "8080"</code> 查找占用端口的进程，再通过任务管理器结束进程）。</p>
+                </li>
+            </ul>
+
+            <h3>9.2 官方文档与社区资源</h3>
+            <ul>
+                <li><strong>SoapUI 官方文档</strong>：<a href="https://www.soapui.org/docs/" target="_blank" class="link">https://www.soapui.org/docs/</a>（包含详细的功能说明与示例）</li>
+                <li><strong>SmartBear 社区</strong>：<a href="https://community.smartbear.com/t5/SoapUI-Open-Source/bd-p/soapui-open-source" target="_blank" class="link">https://community.smartbear.com/t5/SoapUI-Open-Source/bd-p/soapui-open-source</a>（可提问并获取官方支持）</li>
+                <li><strong>SoapUI GitHub 仓库</strong>：<a href="https://github.com/SmartBear/soapui" target="_blank" class="link">https://github.com/SmartBear/soapui</a>（开源版源码，可提交 Issue 或 PR）</li>
+                <li><strong>Stack Overflow</strong>：<a href="https://stackoverflow.com/questions/tagged/soapui" target="_blank" class="link">https://stackoverflow.com/questions/tagged/soapui</a>（搜索常见问题的解决方案）</li>
+            </ul>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer>
+        <p>© 2024 SoapUI 全面使用教程 | 基于 SoapUI 官方文档翻译与整理 | 最后更新时间：2024年5月</p>
+    </footer>
+</body>
+</html>
