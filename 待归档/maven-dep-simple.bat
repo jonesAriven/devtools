@@ -1,15 +1,15 @@
 @echo off
-:: Éú³É¸É¾»µÄÒ»ÐÐÒ»¸öÒÀÀµ
+:: ï¿½ï¿½ï¿½É¸É¾ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 set "tag=%~1"
 if "%tag%"=="" set "tag=now"
 
 mvn dependency:list -Dsort=true -DoutputFile=temp-dep.txt
 (
-    echo # ÒÀÀµÁÐ±í: %tag%
-    echo # Ê±¼ä: %date% %time%
+ echo # ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½: %tag%
+    echo # Ê±ï¿½ï¿½: %date% %time%
     echo.
     type temp-dep.txt | findstr /r "[^:]+:[^:]+:[^:]+:[^:]+"
 ) > deps-%tag%.txt
 
 del temp-dep.txt
-echo Íê³É: deps-%tag%.txt
+echo ï¿½ï¿½ï¿½: deps-%tag%.txt
