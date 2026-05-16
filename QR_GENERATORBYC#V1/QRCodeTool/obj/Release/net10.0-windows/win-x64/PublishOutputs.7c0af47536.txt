@@ -1,7 +1,0 @@
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\QRCodeTool.exe
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\QRCodeTool.dll
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\QRCodeTool.deps.json
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\QRCodeTool.runtimeconfig.json
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\QRCodeTool.pdb
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\zxing.dll
-d:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\publish\ZXing.Windows.Compatibility.dll
