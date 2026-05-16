@@ -1,0 +1,2 @@
+D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\bin\Release\net10.0-windows\win-x64\publish\QRCodeTool.pdb
+D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\bin\Release\net10.0-windows\win-x64\publish\QRCodeTool.exe
