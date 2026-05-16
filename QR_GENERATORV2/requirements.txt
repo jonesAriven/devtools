@@ -1,0 +1,5 @@
+qrcode
+pillow
+pyzbar
+mss
+pyautogui

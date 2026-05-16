@@ -1,0 +1,68 @@
+#cloud-config
+autoinstall:
+  version: 1
+  # 1. 语言和键盘 (设置为英文，稳定性最好)
+  keyboard:
+    layout: us
+  # 2. 时区 (修改为你的时区)
+  timezone: Asia/Shanghai
+  # 3. 网络配置 (自动获取IP)
+  network:
+    network:
+      version: 2
+      ethernets:
+        builtin:
+          dhcp4: true
+          match:
+            name: "e*"
+          optional: true
+    # 允许在无网络时继续安装
+    version: 2
+  # 4. 磁盘分区 (⚠️ 危险操作！这会自动擦除并占用整个硬盘)
+  storage:
+    layout:
+      name: direct
+    # 如果不想用整个硬盘，并想手动分区，可以注释掉上面两行，改用下面这部分手动分区配置
+    # config:
+    #   - ptable: gpt
+    #     path: /dev/sda
+    #     wipe: superblock
+    #     preserve: false
+    #     type: disk
+    #     id: disk-sda
+    #   - device: disk-sda
+    #     size: 2147483648
+    #     wipe: superblock
+    #     flag: bios_grub
+    #     number: 1
+    #     type: partition
+    #     id: partition-0
+    #   - device: disk-sda
+    #     size: -1
+    #     wipe: superblock
+    #     number: 2
+    #     type: partition
+    #     id: partition-1
+    #   - fstype: ext4
+    #     volume: partition-1
+    #     type: format
+    #     id: format-0
+    #   - path: /
+    #     device: format-0
+    #     type: mount
+    #     id: mount-0
+  # 5. 用户账户 (⚠️ 务必修改成你自己的信息)
+  identity:
+    hostname: ubuntu-local        # 主机名
+    username: root           # 登录用户名 (改成你想要的)
+    password: "$6$9M8uR5bl5$VcO58F4oPJvDe6lKqX9QyL2wM.k9Gz7XaBcDfGhJkLpQwErTyUiOpAsDfGhJkL"  # 密码是 "123456"
+  # 6. 安装完成后自动安装的软件包 (可选)
+  packages:
+    - openssh-server
+    - vim
+    - curl
+    - htop
+  # 7. 安装完成后自动执行的脚本 (可选)
+  late-commands:
+    - curtin in-target -- apt-get update
+    - curtin in-target -- apt-get upgrade -y
