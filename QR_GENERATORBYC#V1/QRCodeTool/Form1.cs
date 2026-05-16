@@ -147,28 +147,82 @@ public partial class Form1 : Form
         {
             Log("开始截图识别");
             TopMost = false;
+
+            var screenBounds = Screen.PrimaryScreen.Bounds;
+            var screenBmp = new Bitmap(screenBounds.Width, screenBounds.Height);
+            using (var sg = Graphics.FromImage(screenBmp))
+            {
+                sg.CopyFromScreen(0, 0, 0, 0, screenBmp.Size);
+            }
+
             _maskForm = new Form
             {
                 WindowState = FormWindowState.Maximized,
                 FormBorderStyle = FormBorderStyle.None,
-                BackColor = Color.Gray,
-                Opacity = 0.25,
+                BackColor = Color.Black,
+                Opacity = 0.3,
                 TopMost = true,
-                Cursor = Cursors.Cross
+                Cursor = Cursors.Cross,
+                ShowInTaskbar = false,
+                KeyPreview = true
             };
 
-            _maskForm.MouseDown += (_, e) => { _startPoint = e.Location; _isSelecting = true; };
-            _maskForm.MouseMove += (_, _) => { };
+            Rectangle selectionRect = Rectangle.Empty;
+            bool hasSelection = false;
+
+            _maskForm.Paint += (s, e) =>
+            {
+                if (!hasSelection) return;
+                var g = e.Graphics;
+
+                using var clearPen = new Pen(Color.Lime, 3);
+                g.DrawRectangle(clearPen, selectionRect);
+
+                using var font = new Font("微软雅黑", 10);
+                var text = $"{selectionRect.Width} × {selectionRect.Height}";
+                var textSize = g.MeasureString(text, font);
+                int labelX = selectionRect.X;
+                int labelY = selectionRect.Y - (int)textSize.Height - 6;
+                if (labelY < 0) labelY = selectionRect.Bottom + 4;
+
+                using var bgBrush = new SolidBrush(Color.FromArgb(200, 0, 0, 0));
+                g.FillRectangle(bgBrush, labelX, labelY, textSize.Width + 8, textSize.Height + 4);
+                g.DrawString(text, font, Brushes.Lime, labelX + 4, labelY + 2);
+            };
+
+            _maskForm.MouseDown += (_, e) =>
+            {
+                _startPoint = e.Location;
+                _isSelecting = true;
+                hasSelection = false;
+                selectionRect = Rectangle.Empty;
+            };
+
+            _maskForm.MouseMove += (_, e) =>
+            {
+                if (!_isSelecting) return;
+
+                int x = Math.Min(_startPoint.X, e.X);
+                int y = Math.Min(_startPoint.Y, e.Y);
+                int w = Math.Abs(e.X - _startPoint.X);
+                int h = Math.Abs(e.Y - _startPoint.Y);
+
+                selectionRect = new Rectangle(x, y, w, h);
+                hasSelection = true;
+                _maskForm.Invalidate();
+            };
+
             _maskForm.MouseUp += (_, e) =>
             {
                 _isSelecting = false;
-                _maskForm?.Close();
-                TopMost = true;
 
                 var x1 = Math.Min(_startPoint.X, e.X);
                 var y1 = Math.Min(_startPoint.Y, e.Y);
                 var w = Math.Abs(e.X - _startPoint.X);
                 var h = Math.Abs(e.Y - _startPoint.Y);
+
+                _maskForm?.Close();
+                TopMost = true;
 
                 Log($"截图区域: x={x1}, y={y1}, w={w}, h={h}");
 
@@ -176,13 +230,39 @@ public partial class Form1 : Form
                 {
                     _txtContent.Text = @"选区过小";
                     Log("选区过小");
+                    screenBmp.Dispose();
                     return;
                 }
 
-                using var bmp = new Bitmap(w, h);
-                using var g = Graphics.FromImage(bmp);
-                g.CopyFromScreen(x1, y1, 0, 0, bmp.Size);
-                DecodeQr(bmp);
+                var cropBmp = new Bitmap(w, h);
+                using (var cg = Graphics.FromImage(cropBmp))
+                {
+                    cg.DrawImage(screenBmp, new Rectangle(0, 0, w, h), new Rectangle(x1, y1, w, h), GraphicsUnit.Pixel);
+                }
+                screenBmp.Dispose();
+
+                DecodeQr(cropBmp);
+                cropBmp.Dispose();
+            };
+
+            _maskForm.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    _isSelecting = false;
+                    _maskForm?.Close();
+                    screenBmp.Dispose();
+                    TopMost = true;
+                }
+            };
+
+            _maskForm.FormClosed += (_, _) =>
+            {
+                if (_isSelecting)
+                {
+                    _isSelecting = false;
+                    screenBmp.Dispose();
+                }
             };
 
             _maskForm.ShowDialog();

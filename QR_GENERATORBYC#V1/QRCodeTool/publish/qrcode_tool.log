@@ -1,0 +1,214 @@
+﻿[2026-05-17 03:52:50] 生成二维码: 0 字符
+[2026-05-17 03:52:51] 开始截图识别
+[2026-05-17 03:52:54] 截图区域: x=1145, y=415, w=260, h=261
+[2026-05-17 03:52:54] 开始解码二维码: 260x261
+[2026-05-17 03:52:54] 生成二维码: 2601 字符
+[2026-05-17 03:52:54] 二维码生成成功
+[2026-05-17 03:52:54] 解码成功: 2601 字符
+[2026-05-17 03:53:24] 生成二维码: 2602 字符
+[2026-05-17 03:53:24] 二维码生成成功
+[2026-05-17 03:53:24] 生成二维码: 2603 字符
+[2026-05-17 03:53:24] 二维码生成成功
+[2026-05-17 03:53:24] 生成二维码: 2604 字符
+[2026-05-17 03:53:24] 二维码生成成功
+[2026-05-17 03:53:24] 生成二维码: 2605 字符
+[2026-05-17 03:53:24] 二维码生成成功
+[2026-05-17 03:53:24] 生成二维码: 2606 字符
+[2026-05-17 03:53:24] 二维码生成成功
+[2026-05-17 03:53:25] 生成二维码: 2607 字符
+[2026-05-17 03:53:25] 二维码生成成功
+[2026-05-17 03:53:25] 生成二维码: 2608 字符
+[2026-05-17 03:53:25] 二维码生成成功
+[2026-05-17 03:53:25] 生成二维码: 2609 字符
+[2026-05-17 03:53:25] 二维码生成成功
+[2026-05-17 03:53:25] 生成二维码: 2610 字符
+[2026-05-17 03:53:25] 二维码生成成功
+[2026-05-17 03:53:28] 开始截图识别
+[2026-05-17 03:53:33] 截图区域: x=1145, y=413, w=265, h=265
+[2026-05-17 03:53:33] 开始解码二维码: 265x265
+[2026-05-17 03:53:33] 生成二维码: 2610 字符
+[2026-05-17 03:53:33] 二维码生成成功
+[2026-05-17 03:53:33] 解码成功: 2610 字符
+[2026-05-17 03:55:39] 程序启动
+[2026-05-17 03:55:39] UI构建完成
+[2026-05-17 03:55:41] 程序启动
+[2026-05-17 03:55:41] UI构建完成
+[2026-05-17 03:55:45] 生成二维码: 2610 字符
+[2026-05-17 03:55:45] 二维码生成成功
+[2026-05-17 03:55:47] 开始截图识别
+[2026-05-17 03:55:49] 截图区域: x=1146, y=413, w=265, h=266
+[2026-05-17 03:55:49] 开始解码二维码: 265x266
+[2026-05-17 03:55:50] 生成二维码: 2610 字符
+[2026-05-17 03:55:50] 二维码生成成功
+[2026-05-17 03:55:50] 解码成功: 2610 字符
+[2026-05-17 03:56:58] 生成二维码: 2610 字符
+[2026-05-17 03:56:58] 二维码生成成功
+[2026-05-17 03:56:59] 生成二维码: 2645 字符
+[2026-05-17 03:56:59] 二维码生成成功
+[2026-05-17 03:57:02] 开始截图识别
+[2026-05-17 03:57:05] 截图区域: x=1144, y=411, w=268, h=265
+[2026-05-17 03:57:05] 开始解码二维码: 268x265
+[2026-05-17 03:57:05] 生成二维码: 2645 字符
+[2026-05-17 03:57:05] 二维码生成成功
+[2026-05-17 03:57:05] 解码成功: 2645 字符
+[2026-05-17 03:57:12] 生成二维码: 2645 字符
+[2026-05-17 03:57:12] 二维码生成成功
+[2026-05-17 03:57:12] 生成二维码: 2680 字符
+[2026-05-17 03:57:12] 二维码生成成功
+[2026-05-17 03:57:14] 开始截图识别
+[2026-05-17 03:57:17] 截图区域: x=1147, y=412, w=263, h=264
+[2026-05-17 03:57:17] 开始解码二维码: 263x264
+[2026-05-17 03:57:17] 生成二维码: 2680 字符
+[2026-05-17 03:57:17] 二维码生成成功
+[2026-05-17 03:57:17] 解码成功: 2680 字符
+[2026-05-17 03:57:25] 生成二维码: 2680 字符
+[2026-05-17 03:57:25] 二维码生成成功
+[2026-05-17 03:57:25] 生成二维码: 2932 字符
+[2026-05-17 03:57:25] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 134
+[2026-05-17 03:57:47] 生成二维码: 0 字符
+[2026-05-17 03:57:47] 生成二维码: 2648 字符
+[2026-05-17 03:57:47] 二维码生成成功
+[2026-05-17 03:57:48] 开始截图识别
+[2026-05-17 03:57:52] 截图区域: x=1143, y=413, w=265, h=263
+[2026-05-17 03:57:52] 开始解码二维码: 265x263
+[2026-05-17 03:57:52] 生成二维码: 2648 字符
+[2026-05-17 03:57:52] 二维码生成成功
+[2026-05-17 03:57:52] 解码成功: 2648 字符
+[2026-05-17 03:58:03] 生成二维码: 0 字符
+[2026-05-17 03:58:03] 生成二维码: 2687 字符
+[2026-05-17 03:58:03] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 134
+[2026-05-17 03:58:14] 生成二维码: 2648 字符
+[2026-05-17 03:58:14] 二维码生成成功
+[2026-05-17 03:58:15] 生成二维码: 2648 字符
+[2026-05-17 03:58:15] 二维码生成成功
+[2026-05-17 04:03:20] 程序启动
+[2026-05-17 04:03:20] UI构建完成
+[2026-05-17 04:03:45] 生成二维码: 2687 字符
+[2026-05-17 04:03:45] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 134
+[2026-05-17 04:03:49] 生成二维码: 2648 字符
+[2026-05-17 04:03:49] 二维码生成成功
+[2026-05-17 04:03:54] 程序启动
+[2026-05-17 04:03:54] UI构建完成
+[2026-05-17 04:03:58] 开始截图识别
+[2026-05-17 04:04:07] 开始截图识别
+[2026-05-17 04:04:13] 开始截图识别
+[2026-05-17 04:05:13] 开始截图识别
+[2026-05-17 04:07:43] 程序启动
+[2026-05-17 04:07:43] UI构建完成
+[2026-05-17 04:08:01] 生成二维码: 2648 字符
+[2026-05-17 04:08:01] 二维码生成成功
+[2026-05-17 04:08:05] 程序启动
+[2026-05-17 04:08:05] UI构建完成
+[2026-05-17 04:08:12] 开始截图识别
+[2026-05-17 04:08:16] 截图区域: x=1144, y=413, w=265, h=266
+[2026-05-17 04:08:16] 开始解码二维码: 265x266
+[2026-05-17 04:08:42] 开始截图识别
+[2026-05-17 04:08:46] 截图区域: x=1148, y=410, w=266, h=273
+[2026-05-17 04:08:46] 开始解码二维码: 266x273
+[2026-05-17 04:09:01] 生成二维码: 126 字符
+[2026-05-17 04:09:01] 二维码生成成功
+[2026-05-17 04:09:02] 开始截图识别
+[2026-05-17 04:09:05] 截图区域: x=1134, y=401, w=299, h=288
+[2026-05-17 04:09:05] 开始解码二维码: 299x288
+[2026-05-17 04:09:05] 生成二维码: 126 字符
+[2026-05-17 04:09:05] 二维码生成成功
+[2026-05-17 04:09:05] 解码成功: 126 字符
+[2026-05-17 04:09:11] 生成二维码: 0 字符
+[2026-05-17 04:09:11] 生成二维码: 2648 字符
+[2026-05-17 04:09:11] 二维码生成成功
+[2026-05-17 04:09:12] 开始截图识别
+[2026-05-17 04:09:15] 截图区域: x=1144, y=410, w=266, h=269
+[2026-05-17 04:09:15] 开始解码二维码: 266x269
+[2026-05-17 04:10:57] 开始截图识别
+[2026-05-17 04:10:59] 截图区域: x=1146, y=416, w=261, h=260
+[2026-05-17 04:10:59] 开始解码二维码: 261x260
+[2026-05-17 04:11:01] 开始截图识别
+[2026-05-17 04:11:04] 截图区域: x=1141, y=414, w=272, h=264
+[2026-05-17 04:11:04] 开始解码二维码: 272x264
+[2026-05-17 04:11:04] 生成二维码: 5 字符
+[2026-05-17 04:11:04] 二维码生成成功
+[2026-05-17 04:11:04] 识别已取消
+[2026-05-17 04:11:08] 开始截图识别
+[2026-05-17 04:11:11] 截图区域: x=1148, y=412, w=263, h=262
+[2026-05-17 04:11:11] 开始解码二维码: 263x262
+[2026-05-17 04:11:11] 识别已取消
+[2026-05-17 04:11:12] 识别已取消
+[2026-05-17 04:11:19] 生成二维码: 2601 字符
+[2026-05-17 04:11:19] 二维码生成成功
+[2026-05-17 04:11:19] 生成二维码: 2601 字符
+[2026-05-17 04:11:20] 二维码生成成功
+[2026-05-17 04:11:21] 开始截图识别
+[2026-05-17 04:11:23] 截图区域: x=1146, y=411, w=264, h=264
+[2026-05-17 04:11:23] 开始解码二维码: 264x264
+[2026-05-17 04:11:53] 识别已取消
+[2026-05-17 04:12:23] 识别已取消
+[2026-05-17 04:14:04] 程序启动
+[2026-05-17 04:14:04] UI构建完成
+[2026-05-17 04:14:14] 生成二维码: 2648 字符
+[2026-05-17 04:14:14] 二维码生成成功
+[2026-05-17 04:14:17] 程序启动
+[2026-05-17 04:14:17] UI构建完成
+[2026-05-17 04:14:21] 开始截图识别
+[2026-05-17 04:14:25] 截图区域: x=1149, y=416, w=260, h=260
+[2026-05-17 04:14:25] 开始解码二维码: 260x260
+[2026-05-17 04:14:25] 生成二维码: 2648 字符
+[2026-05-17 04:14:26] 二维码生成成功
+[2026-05-17 04:14:26] 解码成功: 2648 字符
+[2026-05-17 04:14:35] 生成二维码: 2648 字符
+[2026-05-17 04:14:35] 二维码生成成功
+[2026-05-17 04:14:35] 生成二维码: 2673 字符
+[2026-05-17 04:14:35] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 134
+[2026-05-17 04:14:39] 生成二维码: 2648 字符
+[2026-05-17 04:14:39] 二维码生成成功
+[2026-05-17 04:14:40] 生成二维码: 2648 字符
+[2026-05-17 04:14:40] 二维码生成成功
+[2026-05-17 04:14:42] 开始截图识别
+[2026-05-17 04:14:45] 截图区域: x=1144, y=413, w=263, h=260
+[2026-05-17 04:14:45] 开始解码二维码: 263x260
+[2026-05-17 04:14:45] 解码成功: 2648 字符
+[2026-05-17 04:14:47] 生成二维码: 2649 字符
+[2026-05-17 04:14:47] 二维码生成成功
+[2026-05-17 04:14:47] 生成二维码: 2650 字符
+[2026-05-17 04:14:47] 二维码生成成功
+[2026-05-17 04:14:47] 生成二维码: 2651 字符
+[2026-05-17 04:14:47] 二维码生成成功
+[2026-05-17 04:14:48] 生成二维码: 2652 字符
+[2026-05-17 04:14:48] 二维码生成成功
+[2026-05-17 04:14:48] 开始截图识别
+[2026-05-17 04:14:51] 截图区域: x=1150, y=416, w=258, h=261
+[2026-05-17 04:14:51] 开始解码二维码: 258x261
+[2026-05-17 04:14:52] 生成二维码: 2652 字符
+[2026-05-17 04:14:52] 二维码生成成功
+[2026-05-17 04:14:52] 解码成功: 2652 字符
