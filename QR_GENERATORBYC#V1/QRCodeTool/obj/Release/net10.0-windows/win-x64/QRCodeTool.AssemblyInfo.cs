@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("QRCodeTool")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4da27dc039c62e4cf92426355270cb0ac47c8f6d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7c8d7c29af053324661d541aadd3116e73d96ae7")]
 [assembly: System.Reflection.AssemblyProductAttribute("QRCodeTool")]
 [assembly: System.Reflection.AssemblyTitleAttribute("QRCodeTool")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

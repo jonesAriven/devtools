@@ -20,6 +20,7 @@ public partial class Form1 : Form
     private readonly string _logPath;
     private CancellationTokenSource? _cancelToken;
     private bool _compressMode = true;
+    private readonly ToolTip _toolTip = new();
 
     public Form1()
     {
@@ -47,30 +48,30 @@ public partial class Form1 : Form
         try
         {
             Text = @"二维码工具（长文本增强版）";
-            Size = new Size(600, 920);
+            Size = new Size(480, 600);
+            MinimumSize = new Size(480, 500);
             StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
 
             var groupBox = new GroupBox
             {
                 Text = @"二维码预览",
                 Location = new Point(15, 15),
-                Size = new Size(550, 540)
+                Size = new Size(450, 450)
             };
             Controls.Add(groupBox);
 
-            _picQr.Size = new Size(500, 500);
-            _picQr.Location = new Point(25, 20);
+            _picQr.Size = new Size(400, 400);
+            _picQr.Location = new Point(25, 25);
             _picQr.SizeMode = PictureBoxSizeMode.Zoom;
             _picQr.BackColor = Color.White;
             groupBox.Controls.Add(_picQr);
 
             var chkCompress = new CheckBox
             {
-                Text = @"压缩模式（容量×2~3）",
-                Location = new Point(15, 565),
-                Size = new Size(180, 25),
+                Text = @"压缩模式",
+                Location = new Point(15, 475),
+                Size = new Size(95, 25),
                 Checked = true,
                 Font = new Font("微软雅黑", 9)
             };
@@ -79,31 +80,39 @@ public partial class Form1 : Form
                 _compressMode = chkCompress.Checked;
                 GenerateQr(_txtContent.Text.Trim());
             };
+            _toolTip.SetToolTip(chkCompress, "开启后GZip压缩，容量提升2~3倍");
             Controls.Add(chkCompress);
 
-            var btnCapture = new Button
+            var btnCapture = new PictureBox
             {
-                Text = @"截图识别",
-                Location = new Point(200, 565),
-                Size = new Size(120, 35)
+                Location = new Point(120, 472),
+                Size = new Size(32, 32),
+                SizeMode = PictureBoxSizeMode.CenterImage,
+                Image = CreateCaptureIcon(),
+                Cursor = Cursors.Hand
             };
             btnCapture.Click += (_, _) => BeginCapture();
+            _toolTip.SetToolTip(btnCapture, "截图识别二维码");
             Controls.Add(btnCapture);
 
-            var btnUpload = new Button
+            var btnUpload = new PictureBox
             {
-                Text = @"上传图片识别",
-                Location = new Point(340, 565),
-                Size = new Size(120, 35)
+                Location = new Point(162, 472),
+                Size = new Size(32, 32),
+                SizeMode = PictureBoxSizeMode.CenterImage,
+                Image = CreateUploadIcon(),
+                Cursor = Cursors.Hand
             };
             btnUpload.Click += (_, _) => UploadImage();
+            _toolTip.SetToolTip(btnUpload, "上传图片识别二维码");
             Controls.Add(btnUpload);
 
             _txtContent.Multiline = true;
             _txtContent.ScrollBars = ScrollBars.Vertical;
-            _txtContent.Location = new Point(15, 610);
-            _txtContent.Size = new Size(550, 270);
+            _txtContent.Location = new Point(15, 520);
+            _txtContent.Size = new Size(430, 55);
             _txtContent.Font = new Font("微软雅黑", 10);
+            _txtContent.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             _txtContent.TextChanged += (_, _) => GenerateQr(_txtContent.Text.Trim());
             Controls.Add(_txtContent);
             Log("UI构建完成");
@@ -348,7 +357,7 @@ public partial class Form1 : Form
             clonedBmp = new Bitmap(bmp);
             Log($"开始解码二维码: {clonedBmp.Width}x{clonedBmp.Height}");
 
-            var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "debug_screenshot.png");
+            var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"debug_screenshot_{DateTime.Now:HHmmss}.png");
             clonedBmp.Save(debugPath, System.Drawing.Imaging.ImageFormat.Png);
             Log($"截图已保存: {debugPath}");
             
@@ -403,6 +412,8 @@ public partial class Form1 : Form
         int[] scales = { 2, 3, 4, 5 };
         int[] thresholds = { 50, 70, 90, 110, 130, 150, 170, 190, 210 };
 
+        var strategyGroup = 0;
+        Log($"策略组{++strategyGroup}: 缩放 2x-5x, 图片{image.Width}x{image.Height}");
         foreach (var scale in scales)
         {
             token.ThrowIfCancellationRequested();
@@ -415,6 +426,8 @@ public partial class Form1 : Form
             }
         }
 
+        token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: 阈值 50-210");
         foreach (var thresh in thresholds)
         {
             token.ThrowIfCancellationRequested();
@@ -427,6 +440,8 @@ public partial class Form1 : Form
             }
         }
 
+        token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: 阈值+缩放 50-210×2-4x");
         foreach (var thresh in thresholds)
         {
             token.ThrowIfCancellationRequested();
@@ -445,6 +460,7 @@ public partial class Form1 : Form
         }
 
         token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: Otsu+缩放");
         using var otsu = ApplyOtsuThreshold(image);
         var otsuResult = QuickDecode(reader, otsu);
         if (otsuResult != null)
@@ -466,6 +482,7 @@ public partial class Form1 : Form
         }
 
         token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: 对比度增强+缩放");
         using var enhanced = EnhanceContrast(image);
         var enhancedResult = QuickDecode(reader, enhanced);
         if (enhancedResult != null)
@@ -487,6 +504,7 @@ public partial class Form1 : Form
         }
 
         token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: 反色");
         using var inverted = InvertColors(image);
         var invertedResult = QuickDecode(reader, inverted);
         if (invertedResult != null)
@@ -496,6 +514,7 @@ public partial class Form1 : Form
         }
 
         token.ThrowIfCancellationRequested();
+        Log($"策略组{++strategyGroup}: 去噪+缩放");
         using var denoised = RemoveNoise(image);
         var denoisedResult = QuickDecode(reader, denoised);
         if (denoisedResult != null)
@@ -722,6 +741,36 @@ public partial class Form1 : Form
             Log($"上传图片失败: {ex.Message}\n{ex.StackTrace}");
             MessageBox.Show($"打开图片失败: {ex.Message}", @"错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private static Bitmap CreateCaptureIcon()
+    {
+        var bmp = new Bitmap(32, 32);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var pen = new Pen(Color.FromArgb(64, 64, 64), 2);
+        g.DrawRectangle(pen, 7, 10, 18, 14);
+        g.FillRectangle(Brushes.White, 11, 6, 10, 7);
+        g.DrawRectangle(pen, 11, 6, 10, 7);
+        g.DrawLine(pen, 13, 4, 19, 4);
+        using var lensBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
+        g.FillEllipse(lensBrush, 13, 13, 6, 6);
+        return bmp;
+    }
+
+    private static Bitmap CreateUploadIcon()
+    {
+        var bmp = new Bitmap(32, 32);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var pen = new Pen(Color.FromArgb(64, 64, 64), 2);
+        var folderPts = new Point[] { new(4, 12), new(4, 26), new(28, 26), new(28, 12), new(15, 12), new(13, 9), new(7, 9), new(7, 12) };
+        g.DrawPolygon(pen, folderPts);
+        g.DrawLine(pen, 4, 12, 7, 12);
+        using var arrowPen = new Pen(Color.FromArgb(0, 120, 212), 2.5f);
+        arrowPen.EndCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
+        g.DrawLine(arrowPen, 16, 23, 16, 14);
+        return bmp;
     }
 }
 
