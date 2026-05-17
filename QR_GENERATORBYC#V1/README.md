@@ -89,6 +89,220 @@ dotnet publish -c Release -o publish
 
 打包模式由 csproj 中的配置决定，命令相同。
 
+## 技术架构
+
+### 如何提升二维码的文字容量
+
+普通二维码能容纳的文字有限，随机文本大约只能放 ~2700 个字符就达到上限（Version 40，177×177 模块）。本工具通过 **GZip 压缩 + Base64 编码** 将容量提升至 ~6300 字符，原理如下：
+
+```
+原始文本 → GZip 压缩 → Base64 编码 → 加 "GZ:" 前缀 → 生成二维码
+```
+
+1. **GZip 压缩**：普通文字（尤其是中文、重复内容）压缩率很高，通常能压缩到原来的 30%~50%
+2. **Base64 编码**：压缩后是二进制数据，二维码不能直接存二进制，需要转成文本，Base64 会让数据膨胀约 33%，但压缩省下来的空间远大于膨胀的部分
+3. **GZ: 前缀**：解码时通过前缀判断是否为压缩内容，有前缀就解压还原，没有就原样返回
+
+**容量对比**：
+
+| 模式 | 随机文本容量 | 中文文本容量 |
+|---|---|---|
+| 不压缩 | ~2700 字符 | ~900 字符 |
+| 压缩模式 | ~6300 字符 | ~3000 字符 |
+
+**代价**：压缩模式生成的二维码内容是 `GZ:xxxxx` 编码串，第三方扫码器扫出来是乱码，只有本工具能正确解码还原。关闭压缩模式则任何扫码器都能识别原文。
+
+### 多策略解码
+
+截图识别时，截取的图片可能存在光照不均、模糊、对比度不足等问题，单一解码方式容易失败。本工具采用 7 组串行解码策略，依次尝试：
+
+| 策略组 | 方法 | 适用场景 |
+|---|---|---|
+| 1 | 缩放 2x-5x | 图片太小，模块像素不足 |
+| 2 | 阈值二值化 50-210 | 光照不均，需要手动阈值分割 |
+| 3 | 阈值 + 缩放 | 光照不均且图片太小 |
+| 4 | Otsu 自适应阈值 + 缩放 | 自动计算最佳阈值，适合光照变化 |
+| 5 | 对比度增强 + 缩放 | 图片对比度不足，黑白不分明 |
+| 6 | 反色 | 白底黑码变成黑底白码的情况 |
+| 7 | 去噪 + 缩放 | 图片有噪点干扰 |
+
+每组策略内会快速失败跳过，找到第一个成功的结果就立即返回，不会全部跑完。
+
+### 二维码显示像素密度
+
+高密度二维码（Version 40，177×177 模块）对显示区域的像素密度有下限要求：
+
+- **安全阈值**：每个 QR 模块至少 2.0 个显示像素
+- **当前配置**：PictureBox 400×400，像素密度 = 400/177 ≈ 2.20 px/模块 ✅
+- **危险区域**：PictureBox 300×300，像素密度 = 300/177 ≈ 1.66 px/模块 ❌
+
+像素密度低于 2.0 时，GDI+ 缩放渲染会导致模块边界模糊，解码器无法稳定识别。
+
+### 双屏截图
+
+截图识别支持多显示器环境，通过 `Screen.AllScreens` 计算虚拟屏幕边界，将所有显示器的画面合并截取，确保副屏上的二维码也能被识别到。
+
+### 内存优化
+
+- 每次生成新二维码前，释放旧的 `_picQr.Image`，避免 GDI 对象泄漏
+- 去掉了生成时的自检解码（之前每次生成都会额外拷贝一份 600×600 位图做解码验证），减少内存占用和输入延迟
+- SelfContained 模式下运行时内存约 50MB，其中 ~30-35MB 是 .NET 运行时本身，属于正常水平
+- WinForms 不支持 IL Trimming（裁剪），无法进一步裁减运行时体积
+
+## 源码结构详解
+
+### 文件清单
+
+| 文件 | 作用 |
+|---|---|
+| `Program.cs` | 程序入口，启动 Form1 |
+| `Form1.cs` | 全部业务逻辑（UI 构建、二维码生成/解码、截图、上传、图像处理） |
+| `Form1.Designer.cs` | WinForms 设计器自动生成，仅初始化 components，UI 在 Form1.cs 的 BuildUI 中手动构建 |
+| `QRCodeTool.csproj` | 项目配置文件 |
+
+### Form1 字段说明
+
+```csharp
+private readonly PictureBox _picQr;       // 二维码显示区域，400×400，SizeMode=Zoom
+private readonly TextBox _txtContent;      // 文本输入框，TextChanged 触发 GenerateQr
+private Point _startPoint;                 // 截图选区起点
+private bool _isSelecting;                 // 是否正在拖选截图区域
+private Form? _maskForm;                   // 截图遮罩窗体（半透明黑色覆盖全屏）
+private readonly string _logPath;          // 日志文件路径（exe 同目录下 qrcode_tool.log）
+private CancellationTokenSource? _cancelToken; // 异步解码取消令牌，新截图时取消旧解码
+private bool _compressMode = true;         // 压缩模式开关，默认开启
+private readonly ToolTip _toolTip;         // 控件提示信息
+private string? _firstDecodeError;         // 首次 ZXing 解码异常信息，用于日志诊断
+```
+
+### 方法调用关系
+
+```
+用户操作                    方法                     说明
+─────────────────────────────────────────────────────────────────
+输入文字                 → GenerateQr()             TextChanged 事件触发
+                            ├─ CompressText()         GZip压缩+Base64+GZ:前缀
+                            ├─ BarcodeWriter.Write()  ZXing生成600×600位图
+                            └─ Dispose旧Image         防止GDI对象泄漏
+
+点击截图图标             → BeginCapture()           清空输入框→截图→选区→解码
+                            ├─ Screen.AllScreens      计算虚拟屏幕边界
+                            ├─ CopyFromScreen()       截取全屏画面
+                            ├─ 遮罩窗体交互           鼠标拖选区域
+                            └─ DecodeQr(cropBmp)      异步解码
+
+点击上传图标             → UploadImage()            选择图片文件→解码
+                            └─ DecodeQr(img)          异步解码
+
+解码入口                → DecodeQr()                克隆位图→异步多策略解码→回写文本
+                            ├─ _cancelToken.Cancel()  取消旧解码任务
+                            └─ TryDecodeWithProgress() 7组串行策略解码
+                                 ├─ QuickDecode()      单次ZXing解码尝试
+                                 ├─ ScaleImage()       缩放
+                                 ├─ ApplyThreshold()   阈值二值化
+                                 ├─ ApplyOtsuThreshold() Otsu自适应阈值
+                                 ├─ EnhanceContrast()  对比度增强
+                                 ├─ InvertColors()     反色
+                                 └─ RemoveNoise()      去噪
+                            └─ TryDecompressText()    检测GZ:前缀→解压还原
+```
+
+### UI 布局参数
+
+```
+┌──────────────────────────────────────────┐
+│ 工具栏 Panel (0,0) 440×30 浅灰色背景      │
+│ [☑压缩模式] [📷截图] [📁上传]              │
+├──────────────────────────────────────────┤
+│                                          │
+│   PictureBox (10,34) 400×400             │
+│   SizeMode=Zoom, BackColor=White         │
+│   BorderStyle=FixedSingle                │
+│                                          │
+├──────────────────────────────────────────┤
+│   TextBox (10,438) 412×100               │
+│   Multiline, 微软雅黑 10pt                │
+│   Anchor=四向拉伸                         │
+└──────────────────────────────────────────┘
+
+窗口默认: 440×560, 最小: 440×460
+FormBorderStyle=Sizable（可拖拽缩放）
+```
+
+### 关键配置参数
+
+| 参数 | 当前值 | 说明 | 修改注意 |
+|---|---|---|---|
+| QR 生成尺寸 | 600×600 | `QrCodeEncodingOptions.Width/Height` | 不要改小，否则高密度二维码模块像素不足 |
+| QR Margin | 2 | `QrCodeEncodingOptions.Margin` | 安静区，太小会导致边缘模块被裁剪 |
+| 纠错等级 | L（7%） | `ErrorCorrectionLevel.L` | 最低纠错，容量最大；提高纠错会降低容量 |
+| PictureBox 尺寸 | 400×400 | `_picQr.Size` | **不能小于 400×400**，否则像素密度低于 2.0 安全阈值 |
+| 像素密度安全阈值 | ~2.0 px/模块 | 400/177≈2.20 | Version 40 二维码（177×177模块）的最低稳定密度 |
+| 缩放策略 | 2x,3x,4x,5x | `scales` 数组 | 截图图片太小时通过放大增加像素密度 |
+| 阈值范围 | 50-210 步长20 | `thresholds` 数组 | 覆盖从暗到亮的多种光照条件 |
+| 选区最小尺寸 | 40×40 | `w < 40 \|\| h < 40` | 太小的选区没有有效内容 |
+
+### 压缩编解码流程
+
+**编码（CompressText）**：
+```
+"你好世界" → UTF8.GetBytes → [字节流] → GZip压缩 → [更短字节流] → Base64编码 → "GZ:H4sIAA..."
+```
+
+**解码（TryDecompressText）**：
+```
+"GZ:H4sIAA..." → 检测"GZ:"前缀 → Base64解码 → [字节流] → GZip解压 → UTF8解码 → "你好世界"
+无"GZ:"前缀 → 原样返回（兼容非压缩二维码）
+```
+
+### 截图识别流程
+
+1. 清空输入框（避免旧文本触发 GenerateQr 覆盖识别结果）
+2. 取消正在进行的旧解码任务（`_cancelToken.Cancel()`）
+3. 计算虚拟屏幕边界（`Screen.AllScreens`，支持多显示器）
+4. 截取全屏画面（`CopyFromScreen`）
+5. 创建半透明遮罩窗体，用户鼠标拖选区域
+6. 裁剪选区图片，送入异步解码
+7. 7 组串行策略依次尝试，任一成功即返回
+8. 解码成功后检测 `GZ:` 前缀，有则解压还原，无则原样显示
+
+### 图像处理算法说明
+
+| 方法 | 算法 | 说明 |
+|---|---|---|
+| `ScaleImage` | HighQualityBicubic 插值 | 放大图片增加像素密度，用高质量双三次插值避免锯齿 |
+| `ApplyThreshold` | 灰度 > 阈值 → 白，否则 → 黑 | 手动阈值二值化，遍历 50-210 共 9 个阈值 |
+| `ApplyOtsuThreshold` | 大津法（Otsu） | 自动计算最佳阈值，最大化类间方差，适合光照不均 |
+| `EnhanceContrast` | `(gray-128)*2+128` | 以 128 为中心拉伸对比度，让黑白更分明 |
+| `RemoveNoise` | 灰度 < 80 → 0，> 180 → 255，其余 → 128 | 三段式去噪，消除中间灰度干扰 |
+| `InvertColors` | `255 - R/G/B` | 反色处理，应对黑底白码的情况 |
+| `ApplyAdaptiveThreshold` | 局部均值自适应阈值 | 当前未使用（保留备用），按 blockSize 计算局部平均灰度作为阈值 |
+
+### RGBLuminanceSource 类
+
+ZXing.Net 自带的 `BitmapLuminanceSource` 在某些场景下有兼容问题，因此自定义了 `RGBLuminanceSource`：
+
+- 构造函数：遍历 Bitmap 每个像素，用 ITU-R BT.601 公式 `0.299R + 0.587G + 0.114B` 转为灰度字节数组
+- `getRow`：按行拷贝灰度数据
+- `crop`：按区域拷贝灰度数据，支持 ZXing 内部的裁剪优化
+
+### 日志系统
+
+- 日志文件：`qrcode_tool.log`，与 exe 同目录
+- 写入方式：`File.AppendAllText`，每次追加一行，带时间戳
+- 日志内容：程序启动、UI 构建、二维码生成/解码、策略组进度、异常信息
+- 已注释掉的调试截图保存代码（第 368-370 行），需要时可取消注释用于诊断
+
+### 已知限制与二次开发建议
+
+1. **PictureBox 不能再缩小**：400×400 是 Version 40 二维码的稳定识别下限，缩小会导致间歇性识别失败
+2. **WinForms 不支持 IL Trimming**：无法通过裁剪减少运行时体积，50MB 内存是 SelfContained 模式的正常水平
+3. **ApplyAdaptiveThreshold 未使用**：代码中已实现但未加入解码策略组，如遇局部光照不均的场景可启用
+4. **图像处理用 GetPixel/SetPixel**：性能较低，大图处理较慢。如需优化可改用 `LockBits` 直接操作内存，速度可提升 10 倍以上
+5. **压缩模式与第三方不兼容**：GZ: 前缀是本工具私有协议，如需第三方扫码器兼容需关闭压缩模式
+6. **异步竞态**：当前用 `_cancelToken` 取消旧任务，但 `DecodeQr` 中 `catch (OperationCanceledException)` 仍会设置文本。如频繁截图可考虑加 `_decodeId` 计数器（代码中已定义但未使用）彻底跳过过期回调
+7. **截图遮罩窗体**：用 `ShowDialog()` 阻塞主窗体，截图期间主窗体无法操作，这是设计如此
+
 ## 开发踩坑记录
 
 开发过程中遇到多个反复调试才定位的问题，记录如下供参考。
