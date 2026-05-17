@@ -160,7 +160,12 @@ public partial class Form1 : Form
             Log($"生成二维码: {content.Length} 字符, 压缩模式: {_compressMode}");
             if (string.IsNullOrWhiteSpace(content))
             {
-                _picQr.Image = null;
+                if (_picQr.Image != null)
+                {
+                    var old = _picQr.Image;
+                    _picQr.Image = null;
+                    old.Dispose();
+                }
                 return;
             }
 
@@ -181,17 +186,17 @@ public partial class Form1 : Form
                 Renderer = new ZXing.Windows.Compatibility.BitmapRenderer()
             };
 
-            _picQr.Image = writer.Write(encodeContent);
+            var newImage = writer.Write(encodeContent);
 
-            using var testBmp = new Bitmap(_picQr.Image);
-            var testResult = QuickDecode(new QRCodeReader(), testBmp);
-            if (testResult != null)
+            if (_picQr.Image != null)
             {
-                Log($"自检解码成功: {testResult.Text.Length} 字符");
+                var old = _picQr.Image;
+                _picQr.Image = newImage;
+                old.Dispose();
             }
             else
             {
-                Log("自检解码失败: 原始600x600二维码自身就无法被ZXing解码!");
+                _picQr.Image = newImage;
             }
 
             Log("二维码生成成功");
