@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "dgSpecHash": "pBXQLtIaVLA=",
+  "success": true,
+  "projectFilePath": "D:\\huliang\\java\\ideaworkspace\\jonesDevtools\\QR_GENERATORBYC#V1\\QRCodeTool\\QRCodeTool.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\13871\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.8\\microsoft.net.illink.tasks.10.0.8.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\system.drawing.common\\10.0.8\\system.drawing.common.10.0.8.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\zxing.net\\0.16.11\\zxing.net.0.16.11.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\zxing.net.bindings.windows.compatibility\\0.16.14\\zxing.net.bindings.windows.compatibility.0.16.14.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.8\\microsoft.netcore.app.runtime.win-x64.10.0.8.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.8\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.8.nupkg.sha512",
+    "C:\\Users\\13871\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\10.0.8\\microsoft.aspnetcore.app.runtime.win-x64.10.0.8.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference System.Drawing.Common 将不会删除。请考虑从依赖项中移除此包，因为可能不需要它。",
+      "projectPath": "D:\\huliang\\java\\ideaworkspace\\jonesDevtools\\QR_GENERATORBYC#V1\\QRCodeTool\\QRCodeTool.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\huliang\\java\\ideaworkspace\\jonesDevtools\\QR_GENERATORBYC#V1\\QRCodeTool\\QRCodeTool.csproj",
+      "libraryId": "System.Drawing.Common",
+      "targetGraphs": [
+        "net10.0-windows7.0"
+      ]
+    }
+  ]
+}

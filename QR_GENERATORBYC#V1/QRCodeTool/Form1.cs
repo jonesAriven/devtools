@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using ZXing;
 using ZXing.Common;
@@ -17,6 +18,7 @@ public partial class Form1 : Form
     private Form? _maskForm;
     private readonly string _logPath;
     private CancellationTokenSource? _cancelToken;
+    private bool _compressMode = true;
 
     public Form1()
     {
@@ -44,7 +46,7 @@ public partial class Form1 : Form
         try
         {
             Text = @"二维码工具（长文本增强版）";
-            Size = new Size(560, 720);
+            Size = new Size(600, 920);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -52,21 +54,37 @@ public partial class Form1 : Form
             var groupBox = new GroupBox
             {
                 Text = @"二维码预览",
-                Location = new Point(20, 20),
-                Size = new Size(500, 310)
+                Location = new Point(15, 15),
+                Size = new Size(550, 540)
             };
             Controls.Add(groupBox);
 
-            _picQr.Size = new Size(280, 280);
-            _picQr.Location = new Point(110, 20);
+            _picQr.Size = new Size(500, 500);
+            _picQr.Location = new Point(25, 20);
             _picQr.SizeMode = PictureBoxSizeMode.Zoom;
+            _picQr.BackColor = Color.White;
             groupBox.Controls.Add(_picQr);
+
+            var chkCompress = new CheckBox
+            {
+                Text = @"压缩模式（容量×2~3）",
+                Location = new Point(15, 565),
+                Size = new Size(180, 25),
+                Checked = true,
+                Font = new Font("微软雅黑", 9)
+            };
+            chkCompress.CheckedChanged += (_, _) =>
+            {
+                _compressMode = chkCompress.Checked;
+                GenerateQr(_txtContent.Text.Trim());
+            };
+            Controls.Add(chkCompress);
 
             var btnCapture = new Button
             {
                 Text = @"截图识别",
-                Location = new Point(130, 350),
-                Size = new Size(120, 40)
+                Location = new Point(200, 565),
+                Size = new Size(120, 35)
             };
             btnCapture.Click += (_, _) => BeginCapture();
             Controls.Add(btnCapture);
@@ -74,26 +92,16 @@ public partial class Form1 : Form
             var btnUpload = new Button
             {
                 Text = @"上传图片识别",
-                Location = new Point(290, 350),
-                Size = new Size(120, 40)
+                Location = new Point(340, 565),
+                Size = new Size(120, 35)
             };
             btnUpload.Click += (_, _) => UploadImage();
             Controls.Add(btnUpload);
 
-            var lblStatus = new Label
-            {
-                Text = @"就绪",
-                Location = new Point(20, 395),
-                Size = new Size(500, 20),
-                ForeColor = Color.Gray,
-                Font = new Font("微软雅黑", 9)
-            };
-            Controls.Add(lblStatus);
-
             _txtContent.Multiline = true;
             _txtContent.ScrollBars = ScrollBars.Vertical;
-            _txtContent.Location = new Point(20, 410);
-            _txtContent.Size = new Size(500, 250);
+            _txtContent.Location = new Point(15, 610);
+            _txtContent.Size = new Size(550, 270);
             _txtContent.Font = new Font("微软雅黑", 10);
             _txtContent.TextChanged += (_, _) => GenerateQr(_txtContent.Text.Trim());
             Controls.Add(_txtContent);
@@ -106,16 +114,47 @@ public partial class Form1 : Form
         }
     }
 
+    private static string CompressText(string text)
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+        using var ms = new MemoryStream();
+        using (var gz = new GZipStream(ms, CompressionLevel.Optimal, true))
+        {
+            gz.Write(bytes, 0, bytes.Length);
+        }
+        return "GZ:" + Convert.ToBase64String(ms.ToArray());
+    }
+
+    private static string? TryDecompressText(string text)
+    {
+        if (!text.StartsWith("GZ:")) return null;
+        try
+        {
+            var data = Convert.FromBase64String(text.Substring(3));
+            using var ms = new MemoryStream(data);
+            using var gz = new GZipStream(ms, CompressionMode.Decompress);
+            using var sr = new StreamReader(gz, Encoding.UTF8);
+            return sr.ReadToEnd();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private void GenerateQr(string content)
     {
         try
         {
-            Log($"生成二维码: {content.Length} 字符");
+            Log($"生成二维码: {content.Length} 字符, 压缩模式: {_compressMode}");
             if (string.IsNullOrWhiteSpace(content))
             {
                 _picQr.Image = null;
                 return;
             }
+
+            var encodeContent = _compressMode ? CompressText(content) : content;
+            Log($"编码内容长度: {encodeContent.Length} 字符");
 
             var writer = new BarcodeWriter<Bitmap>
             {
@@ -124,14 +163,26 @@ public partial class Form1 : Form
                 {
                     Width = 600,
                     Height = 600,
-                    Margin = 0,
+                    Margin = 2,
                     ErrorCorrection = ErrorCorrectionLevel.L,
                     CharacterSet = "UTF-8"
                 },
                 Renderer = new ZXing.Windows.Compatibility.BitmapRenderer()
             };
 
-            _picQr.Image = writer.Write(content);
+            _picQr.Image = writer.Write(encodeContent);
+
+            using var testBmp = new Bitmap(_picQr.Image);
+            var testResult = QuickDecode(new QRCodeReader(), testBmp);
+            if (testResult != null)
+            {
+                Log($"自检解码成功: {testResult.Text.Length} 字符");
+            }
+            else
+            {
+                Log("自检解码失败: 原始600x600二维码自身就无法被ZXing解码!");
+            }
+
             Log("二维码生成成功");
         }
         catch (Exception ex)
@@ -285,6 +336,10 @@ public partial class Form1 : Form
         {
             clonedBmp = new Bitmap(bmp);
             Log($"开始解码二维码: {clonedBmp.Width}x{clonedBmp.Height}");
+
+            var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "debug_screenshot.png");
+            clonedBmp.Save(debugPath, System.Drawing.Imaging.ImageFormat.Png);
+            Log($"截图已保存: {debugPath}");
             
             var result = await Task.Run(() =>
             {
@@ -293,8 +348,18 @@ public partial class Form1 : Form
             
             if (result != null)
             {
-                _txtContent.Text = result.Text;
-                Log($"解码成功: {result.Text.Length} 字符");
+                var decodedText = result.Text;
+                var decompressed = TryDecompressText(decodedText);
+                if (decompressed != null)
+                {
+                    _txtContent.Text = decompressed;
+                    Log($"解码成功(压缩): {decompressed.Length} 字符");
+                }
+                else
+                {
+                    _txtContent.Text = decodedText;
+                    Log($"解码成功(原文): {decodedText.Length} 字符");
+                }
             }
             else
             {
@@ -321,26 +386,36 @@ public partial class Form1 : Form
     private Result? TryDecodeWithProgress(Bitmap image, CancellationToken token)
     {
         var reader = new QRCodeReader();
-        
-        int[] scales = { 2, 3, 4, 5, 6, 8, 10 };
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _firstDecodeError = null;
+
+        int[] scales = { 2, 3, 4, 5 };
         int[] thresholds = { 50, 70, 90, 110, 130, 150, 170, 190, 210 };
-        
+
         foreach (var scale in scales)
         {
             token.ThrowIfCancellationRequested();
             using var scaled = ScaleImage(image, scale);
             var result = QuickDecode(reader, scaled);
-            if (result != null) return result;
+            if (result != null)
+            {
+                Log($"=> 解码策略: 缩放{scale}x, 耗时{sw.ElapsedMilliseconds}ms");
+                return result;
+            }
         }
-        
+
         foreach (var thresh in thresholds)
         {
             token.ThrowIfCancellationRequested();
             using var binary = ApplyThreshold(image, thresh);
             var result = QuickDecode(reader, binary);
-            if (result != null) return result;
+            if (result != null)
+            {
+                Log($"=> 解码策略: 阈值{thresh}, 耗时{sw.ElapsedMilliseconds}ms");
+                return result;
+            }
         }
-        
+
         foreach (var thresh in thresholds)
         {
             token.ThrowIfCancellationRequested();
@@ -350,58 +425,87 @@ public partial class Form1 : Form
                 token.ThrowIfCancellationRequested();
                 using var scaled = ScaleImage(binary, scale);
                 var result = QuickDecode(reader, scaled);
-                if (result != null) return result;
+                if (result != null)
+                {
+                    Log($"=> 解码策略: 阈值{thresh}+缩放{scale}x, 耗时{sw.ElapsedMilliseconds}ms");
+                    return result;
+                }
             }
         }
-        
-        int[] adaptiveBlockSizes = { 80, 100, 120, 140 };
-        foreach (var blockSize in adaptiveBlockSizes)
-        {
-            token.ThrowIfCancellationRequested();
-            using var adaptive = ApplyAdaptiveThreshold(image, blockSize);
-            var result = QuickDecode(reader, adaptive);
-            if (result != null) return result;
-        }
-        
+
         token.ThrowIfCancellationRequested();
         using var otsu = ApplyOtsuThreshold(image);
         var otsuResult = QuickDecode(reader, otsu);
-        if (otsuResult != null) return otsuResult;
-        
-        foreach (var scale in new[] { 2, 3, 4, 5, 6 })
+        if (otsuResult != null)
+        {
+            Log($"=> 解码策略: Otsu, 耗时{sw.ElapsedMilliseconds}ms");
+            return otsuResult;
+        }
+
+        foreach (var scale in new[] { 2, 3, 4, 5 })
         {
             token.ThrowIfCancellationRequested();
             using var otsuScaled = ScaleImage(otsu, scale);
             var result = QuickDecode(reader, otsuScaled);
-            if (result != null) return result;
+            if (result != null)
+            {
+                Log($"=> 解码策略: Otsu+缩放{scale}x, 耗时{sw.ElapsedMilliseconds}ms");
+                return result;
+            }
         }
-        
+
         token.ThrowIfCancellationRequested();
         using var enhanced = EnhanceContrast(image);
         var enhancedResult = QuickDecode(reader, enhanced);
-        if (enhancedResult != null) return enhancedResult;
-        
+        if (enhancedResult != null)
+        {
+            Log($"=> 解码策略: 对比度增强, 耗时{sw.ElapsedMilliseconds}ms");
+            return enhancedResult;
+        }
+
         foreach (var scale in new[] { 2, 3, 4 })
         {
             token.ThrowIfCancellationRequested();
             using var enhancedScaled = ScaleImage(enhanced, scale);
             var result = QuickDecode(reader, enhancedScaled);
-            if (result != null) return result;
+            if (result != null)
+            {
+                Log($"=> 解码策略: 对比度增强+缩放{scale}x, 耗时{sw.ElapsedMilliseconds}ms");
+                return result;
+            }
         }
-        
+
+        token.ThrowIfCancellationRequested();
+        using var inverted = InvertColors(image);
+        var invertedResult = QuickDecode(reader, inverted);
+        if (invertedResult != null)
+        {
+            Log($"=> 解码策略: 反色, 耗时{sw.ElapsedMilliseconds}ms");
+            return invertedResult;
+        }
+
         token.ThrowIfCancellationRequested();
         using var denoised = RemoveNoise(image);
         var denoisedResult = QuickDecode(reader, denoised);
-        if (denoisedResult != null) return denoisedResult;
-        
+        if (denoisedResult != null)
+        {
+            Log($"=> 解码策略: 去噪, 耗时{sw.ElapsedMilliseconds}ms");
+            return denoisedResult;
+        }
+
         foreach (var scale in new[] { 2, 3 })
         {
             token.ThrowIfCancellationRequested();
             using var denoisedScaled = ScaleImage(denoised, scale);
             var result = QuickDecode(reader, denoisedScaled);
-            if (result != null) return result;
+            if (result != null)
+            {
+                Log($"=> 解码策略: 去噪+缩放{scale}x, 耗时{sw.ElapsedMilliseconds}ms");
+                return result;
+            }
         }
-        
+
+        Log($"所有策略均未识别, 耗时{sw.ElapsedMilliseconds}ms, ZXing错误: {_firstDecodeError ?? "无"}");
         return null;
     }
 
@@ -418,11 +522,18 @@ public partial class Form1 : Form
             var binaryBitmap = new BinaryBitmap(new HybridBinarizer(lumSource));
             return reader.decode(binaryBitmap, hints);
         }
-        catch
+        catch (Exception ex)
         {
+            if (_firstDecodeError == null)
+            {
+                _firstDecodeError = ex.GetType().Name + ": " + ex.Message;
+                Log($"ZXing异常: {_firstDecodeError} (图片{image.Width}x{image.Height})");
+            }
             return null;
         }
     }
+
+    private string? _firstDecodeError;
 
     private Bitmap ScaleImage(Bitmap original, int scale)
     {
