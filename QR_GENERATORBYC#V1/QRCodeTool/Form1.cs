@@ -356,10 +356,9 @@ public partial class Form1 : Form
         {
             clonedBmp = new Bitmap(bmp);
             Log($"开始解码二维码: {clonedBmp.Width}x{clonedBmp.Height}");
-
-            var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"debug_screenshot_{DateTime.Now:HHmmss}.png");
-            clonedBmp.Save(debugPath, System.Drawing.Imaging.ImageFormat.Png);
-            Log($"截图已保存: {debugPath}");
+            // var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"debug_screenshot_{DateTime.Now:HHmmss}.png");
+            // clonedBmp.Save(debugPath, System.Drawing.Imaging.ImageFormat.Png);
+            // Log($"截图已保存: {debugPath}");
             
             var result = await Task.Run(() =>
             {
