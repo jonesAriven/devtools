@@ -1,0 +1,15 @@
+com\jones\activation\dto\GenerateRequest.class
+com\jones\activation\entity\ActivationRecord.class
+com\jones\activation\dto\VerifyResponse.class
+com\jones\activation\dto\VerifyRequest.class
+com\jones\activation\util\CryptoUtil.class
+com\jones\activation\config\RsaKeyConfig.class
+com\jones\activation\ActivationCodeServerApplication.class
+com\jones\activation\controller\ActivationController.class
+com\jones\activation\dto\GenerateResponse.class
+com\jones\activation\dto\VerifyResponse$VerifyResponseBuilder.class
+com\jones\activation\util\CryptoUtil$ActivationCodeParseResult.class
+DatabaseInitializer.class
+com\jones\activation\dto\GenerateResponse$GenerateResponseBuilder.class
+com\jones\activation\mapper\ActivationRecordMapper.class
+com\jones\activation\service\ActivationService.class

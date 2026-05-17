@@ -1,0 +1,46 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+
+public class RemoteDatabaseInitializer {
+    public static void main(String[] args) {
+        String url = "jdbc:mysql://192.168.31.182:3306?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=10000&socketTimeout=10000";
+        String username = "tools";
+        String password = "toolsmarschat";
+
+        try {
+            System.out.println("Attempting to connect to " + url);
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection conn = DriverManager.getConnection(url, username, password);
+
+            System.out.println("Connected to remote MySQL successfully!");
+
+            Statement stmt = conn.createStatement();
+
+            System.out.println("Creating database if not exists...");
+            stmt.execute("CREATE DATABASE IF NOT EXISTS tools DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci");
+
+            System.out.println("Using database...");
+            stmt.execute("USE tools");
+
+            System.out.println("Creating activation_record table...");
+            String createTableSql = "CREATE TABLE IF NOT EXISTS activation_record (" +
+                "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                "serial_number VARCHAR(512) NOT NULL COMMENT 'serial number', " +
+                "activation_code TEXT NOT NULL COMMENT 'activation code', " +
+                "expire_time BIGINT NOT NULL COMMENT 'expire timestamp', " +
+                "create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create time', " +
+                "update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update time', " +
+                "UNIQUE KEY uk_serial_number (serial_number)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='activation record table'";
+            stmt.execute(createTableSql);
+
+            stmt.close();
+            conn.close();
+            System.out.println("Database initialization completed successfully!");
+        } catch (Exception e) {
+            System.err.println("Connection failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
