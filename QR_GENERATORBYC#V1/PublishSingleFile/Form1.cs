@@ -207,6 +207,9 @@ public partial class Form1 : Form
     {
         try
         {
+            if (!string.IsNullOrEmpty(_txtContent.Text))
+                _txtContent.Text = string.Empty;
+
             Log("开始截图识别");
             TopMost = false;
 
