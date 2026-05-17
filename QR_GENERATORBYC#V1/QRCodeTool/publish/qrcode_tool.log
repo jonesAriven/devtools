@@ -1119,3 +1119,130 @@
 [2026-05-17 11:58:48] 自检解码成功: 2867 字符
 [2026-05-17 11:58:48] 二维码生成成功
 [2026-05-17 11:58:48] 解码成功(压缩): 6305 字符
+[2026-05-17 12:11:27] 程序启动
+[2026-05-17 12:11:27] UI构建完成
+[2026-05-17 12:11:30] 程序启动
+[2026-05-17 12:11:30] UI构建完成
+[2026-05-17 12:11:47] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:11:47] 编码内容长度: 2867 字符
+[2026-05-17 12:11:48] 自检解码成功: 2867 字符
+[2026-05-17 12:11:48] 二维码生成成功
+[2026-05-17 12:11:50] 开始截图识别
+[2026-05-17 12:11:50] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:11:53] 截图区域: x=190, y=338, w=470, h=464
+[2026-05-17 12:11:53] 开始解码二维码: 470x464
+[2026-05-17 12:11:53] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:11:53] => 解码策略: 缩放2x, 耗时278ms
+[2026-05-17 12:11:53] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:11:53] 编码内容长度: 2867 字符
+[2026-05-17 12:11:54] 自检解码成功: 2867 字符
+[2026-05-17 12:11:54] 二维码生成成功
+[2026-05-17 12:11:54] 解码成功(压缩): 6305 字符
+[2026-05-17 12:12:01] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-17 12:12:02] 开始截图识别
+[2026-05-17 12:12:02] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:04] 截图区域: x=2751, y=431, w=478, h=478
+[2026-05-17 12:12:04] 开始解码二维码: 478x478
+[2026-05-17 12:12:04] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:12:05] => 解码策略: 缩放2x, 耗时235ms
+[2026-05-17 12:12:05] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:12:05] 编码内容长度: 2867 字符
+[2026-05-17 12:12:05] 自检解码成功: 2867 字符
+[2026-05-17 12:12:05] 二维码生成成功
+[2026-05-17 12:12:05] 解码成功(压缩): 6305 字符
+[2026-05-17 12:12:18] 开始截图识别
+[2026-05-17 12:12:18] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:23] 开始截图识别
+[2026-05-17 12:12:23] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:26] 截图区域: x=1502, y=281, w=446, h=475
+[2026-05-17 12:12:26] 开始解码二维码: 446x475
+[2026-05-17 12:12:26] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:12:26] => 解码策略: 缩放2x, 耗时232ms
+[2026-05-17 12:12:26] 解码成功(压缩): 6305 字符
+[2026-05-17 12:12:28] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-17 12:12:29] 开始截图识别
+[2026-05-17 12:12:29] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:32] 截图区域: x=1495, y=286, w=465, h=469
+[2026-05-17 12:12:32] 开始解码二维码: 465x469
+[2026-05-17 12:12:32] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:12:32] => 解码策略: 缩放2x, 耗时230ms
+[2026-05-17 12:12:32] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:12:32] 编码内容长度: 2867 字符
+[2026-05-17 12:12:32] 自检解码成功: 2867 字符
+[2026-05-17 12:12:32] 二维码生成成功
+[2026-05-17 12:12:32] 解码成功(压缩): 6305 字符
+[2026-05-17 12:12:35] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-17 12:12:37] 开始截图识别
+[2026-05-17 12:12:37] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:39] 截图区域: x=2733, y=531, w=327, h=325
+[2026-05-17 12:12:39] 开始解码二维码: 327x325
+[2026-05-17 12:12:39] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:12:51] 所有策略均未识别, 耗时11682ms, ZXing错误: 无
+[2026-05-17 12:12:51] 生成二维码: 7 字符, 压缩模式: True
+[2026-05-17 12:12:51] 编码内容长度: 63 字符
+[2026-05-17 12:12:51] 自检解码成功: 63 字符
+[2026-05-17 12:12:51] 二维码生成成功
+[2026-05-17 12:12:51] 未识别到二维码
+[2026-05-17 12:12:56] 开始截图识别
+[2026-05-17 12:12:56] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:12:59] 截图区域: x=1495, y=287, w=461, h=455
+[2026-05-17 12:12:59] 开始解码二维码: 461x455
+[2026-05-17 12:12:59] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:12:59] => 解码策略: 缩放2x, 耗时227ms
+[2026-05-17 12:12:59] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:12:59] 编码内容长度: 2867 字符
+[2026-05-17 12:13:00] 自检解码成功: 2867 字符
+[2026-05-17 12:13:00] 二维码生成成功
+[2026-05-17 12:13:00] 解码成功(压缩): 6305 字符
+[2026-05-17 12:13:02] 生成二维码: 6305 字符, 压缩模式: False
+[2026-05-17 12:13:02] 编码内容长度: 6305 字符
+[2026-05-17 12:13:02] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 174
+[2026-05-17 12:13:04] 生成二维码: 6305 字符, 压缩模式: True
+[2026-05-17 12:13:04] 编码内容长度: 2867 字符
+[2026-05-17 12:13:05] 自检解码成功: 2867 字符
+[2026-05-17 12:13:05] 二维码生成成功
+[2026-05-17 12:13:06] 开始截图识别
+[2026-05-17 12:13:06] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:13:08] 截图区域: x=1497, y=287, w=463, h=469
+[2026-05-17 12:13:08] 开始解码二维码: 463x469
+[2026-05-17 12:13:08] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:13:09] => 解码策略: 缩放2x, 耗时225ms
+[2026-05-17 12:13:09] 解码成功(压缩): 6305 字符
+[2026-05-17 12:13:10] 生成二维码: 6305 字符, 压缩模式: False
+[2026-05-17 12:13:10] 编码内容长度: 6305 字符
+[2026-05-17 12:13:10] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 174
+[2026-05-17 12:13:12] 生成二维码: 0 字符, 压缩模式: False
+[2026-05-17 12:13:13] 开始截图识别
+[2026-05-17 12:13:13] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-17 12:13:16] 截图区域: x=1493, y=286, w=468, h=468
+[2026-05-17 12:13:16] 开始解码二维码: 468x468
+[2026-05-17 12:13:16] 截图已保存: D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\publish\debug_screenshot.png
+[2026-05-17 12:13:16] => 解码策略: 缩放2x, 耗时229ms
+[2026-05-17 12:13:16] 生成二维码: 6305 字符, 压缩模式: False
+[2026-05-17 12:13:16] 编码内容长度: 6305 字符
+[2026-05-17 12:13:16] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\QRCodeTool\Form1.cs:line 174
+[2026-05-17 12:13:19] 解码成功(压缩): 6305 字符

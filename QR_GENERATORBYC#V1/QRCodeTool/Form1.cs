@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using ZXing;
 using ZXing.Common;
@@ -199,16 +200,26 @@ public partial class Form1 : Form
             Log("开始截图识别");
             TopMost = false;
 
-            var screenBounds = Screen.PrimaryScreen.Bounds;
-            var screenBmp = new Bitmap(screenBounds.Width, screenBounds.Height);
+            var allScreens = Screen.AllScreens;
+            var minX = allScreens.Min(s => s.Bounds.X);
+            var minY = allScreens.Min(s => s.Bounds.Y);
+            var maxRight = allScreens.Max(s => s.Bounds.Right);
+            var maxBottom = allScreens.Max(s => s.Bounds.Bottom);
+            var totalW = maxRight - minX;
+            var totalH = maxBottom - minY;
+
+            Log($"虚拟屏幕: {minX},{minY} {totalW}x{totalH} ({allScreens.Length}个显示器)");
+
+            var screenBmp = new Bitmap(totalW, totalH);
             using (var sg = Graphics.FromImage(screenBmp))
             {
-                sg.CopyFromScreen(0, 0, 0, 0, screenBmp.Size);
+                sg.CopyFromScreen(minX, minY, 0, 0, screenBmp.Size);
             }
 
             _maskForm = new Form
             {
-                WindowState = FormWindowState.Maximized,
+                StartPosition = FormStartPosition.Manual,
+                Bounds = new Rectangle(minX, minY, totalW, totalH),
                 FormBorderStyle = FormBorderStyle.None,
                 BackColor = Color.Black,
                 Opacity = 0.3,
