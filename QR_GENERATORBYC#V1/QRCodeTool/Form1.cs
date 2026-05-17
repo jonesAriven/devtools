@@ -48,30 +48,24 @@ public partial class Form1 : Form
         try
         {
             Text = @"二维码工具（长文本增强版）";
-            Size = new Size(480, 600);
-            MinimumSize = new Size(480, 500);
+            Size = new Size(440, 560);
+            MinimumSize = new Size(440, 460);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.Sizable;
 
-            var groupBox = new GroupBox
+            var toolbar = new Panel
             {
-                Text = @"二维码预览",
-                Location = new Point(15, 15),
-                Size = new Size(450, 450)
+                Location = new Point(0, 0),
+                Size = new Size(440, 30),
+                BackColor = Color.FromArgb(245, 245, 245)
             };
-            Controls.Add(groupBox);
-
-            _picQr.Size = new Size(400, 400);
-            _picQr.Location = new Point(25, 25);
-            _picQr.SizeMode = PictureBoxSizeMode.Zoom;
-            _picQr.BackColor = Color.White;
-            groupBox.Controls.Add(_picQr);
+            Controls.Add(toolbar);
 
             var chkCompress = new CheckBox
             {
                 Text = @"压缩模式",
-                Location = new Point(15, 475),
-                Size = new Size(95, 25),
+                Location = new Point(6, 4),
+                Size = new Size(85, 22),
                 Checked = true,
                 Font = new Font("微软雅黑", 9)
             };
@@ -81,36 +75,43 @@ public partial class Form1 : Form
                 GenerateQr(_txtContent.Text.Trim());
             };
             _toolTip.SetToolTip(chkCompress, "开启后GZip压缩，容量提升2~3倍");
-            Controls.Add(chkCompress);
+            toolbar.Controls.Add(chkCompress);
 
             var btnCapture = new PictureBox
             {
-                Location = new Point(120, 472),
-                Size = new Size(32, 32),
+                Location = new Point(96, 3),
+                Size = new Size(24, 24),
                 SizeMode = PictureBoxSizeMode.CenterImage,
-                Image = CreateCaptureIcon(),
+                Image = CreateSmallCaptureIcon(),
                 Cursor = Cursors.Hand
             };
             btnCapture.Click += (_, _) => BeginCapture();
             _toolTip.SetToolTip(btnCapture, "截图识别二维码");
-            Controls.Add(btnCapture);
+            toolbar.Controls.Add(btnCapture);
 
             var btnUpload = new PictureBox
             {
-                Location = new Point(162, 472),
-                Size = new Size(32, 32),
+                Location = new Point(124, 3),
+                Size = new Size(24, 24),
                 SizeMode = PictureBoxSizeMode.CenterImage,
-                Image = CreateUploadIcon(),
+                Image = CreateSmallUploadIcon(),
                 Cursor = Cursors.Hand
             };
             btnUpload.Click += (_, _) => UploadImage();
             _toolTip.SetToolTip(btnUpload, "上传图片识别二维码");
-            Controls.Add(btnUpload);
+            toolbar.Controls.Add(btnUpload);
+
+            _picQr.Size = new Size(400, 400);
+            _picQr.Location = new Point(10, 34);
+            _picQr.SizeMode = PictureBoxSizeMode.Zoom;
+            _picQr.BackColor = Color.White;
+            _picQr.BorderStyle = BorderStyle.FixedSingle;
+            Controls.Add(_picQr);
 
             _txtContent.Multiline = true;
             _txtContent.ScrollBars = ScrollBars.Vertical;
-            _txtContent.Location = new Point(15, 520);
-            _txtContent.Size = new Size(430, 55);
+            _txtContent.Location = new Point(10, 438);
+            _txtContent.Size = new Size(412, 100);
             _txtContent.Font = new Font("微软雅黑", 10);
             _txtContent.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             _txtContent.TextChanged += (_, _) => GenerateQr(_txtContent.Text.Trim());
@@ -742,33 +743,33 @@ public partial class Form1 : Form
         }
     }
 
-    private static Bitmap CreateCaptureIcon()
+    private static Bitmap CreateSmallCaptureIcon()
     {
-        var bmp = new Bitmap(32, 32);
+        var bmp = new Bitmap(24, 24);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        using var pen = new Pen(Color.FromArgb(64, 64, 64), 2);
-        g.DrawRectangle(pen, 7, 10, 18, 14);
-        g.FillRectangle(Brushes.White, 11, 6, 10, 7);
-        g.DrawRectangle(pen, 11, 6, 10, 7);
-        g.DrawLine(pen, 13, 4, 19, 4);
+        using var pen = new Pen(Color.FromArgb(64, 64, 64), 1.5f);
+        g.DrawRectangle(pen, 4, 7, 16, 13);
+        g.FillRectangle(Brushes.White, 7, 3, 10, 7);
+        g.DrawRectangle(pen, 7, 3, 10, 7);
+        g.DrawLine(pen, 9, 1, 15, 1);
         using var lensBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
-        g.FillEllipse(lensBrush, 13, 13, 6, 6);
+        g.FillEllipse(lensBrush, 9, 10, 6, 6);
         return bmp;
     }
 
-    private static Bitmap CreateUploadIcon()
+    private static Bitmap CreateSmallUploadIcon()
     {
-        var bmp = new Bitmap(32, 32);
+        var bmp = new Bitmap(24, 24);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        using var pen = new Pen(Color.FromArgb(64, 64, 64), 2);
-        var folderPts = new Point[] { new(4, 12), new(4, 26), new(28, 26), new(28, 12), new(15, 12), new(13, 9), new(7, 9), new(7, 12) };
+        using var pen = new Pen(Color.FromArgb(64, 64, 64), 1.5f);
+        var folderPts = new Point[] { new(2, 8), new(2, 22), new(22, 22), new(22, 8), new(11, 8), new(9, 5), new(5, 5), new(5, 8) };
         g.DrawPolygon(pen, folderPts);
-        g.DrawLine(pen, 4, 12, 7, 12);
-        using var arrowPen = new Pen(Color.FromArgb(0, 120, 212), 2.5f);
+        g.DrawLine(pen, 2, 8, 5, 8);
+        using var arrowPen = new Pen(Color.FromArgb(0, 120, 212), 2);
         arrowPen.EndCap = System.Drawing.Drawing2D.LineCap.ArrowAnchor;
-        g.DrawLine(arrowPen, 16, 23, 16, 14);
+        g.DrawLine(arrowPen, 12, 19, 12, 11);
         return bmp;
     }
 }
