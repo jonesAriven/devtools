@@ -7,6 +7,7 @@ USE tools;
 CREATE TABLE IF NOT EXISTS activation_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     serial_number VARCHAR(512) NOT NULL COMMENT '唯一序列号',
+    device_id VARCHAR(128) DEFAULT '' COMMENT '绑定的设备ID',
     activation_code TEXT NOT NULL COMMENT '激活码',
     expire_time BIGINT NOT NULL COMMENT '过期时间戳(毫秒)',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

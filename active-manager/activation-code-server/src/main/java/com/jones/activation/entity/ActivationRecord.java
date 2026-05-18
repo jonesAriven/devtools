@@ -12,6 +12,7 @@ public class ActivationRecord {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String serialNumber;
+    private String deviceId;
     private String activationCode;
     private Long expireTime;
     private LocalDateTime createTime;
@@ -22,6 +23,9 @@ public class ActivationRecord {
 
     public String getSerialNumber() { return serialNumber; }
     public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
+
+    public String getDeviceId() { return deviceId; }
+    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
 
     public String getActivationCode() { return activationCode; }
     public void setActivationCode(String activationCode) { this.activationCode = activationCode; }

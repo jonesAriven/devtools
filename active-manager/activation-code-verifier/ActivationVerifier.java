@@ -31,6 +31,13 @@ public class ActivationVerifier {
     }
 
     public VerifyResult verify(String activationCode) {
+        return verify(activationCode, null);
+    }
+
+    public VerifyResult verify(String activationCode, String expectedDeviceId) {
+        byte[] payloadBytes = null;
+        byte[] signatureBytes = null;
+
         try {
             if (activationCode == null || activationCode.trim().isEmpty()) {
                 return VerifyResult.fail("激活码不能为空");
@@ -41,20 +48,29 @@ public class ActivationVerifier {
                 return VerifyResult.fail("激活码格式无效");
             }
 
-            byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[0]);
-            byte[] signatureBytes = Base64.getUrlDecoder().decode(parts[1]);
+            payloadBytes = Base64.getUrlDecoder().decode(parts[0]);
+            signatureBytes = Base64.getUrlDecoder().decode(parts[1]);
 
             String payload = new String(payloadBytes, StandardCharsets.UTF_8);
             String[] payloadParts = payload.split("\\|");
-            if (payloadParts.length != 2) {
+
+            String serialNumber;
+            String deviceId;
+            long expireTimestamp;
+
+            if (payloadParts.length == 2) {
+                serialNumber = payloadParts[0];
+                deviceId = "";
+                expireTimestamp = parseExpireTime(payloadParts[1]);
+            } else if (payloadParts.length == 3) {
+                serialNumber = payloadParts[0];
+                deviceId = payloadParts[1];
+                expireTimestamp = parseExpireTime(payloadParts[2]);
+            } else {
                 return VerifyResult.fail("激活码载荷格式无效");
             }
 
-            String serialNumber = payloadParts[0];
-            long expireTimestamp;
-            try {
-                expireTimestamp = Long.parseLong(payloadParts[1]);
-            } catch (NumberFormatException e) {
+            if (expireTimestamp == -1) {
                 return VerifyResult.fail("激活码过期时间格式无效");
             }
 
@@ -67,14 +83,34 @@ public class ActivationVerifier {
                 return VerifyResult.fail("激活码签名验证失败");
             }
 
-            boolean expired = expireTimestamp < System.currentTimeMillis();
-            if (expired) {
-                return VerifyResult.fail("激活码已过期", serialNumber, expireTimestamp, true);
+            if (expectedDeviceId != null && !expectedDeviceId.isEmpty() &&
+                    !deviceId.isEmpty() && !deviceId.equals(expectedDeviceId)) {
+                return VerifyResult.fail("设备不匹配", serialNumber, deviceId, expireTimestamp, true);
             }
 
-            return VerifyResult.ok(serialNumber, expireTimestamp);
+            boolean expired = expireTimestamp < System.currentTimeMillis();
+            if (expired) {
+                return VerifyResult.fail("激活码已过期", serialNumber, deviceId, expireTimestamp, false);
+            }
+
+            return VerifyResult.ok(serialNumber, deviceId, expireTimestamp);
         } catch (Exception e) {
-            return VerifyResult.fail("验证激活码异常: " + e.getMessage());
+            return VerifyResult.fail("验证激活码异常");
+        } finally {
+            if (payloadBytes != null) {
+                java.util.Arrays.fill(payloadBytes, (byte) 0);
+            }
+            if (signatureBytes != null) {
+                java.util.Arrays.fill(signatureBytes, (byte) 0);
+            }
+        }
+    }
+
+    private long parseExpireTime(String timeStr) {
+        try {
+            return Long.parseLong(timeStr);
+        } catch (NumberFormatException e) {
+            return -1;
         }
     }
 
@@ -82,33 +118,41 @@ public class ActivationVerifier {
         private final boolean success;
         private final String message;
         private final String serialNumber;
+        private final String deviceId;
         private final long expireTimestamp;
         private final boolean expired;
+        private final boolean deviceMismatch;
 
-        private VerifyResult(boolean success, String message, String serialNumber, long expireTimestamp, boolean expired) {
+        private VerifyResult(boolean success, String message, String serialNumber,
+                            String deviceId, long expireTimestamp, boolean expired, boolean deviceMismatch) {
             this.success = success;
             this.message = message;
             this.serialNumber = serialNumber;
+            this.deviceId = deviceId;
             this.expireTimestamp = expireTimestamp;
             this.expired = expired;
+            this.deviceMismatch = deviceMismatch;
         }
 
-        public static VerifyResult ok(String serialNumber, long expireTimestamp) {
-            return new VerifyResult(true, "验证成功", serialNumber, expireTimestamp, false);
+        public static VerifyResult ok(String serialNumber, String deviceId, long expireTimestamp) {
+            return new VerifyResult(true, "验证成功", serialNumber, deviceId, expireTimestamp, false, false);
         }
 
         public static VerifyResult fail(String message) {
-            return new VerifyResult(false, message, null, 0, false);
+            return new VerifyResult(false, message, null, null, 0, false, false);
         }
 
-        public static VerifyResult fail(String message, String serialNumber, long expireTimestamp, boolean expired) {
-            return new VerifyResult(false, message, serialNumber, expireTimestamp, expired);
+        public static VerifyResult fail(String message, String serialNumber, String deviceId,
+                                        long expireTimestamp, boolean deviceMismatch) {
+            return new VerifyResult(false, message, serialNumber, deviceId, expireTimestamp, !deviceMismatch, deviceMismatch);
         }
 
         public boolean isSuccess() { return success; }
         public String getMessage() { return message; }
         public String getSerialNumber() { return serialNumber; }
+        public String getDeviceId() { return deviceId; }
         public long getExpireTimestamp() { return expireTimestamp; }
         public boolean isExpired() { return expired; }
+        public boolean isDeviceMismatch() { return deviceMismatch; }
     }
 }

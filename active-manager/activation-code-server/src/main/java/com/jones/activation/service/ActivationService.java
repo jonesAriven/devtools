@@ -46,6 +46,7 @@ public class ActivationService {
                     .build();
         }
 
+        String deviceId = request.getDeviceId();
         long expireTimestamp = System.currentTimeMillis() + (long) expireDays * 24 * 60 * 60 * 1000;
 
         LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
@@ -54,8 +55,8 @@ public class ActivationService {
 
         if (existingRecord != null) {
             if (existingRecord.getExpireTime() > System.currentTimeMillis()) {
-                log.info("序列号已存在且未过期, 序列号: {}, 剩余有效期: {}天",
-                        serialNumber,
+                log.info("序列号已存在且未过期, 序列号: {}, 设备ID: {}, 剩余有效期: {}天",
+                        serialNumber, existingRecord.getDeviceId(),
                         (existingRecord.getExpireTime() - System.currentTimeMillis()) / (24 * 60 * 60 * 1000));
                 return GenerateResponse.builder()
                         .success(false)
@@ -63,27 +64,30 @@ public class ActivationService {
                         .activationCode(existingRecord.getActivationCode())
                         .expireTime(existingRecord.getExpireTime())
                         .serialNumber(serialNumber)
+                        .deviceId(existingRecord.getDeviceId())
                         .build();
             }
         }
 
-        String activationCode = cryptoUtil.generateActivationCode(serialNumber, expireTimestamp);
+        String activationCode = cryptoUtil.generateActivationCode(serialNumber, deviceId, expireTimestamp);
 
         if (existingRecord != null) {
             existingRecord.setActivationCode(activationCode);
+            existingRecord.setDeviceId(deviceId);
             existingRecord.setExpireTime(expireTimestamp);
             existingRecord.setUpdateTime(LocalDateTime.now());
             activationRecordMapper.updateById(existingRecord);
-            log.info("更新激活码记录, 序列号: {}, 新过期时间: {}", serialNumber, expireTimestamp);
+            log.info("更新激活码记录, 序列号: {}, 设备ID: {}, 新过期时间: {}", serialNumber, deviceId, expireTimestamp);
         } else {
             ActivationRecord record = new ActivationRecord();
             record.setSerialNumber(serialNumber);
+            record.setDeviceId(deviceId);
             record.setActivationCode(activationCode);
             record.setExpireTime(expireTimestamp);
             record.setCreateTime(LocalDateTime.now());
             record.setUpdateTime(LocalDateTime.now());
             activationRecordMapper.insert(record);
-            log.info("新增激活码记录, 序列号: {}, 过期时间: {}", serialNumber, expireTimestamp);
+            log.info("新增激活码记录, 序列号: {}, 设备ID: {}, 过期时间: {}", serialNumber, deviceId, expireTimestamp);
         }
 
         return GenerateResponse.builder()
@@ -92,6 +96,7 @@ public class ActivationService {
                 .activationCode(activationCode)
                 .expireTime(expireTimestamp)
                 .serialNumber(serialNumber)
+                .deviceId(deviceId)
                 .build();
     }
 
@@ -105,9 +110,20 @@ public class ActivationService {
                     .build();
         }
 
-        CryptoUtil.ActivationCodeParseResult result = cryptoUtil.parseAndVerify(activationCode);
+        String deviceId = request.getDeviceId();
+        CryptoUtil.ActivationCodeParseResult result = cryptoUtil.parseAndVerify(activationCode, deviceId);
 
         if (!result.isValid()) {
+            if (result.isDeviceMismatch()) {
+                return VerifyResponse.builder()
+                        .success(false)
+                        .message(result.getMessage())
+                        .serialNumber(result.getSerialNumber())
+                        .deviceId(result.getDeviceId())
+                        .expireTime(result.getExpireTimestamp())
+                        .deviceMismatch(true)
+                        .build();
+            }
             return VerifyResponse.builder()
                     .success(false)
                     .message(result.getMessage())
@@ -116,11 +132,13 @@ public class ActivationService {
 
         boolean expired = result.getExpireTimestamp() < System.currentTimeMillis();
         if (expired) {
-            log.info("激活码已过期, 序列号: {}, 过期时间: {}", result.getSerialNumber(), result.getExpireTimestamp());
+            log.info("激活码已过期, 序列号: {}, 设备ID: {}, 过期时间: {}", 
+                    result.getSerialNumber(), result.getDeviceId(), result.getExpireTimestamp());
             return VerifyResponse.builder()
                     .success(false)
                     .message("激活码已过期")
                     .serialNumber(result.getSerialNumber())
+                    .deviceId(result.getDeviceId())
                     .expireTime(result.getExpireTimestamp())
                     .expired(true)
                     .build();
@@ -130,8 +148,10 @@ public class ActivationService {
                 .success(true)
                 .message("激活码验证成功")
                 .serialNumber(result.getSerialNumber())
+                .deviceId(result.getDeviceId())
                 .expireTime(result.getExpireTimestamp())
                 .expired(false)
+                .deviceMismatch(false)
                 .build();
     }
 }
