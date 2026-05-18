@@ -3,7 +3,7 @@ bin/
 obj/
 
 ## 发布输出
-publish/
+# publish/
 
 ## 运行时生成的日志
 *.log
