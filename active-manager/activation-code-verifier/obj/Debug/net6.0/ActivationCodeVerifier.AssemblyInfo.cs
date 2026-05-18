@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("高安全性激活码离线验证工具")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+77c3b1d2a8dfa219aeee8b2425d36bc0eb6c4f34")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e7752fe39940836c8a187b7c7ca246852284d04c")]
 [assembly: System.Reflection.AssemblyProductAttribute("激活码管理系统")]
 [assembly: System.Reflection.AssemblyTitleAttribute("激活码验证工具")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

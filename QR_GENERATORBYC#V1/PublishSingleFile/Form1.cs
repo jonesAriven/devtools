@@ -21,6 +21,7 @@ public partial class Form1 : Form
     private CancellationTokenSource? _cancelToken;
     private bool _compressMode = true;
     private readonly ToolTip _toolTip = new();
+    private static readonly string Base45Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 
     public Form1()
     {
@@ -74,7 +75,7 @@ public partial class Form1 : Form
                 _compressMode = chkCompress.Checked;
                 GenerateQr(_txtContent.Text.Trim());
             };
-            _toolTip.SetToolTip(chkCompress, "开启后GZip压缩，容量提升2~3倍");
+            _toolTip.SetToolTip(chkCompress, "开启后Brotli压缩+Base45编码，容量提升至~9500字符");
             toolbar.Controls.Add(chkCompress);
 
             var btnCapture = new PictureBox
@@ -129,28 +130,95 @@ public partial class Form1 : Form
     {
         var bytes = Encoding.UTF8.GetBytes(text);
         using var ms = new MemoryStream();
-        using (var gz = new GZipStream(ms, CompressionLevel.Optimal, true))
+        using (var br = new BrotliStream(ms, CompressionLevel.Optimal, true))
         {
-            gz.Write(bytes, 0, bytes.Length);
+            br.Write(bytes, 0, bytes.Length);
         }
-        return "GZ:" + Convert.ToBase64String(ms.ToArray());
+        return "B5:" + Base45Encode(ms.ToArray());
     }
 
     private static string? TryDecompressText(string text)
     {
-        if (!text.StartsWith("GZ:")) return null;
-        try
+        if (text.StartsWith("B5:"))
         {
-            var data = Convert.FromBase64String(text.Substring(3));
-            using var ms = new MemoryStream(data);
-            using var gz = new GZipStream(ms, CompressionMode.Decompress);
-            using var sr = new StreamReader(gz, Encoding.UTF8);
-            return sr.ReadToEnd();
+            try
+            {
+                var data = Base45Decode(text.Substring(3));
+                using var ms = new MemoryStream(data);
+                using var br = new BrotliStream(ms, CompressionMode.Decompress);
+                using var sr = new StreamReader(br, Encoding.UTF8);
+                return sr.ReadToEnd();
+            }
+            catch
+            {
+                return null;
+            }
         }
-        catch
+        if (text.StartsWith("GZ:"))
         {
-            return null;
+            try
+            {
+                var data = Convert.FromBase64String(text.Substring(3));
+                using var ms = new MemoryStream(data);
+                using var gz = new GZipStream(ms, CompressionMode.Decompress);
+                using var sr = new StreamReader(gz, Encoding.UTF8);
+                return sr.ReadToEnd();
+            }
+            catch
+            {
+                return null;
+            }
         }
+        return null;
+    }
+
+    private static string Base45Encode(byte[] data)
+    {
+        var result = new StringBuilder(data.Length * 3 / 2 + 2);
+        for (int i = 0; i < data.Length; i += 2)
+        {
+            if (i + 1 < data.Length)
+            {
+                int n = data[i] * 256 + data[i + 1];
+                result.Append(Base45Alphabet[n % 45]);
+                result.Append(Base45Alphabet[(n / 45) % 45]);
+                result.Append(Base45Alphabet[(n / 45 / 45) % 45]);
+            }
+            else
+            {
+                int n = data[i];
+                result.Append(Base45Alphabet[n % 45]);
+                result.Append(Base45Alphabet[n / 45]);
+            }
+        }
+        return result.ToString();
+    }
+
+    private static byte[] Base45Decode(string text)
+    {
+        using var ms = new MemoryStream(text.Length * 2 / 3 + 1);
+        for (int i = 0; i < text.Length; i += 3)
+        {
+            if (i + 2 < text.Length)
+            {
+                int c = Base45Alphabet.IndexOf(text[i]);
+                int d = Base45Alphabet.IndexOf(text[i + 1]);
+                int e = Base45Alphabet.IndexOf(text[i + 2]);
+                if (c < 0 || d < 0 || e < 0) throw new System.FormatException("Invalid Base45 character");
+                int n = c + d * 45 + e * 45 * 45;
+                ms.WriteByte((byte)(n / 256));
+                ms.WriteByte((byte)(n % 256));
+            }
+            else
+            {
+                int c = Base45Alphabet.IndexOf(text[i]);
+                int d = Base45Alphabet.IndexOf(text[i + 1]);
+                if (c < 0 || d < 0) throw new System.FormatException("Invalid Base45 character");
+                int n = c + d * 45;
+                ms.WriteByte((byte)(n % 256));
+            }
+        }
+        return ms.ToArray();
     }
 
     private void GenerateQr(string content)
@@ -170,19 +238,24 @@ public partial class Form1 : Form
             }
 
             var encodeContent = _compressMode ? CompressText(content) : content;
-            Log($"编码内容长度: {encodeContent.Length} 字符");
+            Log($"编码内容长度: {encodeContent.Length} 字符, 模式: {(_compressMode ? "Brotli+Base45+Alphanumeric" : "UTF-8+Byte")}");
+
+            var options = new QrCodeEncodingOptions
+            {
+                Width = 600,
+                Height = 600,
+                Margin = 2,
+                ErrorCorrection = ErrorCorrectionLevel.L
+            };
+            if (!_compressMode)
+            {
+                options.CharacterSet = "UTF-8";
+            }
 
             var writer = new BarcodeWriter<Bitmap>
             {
                 Format = BarcodeFormat.QR_CODE,
-                Options = new QrCodeEncodingOptions
-                {
-                    Width = 600,
-                    Height = 600,
-                    Margin = 2,
-                    ErrorCorrection = ErrorCorrectionLevel.L,
-                    CharacterSet = "UTF-8"
-                },
+                Options = options,
                 Renderer = new ZXing.Windows.Compatibility.BitmapRenderer()
             };
 
