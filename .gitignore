@@ -16,3 +16,32 @@ QR_GENERATOR/lib/*
 !QR_GENERATOR/lib/.gitkeep 
 QR_GENERATOR/logs/*
 /*.iml
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+logs/
+rsa_keys/
+
+# .NET / C#
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+*.csproj.user
+*.suo
+*.cache
+
+# Database init scripts (temp)
+init_db.py
+init-database.sql
