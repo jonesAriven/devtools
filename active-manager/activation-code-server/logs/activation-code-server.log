@@ -16,3 +16,27 @@
 2026-05-18 00:25:16.137 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
 2026-05-18 00:25:16.173 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
 2026-05-18 00:25:16.180 [main] INFO  c.jones.activation.ActivationCodeServerApplication - Started ActivationCodeServerApplication in 3.584 seconds (process running for 3.977)
+2026-05-18 00:47:15.891 [main] INFO  c.jones.activation.ActivationCodeServerApplication - Starting ActivationCodeServerApplication using Java 21.0.11 with PID 8952 (D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-server\target\classes started by liangzi in D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-server)
+2026-05-18 00:47:15.895 [main] INFO  c.jones.activation.ActivationCodeServerApplication - No active profile set, falling back to 1 default profile: "default"
+2026-05-18 00:47:17.043 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2026-05-18 00:47:17.057 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-05-18 00:47:17.060 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2026-05-18 00:47:17.061 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.40]
+2026-05-18 00:47:17.121 [main] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-05-18 00:47:17.123 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1135 ms
+2026-05-18 00:47:17.209 [main] INFO  com.jones.activation.config.RsaKeyConfig - RSA密钥对加载成功
+2026-05-18 00:47:17.459 [main] INFO  com.zaxxer.hikari.HikariDataSource - ActivationCodeHikariCP - Starting...
+2026-05-18 00:47:17.782 [main] INFO  com.zaxxer.hikari.pool.HikariPool - ActivationCodeHikariCP - Added connection com.mysql.cj.jdbc.ConnectionImpl@63bfdbcb
+2026-05-18 00:47:17.783 [main] INFO  com.zaxxer.hikari.HikariDataSource - ActivationCodeHikariCP - Start completed.
+2026-05-18 00:47:18.014 [main] INFO  o.s.b.a.web.servlet.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-05-18 00:47:18.320 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-05-18 00:47:18.336 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2026-05-18 00:47:18.341 [main] INFO  c.jones.activation.ActivationCodeServerApplication - Started ActivationCodeServerApplication in 3.222 seconds (process running for 3.499)
+2026-05-18 00:47:25.165 [http-nio-8080-exec-1] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-18 00:47:25.166 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-05-18 00:47:25.167 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-05-18 00:47:55.452 [http-nio-8080-exec-5] INFO  c.jones.activation.controller.ActivationController - 收到生成激活码请求, 序列号: s2342342423409099joindfhjgewrsdfwerqwe
+2026-05-18 00:47:55.584 [http-nio-8080-exec-5] INFO  com.jones.activation.util.CryptoUtil - 生成激活码成功, 序列号: s2342342423409099joindfhjgewrsdfwerqwe, 过期时间: 1810572475453
+2026-05-18 00:47:55.618 [http-nio-8080-exec-5] INFO  com.jones.activation.service.ActivationService - 新增激活码记录, 序列号: s2342342423409099joindfhjgewrsdfwerqwe, 过期时间: 1810572475453
+2026-05-18 00:48:01.206 [http-nio-8080-exec-4] INFO  c.jones.activation.controller.ActivationController - 收到验证激活码请求
+2026-05-18 00:48:01.207 [http-nio-8080-exec-4] INFO  com.jones.activation.util.CryptoUtil - 激活码验证成功, 序列号: s2342342423409099joindfhjgewrsdfwerqwe, 过期时间: 1810572475453
