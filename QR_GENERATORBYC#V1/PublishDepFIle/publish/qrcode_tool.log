@@ -1,2 +1,73 @@
 ﻿[2026-05-17 20:01:57] 程序启动
 [2026-05-17 20:01:57] UI构建完成
+[2026-05-18 23:02:02] 程序启动
+[2026-05-18 23:02:03] UI构建完成
+[2026-05-18 23:02:24] 程序启动
+[2026-05-18 23:02:24] UI构建完成
+[2026-05-18 23:06:23] 程序启动
+[2026-05-18 23:06:24] UI构建完成
+[2026-05-18 23:06:42] 生成二维码: 5830 字符, 压缩模式: True
+[2026-05-18 23:06:42] 编码内容长度: 5571 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:06:42] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\PublishDepFIle\Form1.cs:line 262
+[2026-05-18 23:06:50] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-18 23:06:50] 生成二维码: 7661 字符, 压缩模式: True
+[2026-05-18 23:06:50] 编码内容长度: 6062 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:06:50] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\PublishDepFIle\Form1.cs:line 262
+[2026-05-18 23:07:01] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-18 23:07:01] 生成二维码: 6358 字符, 压缩模式: True
+[2026-05-18 23:07:01] 编码内容长度: 3329 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:07:01] 二维码生成成功
+[2026-05-18 23:07:17] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-18 23:07:17] 生成二维码: 7432 字符, 压缩模式: True
+[2026-05-18 23:07:17] 编码内容长度: 5673 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:07:17] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\PublishDepFIle\Form1.cs:line 262
+[2026-05-18 23:07:25] 生成二维码: 0 字符, 压缩模式: True
+[2026-05-18 23:07:25] 生成二维码: 6794 字符, 压缩模式: True
+[2026-05-18 23:07:25] 编码内容长度: 5273 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:07:25] 生成二维码失败: Data too big
+   at ZXing.QrCode.Internal.Encoder.chooseVersion(Int32 numInputBits, ErrorCorrectionLevel ecLevel)
+   at ZXing.QrCode.Internal.Encoder.recommendVersion(ErrorCorrectionLevel ecLevel, Mode mode, BitArray headerBits, BitArray dataBits)
+   at ZXing.QrCode.Internal.Encoder.encode(String content, ErrorCorrectionLevel ecLevel, IDictionary`2 hints)
+   at ZXing.QrCode.QRCodeWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.MultiFormatWriter.encode(String contents, BarcodeFormat format, Int32 width, Int32 height, IDictionary`2 hints)
+   at ZXing.BarcodeWriterGeneric.Encode(String contents)
+   at ZXing.BarcodeWriter`1.Write(String contents)
+   at QRCodeTool.Form1.GenerateQr(String content) in D:\huliang\java\ideaworkspace\jonesDevtools\QR_GENERATORBYC#V1\PublishDepFIle\Form1.cs:line 262
+[2026-05-18 23:10:03] 程序启动
+[2026-05-18 23:10:04] UI构建完成
+[2026-05-18 23:10:09] 开始截图识别
+[2026-05-18 23:10:09] 虚拟屏幕: 0,0 4480x1440 (2个显示器)
+[2026-05-18 23:10:12] 截图区域: x=1089, y=520, w=371, h=368
+[2026-05-18 23:10:12] 开始解码二维码: 371x368
+[2026-05-18 23:10:12] 策略组1: 缩放 2x-5x, 图片371x368
+[2026-05-18 23:10:13] => 解码策略: 缩放3x, 耗时465ms
+[2026-05-18 23:10:13] 生成二维码: 8525 字符, 压缩模式: True
+[2026-05-18 23:10:13] 编码内容长度: 4211 字符, 模式: Brotli+Base45+Alphanumeric
+[2026-05-18 23:10:13] 二维码生成成功
+[2026-05-18 23:10:13] 解码成功(压缩): 8525 字符
+[2026-05-18 23:11:38] 程序启动
+[2026-05-18 23:11:38] UI构建完成
