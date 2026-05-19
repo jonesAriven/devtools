@@ -420,11 +420,28 @@ namespace Jones.Activation
         {
             try
             {
-                MessageBox.Show(
-                    "授权已失效，程序即将退出。",
-                    "授权验证",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                if (Application.OpenForms.Count > 0)
+                {
+                    var mainForm = Application.OpenForms[0];
+                    mainForm.Invoke(new Action(() =>
+                    {
+                        MessageBox.Show(
+                            "授权已失效，程序即将退出。",
+                            "授权验证",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                        Application.Exit();
+                    }));
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "授权已失效，程序即将退出。",
+                        "授权验证",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    Application.Exit();
+                }
             }
             catch { }
 
