@@ -23,7 +23,7 @@ namespace Jones.Activation
         {
             if (AntiDebug.IsBeingDebugged())
             {
-                return VerifyResult.Fail("验证失败");
+                return VerifyResult.Fail();
             }
 
             byte[] payloadBytes = null;
@@ -33,13 +33,13 @@ namespace Jones.Activation
             {
                 if (string.IsNullOrWhiteSpace(activationCode))
                 {
-                    return VerifyResult.Fail("激活码不能为空");
+                    return VerifyResult.Fail();
                 }
 
                 string[] parts = activationCode.Split('.');
                 if (parts.Length != 2)
                 {
-                    return VerifyResult.Fail("激活码格式无效");
+                    return VerifyResult.Fail();
                 }
 
                 payloadBytes = Base64UrlDecode(parts[0]);
@@ -66,12 +66,12 @@ namespace Jones.Activation
                 }
                 else
                 {
-                    return VerifyResult.Fail("激活码载荷格式无效");
+                    return VerifyResult.Fail();
                 }
 
                 if (expireTimestamp == -1)
                 {
-                    return VerifyResult.Fail("激活码过期时间格式无效");
+                    return VerifyResult.Fail();
                 }
 
                 bool verified = _rsa.VerifyData(
@@ -83,30 +83,30 @@ namespace Jones.Activation
 
                 if (!verified)
                 {
-                    return VerifyResult.Fail("激活码签名验证失败");
+                    return VerifyResult.Fail();
                 }
 
                 if (!string.IsNullOrWhiteSpace(expectedDeviceId) &&
                     !string.IsNullOrWhiteSpace(deviceId) &&
                     !deviceId.Equals(expectedDeviceId))
                 {
-                    return VerifyResult.Fail("设备不匹配", serialNumber, deviceId, expireTimestamp, true);
+                    return VerifyResult.FailDeviceMismatch(serialNumber, deviceId, expireTimestamp);
                 }
 
                 long currentTimestamp = TimeGuard.GetTrustedTimestamp(serialNumber, expireTimestamp);
 
                 if (expireTimestamp < currentTimestamp)
                 {
-                    return VerifyResult.Fail("激活码已过期", serialNumber, deviceId, expireTimestamp, false);
+                    return VerifyResult.FailExpired(serialNumber, deviceId, expireTimestamp);
                 }
 
                 TimeGuard.RecordActivation(serialNumber, expireTimestamp);
 
                 return VerifyResult.Ok(serialNumber, deviceId, expireTimestamp);
             }
-            catch (Exception)
+            catch
             {
-                return VerifyResult.Fail("验证失败");
+                return VerifyResult.Fail();
             }
             finally
             {
