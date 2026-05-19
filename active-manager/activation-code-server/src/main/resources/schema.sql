@@ -6,11 +6,30 @@ USE tools;
 
 CREATE TABLE IF NOT EXISTS activation_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    serial_number VARCHAR(512) NOT NULL COMMENT '唯一序列号',
-    device_id VARCHAR(128) DEFAULT '' COMMENT '绑定的设备ID',
-    activation_code TEXT NOT NULL COMMENT '激活码',
-    expire_time BIGINT NOT NULL COMMENT '过期时间戳(毫秒)',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    serial_number VARCHAR(512) NOT NULL,
+    device_id VARCHAR(128) DEFAULT '',
+    activation_code TEXT NOT NULL,
+    expire_time BIGINT NOT NULL,
+    activated_time DATETIME DEFAULT NULL,
+    expire_minutes INT DEFAULT NULL,
+    initial_serial VARCHAR(256) DEFAULT NULL,
+    machine_code VARCHAR(256) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_serial_number (serial_number)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='激活码记录表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS activation_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    record_id BIGINT DEFAULT NULL,
+    serial_number VARCHAR(512) DEFAULT NULL,
+    device_id VARCHAR(128) DEFAULT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    event_message VARCHAR(512) DEFAULT NULL,
+    client_ip VARCHAR(64) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_record_id (record_id),
+    INDEX idx_serial_number (serial_number),
+    INDEX idx_event_type (event_type),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

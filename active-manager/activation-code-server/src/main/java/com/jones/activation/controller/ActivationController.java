@@ -4,13 +4,15 @@ import com.jones.activation.dto.GenerateRequest;
 import com.jones.activation.dto.GenerateResponse;
 import com.jones.activation.dto.VerifyRequest;
 import com.jones.activation.dto.VerifyResponse;
+import com.jones.activation.entity.ActivationLog;
+import com.jones.activation.entity.ActivationRecord;
 import com.jones.activation.service.ActivationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/activation")
@@ -34,5 +36,40 @@ public class ActivationController {
     public VerifyResponse verify(@RequestBody VerifyRequest request) {
         log.info("收到验证激活码请求");
         return activationService.verifyActivationCode(request);
+    }
+
+    @GetMapping("/list")
+    public Map<String, Object> list(@RequestParam(required = false) String keyword,
+                                    @RequestParam(required = false) String status) {
+        List<ActivationRecord> records = activationService.queryRecords(keyword, status);
+        long now = System.currentTimeMillis();
+        return Map.of("success", true, "data", records, "total", records.size(), "currentTime", now);
+    }
+
+    @GetMapping("/logs")
+    public Map<String, Object> logs(@RequestParam(required = false) Long recordId,
+                                    @RequestParam(required = false) String serialNumber,
+                                    @RequestParam(required = false) String eventType) {
+        List<ActivationLog> logs = activationService.queryLogs(recordId, serialNumber, eventType);
+        return Map.of("success", true, "data", logs, "total", logs.size());
+    }
+
+    @GetMapping("/parse-code")
+    public Map<String, Object> parseCode(@RequestParam String activationCode) {
+        log.info("收到解析激活码请求");
+        return activationService.parseActivationCode(activationCode);
+    }
+
+    @GetMapping("/parse-serial")
+    public Map<String, Object> parseSerial(@RequestParam String serialNumber) {
+        log.info("收到解析序列号请求, 序列号: {}", serialNumber);
+        return activationService.parseSerialNumberInfo(serialNumber);
+    }
+
+    @DeleteMapping("/{id}")
+    public Map<String, Object> delete(@PathVariable Long id) {
+        log.info("收到删除激活码记录请求, id: {}", id);
+        boolean deleted = activationService.deleteRecord(id);
+        return Map.of("success", deleted, "message", deleted ? "删除成功" : "记录不存在");
     }
 }

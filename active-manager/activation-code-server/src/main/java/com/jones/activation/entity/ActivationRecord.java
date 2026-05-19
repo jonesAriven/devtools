@@ -15,6 +15,10 @@ public class ActivationRecord {
     private String deviceId;
     private String activationCode;
     private Long expireTime;
+    private LocalDateTime activatedTime;
+    private Integer expireMinutes;
+    private String initialSerial;
+    private String machineCode;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -32,6 +36,18 @@ public class ActivationRecord {
 
     public Long getExpireTime() { return expireTime; }
     public void setExpireTime(Long expireTime) { this.expireTime = expireTime; }
+
+    public LocalDateTime getActivatedTime() { return activatedTime; }
+    public void setActivatedTime(LocalDateTime activatedTime) { this.activatedTime = activatedTime; }
+
+    public Integer getExpireMinutes() { return expireMinutes; }
+    public void setExpireMinutes(Integer expireMinutes) { this.expireMinutes = expireMinutes; }
+
+    public String getInitialSerial() { return initialSerial; }
+    public void setInitialSerial(String initialSerial) { this.initialSerial = initialSerial; }
+
+    public String getMachineCode() { return machineCode; }
+    public void setMachineCode(String machineCode) { this.machineCode = machineCode; }
 
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }

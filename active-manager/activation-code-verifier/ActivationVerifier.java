@@ -1,11 +1,16 @@
 package com.jones.activation.verifier;
 
+import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ActivationVerifier {
 
@@ -112,6 +117,53 @@ public class ActivationVerifier {
         } catch (NumberFormatException e) {
             return -1;
         }
+    }
+
+    public static String getDeviceId() {
+        try {
+            String macAddress = getMacAddress();
+            String combined = macAddress;
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(combined.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (int i = 0; i < Math.min(hash.length, 16); i++) {
+                String hex = Integer.toHexString(0xff & hash[i]);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return "UNKNOWN_DEVICE";
+        }
+    }
+
+    private static String getMacAddress() {
+        try {
+            Enumeration<NetworkInterface> networks = NetworkInterface.getNetworkInterfaces();
+            while (networks.hasMoreElements()) {
+                NetworkInterface network = networks.nextElement();
+                byte[] mac = network.getHardwareAddress();
+                if (mac != null && mac.length == 6 && !network.isLoopback()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (byte b : mac) {
+                        sb.append(String.format("%02X", b));
+                    }
+                    return sb.toString();
+                }
+            }
+        } catch (Exception e) {
+        }
+        return "MAC_UNKNOWN";
+    }
+
+    public static Map<String, String> getDeviceInfo() {
+        Map<String, String> info = new HashMap<>();
+        info.put("deviceId", getDeviceId());
+        info.put("macAddress", getMacAddress());
+        info.put("osName", System.getProperty("os.name"));
+        info.put("osArch", System.getProperty("os.arch"));
+        info.put("userName", System.getProperty("user.name"));
+        return info;
     }
 
     public static class VerifyResult {

@@ -22,6 +22,7 @@ public class CryptoUtil {
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final String SEPARATOR = ".";
     private static final String PAYLOAD_SEPARATOR = "|";
+    private static final byte SERIAL_XOR_KEY = 0x5A;
 
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
@@ -219,5 +220,47 @@ public class CryptoUtil {
         public String getDeviceId() { return deviceId; }
         public long getExpireTimestamp() { return expireTimestamp; }
         public boolean isDeviceMismatch() { return deviceMismatch; }
+    }
+
+    public static SerialNumberParseResult decryptSerialNumber(String encryptedSerialNumber) {
+        try {
+            byte[] encrypted = Base64.getDecoder().decode(encryptedSerialNumber);
+            byte[] decrypted = new byte[encrypted.length];
+            for (int i = 0; i < encrypted.length; i++) {
+                decrypted[i] = (byte) (encrypted[i] ^ SERIAL_XOR_KEY);
+            }
+            String plainText = new String(decrypted, StandardCharsets.UTF_8);
+            String[] parts = plainText.split("\\|");
+            if (parts.length >= 3) {
+                return new SerialNumberParseResult(true, "解析成功", parts[0], parts[1], parts[2]);
+            }
+            return new SerialNumberParseResult(false, "唯一序列号格式无效", null, null, null);
+        } catch (Exception e) {
+            log.error("解密唯一序列号失败", e);
+            return new SerialNumberParseResult(false, "唯一序列号解密失败", null, null, null);
+        }
+    }
+
+    public static class SerialNumberParseResult {
+        private final boolean success;
+        private final String message;
+        private final String initialSerial;
+        private final String deviceId;
+        private final String machineCode;
+
+        public SerialNumberParseResult(boolean success, String message, String initialSerial,
+                                       String deviceId, String machineCode) {
+            this.success = success;
+            this.message = message;
+            this.initialSerial = initialSerial;
+            this.deviceId = deviceId;
+            this.machineCode = machineCode;
+        }
+
+        public boolean isSuccess() { return success; }
+        public String getMessage() { return message; }
+        public String getInitialSerial() { return initialSerial; }
+        public String getDeviceId() { return deviceId; }
+        public String getMachineCode() { return machineCode; }
     }
 }

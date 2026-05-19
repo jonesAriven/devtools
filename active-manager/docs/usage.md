@@ -132,71 +132,154 @@ Content-Type: application/json
 
 ---
 
-## 4. 客户端离线验证工具使用
+## 4. 客户端离线验证工具 - 多语言嵌入指南
 
-### 4.1 Java 验证工具
+### 4.1 C# 项目嵌入（优先推荐）
 
-**文件位置**: [ActivationVerifier.java](file:///D:/huliang/java/ideaworkspace/jonesDevtools/active-manager/activation-code-verifier/ActivationVerifier.java)
+C# 版验证工具已编译为类库 `Jones.Activation.dll`，内含公钥XOR加密存储、反调试检测、设备指纹采集、防时间篡改等安全机制。
 
-**使用方法**:
+**步骤1**: 将 `Jones.Activation.dll` 和 `System.Management.dll` 复制到你的项目引用目录
+
+**步骤2**: 在项目中添加对 `Jones.Activation.dll` 的引用
+
+**步骤3**: 在程序入口处调用验证
+
+```csharp
+using Jones.Activation;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // 方式1：最简单 - 验证失败直接退出进程
+        ActivationGuard.Protect("你的激活码");
+
+        // 方式2：自动获取设备ID + 验证
+        ActivationGuard.ProtectWithAutoDevice("你的激活码");
+
+        // 方式3：手动指定设备ID
+        ActivationGuard.Protect("你的激活码", "指定设备ID");
+
+        // 方式4：只检查不退出，自行处理结果
+        VerifyResult result = ActivationGuard.Check("你的激活码");
+        if (!result.Success)
+        {
+            Console.WriteLine("验证失败: " + result.Message);
+            Environment.Exit(1);
+        }
+
+        // 验证通过后，程序正常运行
+        Console.WriteLine("软件正常运行...");
+    }
+}
+```
+
+**步骤4**: 获取当前设备ID（用于生成激活码时绑定设备）
+
+```csharp
+string deviceId = DeviceInfo.GetDeviceId();
+string macAddress = DeviceInfo.GetMacAddress();
+Console.WriteLine($"设备ID: {deviceId}");
+Console.WriteLine($"MAC地址: {macAddress}");
+```
+
+### 4.2 Java 项目嵌入
+
+**步骤1**: 将 `ActivationVerifier.java` 复制到你的项目源码目录
+
+**步骤2**: 将公钥文件 `public_key.pem` 放到项目资源目录
+
+**步骤3**: 在程序入口处调用验证
+
 ```java
+import com.jones.activation.verifier.ActivationVerifier;
+import com.jones.activation.verifier.ActivationVerifier.VerifyResult;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-// 加载公钥
-String publicKeyPem = Files.readString(Paths.get("rsa_keys/public_key.pem"));
+public class MainApp {
+    public static void main(String[] args) {
+        // 加载公钥
+        String publicKeyPem = new String(Files.readAllBytes(
+            Paths.get("public_key.pem")));
 
-// 创建验证器
-ActivationVerifier verifier = new ActivationVerifier(publicKeyPem);
+        // 创建验证器
+        ActivationVerifier verifier = new ActivationVerifier(publicKeyPem);
 
-// 验证激活码（带设备绑定）
-String deviceId = "当前设备ID";
-VerifyResult result = verifier.verify(activationCode, deviceId);
+        // 获取当前设备ID（基于MAC地址）
+        String deviceId = ActivationVerifier.getDeviceId();
 
-if (result.isSuccess()) {
-    System.out.println("验证成功，序列号: " + result.getSerialNumber());
-    System.out.println("设备ID: " + result.getDeviceId());
-    System.out.println("过期时间: " + result.getExpireTimestamp());
-} else {
-    System.out.println("验证失败: " + result.getMessage());
-    if (result.isDeviceMismatch()) {
-        System.out.println("设备不匹配！");
+        // 验证激活码
+        VerifyResult result = verifier.verify("你的激活码", deviceId);
+
+        if (!result.isSuccess()) {
+            System.err.println("授权验证失败: " + result.getMessage());
+            System.exit(1);
+        }
+
+        // 验证通过后，程序正常运行
+        System.out.println("软件正常运行...");
     }
 }
 ```
 
-### 4.2 C# 验证工具（含反调试）
+### 4.3 Python 项目嵌入
 
-**文件位置**: [ActivationVerifier.cs](file:///D:/huliang/java/ideaworkspace/jonesDevtools/active-manager/activation-code-verifier/ActivationVerifier.cs)
+通过命令行调用编译好的验证工具：
 
-**使用方法**:
-```csharp
-using System;
-using System.IO;
+**步骤1**: 将 `Jones.Activation.dll` 和运行时放到固定目录
 
-// 加载公钥
-string publicKeyPem = File.ReadAllText("rsa_keys/public_key.pem");
+**步骤2**: Python 调用
 
-// 创建验证器
-ActivationVerifier verifier = new ActivationVerifier(publicKeyPem);
+```python
+import subprocess
+import json
 
-// 验证激活码（带设备绑定）
-string deviceId = "当前设备ID";
-VerifyResult result = verifier.Verify(activationCode, deviceId);
+def verify_activation(activation_code, device_id=None):
+    args = ["dotnet", "ActivationVerifier.dll", "verify", activation_code]
+    if device_id:
+        args.append(device_id)
+    result = subprocess.run(args, capture_output=True, text=True)
+    return json.loads(result.stdout)
 
-if (result.Success) {
-    Console.WriteLine($"验证成功，序列号: {result.SerialNumber}");
-    Console.WriteLine($"设备ID: {result.DeviceId}");
-    Console.WriteLine($"过期时间: {result.ExpireTimestamp}");
-} else {
-    Console.WriteLine($"验证失败: {result.Message}");
-    if (result.DeviceMismatch) {
-        Console.WriteLine("设备不匹配！");
-    }
+def get_device_id():
+    result = subprocess.run(
+        ["dotnet", "ActivationVerifier.dll", "deviceid"],
+        capture_output=True, text=True
+    )
+    return json.loads(result.stdout)["deviceId"]
+```
+
+### 4.4 C/C++ 项目嵌入
+
+通过 COM 互操作或命令行调用：
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+
+int verify_activation(const char* activation_code) {
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd),
+        "dotnet ActivationVerifier.dll verify \"%s\"", activation_code);
+    int ret = system(cmd);
+    return ret;  // 0=成功, 1001=验证失败
 }
 ```
 
-### 4.3 验证结果说明
+### 4.5 其他语言嵌入
+
+对于其他语言（Go、Rust、Node.js等），有两种方案：
+
+**方案A**: 命令行调用
+- 编译一个独立的验证工具 exe
+- 通过子进程调用，解析 JSON 输出
+
+**方案B**: HTTP 本地服务
+- 启动一个本地验证服务
+- 其他语言通过 HTTP 请求调用验证接口
+
+### 4.6 验证结果说明
 
 | 字段 | 类型 | 说明 |
 | :--- | :--- | :--- |

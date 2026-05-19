@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyName>ActivationCodeVerifier</AssemblyName>
-    <RootNamespace>ActivationCodeVerifier</RootNamespace>
+    <AssemblyName>Jones.Activation</AssemblyName>
+    <RootNamespace>Jones.Activation</RootNamespace>
     <Version>1.0.0</Version>
-    <AssemblyTitle>激活码验证工具</AssemblyTitle>
-    <Description>高安全性激活码离线验证工具</Description>
+    <AssemblyTitle>激活码验证类库</AssemblyTitle>
+    <Description>可嵌入的激活码离线验证类库，供宿主程序集成</Description>
     <Company>Jones</Company>
     <Product>激活码管理系统</Product>
   </PropertyGroup>
@@ -26,10 +26,6 @@
     <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="rsa_keys\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+
 
 </Project>

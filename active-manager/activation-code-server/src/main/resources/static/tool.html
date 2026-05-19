@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>激活码生成工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 600px; width: 100%; overflow: hidden; }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px 32px; }
+        .card-header h1 { color: #fff; font-size: 22px; font-weight: 700; }
+        .card-header p { color: rgba(255,255,255,0.8); font-size: 13px; margin-top: 6px; }
+        .card-body { padding: 28px 32px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 6px; }
+        .form-group .hint { font-size: 12px; color: #999; margin-top: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 2px solid #e8e8e8; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: #667eea; }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+        .expire-presets { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .expire-presets button { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-size: 12px; cursor: pointer; color: #555; }
+        .expire-presets button:hover { border-color: #667eea; color: #667eea; background: #f0f0ff; }
+        .btn-generate { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: opacity 0.2s; }
+        .btn-generate:hover { opacity: 0.9; }
+        .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+        .result-box { margin-top: 20px; padding: 16px; border-radius: 8px; display: none; }
+        .result-box.success { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .result-box.error { display: block; background: #fef2f2; border: 1px solid #fecaca; }
+        .result-box p { font-size: 13px; margin-bottom: 6px; line-height: 1.6; }
+        .result-box .rl { color: #666; font-weight: 500; }
+        .result-box .rv { color: #333; word-break: break-all; }
+        .code-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; margin-top: 10px; word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.6; color: #333; position: relative; }
+        .btn-copy { position: absolute; top: 8px; right: 8px; padding: 4px 12px; background: #667eea; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .btn-copy:hover { opacity: 0.8; }
+        .steps { background: #f8f9ff; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+        .steps h3 { font-size: 14px; color: #667eea; margin-bottom: 10px; }
+        .steps ol { padding-left: 20px; }
+        .steps li { font-size: 13px; color: #555; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <h1>激活码生成工具</h1>
+            <p>为客户端软件生成激活码，绑定设备与有效期</p>
+        </div>
+        <div class="card-body">
+            <div class="steps">
+                <h3>使用步骤</h3>
+                <ol>
+                    <li>用户打开软件 → 弹窗显示「唯一序列号」→ 复制发给你</li>
+                    <li>将唯一序列号粘贴到下方输入框 → 设置有效期 → 生成激活码</li>
+                    <li>将生成的激活码发给用户 → 用户粘贴激活 → 软件可用</li>
+                </ol>
+            </div>
+
+            <div class="form-group">
+                <label>唯一序列号</label>
+                <input type="text" id="genSerialNumber" placeholder="粘贴客户端弹窗中的唯一序列号">
+                <div class="hint">由客户端软件自动生成，包含设备信息，服务端将自动解析</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>有效期</label>
+                    <input type="number" id="genExpireMinutes" value="60" min="1" max="43200">
+                    <div class="expire-presets">
+                        <button onclick="setExpire(5)">5分钟</button>
+                        <button onclick="setExpire(60)">1小时</button>
+                        <button onclick="setExpire(1440)">1天</button>
+                        <button onclick="setExpire(43200)">30天</button>
+                    </div>
+                    <div class="hint">最长支持30天有效期</div>
+                </div>
+            </div>
+
+            <button class="btn-generate" id="btnGenerate" onclick="generateCode()">生成激活码</button>
+
+            <div id="genResult" class="result-box"></div>
+        </div>
+    </div>
+
+    <script>
+        function setExpire(minutes) {
+            document.getElementById('genExpireMinutes').value = minutes;
+        }
+
+        function copyText(btn) {
+            const codeBox = btn.parentElement;
+            const text = codeBox.textContent.replace('复制', '').trim();
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = '已复制';
+                setTimeout(() => btn.textContent = '复制', 1500);
+            });
+        }
+
+        function showResult(div, success, html) {
+            div.className = 'result-box ' + (success ? 'success' : 'error');
+            div.innerHTML = html;
+        }
+
+        async function generateCode() {
+            const serialNumber = document.getElementById('genSerialNumber').value.trim();
+            const expireMinutes = parseInt(document.getElementById('genExpireMinutes').value);
+            const resultDiv = document.getElementById('genResult');
+            const btn = document.getElementById('btnGenerate');
+
+            if (!serialNumber) { showResult(resultDiv, false, '<p style="color:#dc2626;">请输入唯一序列号</p>'); return; }
+            if (!expireMinutes || expireMinutes <= 0) { showResult(resultDiv, false, '<p style="color:#dc2626;">请输入有效的有效期</p>'); return; }
+            if (expireMinutes > 43200) { showResult(resultDiv, false, '<p style="color:#dc2626;">有效期最长30天</p>'); return; }
+
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            try {
+                const resp = await fetch('/api/activation/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serialNumber, expireMinutes })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
+                    let infoHtml = '';
+                    if (data.initialSerial) {
+                        infoHtml += `<p><span class="rl">初始序列号：</span><span class="rv">${data.initialSerial}</span></p>`;
+                    }
+                    if (data.machineCode) {
+                        infoHtml += `<p><span class="rl">机器码：</span><span class="rv">${data.machineCode}</span></p>`;
+                    }
+                    showResult(resultDiv, true, `
+                        <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
+                        ${infoHtml}
+                        <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
+                        <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
+                        <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
+                    `);
+                } else {
+                    let html = `<p style="color:#dc2626;">${data.message}</p>`;
+                    if (data.activationCode) {
+                        const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
+                        html += `<p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>`;
+                        html += `<div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>`;
+                    }
+                    showResult(resultDiv, false, html);
+                }
+            } catch (e) {
+                showResult(resultDiv, false, '<p style="color:#dc2626;">请求失败: ' + e.message + '</p>');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '生成激活码';
+            }
+        }
+    </script>
+</body>
+</html>

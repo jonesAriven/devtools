@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -9,7 +7,6 @@ namespace Jones.Activation
     public class ActivationVerifier
     {
         private readonly RSA _rsa;
-        private const byte ENCRYPT_KEY = 0x5A;
 
         public ActivationVerifier(string publicKeyPem)
         {
@@ -96,11 +93,14 @@ namespace Jones.Activation
                     return VerifyResult.Fail("设备不匹配", serialNumber, deviceId, expireTimestamp, true);
                 }
 
-                bool expired = expireTimestamp < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (expired)
+                long currentTimestamp = TimeGuard.GetTrustedTimestamp(serialNumber, expireTimestamp);
+
+                if (expireTimestamp < currentTimestamp)
                 {
                     return VerifyResult.Fail("激活码已过期", serialNumber, deviceId, expireTimestamp, false);
                 }
+
+                TimeGuard.RecordActivation(serialNumber, expireTimestamp);
 
                 return VerifyResult.Ok(serialNumber, deviceId, expireTimestamp);
             }
@@ -140,74 +140,6 @@ namespace Jones.Activation
             }
             padded = padded.Replace('-', '+').Replace('_', '/');
             return Convert.FromBase64String(padded);
-        }
-    }
-
-    public static class AntiDebug
-    {
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CheckRemoteDebuggerPresent(IntPtr hProcess, ref bool isDebuggerPresent);
-
-        [DllImport("kernel32.dll")]
-        private static extern uint GetTickCount();
-
-        public static bool IsBeingDebugged()
-        {
-            if (Debugger.IsAttached)
-                return true;
-
-            bool isDebuggerPresent = false;
-            CheckRemoteDebuggerPresent(Process.GetCurrentProcess().Handle, ref isDebuggerPresent);
-            if (isDebuggerPresent)
-                return true;
-
-            uint start = GetTickCount();
-            for (int i = 0; i < 100000000; i++) { }
-            uint end = GetTickCount();
-
-            if (end - start < 10)
-                return true;
-
-            return false;
-        }
-    }
-
-    public class VerifyResult
-    {
-        public bool Success { get; }
-        public string Message { get; }
-        public string SerialNumber { get; }
-        public string DeviceId { get; }
-        public long ExpireTimestamp { get; }
-        public bool Expired { get; }
-        public bool DeviceMismatch { get; }
-
-        private VerifyResult(bool success, string message, string serialNumber, 
-                            string deviceId, long expireTimestamp, bool expired, bool deviceMismatch)
-        {
-            Success = success;
-            Message = message;
-            SerialNumber = serialNumber;
-            DeviceId = deviceId;
-            ExpireTimestamp = expireTimestamp;
-            Expired = expired;
-            DeviceMismatch = deviceMismatch;
-        }
-
-        public static VerifyResult Ok(string serialNumber, string deviceId, long expireTimestamp)
-        {
-            return new VerifyResult(true, "验证成功", serialNumber, deviceId, expireTimestamp, false, false);
-        }
-
-        public static VerifyResult Fail(string message)
-        {
-            return new VerifyResult(false, message, null, null, 0, false, false);
-        }
-
-        public static VerifyResult Fail(string message, string serialNumber, string deviceId, 
-                                       long expireTimestamp, bool deviceMismatch)
-        {
-            return new VerifyResult(false, message, serialNumber, deviceId, expireTimestamp, !deviceMismatch, deviceMismatch);
         }
     }
 }
