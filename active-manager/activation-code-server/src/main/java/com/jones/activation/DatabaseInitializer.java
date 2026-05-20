@@ -1,9 +1,28 @@
+package com.jones.activation;
+
+import com.jones.activation.controller.AuthController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
-public class DatabaseInitializer {
-    public static void main(String[] args) {
+@Component
+public class DatabaseInitializer implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
+
+    private final AuthController authController;
+
+    public DatabaseInitializer(AuthController authController) {
+        this.authController = authController;
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
         String url = "jdbc:mysql://192.168.31.182:3306?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true";
         String username = "tools";
         String password = "toolsmarschat";
@@ -14,12 +33,40 @@ public class DatabaseInitializer {
             "CREATE TABLE IF NOT EXISTS activation_record (" +
             "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
             "    serial_number VARCHAR(512) NOT NULL COMMENT '唯一序列号'," +
+            "    device_id VARCHAR(128) DEFAULT '' COMMENT '设备ID'," +
             "    activation_code TEXT NOT NULL COMMENT '激活码'," +
             "    expire_time BIGINT NOT NULL COMMENT '过期时间戳(毫秒)'," +
+            "    activated_time DATETIME DEFAULT NULL COMMENT '激活时间'," +
+            "    expire_minutes INT DEFAULT NULL COMMENT '有效期(分钟)'," +
+            "    initial_serial VARCHAR(256) DEFAULT NULL COMMENT '初始序列号'," +
+            "    machine_code VARCHAR(256) DEFAULT NULL COMMENT '机器码'," +
             "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
             "    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
             "    UNIQUE KEY uk_serial_number (serial_number)" +
-            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='激活码记录表'"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='激活码记录表'",
+            "CREATE TABLE IF NOT EXISTS activation_log (" +
+            "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+            "    record_id BIGINT DEFAULT NULL COMMENT '关联记录ID'," +
+            "    serial_number VARCHAR(512) DEFAULT NULL COMMENT '唯一序列号'," +
+            "    device_id VARCHAR(128) DEFAULT NULL COMMENT '设备ID'," +
+            "    event_type VARCHAR(32) NOT NULL COMMENT '事件类型'," +
+            "    event_message VARCHAR(512) DEFAULT NULL COMMENT '事件消息'," +
+            "    client_ip VARCHAR(64) DEFAULT NULL COMMENT '客户端IP'," +
+            "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
+            "    INDEX idx_record_id (record_id)," +
+            "    INDEX idx_serial_number (serial_number)," +
+            "    INDEX idx_event_type (event_type)," +
+            "    INDEX idx_create_time (create_time)" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='稽核日志表'",
+            "CREATE TABLE IF NOT EXISTS admin_user (" +
+            "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+            "    username VARCHAR(64) NOT NULL COMMENT '用户名'," +
+            "    password VARCHAR(128) NOT NULL COMMENT '密码哈希'," +
+            "    salt VARCHAR(64) NOT NULL COMMENT '盐值'," +
+            "    last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间'," +
+            "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
+            "    UNIQUE KEY uk_username (username)" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员用户表'"
         };
 
         try {
@@ -28,15 +75,18 @@ public class DatabaseInitializer {
             Statement stmt = conn.createStatement();
 
             for (String sql : sqlStatements) {
-                System.out.println("Executing: " + sql);
+                log.info("执行建表语句: {}", sql.substring(0, Math.min(sql.length(), 80)));
                 stmt.execute(sql);
             }
 
             stmt.close();
             conn.close();
-            System.out.println("Database initialization completed successfully!");
+            log.info("数据库表初始化完成");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("数据库初始化失败", e);
         }
+
+        // 初始化默认管理员账号
+        authController.initDefaultAdmin();
     }
 }

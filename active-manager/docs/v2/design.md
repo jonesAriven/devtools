@@ -205,13 +205,13 @@ VerifyResult移除了Message字段，不返回任何文字描述。
 
 | 方法 | 路径 | 功能 |
 |------|------|------|
-| POST | /api/activation/generate | 生成激活码 |
-| POST | /api/activation/verify | 验证激活码 |
-| GET | /api/activation/list | 查询激活码记录 |
-| GET | /api/activation/logs | 查询操作日志 |
-| GET | /api/activation/parse-code | 解析激活码内容 |
-| GET | /api/activation/parse-serial | 解析序列号信息 |
-| DELETE | /api/activation/{id} | 删除激活码记录 |
+| POST | /activecode/api/activation/generate | 生成激活码 |
+| POST | /activecode/api/activation/verify | 验证激活码 |
+| GET | /activecode/api/activation/list | 查询激活码记录 |
+| GET | /activecode/api/activation/logs | 查询操作日志 |
+| GET | /activecode/api/activation/parse-code | 解析激活码内容 |
+| GET | /activecode/api/activation/parse-serial | 解析序列号信息 |
+| DELETE | /activecode/api/activation/{id} | 删除激活码记录 |
 
 ### 4.2 验证工具公共API
 

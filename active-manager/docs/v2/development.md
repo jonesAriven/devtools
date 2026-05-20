@@ -8,15 +8,18 @@ active-manager/
 │   ├── src/main/java/com/jones/activation/
 │   │   ├── ActivationCodeServerApplication.java
 │   │   ├── controller/
-│   │   │   └── ActivationController.java    # 7个REST端点
+│   │   │   ├── ActivationController.java    # 7个REST端点
+│   │   │   └── AuthController.java          # 登录/登出/会话/改密码
 │   │   ├── service/
 │   │   │   └── ActivationService.java       # 生成/验证/查询/日志/解析
 │   │   ├── mapper/
 │   │   │   ├── ActivationRecordMapper.java
-│   │   │   └── ActivationLogMapper.java
+│   │   │   ├── ActivationLogMapper.java
+│   │   │   └── AdminUserMapper.java
 │   │   ├── entity/
 │   │   │   ├── ActivationRecord.java        # 11个字段
-│   │   │   └── ActivationLog.java           # 8个字段
+│   │   │   ├── ActivationLog.java           # 8个字段
+│   │   │   └── AdminUser.java               # 管理员用户
 │   │   ├── dto/
 │   │   │   ├── GenerateRequest.java         # serialNumber, deviceId, expireMinutes
 │   │   │   ├── GenerateResponse.java        # 含initialSerial, machineCode
@@ -26,14 +29,16 @@ active-manager/
 │   │   │   └── CryptoUtil.java              # RSA签名/验签/序列号解密
 │   │   └── config/
 │   │       ├── RsaKeyConfig.java            # 密钥加载
-│   │       └── WebMvcConfig.java            # 静态资源不缓存
+│   │       ├── AuthInterceptor.java         # 认证拦截器
+│   │       └── WebMvcConfig.java            # 静态资源不缓存+拦截器注册
 │   ├── src/main/resources/
 │   │   ├── application.yml
 │   │   ├── schema.sql
 │   │   └── static/
-│   │       ├── index.html                   # 管理后台（4标签）
-│   │       ├── tool.html                    # 独立生成页面
-│   │       └── admin.html                   # 重定向到index.html
+│   │       └── activecode/
+│   │           ├── main.html            # 管理后台（4标签）
+│   │           ├── login.html           # 登录页面
+│   │           └── index.html           # 独立生成页面
 │   ├── rsa_keys/
 │   │   ├── private_key.pem
 │   │   └── public_key.pem

@@ -255,7 +255,7 @@ namespace Jones.Activation
             {
                 using var form = new Form();
                 form.Text = "软件激活";
-                form.Size = new Size(500, 300);
+                form.Size = new Size(500, 360);
                 form.StartPosition = FormStartPosition.CenterScreen;
                 form.FormBorderStyle = FormBorderStyle.FixedDialog;
                 form.MaximizeBox = false;
@@ -331,10 +331,50 @@ namespace Jones.Activation
                 };
                 form.Controls.Add(lblHint);
 
+                var lblUrl = new Label
+                {
+                    Text = "获取激活码：",
+                    Location = new Point(20, 236),
+                    Size = new Size(100, 20),
+                    Font = new Font("微软雅黑", 8)
+                };
+                form.Controls.Add(lblUrl);
+
+                var linkUrl = new LinkLabel
+                {
+                    Text = "https://tools.marschat.online/activecode/index.html",
+                    Location = new Point(95, 236),
+                    Size = new Size(365, 20),
+                    ForeColor = Color.FromArgb(0, 120, 212),
+                    Font = new Font("微软雅黑", 8),
+                    AutoSize = true,
+                    LinkBehavior = LinkBehavior.AlwaysUnderline,
+                    Padding = new Padding(0)
+                };
+                linkUrl.LinkClicked += (_, e) =>
+                {
+                    try { System.Diagnostics.Process.Start(linkUrl.Text); } catch { }
+                };
+                form.Controls.Add(linkUrl);
+
+                var btnCopyUrl = new Button
+                {
+                    Text = "复制地址",
+                    Location = new Point(20, 256),
+                    Size = new Size(100, 22),
+                    Font = new Font("微软雅黑", 8)
+                };
+                btnCopyUrl.Click += (_, _) =>
+                {
+                    Clipboard.SetText(linkUrl.Text);
+                    btnCopyUrl.Text = "已复制";
+                };
+                form.Controls.Add(btnCopyUrl);
+
                 var btnActivate = new Button
                 {
                     Text = "激活",
-                    Location = new Point(300, 245),
+                    Location = new Point(300, 300),
                     Size = new Size(80, 28),
                     BackColor = Color.FromArgb(0, 120, 212),
                     ForeColor = Color.White,
@@ -345,7 +385,7 @@ namespace Jones.Activation
                 var btnExit = new Button
                 {
                     Text = "退出",
-                    Location = new Point(390, 245),
+                    Location = new Point(390, 300),
                     Size = new Size(80, 28)
                 };
 

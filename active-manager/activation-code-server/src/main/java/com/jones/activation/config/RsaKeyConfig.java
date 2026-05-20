@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,22 +32,38 @@ public class RsaKeyConfig {
 
     @Bean
     public CryptoUtil cryptoUtil() throws IOException {
-        Path privPath = Paths.get(privateKeyPath);
-        Path pubPath = Paths.get(publicKeyPath);
-
-        if (!Files.exists(privPath) || !Files.exists(pubPath)) {
-            log.info("RSA密钥对不存在，正在生成新的密钥对...");
-            generateAndSaveKeyPair(privPath, pubPath);
-        }
-
-        String privateKeyPem = Files.readString(privPath);
-        String publicKeyPem = Files.readString(pubPath);
+        // 优先从 classpath 读取，找不到再从文件系统读取
+        String privateKeyPem = readKeyResource(privateKeyPath);
+        String publicKeyPem = readKeyResource(publicKeyPath);
 
         PrivateKey privateKey = CryptoUtil.parsePrivateKey(privateKeyPem);
         PublicKey publicKey = CryptoUtil.parsePublicKey(publicKeyPem);
 
         log.info("RSA密钥对加载成功");
         return new CryptoUtil(privateKey, publicKey);
+    }
+
+    private String readKeyResource(String path) throws IOException {
+        // 优先从 classpath 读取
+        InputStream is = getClass().getClassLoader().getResourceAsStream(path);
+        if (is != null) {
+            try (is) {
+                log.info("从 classpath 加载密钥: {}", path);
+                return new String(is.readAllBytes());
+            }
+        }
+        // 回退到文件系统
+        Path filePath = Paths.get(path);
+        if (Files.exists(filePath)) {
+            log.info("从文件系统加载密钥: {}", filePath.toAbsolutePath());
+            return Files.readString(filePath);
+        }
+        // 密钥不存在，生成新的
+        log.info("RSA密钥对不存在，正在生成新的密钥对...");
+        Path privPath = Paths.get(privateKeyPath);
+        Path pubPath = Paths.get(publicKeyPath);
+        generateAndSaveKeyPair(privPath, pubPath);
+        return Files.readString(privPath);
     }
 
     private void generateAndSaveKeyPair(Path privPath, Path pubPath) throws IOException {

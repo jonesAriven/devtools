@@ -10,10 +10,17 @@ mvn spring-boot:run
 ```
 
 启动后访问：
-- 管理后台：http://localhost:8080/
-- 独立生成页面：http://localhost:8080/tool.html
+- 管理后台：http://localhost:8080/activecode/main.html（会自动跳转到登录页）
+- 登录页：http://localhost:8080/activecode/login.html
+- 独立生成页面：http://localhost:8080/activecode/index.html
 
-### 1.2 管理后台（http://localhost:8080/）
+**默认管理员账号**：`admin` / `admin123`（首次启动时自动初始化，请及时修改密码）
+
+### 1.2 登录
+
+访问管理后台会自动跳转到登录页，输入用户名和密码登录。登录后可点击右上角"退出登录"退出。
+
+### 1.3 管理后台（http://localhost:8080/activecode/main.html）
 
 管理后台包含四个标签页：
 
@@ -57,7 +64,7 @@ mvn spring-boot:run
 - 解析激活码：输入激活码，查看序列号、设备ID、过期时间、初始序列号、机器码
 - 解析序列号：输入序列号，查看初始序列号和机器码，关联数据库显示记录详情
 
-### 1.3 独立生成页面（http://localhost:8080/tool.html）
+### 1.4 独立生成页面（http://localhost:8080/activecode/index.html）
 
 简洁的单卡片页面，仅提供生成激活码功能：
 - 使用步骤说明（3步流程）

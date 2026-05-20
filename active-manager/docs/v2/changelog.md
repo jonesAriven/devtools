@@ -242,3 +242,46 @@ dotnet publish                   → 打包单文件exe
 | ~~DLL强名称签名~~ | ~~中~~ | 已实现 |
 | 服务端Token机制 | 低 | 需客户端联网，当前场景为离线工具，暂不实施 |
 | VMProtect虚拟化 | 低 | 商业工具，成本较高 |
+
+---
+
+## 迭代7：管理后台登录功能 + 页面路径重构
+
+### 变更内容
+
+1. **管理后台登录功能**
+   - 新增 AdminUser 实体类 + AdminUserMapper
+   - 新增 AuthController：登录/登出/会话检查/修改密码
+   - 新增 AuthInterceptor：未登录API返回401，页面请求重定向到登录页
+   - WebMvcConfig 注册拦截器，排除登录页/工具页/验证接口
+   - 登录页 login.html：紫色渐变卡片式设计
+   - 管理后台 main.html：header显示用户名+退出按钮，401自动跳转登录
+   - 密码加密：SHA-256 + 随机盐值
+   - 默认管理员账号：admin / admin123（启动时自动初始化）
+
+2. **页面路径重构**
+   - 所有页面迁移到 `/activecode/` 子目录
+   - 旧路径 → 新路径：
+     - `/index.html` → `/activecode/main.html`（管理后台）
+     - `/login.html` → `/activecode/login.html`（登录页）
+     - `/tool.html` → `/activecode/index.html`（独立工具页）
+   - 删除旧的4个HTML文件（index.html, login.html, tool.html, admin.html）
+   - 后端拦截器重定向路径同步更新
+
+### 涉及文件
+
+| 文件 | 变更 |
+|------|------|
+| AdminUser.java | 新增，管理员实体类 |
+| AdminUserMapper.java | 新增，管理员Mapper |
+| AuthController.java | 新增，登录/登出/会话/改密码控制器 |
+| AuthInterceptor.java | 新增，认证拦截器 |
+| WebMvcConfig.java | 修改，注册拦截器+更新排除路径 |
+| DatabaseInitializer.java | 修改，新增admin_user建表+初始化管理员 |
+| activecode/main.html | 新增，管理后台（原index.html） |
+| activecode/login.html | 新增，登录页面 |
+| activecode/index.html | 新增，独立工具页（原tool.html） |
+| index.html (旧) | 删除 |
+| login.html (旧) | 删除 |
+| tool.html (旧) | 删除 |
+| admin.html (旧) | 删除 |

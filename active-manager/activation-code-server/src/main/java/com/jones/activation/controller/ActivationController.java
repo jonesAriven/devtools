@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/activation")
+@RequestMapping("/activecode/api/activation")
 public class ActivationController {
 
     private static final Logger log = LoggerFactory.getLogger(ActivationController.class);
