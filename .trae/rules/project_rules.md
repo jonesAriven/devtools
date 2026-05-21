@@ -74,3 +74,8 @@
 - server 不关心客户端是什么语言，只关心加密序列号的解密和激活码的生成/验证
 - 新工具软件接入时，只需引用 verifier 对应语言的库，调用 API 即可
 - 唯一序列号的加密方式(XOR 0x5A + Base64)在 server 和 verifier 中必须保持一致
+
+## 工具安装规则
+
+- 所有需要自动安装的软件/工具，必须安装到 `E:\huliang\softWare` 目录下
+- 禁止安装到其他目录（如 C:\Program Files、C:\Users 等）
