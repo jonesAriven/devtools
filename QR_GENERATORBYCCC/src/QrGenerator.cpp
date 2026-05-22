@@ -11,12 +11,18 @@ extern "C" {
 namespace qr {
 
 // Try to encode content into QR code, returns true on success
-static bool tryEncode(const std::string& content, uint8_t* qrcode, uint8_t* tempBuffer) {
+static bool tryEncode(const std::string& content, uint8_t* qrcode, uint8_t* tempBuffer, QrEcl ecl) {
+    qrcodegen_Ecc eclMap[] = {
+        qrcodegen_Ecc_LOW,      // QrEcl::Low
+        qrcodegen_Ecc_MEDIUM,   // QrEcl::Medium
+        qrcodegen_Ecc_QUARTILE, // QrEcl::Quartile
+        qrcodegen_Ecc_HIGH      // QrEcl::High
+    };
     return qrcodegen_encodeText(
         content.c_str(),
         tempBuffer,
         qrcode,
-        qrcodegen_Ecc_LOW,     // Maximum data capacity
+        eclMap[static_cast<int>(ecl)],
         1,                      // minVersion
         40,                     // maxVersion
         qrcodegen_Mask_AUTO,   // auto-select mask
@@ -24,7 +30,7 @@ static bool tryEncode(const std::string& content, uint8_t* qrcode, uint8_t* temp
     );
 }
 
-HBITMAP generateQrBitmap(const std::string& text, bool allowCompress, int pixelSize, bool& outCompressed) {
+HBITMAP generateQrBitmap(const std::string& text, bool allowCompress, int pixelSize, bool& outCompressed, QrEcl ecl) {
     if (text.empty()) { outCompressed = false; return NULL; }
 
     uint8_t* qrcode = new uint8_t[qrcodegen_BUFFER_LEN_MAX];
@@ -36,13 +42,13 @@ HBITMAP generateQrBitmap(const std::string& text, bool allowCompress, int pixelS
     outCompressed = false;
 
     // Step 1: Try without compression (plain text - universally readable)
-    ok = tryEncode(text, qrcode, tempBuffer);
+    ok = tryEncode(text, qrcode, tempBuffer, ecl);
 
     // Step 2: If plain text fails (too long) and compression allowed, try compressed
     if (!ok && allowCompress) {
         try {
             std::string compressed = compressText(text, true);
-            ok = tryEncode(compressed, qrcode, tempBuffer);
+            ok = tryEncode(compressed, qrcode, tempBuffer, ecl);
             if (ok) outCompressed = true;
         } catch (...) {
             ok = false;

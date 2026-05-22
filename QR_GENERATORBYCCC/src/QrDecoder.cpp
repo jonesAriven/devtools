@@ -2,7 +2,11 @@
 #include "ImageProcess.h"
 #include "Compressor.h"
 
-#include "ReadBarcode.h"
+#include "qrcode/QRReader.h"
+#include "BinaryBitmap.h"
+#include "HybridBinarizer.h"
+#include "ImageView.h"
+#include "ReaderOptions.h"
 #include <gdiplus.h>
 #include <algorithm>
 #include <cstring>
@@ -26,7 +30,7 @@ static void logDec(const std::string& msg) {
     }
 }
 
-// Decode using ZXing with grayscale data
+// Decode using ZXing QRReader directly (avoids MultiFormatReader pulling in all formats)
 static DecodeResult decodeWithZXing(const std::vector<uint8_t>& gray, int width, int height, const std::string& strategyName) {
     DecodeResult result = {false, "", strategyName};
 
@@ -37,14 +41,14 @@ static DecodeResult decodeWithZXing(const std::vector<uint8_t>& gray, int width,
         ZXing::ReaderOptions options;
         options.setTryHarder(true);
         options.setTryRotate(true);
-        options.setFormats(ZXing::BarcodeFormat::QRCode);
 
-        auto barcodes = ZXing::ReadBarcodes(image, options);
+        ZXing::QRCode::Reader reader(options);
+        ZXing::HybridBinarizer binarizer(image);
+        auto barcode = reader.decode(binarizer);
 
-        if (!barcodes.empty()) {
+        if (barcode.isValid()) {
             result.success = true;
-            // ZXing::Result::text() returns std::string in zxing-cpp v2.x
-            result.text = barcodes[0].text();
+            result.text = barcode.text();
             logDec("ZXing decode SUCCESS [" + strategyName + "], text_len=" + std::to_string(result.text.size()));
         } else {
             logDec("ZXing decode no barcode found [" + strategyName + "]");

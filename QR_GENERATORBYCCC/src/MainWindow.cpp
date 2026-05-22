@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "Resource.h"
 #include "QrGenerator.h"
 #include "QrDecoder.h"
 #include "Compressor.h"
@@ -31,6 +32,7 @@ static void logToFile(const std::string& msg) {
 #define IDC_BTN_CAPTURE   1002
 #define IDC_BTN_UPLOAD    1003
 #define IDC_TXT_CONTENT   1005
+#define IDC_CMB_ECL       1006
 #define IDT_TEXT_CHANGED   2001
 
 namespace qr {
@@ -49,10 +51,14 @@ MainWindow::MainWindow(HINSTANCE hInstance)
     , m_hBtnCapture(nullptr)
     , m_hBtnUpload(nullptr)
     , m_hTxtContent(nullptr)
+    , m_hCmbEcl(nullptr)
     , m_hQrBitmap(nullptr)
     , m_hFont(nullptr)
+    , m_hFontBold(nullptr)
+    , m_hCompressBrush(nullptr)
     , m_compress(true)
     , m_lastCompressed(false)
+    , m_eclLevel(0)
     , m_qrRect({})
 {
 }
@@ -70,42 +76,34 @@ MainWindow::~MainWindow()
         DeleteObject(m_hFont);
         m_hFont = nullptr;
     }
+    if (m_hFontBold) {
+        DeleteObject(m_hFontBold);
+        m_hFontBold = nullptr;
+    }
+    if (m_hCompressBrush) {
+        DeleteObject(m_hCompressBrush);
+        m_hCompressBrush = nullptr;
+    }
 }
 
 bool MainWindow::Create()
 {
-    // Create a hand-drawn 16x16 QR-like icon
-    static BYTE andMask[32] = {
-        0xFF, 0xFF, 0xC0, 0x03, 0xBF, 0xFD, 0xBF, 0xFD,
-        0xAF, 0xF5, 0xAF, 0xF5, 0xBF, 0xFD, 0xBF, 0xFD,
-        0xC0, 0x03, 0xFF, 0xFF, 0xF0, 0x0F, 0xCF, 0xF3,
-        0xCF, 0xF3, 0xF0, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF
-    };
-    static BYTE xorMask[32] = {
-        0x00, 0x00, 0x3F, 0xFC, 0x20, 0x04, 0x2D, 0x44,
-        0x20, 0x04, 0x2D, 0x44, 0x20, 0x04, 0x2D, 0x44,
-        0x3F, 0xFC, 0x00, 0x00, 0x0F, 0xF0, 0x08, 0x10,
-        0x08, 0x10, 0x0F, 0xF0, 0x00, 0x00, 0x00, 0x00
-    };
-
-    ICONINFO iconInfo = {};
-    iconInfo.fIcon = TRUE;
-    iconInfo.xHotspot = 0;
-    iconInfo.yHotspot = 0;
-    iconInfo.hbmMask = CreateBitmap(16, 16, 1, 1, andMask);
-    iconInfo.hbmColor = CreateBitmap(16, 16, 1, 1, xorMask);
-    HICON hIcon = CreateIconIndirect(&iconInfo);
+    // Load icons from embedded resource (app.ico embedded via resource.rc)
+    // This ensures the taskbar pinned icon matches the running app icon
+    HICON hIconLarge = LoadIconW(m_hInstance, MAKEINTRESOURCEW(IDR_ICON1));
+    HICON hIconSmall = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDR_ICON1),
+        IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
 
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = m_hInstance;
-    wc.hIcon = hIcon;
+    wc.hIcon = hIconLarge;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = CLASS_NAME;
-    wc.hIconSm = hIcon;
+    wc.hIconSm = hIconSmall;
 
     if (!RegisterClassExW(&wc)) {
         DWORD err = GetLastError();
@@ -129,6 +127,10 @@ bool MainWindow::Create()
     if (!m_hWnd) {
         return false;
     }
+
+    // Set window icons explicitly (ensures taskbar shows the large icon)
+    SendMessage(m_hWnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(hIconLarge));
+    SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIconSmall));
 
     return true;
 }
@@ -200,6 +202,11 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
                 OnTextChanged();
             }
             break;
+        case IDC_CMB_ECL:
+            if (wmEvent == CBN_SELCHANGE) {
+                OnEclChanged();
+            }
+            break;
         default:
             return DefWindowProcW(m_hWnd, message, wParam, lParam);
         }
@@ -217,6 +224,20 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdcEdit = reinterpret_cast<HDC>(wParam);
         SetBkColor(hdcEdit, RGB(255, 255, 255));
         return reinterpret_cast<LRESULT>(GetStockObject(WHITE_BRUSH));
+    }
+
+    case WM_CTLCOLORSTATIC: {
+        HDC hdcStatic = reinterpret_cast<HDC>(wParam);
+        HWND hCtrl = reinterpret_cast<HWND>(lParam);
+        if (hCtrl == m_hLblCompress) {
+            SetTextColor(hdcStatic, RGB(0, 160, 0));
+            SetBkColor(hdcStatic, RGB(240, 240, 240));
+            if (!m_hCompressBrush) {
+                m_hCompressBrush = CreateSolidBrush(RGB(240, 240, 240));
+            }
+            return reinterpret_cast<LRESULT>(m_hCompressBrush);
+        }
+        return DefWindowProcW(m_hWnd, message, wParam, lParam);
     }
 
     case WM_ERASEBKGND:
@@ -316,21 +337,36 @@ void MainWindow::BuildUI()
         L"Microsoft YaHei"
     );
 
-    // Toolbar controls
+    // Create bold font for compress label
+    m_hFontBold = CreateFontW(
+        -MulDiv(10, 96, 72),
+        0, 0, 0, FW_BOLD,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE,
+        L"Microsoft YaHei"
+    );
+
+    // Toolbar layout (left to right):
+    // [已压缩] [截图] [上传]  ...  [纠错率: ▼]
+
     // Compress status label (hidden by default, shown when compressed)
     m_hLblCompress = CreateWindowExW(
         0, L"STATIC", L"",
         WS_CHILD | WS_VISIBLE | SS_LEFT,
-        5, 7, 80, 18,
+        5, 7, 50, 18,
         m_hWnd, reinterpret_cast<HMENU>(IDC_CHK_COMPRESS),
         m_hInstance, nullptr
     );
-    SendMessageW(m_hLblCompress, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+    SendMessageW(m_hLblCompress, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFontBold), TRUE);
 
     m_hBtnCapture = CreateWindowExW(
         0, L"BUTTON", L"\u622A\u56FE",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        90, 3, 40, 24,
+        58, 3, 40, 24,
         m_hWnd, reinterpret_cast<HMENU>(IDC_BTN_CAPTURE),
         m_hInstance, nullptr
     );
@@ -339,11 +375,26 @@ void MainWindow::BuildUI()
     m_hBtnUpload = CreateWindowExW(
         0, L"BUTTON", L"\u4E0A\u4F20",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        135, 3, 40, 24,
+        102, 3, 40, 24,
         m_hWnd, reinterpret_cast<HMENU>(IDC_BTN_UPLOAD),
         m_hInstance, nullptr
     );
     SendMessageW(m_hBtnUpload, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+
+    // Error correction level dropdown (right side of toolbar)
+    m_hCmbEcl = CreateWindowExW(
+        0, L"COMBOBOX", L"",
+        WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+        380, 2, 55, 200,
+        m_hWnd, reinterpret_cast<HMENU>(IDC_CMB_ECL),
+        m_hInstance, nullptr
+    );
+    SendMessageW(m_hCmbEcl, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+    SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"L"));
+    SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"M"));
+    SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Q"));
+    SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"H"));
+    SendMessageW(m_hCmbEcl, CB_SETCURSEL, 0, 0);  // Default: L
 
     // Text input/output (no STATIC control for QR - we paint it ourselves)
     m_hTxtContent = CreateWindowExW(
@@ -386,6 +437,8 @@ void MainWindow::ResizeControls()
 
     m_qrRect = { imgX, imgY, imgX + imgW, imgY + imgH };
     MoveWindow(m_hTxtContent, PADDING, txtY, width - 2 * PADDING, txtH, TRUE);
+    // Move ECL dropdown to right side of toolbar
+    MoveWindow(m_hCmbEcl, width - 60, 2, 55, 200, TRUE);
     InvalidateRect(m_hWnd, nullptr, TRUE);
 }
 
@@ -400,8 +453,9 @@ void MainWindow::GenerateQr()
             return;
         }
 
+        QrEcl ecl = static_cast<QrEcl>(m_eclLevel);
         bool compressed = false;
-        HBITMAP hNewBmp = qr::generateQrBitmap(text, m_compress, 600, compressed);
+        HBITMAP hNewBmp = qr::generateQrBitmap(text, m_compress, 600, compressed, ecl);
         if (hNewBmp) {
             logToFile("GenerateQr: bitmap created OK, compressed=" + std::to_string(compressed));
         } else {
@@ -528,6 +582,15 @@ void MainWindow::OnTextChanged()
 {
     KillTimer(m_hWnd, IDT_TEXT_CHANGED);
     SetTimer(m_hWnd, IDT_TEXT_CHANGED, DEBOUNCE_MS, nullptr);
+}
+
+void MainWindow::OnEclChanged()
+{
+    int sel = static_cast<int>(SendMessageW(m_hCmbEcl, CB_GETCURSEL, 0, 0));
+    if (sel != CB_ERR && sel != m_eclLevel) {
+        m_eclLevel = sel;
+        GenerateQr();
+    }
 }
 
 void MainWindow::UpdateQrImage(HBITMAP hBmp)

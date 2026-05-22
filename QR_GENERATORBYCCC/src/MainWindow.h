@@ -23,6 +23,7 @@ private:
     void OnCapture();
     void OnUpload();
     void OnTextChanged();
+    void OnEclChanged();
     void UpdateQrImage(HBITMAP hBmp);
     void SetText(const std::string& text);
     std::string GetText() const;
@@ -36,11 +37,15 @@ private:
     HWND m_hBtnCapture;
     HWND m_hBtnUpload;
     HWND m_hTxtContent;
+    HWND m_hCmbEcl;
 
     HBITMAP m_hQrBitmap;
     HFONT m_hFont;
+    HFONT m_hFontBold;
+    HBRUSH m_hCompressBrush;
     bool m_compress;
     bool m_lastCompressed;
+    int m_eclLevel;  // 0=L, 1=M, 2=Q, 3=H
     RECT m_qrRect;  // QR code display area
 };
 
