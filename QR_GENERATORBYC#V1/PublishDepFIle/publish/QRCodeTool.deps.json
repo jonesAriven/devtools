@@ -1,11 +1,11 @@
 {
   "runtimeTarget": {
-    "name": ".NETCoreApp,Version=v10.0",
+    "name": ".NETCoreApp,Version=v6.0",
     "signature": ""
   },
   "compilationOptions": {},
   "targets": {
-    ".NETCoreApp,Version=v10.0": {
+    ".NETCoreApp,Version=v6.0": {
       "QRCodeTool/1.0.0": {
         "dependencies": {
           "ZXing.Net": "0.16.11",
@@ -17,7 +17,7 @@
       },
       "ZXing.Net/0.16.11": {
         "runtime": {
-          "lib/net9.0/zxing.dll": {
+          "lib/net6.0/zxing.dll": {
             "assemblyVersion": "0.16.11.0",
             "fileVersion": "0.16.11.0"
           }
@@ -28,7 +28,7 @@
           "ZXing.Net": "0.16.11"
         },
         "runtime": {
-          "lib/net9.0/ZXing.Windows.Compatibility.dll": {
+          "lib/netcoreapp3.1/ZXing.Windows.Compatibility.dll": {
             "assemblyVersion": "0.16.14.0",
             "fileVersion": "0.16.14.0"
           }

@@ -16,34 +16,62 @@ namespace Jones.Activation
 
         public VerifyResult Verify(string activationCode)
         {
+            return Verify(activationCode, null);
+        }
+
+        public VerifyResult Verify(string activationCode, string expectedDeviceId)
+        {
+            if (AntiDebug.IsBeingDebugged())
+            {
+                return VerifyResult.Fail();
+            }
+
+            byte[] payloadBytes = null;
+            byte[] signatureBytes = null;
+
             try
             {
                 if (string.IsNullOrWhiteSpace(activationCode))
                 {
-                    return VerifyResult.Fail("激活码不能为空");
+                    return VerifyResult.Fail();
                 }
 
                 string[] parts = activationCode.Split('.');
                 if (parts.Length != 2)
                 {
-                    return VerifyResult.Fail("激活码格式无效");
+                    return VerifyResult.Fail();
                 }
 
-                byte[] payloadBytes = Base64UrlDecode(parts[0]);
-                byte[] signatureBytes = Base64UrlDecode(parts[1]);
+                payloadBytes = Base64UrlDecode(parts[0]);
+                signatureBytes = Base64UrlDecode(parts[1]);
 
                 string payload = Encoding.UTF8.GetString(payloadBytes);
                 string[] payloadParts = payload.Split('|');
-                if (payloadParts.Length != 2)
+
+                string serialNumber;
+                string deviceId;
+                long expireTimestamp;
+
+                if (payloadParts.Length == 2)
                 {
-                    return VerifyResult.Fail("激活码载荷格式无效");
+                    serialNumber = payloadParts[0];
+                    deviceId = "";
+                    expireTimestamp = ParseExpireTime(payloadParts[1]);
+                }
+                else if (payloadParts.Length == 3)
+                {
+                    serialNumber = payloadParts[0];
+                    deviceId = payloadParts[1];
+                    expireTimestamp = ParseExpireTime(payloadParts[2]);
+                }
+                else
+                {
+                    return VerifyResult.Fail();
                 }
 
-                string serialNumber = payloadParts[0];
-                long expireTimestamp;
-                if (!long.TryParse(payloadParts[1], out expireTimestamp))
+                if (expireTimestamp == -1)
                 {
-                    return VerifyResult.Fail("激活码过期时间格式无效");
+                    return VerifyResult.Fail();
                 }
 
                 bool verified = _rsa.VerifyData(
@@ -55,21 +83,51 @@ namespace Jones.Activation
 
                 if (!verified)
                 {
-                    return VerifyResult.Fail("激活码签名验证失败");
+                    return VerifyResult.Fail();
                 }
 
-                bool expired = expireTimestamp < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (expired)
+                if (!string.IsNullOrWhiteSpace(expectedDeviceId) &&
+                    !string.IsNullOrWhiteSpace(deviceId) &&
+                    !deviceId.Equals(expectedDeviceId))
                 {
-                    return VerifyResult.Fail("激活码已过期", serialNumber, expireTimestamp, true);
+                    return VerifyResult.FailDeviceMismatch(serialNumber, deviceId, expireTimestamp);
                 }
 
-                return VerifyResult.Ok(serialNumber, expireTimestamp);
+                long currentTimestamp = TimeGuard.GetTrustedTimestamp(serialNumber, expireTimestamp);
+
+                if (expireTimestamp < currentTimestamp)
+                {
+                    return VerifyResult.FailExpired(serialNumber, deviceId, expireTimestamp);
+                }
+
+                TimeGuard.RecordActivation(serialNumber, expireTimestamp);
+
+                return VerifyResult.Ok(serialNumber, deviceId, expireTimestamp);
             }
-            catch (Exception ex)
+            catch
             {
-                return VerifyResult.Fail("验证激活码异常: " + ex.Message);
+                return VerifyResult.Fail();
             }
+            finally
+            {
+                if (payloadBytes != null)
+                {
+                    Array.Clear(payloadBytes, 0, payloadBytes.Length);
+                }
+                if (signatureBytes != null)
+                {
+                    Array.Clear(signatureBytes, 0, signatureBytes.Length);
+                }
+            }
+        }
+
+        private static long ParseExpireTime(string timeStr)
+        {
+            if (long.TryParse(timeStr, out long result))
+            {
+                return result;
+            }
+            return -1;
         }
 
         private static byte[] Base64UrlDecode(string input)
@@ -82,34 +140,6 @@ namespace Jones.Activation
             }
             padded = padded.Replace('-', '+').Replace('_', '/');
             return Convert.FromBase64String(padded);
-        }
-    }
-
-    public class VerifyResult
-    {
-        public bool Success { get; }
-        public string Message { get; }
-        public string SerialNumber { get; }
-        public long ExpireTimestamp { get; }
-        public bool Expired { get; }
-
-        private VerifyResult(bool success, string message, string serialNumber, long expireTimestamp, bool expired)
-        {
-            Success = success;
-            Message = message;
-            SerialNumber = serialNumber;
-            ExpireTimestamp = expireTimestamp;
-            Expired = expired;
-        }
-
-        public static VerifyResult Ok(string serialNumber, long expireTimestamp)
-        {
-            return new VerifyResult(true, "验证成功", serialNumber, expireTimestamp, false);
-        }
-
-        public static VerifyResult Fail(string message, string serialNumber = null, long expireTimestamp = 0, bool expired = false)
-        {
-            return new VerifyResult(false, message, serialNumber, expireTimestamp, expired);
         }
     }
 }

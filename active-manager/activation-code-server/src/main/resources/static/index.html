@@ -3,302 +3,530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>激活码管理工具</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>激活码管理后台</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 40px 20px;
-        }
-        .container {
-            max-width: 900px;
-            width: 100%;
-        }
-        h1 {
-            text-align: center;
-            color: #fff;
-            margin-bottom: 30px;
-            font-size: 28px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-        }
-        .card h2 {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        .card h2 .icon {
-            display: inline-block;
-            width: 32px;
-            height: 32px;
-            line-height: 32px;
-            text-align: center;
-            border-radius: 8px;
-            color: #fff;
-            margin-right: 8px;
-            font-size: 16px;
-        }
-        .icon-generate { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .icon-verify { background: linear-gradient(135deg, #11998e, #38ef7d); }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        .form-group label {
-            display: block;
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-        .form-group input, .form-group textarea {
-            width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #e8e8e8;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.2s;
-            outline: none;
-        }
-        .form-group input:focus, .form-group textarea:focus {
-            border-color: #667eea;
-        }
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-            font-family: 'Courier New', monospace;
-        }
-        .form-row {
-            display: flex;
-            gap: 16px;
-        }
-        .form-row .form-group {
-            flex: 1;
-        }
-        .btn {
-            padding: 12px 28px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #fff;
-        }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn:active { transform: translateY(0); }
-        .btn-generate { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .btn-verify { background: linear-gradient(135deg, #11998e, #38ef7d); }
-        .btn-copy {
-            background: #f0f0f0;
-            color: #555;
-            padding: 6px 14px;
-            font-size: 12px;
-            border-radius: 6px;
-        }
-        .btn-copy:hover { background: #e0e0e0; }
-        .result {
-            margin-top: 16px;
-            padding: 16px;
-            border-radius: 8px;
-            display: none;
-        }
-        .result.show { display: block; }
-        .result.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
-        .result.error { background: #fef2f2; border: 1px solid #fecaca; }
-        .result p { margin: 4px 0; font-size: 14px; }
-        .result .label { color: #888; }
-        .result .value { color: #333; font-weight: 500; word-break: break-all; }
-        .result .code {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            word-break: break-all;
-            margin-top: 8px;
-            position: relative;
-        }
-        .result .code .btn-copy {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-        }
-        .tabs {
-            display: flex;
-            gap: 0;
-            margin-bottom: 24px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 12px;
-            padding: 4px;
-        }
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            color: rgba(255,255,255,0.7);
-            font-weight: 600;
-            font-size: 15px;
-            transition: all 0.2s;
-        }
-        .tab.active {
-            background: #fff;
-            color: #667eea;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .tab:hover:not(.active) { color: #fff; }
-        .panel { display: none; }
-        .panel.active { display: block; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 40px; display: flex; align-items: center; }
+        .header h1 { color: #fff; font-size: 20px; }
+        .tabs-bar { background: #fff; padding: 0 24px; display: flex; border-bottom: 2px solid #f0f0f0; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-btn:hover { color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .toolbar { background: #fff; padding: 14px 24px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #e8e8e8; flex-wrap: wrap; }
+        .toolbar input, .toolbar select { padding: 7px 12px; border: 2px solid #e8e8e8; border-radius: 6px; font-size: 13px; outline: none; }
+        .toolbar input:focus, .toolbar select:focus { border-color: #667eea; }
+        .toolbar input { width: 240px; }
+        .toolbar select { width: 130px; }
+        .btn-primary { padding: 7px 18px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-green { padding: 7px 18px; background: linear-gradient(135deg, #11998e, #38ef7d); color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
+        .btn-green:hover { opacity: 0.9; }
+        .stats { display: flex; gap: 14px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #e8e8e8; }
+        .stat-card { flex: 1; padding: 14px 18px; border-radius: 10px; color: #fff; }
+        .stat-card.total { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .stat-card.active { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .stat-card.expired { background: linear-gradient(135deg, #eb3349, #f45c43); }
+        .stat-card .num { font-size: 26px; font-weight: 700; }
+        .stat-card .label { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+        .table-wrap { margin: 14px 24px; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; padding: 10px 14px; text-align: left; font-size: 12px; color: #888; font-weight: 600; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
+        td { padding: 10px 14px; font-size: 13px; color: #333; border-bottom: 1px solid #f5f5f5; }
+        tr:hover td { background: #fafbff; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-active { background: #e6f9ee; color: #16a34a; }
+        .badge-expired { background: #fef2f2; color: #dc2626; }
+        .badge-generate { background: #eef2ff; color: #667eea; }
+        .badge-verify { background: #e6f9ee; color: #16a34a; }
+        .badge-fail { background: #fef2f2; color: #dc2626; }
+        .badge-expired-log { background: #fff7ed; color: #ea580c; }
+        .badge-mismatch { background: #fef2f2; color: #dc2626; }
+        .badge-duplicate { background: #fff7ed; color: #ea580c; }
+        .btn-sm { padding: 3px 10px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 12px; cursor: pointer; background: #fff; }
+        .btn-sm:hover { background: #f5f5f5; }
+        .btn-danger { color: #dc2626; border-color: #fecaca; }
+        .btn-danger:hover { background: #fef2f2; }
+        .btn-info { color: #667eea; border-color: #c7d2fe; }
+        .btn-info:hover { background: #eef2ff; }
+        .mono { font-family: 'Consolas', monospace; font-size: 12px; word-break: break-all; }
+        .empty { text-align: center; padding: 50px 20px; color: #aaa; font-size: 14px; }
+        .remain-ok { color: #16a34a; }
+        .remain-warn { color: #f59e0b; }
+        .remain-expired { color: #dc2626; }
+        .section { margin: 14px 24px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .section h3 { font-size: 15px; color: #333; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 2px solid #e8e8e8; border-radius: 6px; font-size: 13px; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: #667eea; }
+        .form-group textarea { resize: vertical; min-height: 70px; font-family: 'Consolas', monospace; }
+        .form-row { display: flex; gap: 14px; }
+        .form-row .form-group { flex: 1; }
+        .result-box { margin-top: 14px; padding: 14px; border-radius: 8px; font-size: 13px; display: none; }
+        .result-box.show { display: block; }
+        .result-box.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .result-box.error { background: #fef2f2; border: 1px solid #fecaca; }
+        .result-box p { margin: 4px 0; }
+        .result-box .rl { color: #888; display: inline-block; width: 100px; }
+        .result-box .rv { color: #333; font-weight: 500; font-family: 'Consolas', monospace; word-break: break-all; }
+        .code-box { background: #f5f5f5; padding: 10px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 12px; word-break: break-all; margin-top: 8px; position: relative; }
+        .btn-copy { position: absolute; top: 6px; right: 6px; padding: 3px 10px; background: #e0e0e0; color: #555; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .btn-copy:hover { background: #d0d0d0; }
+        .parse-result { margin-top: 14px; padding: 14px; background: #f9fafb; border-radius: 8px; font-size: 13px; }
+        .parse-result p { margin: 4px 0; }
+        .parse-result .pl { color: #888; display: inline-block; width: 100px; }
+        .parse-result .pv { color: #333; font-weight: 500; font-family: 'Consolas', monospace; word-break: break-all; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>激活码管理工具</h1>
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('generate')">生成激活码</div>
-            <div class="tab" onclick="switchTab('verify')">验证激活码</div>
+    <div class="header">
+        <h1>激活码管理后台</h1>
+    </div>
+
+    <div class="tabs-bar">
+        <div class="tab-btn active" onclick="switchTab('tool')">激活码管理工具</div>
+        <div class="tab-btn" onclick="switchTab('records')">激活码记录</div>
+        <div class="tab-btn" onclick="switchTab('logs')">操作日志</div>
+        <div class="tab-btn" onclick="switchTab('parse')">解析工具</div>
+    </div>
+
+    <div id="toolTab" class="tab-content active">
+        <div class="section">
+            <h3>生成激活码</h3>
+            <div class="form-group">
+                <label>唯一序列号（客户端弹窗中显示的加密序列号）</label>
+                <input type="text" id="genSerialNumber" placeholder="粘贴客户端弹窗中的唯一序列号，服务端将自动解析设备信息">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>设备ID（自动从序列号解析，也可手动指定）</label>
+                    <input type="text" id="genDeviceId" placeholder="留空则自动从唯一序列号中解析">
+                </div>
+                <div class="form-group">
+                    <label>有效期</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(5)">5分钟</button>
+                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(60)">1小时</button>
+                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(1440)">1天</button>
+                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(43200)">30天</button>
+                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(525600)">1年</button>
+                    </div>
+                    <input type="number" id="genExpireMinutes" value="60" min="1" style="margin-top:8px;" placeholder="也可手动输入分钟数">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="generateCode()">生成激活码</button>
+            <div id="genResult" class="result-box"></div>
         </div>
 
-        <div id="generatePanel" class="panel active">
-            <div class="card">
-                <h2><span class="icon icon-generate">G</span>生成激活码</h2>
-                <div class="form-group">
-                    <label>唯一序列号（软件初始序列号+机器码）</label>
-                    <input type="text" id="serialNumber" placeholder="请输入唯一序列号，例如：SOFT001-AA-BB-CC-DD-EE-FF">
-                </div>
-                <div class="form-group">
-                    <label>有效期（天）</label>
-                    <input type="number" id="expireDays" value="365" min="1" placeholder="请输入有效期天数">
-                </div>
-                <button class="btn btn-generate" onclick="generateCode()">生成激活码</button>
-                <div id="generateResult" class="result"></div>
+        <div class="section">
+            <h3>验证激活码</h3>
+            <div class="form-group">
+                <label>激活码</label>
+                <textarea id="verifyCode" placeholder="请输入需要验证的激活码"></textarea>
             </div>
+            <div class="form-group">
+                <label>设备ID（可选，验证设备匹配）</label>
+                <input type="text" id="verifyDeviceId" placeholder="留空则不验证设备">
+            </div>
+            <button class="btn-green" onclick="verifyCode()">验证激活码</button>
+            <div id="verifyResult" class="result-box"></div>
         </div>
+    </div>
 
-        <div id="verifyPanel" class="panel">
-            <div class="card">
-                <h2><span class="icon icon-verify">V</span>验证激活码</h2>
-                <div class="form-group">
-                    <label>激活码</label>
-                    <textarea id="activationCode" placeholder="请输入需要验证的激活码"></textarea>
-                </div>
-                <button class="btn btn-verify" onclick="verifyCode()">验证激活码</button>
-                <div id="verifyResult" class="result"></div>
+    <div id="recordsTab" class="tab-content">
+        <div class="toolbar">
+            <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/初始序列号/机器码..." onkeydown="if(event.key==='Enter')loadRecords()">
+            <select id="recStatus">
+                <option value="">全部状态</option>
+                <option value="active">有效</option>
+                <option value="expired">已过期</option>
+            </select>
+            <button class="btn-primary" onclick="loadRecords()">查询</button>
+        </div>
+        <div class="stats">
+            <div class="stat-card total"><div class="num" id="statTotal">0</div><div class="label">总记录数</div></div>
+            <div class="stat-card active"><div class="num" id="statActive">0</div><div class="label">有效</div></div>
+            <div class="stat-card expired"><div class="num" id="statExpired">0</div><div class="label">已过期</div></div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>序列号</th>
+                        <th>初始序列号</th>
+                        <th>机器码</th>
+                        <th>设备ID</th>
+                        <th>激活码</th>
+                        <th>有效期</th>
+                        <th>过期时间</th>
+                        <th>剩余</th>
+                        <th>状态</th>
+                        <th>生成时间</th>
+                        <th>首次激活</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody"></tbody>
+            </table>
+            <div class="empty" id="recordsEmpty" style="display:none;">暂无数据</div>
+        </div>
+    </div>
+
+    <div id="logsTab" class="tab-content">
+        <div class="toolbar">
+            <input type="text" id="logSerial" placeholder="按序列号筛选..." onkeydown="if(event.key==='Enter')loadLogs()">
+            <select id="logEventType">
+                <option value="">全部事件</option>
+                <option value="GENERATE">生成激活码</option>
+                <option value="GENERATE_DUPLICATE">重复生成</option>
+                <option value="VERIFY_SUCCESS">验证成功</option>
+                <option value="VERIFY_FAIL">验证失败</option>
+                <option value="EXPIRED">已过期</option>
+                <option value="DEVICE_MISMATCH">设备不匹配</option>
+            </select>
+            <button class="btn-primary" onclick="loadLogs()">查询</button>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>关联记录ID</th>
+                        <th>序列号</th>
+                        <th>设备ID</th>
+                        <th>事件类型</th>
+                        <th>事件描述</th>
+                        <th>客户端IP</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody"></tbody>
+            </table>
+            <div class="empty" id="logsEmpty" style="display:none;">暂无日志</div>
+        </div>
+    </div>
+
+    <div id="parseTab" class="tab-content">
+        <div class="section">
+            <h3>解析激活码</h3>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="parseCodeInput" placeholder="粘贴激活码..." style="flex:1;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;font-size:13px;font-family:'Consolas',monospace;">
+                <button class="btn-primary" onclick="parseCode()">解析</button>
             </div>
+            <div id="parseCodeResult" class="parse-result" style="display:none;"></div>
+        </div>
+        <div class="section">
+            <h3>解析序列号</h3>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="parseSerialInput" placeholder="输入序列号，例如：SOFT001-AA-BB-CC-DD-EE-FF" style="flex:1;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;font-size:13px;font-family:'Consolas',monospace;">
+                <button class="btn-primary" onclick="parseSerial()">解析</button>
+            </div>
+            <div id="parseSerialResult" class="parse-result" style="display:none;"></div>
         </div>
     </div>
 
     <script>
+        let currentTime = Date.now();
+        const tabNames = ['tool', 'records', 'logs', 'parse'];
+
+        function setAdminExpire(minutes) {
+            document.getElementById('genExpireMinutes').value = minutes;
+        }
+
         function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            if (tab === 'generate') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('generatePanel').classList.add('active');
-            } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('verifyPanel').classList.add('active');
-            }
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const idx = tabNames.indexOf(tab);
+            document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+            if (tab === 'records') loadRecords();
+            else if (tab === 'logs') loadLogs();
         }
 
         async function generateCode() {
-            const serialNumber = document.getElementById('serialNumber').value.trim();
-            const expireDays = parseInt(document.getElementById('expireDays').value) || 365;
-            const resultDiv = document.getElementById('generateResult');
-
-            if (!serialNumber) {
-                showResult(resultDiv, false, '序列号不能为空');
-                return;
-            }
-
+            const serialNumber = document.getElementById('genSerialNumber').value.trim();
+            const deviceId = document.getElementById('genDeviceId').value.trim();
+            const expireMinutes = parseInt(document.getElementById('genExpireMinutes').value) || 60;
+            const resultDiv = document.getElementById('genResult');
+            if (!serialNumber) { showResult(resultDiv, false, '序列号不能为空'); return; }
             try {
-                const response = await fetch('/api/activation/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ serialNumber, expireDays })
+                const body = { serialNumber, expireMinutes };
+                if (deviceId) body.deviceId = deviceId;
+                const resp = await fetch('/api/activation/generate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
                 });
-                const data = await response.json();
+                const data = await resp.json();
                 if (data.success) {
                     const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
                     showResult(resultDiv, true, `
-                        <p><span class="label">序列号：</span><span class="value">${data.serialNumber}</span></p>
-                        <p><span class="label">过期时间：</span><span class="value">${expireDate}</span></p>
-                        <div class="code">
-                            <button class="btn btn-copy" onclick="copyCode(this)">复制</button>
-                            ${data.activationCode}
-                        </div>
+                        <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
+                        <p><span class="rl">初始序列号：</span><span class="rv">${data.initialSerial || '-'}</span></p>
+                        <p><span class="rl">机器码：</span><span class="rv">${data.machineCode || '-'}</span></p>
+                        <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
+                        <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
+                        <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
                     `);
                 } else {
-                    showResult(resultDiv, false, data.message +
-                        (data.activationCode ? `<div class="code"><button class="btn btn-copy" onclick="copyCode(this)">复制</button>${data.activationCode}</div>` : ''));
+                    let html = `<p style="color:#dc2626;">${data.message}</p>`;
+                    if (data.activationCode) {
+                        const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
+                        html += `<p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>`;
+                        html += `<div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>`;
+                    }
+                    showResult(resultDiv, false, html);
                 }
-            } catch (e) {
-                showResult(resultDiv, false, '请求失败: ' + e.message);
-            }
+            } catch (e) { showResult(resultDiv, false, '请求失败: ' + e.message); }
         }
 
         async function verifyCode() {
-            const activationCode = document.getElementById('activationCode').value.trim();
+            const activationCode = document.getElementById('verifyCode').value.trim();
+            const deviceId = document.getElementById('verifyDeviceId').value.trim();
             const resultDiv = document.getElementById('verifyResult');
-
-            if (!activationCode) {
-                showResult(resultDiv, false, '激活码不能为空');
-                return;
-            }
-
+            if (!activationCode) { showResult(resultDiv, false, '激活码不能为空'); return; }
             try {
-                const response = await fetch('/api/activation/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ activationCode })
+                const body = { activationCode };
+                if (deviceId) body.deviceId = deviceId;
+                const resp = await fetch('/api/activation/verify', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
                 });
-                const data = await response.json();
+                const data = await resp.json();
                 if (data.success) {
                     const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
                     showResult(resultDiv, true, `
-                        <p><span class="label">验证结果：</span><span class="value" style="color:#16a34a">激活成功</span></p>
-                        <p><span class="label">序列号：</span><span class="value">${data.serialNumber}</span></p>
-                        <p><span class="label">过期时间：</span><span class="value">${expireDate}</span></p>
+                        <p><span class="rl">验证结果：</span><span class="rv" style="color:#16a34a">激活成功</span></p>
+                        <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
+                        <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
+                        <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
                     `);
                 } else {
-                    showResult(resultDiv, false, `
-                        <p><span class="label">验证结果：</span><span class="value" style="color:#dc2626">激活失败</span></p>
-                        <p><span class="label">原因：</span><span class="value">${data.message}</span></p>
-                        ${data.serialNumber ? `<p><span class="label">序列号：</span><span class="value">${data.serialNumber}</span></p>` : ''}
-                        ${data.expireTime ? `<p><span class="label">过期时间：</span><span class="value">${new Date(data.expireTime).toLocaleString('zh-CN')}</span></p>` : ''}
-                    `);
+                    let html = `<p><span class="rl">验证结果：</span><span class="rv" style="color:#dc2626">激活失败</span></p>`;
+                    html += `<p><span class="rl">原因：</span><span class="rv" style="color:#dc2626">${data.message}</span></p>`;
+                    if (data.serialNumber) html += `<p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>`;
+                    if (data.expireTime) html += `<p><span class="rl">过期时间：</span><span class="rv">${new Date(data.expireTime).toLocaleString('zh-CN')}</span></p>`;
+                    showResult(resultDiv, false, html);
                 }
-            } catch (e) {
-                showResult(resultDiv, false, '请求失败: ' + e.message);
-            }
+            } catch (e) { showResult(resultDiv, false, '请求失败: ' + e.message); }
         }
 
         function showResult(div, success, html) {
-            div.className = 'result show ' + (success ? 'success' : 'error');
+            div.className = 'result-box show ' + (success ? 'success' : 'error');
             div.innerHTML = html;
         }
 
-        function copyCode(btn) {
-            const codeEl = btn.parentElement;
-            const text = codeEl.textContent.replace('复制', '').trim();
+        function copyText(btn) {
+            const text = btn.parentElement.textContent.replace('复制', '').replace('已复制', '').trim();
             navigator.clipboard.writeText(text).then(() => {
                 btn.textContent = '已复制';
                 setTimeout(() => btn.textContent = '复制', 1500);
             });
+        }
+
+        let cachedRecords = [];
+
+        async function loadRecords() {
+            const keyword = document.getElementById('recKeyword').value.trim();
+            const status = document.getElementById('recStatus').value;
+            try {
+                const params = new URLSearchParams();
+                if (keyword) params.set('keyword', keyword);
+                if (status) params.set('status', status);
+                const resp = await fetch('/api/activation/list?' + params);
+                const data = await resp.json();
+                if (data.success) {
+                    currentTime = data.currentTime || Date.now();
+                    cachedRecords = data.data;
+                    renderRecords(data.data);
+                    updateStats(data.data, currentTime);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderRecords(records) {
+            const tbody = document.getElementById('recordsBody');
+            const empty = document.getElementById('recordsEmpty');
+            if (!records || records.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+            tbody.innerHTML = records.map(r => {
+                const isExpired = r.expireTime < currentTime;
+                const remain = isExpired ? 0 : r.expireTime - currentTime;
+                const remainText = formatDuration(remain);
+                const remainClass = isExpired ? 'remain-expired' : remain < 3600000 ? 'remain-warn' : 'remain-ok';
+                const statusHtml = isExpired ? '<span class="badge badge-expired">已过期</span>' : '<span class="badge badge-active">有效</span>';
+                const expireDate = new Date(r.expireTime).toLocaleString('zh-CN');
+                const createDate = r.createTime ? new Date(r.createTime).toLocaleString('zh-CN') : '-';
+                const activatedDate = r.activatedTime ? new Date(r.activatedTime).toLocaleString('zh-CN') : '<span style="color:#aaa">未激活</span>';
+                const expireMin = r.expireMinutes ? r.expireMinutes + '分钟' : '-';
+                const codePreview = r.activationCode
+                    ? `<span class="mono" title="${r.activationCode}">${r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
+                    : '-';
+                return `<tr>
+                    <td>${r.id}</td>
+                    <td><span class="mono">${r.serialNumber || '-'}</span></td>
+                    <td><span class="mono">${r.initialSerial || '-'}</span></td>
+                    <td><span class="mono">${r.machineCode || '-'}</span></td>
+                    <td><span class="mono">${r.deviceId || '-'}</span></td>
+                    <td>${codePreview}</td>
+                    <td>${expireMin}</td>
+                    <td>${expireDate}</td>
+                    <td><span class="${remainClass}">${isExpired ? '已过期' : remainText}</span></td>
+                    <td>${statusHtml}</td>
+                    <td>${createDate}</td>
+                    <td>${activatedDate}</td>
+                    <td>
+                        <button class="btn-sm btn-info" onclick="viewLogs(${r.id},'${r.serialNumber || ''}')">日志</button>
+                        <button class="btn-sm btn-danger" onclick="deleteRecord(${r.id})">删除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateStats(records, now) {
+            const total = records.length;
+            const active = records.filter(r => r.expireTime >= now).length;
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statActive').textContent = active;
+            document.getElementById('statExpired').textContent = total - active;
+        }
+
+        async function loadLogs() {
+            const serialNumber = document.getElementById('logSerial').value.trim();
+            const eventType = document.getElementById('logEventType').value;
+            try {
+                const params = new URLSearchParams();
+                if (serialNumber) params.set('serialNumber', serialNumber);
+                if (eventType) params.set('eventType', eventType);
+                const resp = await fetch('/api/activation/logs?' + params);
+                const data = await resp.json();
+                if (data.success) renderLogs(data.data);
+            } catch (e) { console.error(e); }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsBody');
+            const empty = document.getElementById('logsEmpty');
+            if (!logs || logs.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+            tbody.innerHTML = logs.map(l => {
+                const badgeClass = {
+                    'GENERATE': 'badge-generate', 'GENERATE_DUPLICATE': 'badge-duplicate',
+                    'VERIFY_SUCCESS': 'badge-verify', 'VERIFY_FAIL': 'badge-fail',
+                    'EXPIRED': 'badge-expired-log', 'DEVICE_MISMATCH': 'badge-mismatch'
+                }[l.eventType] || 'badge-fail';
+                const typeLabel = {
+                    'GENERATE': '生成', 'GENERATE_DUPLICATE': '重复生成',
+                    'VERIFY_SUCCESS': '验证成功', 'VERIFY_FAIL': '验证失败',
+                    'EXPIRED': '已过期', 'DEVICE_MISMATCH': '设备不匹配'
+                }[l.eventType] || l.eventType;
+                const time = l.createTime ? new Date(l.createTime).toLocaleString('zh-CN') : '-';
+                return `<tr>
+                    <td>${l.id}</td>
+                    <td>${l.recordId || '-'}</td>
+                    <td><span class="mono">${l.serialNumber || '-'}</span></td>
+                    <td><span class="mono">${l.deviceId || '-'}</span></td>
+                    <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
+                    <td style="max-width:260px;word-break:break-all;">${l.eventMessage || '-'}</td>
+                    <td><span class="mono">${l.clientIp || '-'}</span></td>
+                    <td>${time}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function viewLogs(recordId, serialNumber) {
+            switchTab('logs');
+            if (serialNumber) document.getElementById('logSerial').value = serialNumber;
+            loadLogs();
+        }
+
+        function copyActivationCode(id) {
+            const record = cachedRecords.find(r => r.id == id);
+            if (record && record.activationCode) {
+                navigator.clipboard.writeText(record.activationCode).then(() => {
+                    alert('激活码已复制到剪贴板');
+                });
+            }
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm('确定要删除此记录吗？')) return;
+            try {
+                const resp = await fetch('/api/activation/' + id, { method: 'DELETE' });
+                const data = await resp.json();
+                if (data.success) loadRecords();
+                else alert(data.message || '删除失败');
+            } catch (e) { alert('删除失败: ' + e.message); }
+        }
+
+        async function parseCode() {
+            const code = document.getElementById('parseCodeInput').value.trim();
+            const resultDiv = document.getElementById('parseCodeResult');
+            if (!code) { alert('请输入激活码'); return; }
+            try {
+                const resp = await fetch('/api/activation/parse-code?activationCode=' + encodeURIComponent(code));
+                const data = await resp.json();
+                resultDiv.style.display = 'block';
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
+                        <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
+                        <p><span class="pl">机器码：</span><span class="pv">${data.machineCode || '-'}</span></p>
+                        <p><span class="pl">设备ID：</span><span class="pv">${data.deviceId || '-'}</span></p>
+                        <p><span class="pl">过期时间：</span><span class="pv">${new Date(data.expireTime).toLocaleString('zh-CN')}</span></p>
+                        <p><span class="pl">状态：</span><span class="pv" style="color:${data.expired ? '#dc2626' : '#16a34a'}">${data.expired ? '已过期' : '有效'}</span></p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color:#dc2626;">解析失败：${data.message}</p>`;
+                }
+            } catch (e) { resultDiv.style.display = 'block'; resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message}</p>`; }
+        }
+
+        async function parseSerial() {
+            const serial = document.getElementById('parseSerialInput').value.trim();
+            const resultDiv = document.getElementById('parseSerialResult');
+            if (!serial) { alert('请输入序列号'); return; }
+            try {
+                const resp = await fetch('/api/activation/parse-serial?serialNumber=' + encodeURIComponent(serial));
+                const data = await resp.json();
+                resultDiv.style.display = 'block';
+                let html = `
+                    <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
+                    <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
+                    <p><span class="pl">机器码：</span><span class="pv">${data.machineCode || '-'}</span></p>
+                `;
+                if (data.recordId) {
+                    html += `
+                        <hr style="margin:8px 0;border-color:#e8e8e8;">
+                        <p><span class="pl">记录ID：</span><span class="pv">${data.recordId}</span></p>
+                        <p><span class="pl">设备ID：</span><span class="pv">${data.deviceId || '-'}</span></p>
+                        <p><span class="pl">有效期：</span><span class="pv">${data.expireMinutes ? data.expireMinutes + '分钟' : '-'}</span></p>
+                        <p><span class="pl">过期时间：</span><span class="pv">${data.expireTime ? new Date(data.expireTime).toLocaleString('zh-CN') : '-'}</span></p>
+                        <p><span class="pl">首次激活：</span><span class="pv">${data.activatedTime || '未激活'}</span></p>
+                        <p><span class="pl">生成时间：</span><span class="pv">${data.createTime || '-'}</span></p>
+                        <p><span class="pl">状态：</span><span class="pv" style="color:${data.expired ? '#dc2626' : '#16a34a'}">${data.expired ? '已过期' : '有效'}</span></p>
+                    `;
+                } else {
+                    html += `<p style="color:#aaa;margin-top:8px;">数据库中未找到此序列号的记录</p>`;
+                }
+                resultDiv.innerHTML = html;
+            } catch (e) { resultDiv.style.display = 'block'; resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message}</p>`; }
+        }
+
+        function formatDuration(ms) {
+            if (ms <= 0) return '0分钟';
+            const minutes = Math.floor(ms / 60000);
+            if (minutes < 60) return minutes + '分钟';
+            const hours = Math.floor(minutes / 60);
+            const rm = minutes % 60;
+            if (hours < 24) return hours + '小时' + (rm > 0 ? rm + '分钟' : '');
+            const days = Math.floor(hours / 24);
+            const rh = hours % 24;
+            return days + '天' + (rh > 0 ? rh + '小时' : '');
         }
     </script>
 </body>

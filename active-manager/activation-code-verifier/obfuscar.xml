@@ -1,0 +1,47 @@
+<?xml version='1.0'?>
+<Obfuscator>
+  <Var name="InPath" value="bin\Release\net6.0-windows" />
+  <Var name="OutPath" value="bin\Obfuscated" />
+  <Var name="KeyFile" value="key.snk" />
+  <Var name="KeepPublicApi" value="true" />
+  <Var name="HidePrivateApi" value="true" />
+  <Var name="HideStrings" value="true" />
+  <Var name="RenameProperties" value="true" />
+  <Var name="RenameEvents" value="true" />
+  <Var name="RenameFields" value="true" />
+  <Var name="UseUnicodeNames" value="true" />
+  <Var name="FlattenNamespace" value="true" />
+  <Var name="GeneratedCode" value="false" />
+  <Module file="$(InPath)\Jones.Activation.dll">
+    <!-- Skip public API entry points that tool software needs to call -->
+    <SkipMethod name="LaunchWithProtection" />
+    <SkipMethod name="Protect" />
+    <SkipMethod name="ProtectWithAutoDevice" />
+    <SkipMethod name="Check" />
+    <SkipMethod name="CheckWithAutoDevice" />
+    <SkipMethod name="StartPeriodicCheck" />
+    <SkipMethod name="StartPeriodicCheckWithAutoDevice" />
+    <SkipMethod name="StopPeriodicCheck" />
+    <SkipMethod name="GetSerialNumber" />
+    <SkipMethod name="ParseSerialNumber" />
+    <SkipMethod name="GetDeviceId" />
+    <SkipMethod name="GetMacAddress" />
+    <SkipMethod name="GetMacAddressFormatted" />
+    <SkipMethod name="GetMachineCode" />
+    <!-- Skip VerifyResult public properties -->
+    <SkipMethod name="get_Success" />
+    <SkipMethod name="get_SerialNumber" />
+    <SkipMethod name="get_DeviceId" />
+    <SkipMethod name="get_ExpireTimestamp" />
+    <SkipMethod name="get_Expired" />
+    <SkipMethod name="get_DeviceMismatch" />
+    <SkipMethod name="Ok" />
+    <SkipMethod name="Fail" />
+    <SkipMethod name="FailExpired" />
+    <SkipMethod name="FailDeviceMismatch" />
+    <!-- Skip SerialNumberInfo properties -->
+    <SkipMethod name="get_InitialSerial" />
+    <SkipMethod name="get_MachineCode" />
+    <SkipMethod name="get_DeviceId" />
+  </Module>
+</Obfuscator>

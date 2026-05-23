@@ -7,6 +7,9 @@ public class GenerateResponse {
     private String activationCode;
     private Long expireTime;
     private String serialNumber;
+    private String deviceId;
+    private String initialSerial;
+    private String machineCode;
 
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
@@ -23,6 +26,15 @@ public class GenerateResponse {
     public String getSerialNumber() { return serialNumber; }
     public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
 
+    public String getDeviceId() { return deviceId; }
+    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
+
+    public String getInitialSerial() { return initialSerial; }
+    public void setInitialSerial(String initialSerial) { this.initialSerial = initialSerial; }
+
+    public String getMachineCode() { return machineCode; }
+    public void setMachineCode(String machineCode) { this.machineCode = machineCode; }
+
     public static GenerateResponseBuilder builder() {
         return new GenerateResponseBuilder();
     }
@@ -33,12 +45,18 @@ public class GenerateResponse {
         private String activationCode;
         private Long expireTime;
         private String serialNumber;
+        private String deviceId;
+        private String initialSerial;
+        private String machineCode;
 
         public GenerateResponseBuilder success(boolean success) { this.success = success; return this; }
         public GenerateResponseBuilder message(String message) { this.message = message; return this; }
         public GenerateResponseBuilder activationCode(String activationCode) { this.activationCode = activationCode; return this; }
         public GenerateResponseBuilder expireTime(Long expireTime) { this.expireTime = expireTime; return this; }
         public GenerateResponseBuilder serialNumber(String serialNumber) { this.serialNumber = serialNumber; return this; }
+        public GenerateResponseBuilder deviceId(String deviceId) { this.deviceId = deviceId; return this; }
+        public GenerateResponseBuilder initialSerial(String initialSerial) { this.initialSerial = initialSerial; return this; }
+        public GenerateResponseBuilder machineCode(String machineCode) { this.machineCode = machineCode; return this; }
 
         public GenerateResponse build() {
             GenerateResponse response = new GenerateResponse();
@@ -47,6 +65,9 @@ public class GenerateResponse {
             response.setActivationCode(activationCode);
             response.setExpireTime(expireTime);
             response.setSerialNumber(serialNumber);
+            response.setDeviceId(deviceId);
+            response.setInitialSerial(initialSerial);
+            response.setMachineCode(machineCode);
             return response;
         }
     }

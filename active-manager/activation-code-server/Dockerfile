@@ -1,0 +1,12 @@
+# 用 DaoCloud 镜像源，无需登录
+FROM docker.m.daocloud.io/library/eclipse-temurin:21-jre-jammy
+WORKDIR /activecode
+COPY target/activation-code-server-1.0.0.jar activation-code-server-1.0.0.jar
+EXPOSE 8080
+
+# 数据库连接默认指向宿主机MySQL（Docker内通过host.docker.internal访问宿主机）
+ENV SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+ENV SPRING_DATASOURCE_USERNAME=tools
+ENV SPRING_DATASOURCE_PASSWORD=toolsmarschat
+
+ENTRYPOINT ["java", "-jar", "activation-code-server-1.0.0.jar"]

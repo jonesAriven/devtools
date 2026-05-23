@@ -1,0 +1,27 @@
+## .NET 编译输出
+bin/
+obj/
+
+## 发布输出
+# publish/
+
+## 运行时生成的日志
+*.log
+debug.log
+
+## 用户级项目配置
+*.csproj.user
+
+## VS/IDE 临时文件
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Windows 系统文件
+Thumbs.db
+Desktop.ini
+
+# .NET / C#
+*.exe

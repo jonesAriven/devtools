@@ -1,16 +1,21 @@
+using System.Windows.Forms;
+using Jones.Activation;
+
 namespace QRCodeTool;
 
 static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
     [STAThread]
     static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
+
+        if (!ActivationGuard.LaunchWithProtection("QRTOOL"))
+        {
+            return;
+        }
+
         Application.Run(new Form1());
-    }    
+        ActivationGuard.StopPeriodicCheck();
+    }
 }

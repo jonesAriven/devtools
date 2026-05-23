@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+
+# 保留lib目录但忽略其中的文件
+QR_GENERATOR/lib/*
+!QR_GENERATOR/lib/.gitkeep 
+QR_GENERATOR/logs/*
+/*.iml
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+logs/
+rsa_keys/
+
+# .NET / C#
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+*.csproj.user
+*.suo
+*.cache
+
+# Database init scripts (temp)
+init_db.py
+init-database.sql
+
+# C++/
+Build/
+
+
+
+
