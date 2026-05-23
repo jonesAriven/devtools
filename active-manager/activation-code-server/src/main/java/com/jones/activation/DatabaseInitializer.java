@@ -61,7 +61,6 @@ public class DatabaseInitializer implements CommandLineRunner {
             "    record_id BIGINT DEFAULT NULL COMMENT '关联记录ID'," +
             "    serial_number VARCHAR(512) DEFAULT NULL COMMENT '唯一序列号'," +
             "    device_id VARCHAR(128) DEFAULT NULL COMMENT '设备ID'," +
-            "    device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名'," +
             "    event_type VARCHAR(32) NOT NULL COMMENT '事件类型'," +
             "    event_message VARCHAR(512) DEFAULT NULL COMMENT '事件消息'," +
             "    client_ip VARCHAR(64) DEFAULT NULL COMMENT '客户端IP'," +
@@ -85,8 +84,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         // 兼容已有数据库：如果表已存在但缺少 device_alias 列，则自动添加
         // MySQL 不支持 ADD COLUMN IF NOT EXISTS，需要先查询列是否存在
         String[][] alterChecks = {
-            {"activation_record", "device_alias", "ALTER TABLE activation_record ADD COLUMN device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名' AFTER machine_code"},
-            {"activation_log", "device_alias", "ALTER TABLE activation_log ADD COLUMN device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名' AFTER device_id"}
+            {"activation_record", "device_alias", "ALTER TABLE activation_record ADD COLUMN device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名' AFTER machine_code"}
         };
 
         try {

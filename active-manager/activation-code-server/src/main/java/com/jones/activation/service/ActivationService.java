@@ -262,7 +262,22 @@ public class ActivationService {
         }
 
         queryWrapper.last("LIMIT 200");
-        return activationLogMapper.selectList(queryWrapper);
+        List<ActivationLog> logs = activationLogMapper.selectList(queryWrapper);
+
+        // 关联查询设备别名：通过 serial_number 关联 activation_record 获取 device_alias
+        for (ActivationLog logEntry : logs) {
+            if (logEntry.getSerialNumber() != null) {
+                LambdaQueryWrapper<ActivationRecord> recordQuery = new LambdaQueryWrapper<>();
+                recordQuery.eq(ActivationRecord::getSerialNumber, logEntry.getSerialNumber());
+                recordQuery.select(ActivationRecord::getDeviceAlias);
+                ActivationRecord record = activationRecordMapper.selectOne(recordQuery);
+                if (record != null) {
+                    logEntry.setDeviceAlias(record.getDeviceAlias());
+                }
+            }
+        }
+
+        return logs;
     }
 
     public boolean deleteRecord(Long id) {
@@ -292,6 +307,7 @@ public class ActivationService {
 
         record.setUpdateTime(LocalDateTime.now());
         activationRecordMapper.updateById(record);
+
         log.info("更新设备别名, id: {}, alias: {}", id, alias);
         return Map.of("success", true, "message", "设备别名更新成功");
     }
@@ -380,21 +396,6 @@ public class ActivationService {
             logEntry.setEventMessage(eventMessage);
             logEntry.setClientIp(clientIp);
             logEntry.setCreateTime(LocalDateTime.now());
-
-            // 从记录中获取设备别名
-            if (recordId != null) {
-                ActivationRecord record = activationRecordMapper.selectById(recordId);
-                if (record != null) {
-                    logEntry.setDeviceAlias(record.getDeviceAlias());
-                }
-            } else if (serialNumber != null) {
-                LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(ActivationRecord::getSerialNumber, serialNumber);
-                ActivationRecord record = activationRecordMapper.selectOne(queryWrapper);
-                if (record != null) {
-                    logEntry.setDeviceAlias(record.getDeviceAlias());
-                }
-            }
 
             activationLogMapper.insert(logEntry);
         } catch (Exception e) {
