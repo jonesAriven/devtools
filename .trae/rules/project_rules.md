@@ -13,7 +13,7 @@
   - 稽核日志记录
   - 接收客户端加密的唯一序列号，自动解密解析出设备ID和机器码
 - 端口: 8080
-- 数据库: 192.168.31.182:3306/tools (用户: tools, 密码: toolsmarschat)
+- 数据库: 192.168.31.77:3306/tools (用户: tools, 密码: toolsmarschat)
 
 ### 2. activation-code-verifier — 激活码验证工具
 - 路径: `D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-verifier`
