@@ -302,3 +302,46 @@ verifier的XOR 0x5A加密必须与服务端CryptoUtil的解密逻辑一致。如
 ### 6.5 net6.0-windows目标框架
 
 verifier使用`net6.0-windows`（因为WinForms弹窗），工具软件也必须是`net6.0-windows`。虽然.NET 6已EOL，但当前系统SDK兼容。
+
+### 6.6 JAR 打包部署
+
+```bash
+# 打包（在 activation-code-server 目录下）
+mvn clean package -DskipTests
+
+# 启动
+java -jar target/activation-code-server-1.0.0.jar
+
+# 指定JDK路径启动
+"D:\huliang\software\Java\jdk-21.0.11\bin\java" -jar target/activation-code-server-1.0.0.jar
+```
+
+RSA 密钥已打包在 `BOOT-INF/classes/rsa_keys/` 中，JAR 自包含可直接部署。如需更换密钥，通过外部文件覆盖：将 `rsa_keys/` 目录放在 JAR 同级目录下，`RsaKeyConfig` 会优先加载外部文件。
+
+### 6.7 数据库迁移规范
+
+所有表结构变更必须以升级（ALTER TABLE）方式进行，**禁止删除表或清空数据**：
+
+- 新增列：先查询 `information_schema.COLUMNS` 判断是否存在，不存在才 `ALTER TABLE ADD COLUMN`
+- 新增索引：先查询 `information_schema.STATISTICS` 判断是否存在，不存在才添加
+- `CREATE TABLE IF NOT EXISTS` 仅用于首次建表
+- `DatabaseInitializer` 中的迁移逻辑必须兼容已有数据
+
+MySQL 不支持 `ALTER TABLE ADD COLUMN IF NOT EXISTS`（MariaDB 特有语法），必须用 `information_schema` 先查询。
+
+### 6.8 C++ 版 verifier 编译
+
+C++ 版 verifier 位于 `activation-code-verifier/cpp/`，编译产物为 `JonesActivation.lib` 静态库：
+
+```bash
+# 编译（需要 Visual Studio Build Tools + CMake）
+cd activation-code-verifier/cpp
+cmake -B build -G "Visual Studio 17 2022" -A Win32
+cmake --build build --config Release
+```
+
+QRCodeTool 通过 CMake FetchContent 自动引用，无需手动编译。详见 QRCodeTool 的 README。
+
+### 6.9 设备别名功能
+
+激活码记录表新增 `device_alias` 字段（UNIQUE），操作日志表通过 `serial_number` 关联查询别名（不冗余存储）。修改别名后日志页面自动显示最新值。

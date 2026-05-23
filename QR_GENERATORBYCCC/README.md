@@ -11,9 +11,12 @@
 | 功能 | 说明 |
 |------|------|
 | 文字转二维码 | 输入文字实时生成 QR Code，支持 Version 1-40 |
+| 多页二维码 | 长文本自动分页生成多个二维码（M5: 协议），工具栏翻页切换 |
 | 截图识别 | 全屏截图 + 鼠标拖选区域，识别屏幕上的二维码 |
 | 上传识别 | 选择本地图片文件（png/jpg/bmp）识别二维码 |
+| 多页扫描 | 扫描多页二维码时自动拼合，提示缺失页码 |
 | 自适应压缩 | 短文本直接编码（任何扫码器可读），长文本自动 Brotli+Base45 压缩（容量 ≥9000 字符） |
+| 激活码验证 | 内嵌 JonesActivation.lib，启动时验证激活码，过期自动弹窗 |
 | 纠错等级 | 工具栏下拉选择 L/M/Q/H 四级纠错 |
 | 多显示器 | 支持多屏截图，DPI 感知 |
 
@@ -37,12 +40,18 @@ QR_GENERATORBYCCC/
 ├── src/
 │   ├── main.cpp            # 程序入口，GDI+ 初始化，DPI 感知
 │   ├── MainWindow.h/cpp    # 主窗口（Win32 API），UI 布局与事件处理
-│   ├── QrGenerator.h/cpp   # QR 码生成（qrcodegen + 压缩）
+│   ├── QrGenerator.h/cpp   # QR 码生成（qrcodegen + 压缩 + 多页分片）
 │   ├── QrDecoder.h/cpp     # QR 码解码（zxing-cpp，多策略）
-│   ├── Compressor.h/cpp    # 压缩/解压（Brotli + GZip 兼容）
+│   ├── Compressor.h/cpp    # 压缩/解压（Brotli + GZip 兼容）+ MultiPageAssembler 多页拼合
 │   ├── Base45.h/cpp        # Base45 编解码（RFC 9285）
 │   ├── ImageProcess.h/cpp  # 图像处理（灰度转换、缩放、二值化、Otsu 等）
 │   ├── ScreenCapture.h/cpp # 屏幕截图选区（Win32 API，半透明遮罩）
+│   ├── Activation/         # 激活码验证模块（JonesActivation.lib）
+│   │   ├── ActivationGuard.h/cpp  # 激活码验证与保护
+│   │   ├── DeviceInfo.h/cpp       # 设备指纹采集
+│   │   ├── CryptoUtil.h/cpp       # RSA/AES/HMAC 加密工具
+│   │   ├── LicenseStore.h/cpp     # 激活码本地存储
+│   │   └── RsaKey.h               # RSA 公钥（PEM）
 │   └── Resource.h          # 资源 ID 定义
 └── build/                  # 构建输出目录
     └── bin/Release/QRCodeTool.exe
@@ -120,9 +129,31 @@ CMakeLists.txt 中的关键编译选项：
   │
   ├─ 短文本 → qrcodegen_encodeText(纯文本) → BYTE 模式 QR 码
   │
-  └─ 长文本 → compressText(Brotli+Base45) → "B5:..." 
-              → qrcodegen_encodeText(压缩文本) → ALPHANUMERIC 模式 QR 码
+  ├─ 长文本 → compressText(Brotli+Base45) → "B5:..."
+  │           → qrcodegen_encodeText(压缩文本) → ALPHANUMERIC 模式 QR 码
+  │
+  └─ 超长文本 → compressText(Brotli+Base45) → 按容量切分
+               → 每片加 "M5:<页码>/<总页数>/" 头 → 多个 QR 码
+               → 工具栏显示翻页控件 ◀ 1/3 ▶
 ```
+
+### 多页二维码协议（M5:）
+
+当压缩后的文本仍超出单个 QR 码容量时，自动启用多页模式：
+
+| 字段 | 格式 | 示例 |
+|------|------|------|
+| 前缀 | `M5:` | `M5:` |
+| 页码 | `<当前页>/<总页数>/` | `1/3/` |
+| 数据 | Base45 编码的分片 | `...` |
+
+完整示例：`M5:1/3/ABCDE...`、`M5:2/3/FGHIJ...`、`M5:3/3/KLMNO...`
+
+**扫描拼合流程：**
+1. 扫描到 `M5:` 前缀 → 识别为多页二维码
+2. `MultiPageAssembler` 收集各页分片
+3. 弹窗提示"已扫描第 X 页，还缺第 Y、Z 页"
+4. 全部收齐 → 按页码排序拼合 → Brotli 解压 → 显示原文
 
 ### QR 码解码流程（多策略）
 
@@ -142,7 +173,8 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 
 | 前缀 | 编码 | 解码 | 状态 |
 |------|------|------|------|
-| `B5:` | UTF-8 → Brotli 压缩 → Base45 编码 | Base45 解码 → Brotli 解压 | **当前使用** |
+| `M5:` | Brotli 压缩 → Base45 编码 → 按容量分页 | 收集全部分片 → Base45 解码 → Brotli 解压 | **多页模式** |
+| `B5:` | UTF-8 → Brotli 压缩 → Base45 编码 | Base45 解码 → Brotli 解压 | **单页压缩** |
 | `GZ:` | （不再生成） | Base64 解码 → GZip 解压 | 仅兼容旧数据 |
 | 无前缀 | 原文直接编码 | 原文 | 短文本 |
 
@@ -169,7 +201,8 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 ### QrGenerator.h/cpp — QR 码生成
 
 - 使用 qrcodegen C 版 API（`qrcodegen_encodeText`）
-- 自动压缩策略：先尝试纯文本，失败再压缩
+- 自动压缩策略：先尝试纯文本，失败再压缩，压缩后仍超限则自动分页
+- `generateQrPages()` — 多页生成：整体压缩后按容量切分，每片加 `M5:` 头
 - 强制 4 模块静区（quiet zone），符合 QR 码标准
 - 输出 24 位 DIB 位图，白底黑模块
 
@@ -185,6 +218,22 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 - Brotli 压缩：quality=11, lgwin=22, mode=GENERIC
 - Brotli 解压：先尝试一次性解压，失败回退流式解压
 - GZip 解压：zlib `inflateInit2` + windowBits=31（仅兼容旧 "GZ:" 格式）
+- `MultiPageAssembler` — 多页二维码拼合器
+  - `addPage(page, total, data)` — 添加扫描到的分片
+  - `isComplete()` — 判断是否收齐所有页
+  - `assemble()` — 按页码排序拼合 → Base45 解码 → Brotli 解压
+  - `getMissingPages()` — 获取缺失页码列表
+  - `reset()` — 清空已收集数据
+
+### Activation/ — 激活码验证模块
+
+- 从 C# 版 `activation-code-verifier` 移植为 C++ 静态库
+- `ActivationGuard` — 验证并保护，启动时检查激活码有效性
+- `DeviceInfo` — 设备指纹采集（CPU+主板+硬盘+MAC → SHA256 → 设备ID）
+- `CryptoUtil` — RSA 签名验证、AES-256-CBC 加解密、HMAC-SHA256
+- `LicenseStore` — 激活码本地存储（AES 加密存储到文件）
+- `RsaKey.h` — 内嵌 RSA 公钥（PEM 格式）
+- 激活弹窗显示唯一序列号和激活地址，支持输入激活码
 
 ### Base45.h/cpp — Base45 编解码
 
@@ -300,25 +349,45 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 
 ## 已知限制与后续优化方向
 
-### 可优化项
+### 待优化项
 
-1. **移除 zlib 依赖** — 当前仅用于兼容旧 "GZ:" 格式的 GZip 解压。如果确认不再需要兼容旧数据，可移除 zlib 和 `gzipDecompress` 函数，预计减小约 100KB。
+1. **多页扫描体验** — 当前每扫一页弹一次 MessageBox，需反复点击确定。可改为界面内嵌进度条，多页时进入自动连续截图模式（轻量浮层提示进度，自动重新进入截图选区），无需手动切换。
 
-2. **Brotli 编码器精简** — brotlienc.lib 是体积最大的单个贡献者。可考虑只编译需要的压缩级别，或换用更轻量的压缩库。
+2. **多页二维码视觉标识** — 每页二维码看起来一样，无法肉眼区分页码。可在二维码下方渲染页码文字（如"第1页/共3页"）。
 
-3. **UI 优化** — 当前工具栏按钮使用 Unicode 文字，可替换为手绘图标（参考 C# 版的 GDI+ 手绘图标实现）。
+3. **重复扫描同一页无提示** — 扫到已收集的页只写日志，用户无感知。应弹窗或浮层提示"该页已扫描"。
 
-4. **日志系统** — 当前使用简单的文件追加写入（`qr_debug.log`），生产环境应移除或改为条件编译。
+4. **截图扫描窗口遮挡** — 多页扫描时，每次都要"截图 → 回主窗口 → 看弹窗 → 再点截图"，来回切换割裂。连续截图模式可解决。
 
-5. **拖拽支持** — 支持拖拽图片文件到窗口直接识别。
+5. **日志系统** — 当前使用简单的文件追加写入（`qr_debug.log`），生产环境应移除或改为条件编译。
 
-6. **剪贴板支持** — 支持从剪贴板粘贴图片识别。
+6. **移除 zlib 依赖** — 当前仅用于兼容旧 "GZ:" 格式的 GZip 解压。如果确认不再需要兼容旧数据，可移除 zlib 和 `gzipDecompress` 函数，预计减小约 100KB。
+
+### 待扩展功能
+
+1. **二维码导出** — 加"保存为 PNG"按钮，多页时批量导出所有页面。
+
+2. **拖拽识别** — 支持拖拽图片文件到窗口直接识别二维码，不用点上传。
+
+3. **剪贴板监听** — 监听剪贴板中的图片，自动识别二维码。
+
+4. **历史记录** — 记录最近生成/扫描的内容，方便回看，支持点击重新加载。
+
+5. **批量生成** — 输入多行文本，每行生成一个二维码，方便批量打印。
+
+6. **二维码美化** — 加 Logo、改颜色、圆角模块等，提升视觉辨识度。
+
+7. **WiFi 二维码** — 输入 WiFi 信息生成 `WIFI:T:WPA;S:xxx;P:xxx;;` 格式二维码，手机扫了直接连网。
+
+8. **名片二维码** — 生成 vCard 格式二维码。
 
 ### 不建议改动
 
 - **解码引擎**：zxing-cpp 的 `HybridBinarizer` 是识别率的关键，不要换回 quirc
 - **CRT 链接方式**：保持 `/MT` 静态链接，确保零运行时依赖
-- **压缩算法**：Brotli+Base45 是和 C# 版一致的方案，改换会导致跨版本不兼容
+- **压缩算法**：Brotli+Base45 是和 C# 版一致的方案，改换会导致跨版本不兼容；且 Brotli 已是通用压缩算法中压缩率最高的，换其他算法提升微乎其微
+- **多页协议**：M5: 协议需与扫描端保持一致，不可随意修改前缀格式
+- **编码方式**：Base45 + QR 字母数字模式 vs 二进制模式的容量差异仅约 3%，不值得改
 
 ## 与 C# 版的兼容性
 

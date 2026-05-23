@@ -479,3 +479,111 @@ LRESULT CALLBACK EditSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 2. **调试日志至关重要**：加密流程链路长（序列号→设备ID→PBKDF2→AES→文件写入），任何一环失败都会导致最终结果异常。在每一步加日志是快速定位问题的关键。
 3. **验证成功 ≠ 存储成功**：RSA 验签和 AES 加密存储是独立的两个环节，验签通过不代表文件写入成功。必须在 Save 返回值处做判断。
 4. **Win32 API 编码规则**：涉及中文一律用 `W` 后缀宽字符版本（`MessageBoxW`、`SetWindowTextW` 等），`A` 后缀在 UTF-8 源码下会乱码。
+
+---
+
+## 迭代9：多页二维码 + 服务端优化 + 设备别名
+
+### 概述
+
+本次迭代包含三项主要变更：
+1. QRCodeTool 新增多页二维码功能，突破单码容量限制
+2. 激活码服务端新增设备别名字段，优化数据库迁移逻辑
+3. 修复 RSA 密钥未打包进 JAR、数据库迁移不兼容 MySQL 等问题
+
+### 一、多页二维码（M5: 协议）
+
+**背景**：单个 QR 码（V40-L）最大约 2953 字节，Brotli+Base45 压缩后约承载 9000+ 字符原文。超出此限制的文本无法生成二维码。
+
+**方案**：自动分页 — 整体压缩后按容量切分，每片加上 `M5:<页码>/<总页数>/` 头，生成多个二维码。
+
+```
+M5:1/3/ABCDE...   ← 第1页（共3页）
+M5:2/3/FGHIJ...   ← 第2页
+M5:3/3/KLMNO...   ← 第3页
+```
+
+**生成流程**：
+1. 先尝试明文单码 → 失败则尝试压缩单码（B5:）→ 仍超限则自动分页（M5:）
+2. 整体 Brotli+Base45 压缩后，按当前纠错等级对应的最大容量切分
+3. 工具栏显示翻页控件 `◀ 1/3 ▶`，单页时自动隐藏
+
+**扫描拼合**：
+1. 扫描到 `M5:` 前缀 → 识别为多页二维码
+2. `MultiPageAssembler` 收集各页分片（`addPage`）
+3. 弹窗提示"已扫描第 X 页，还缺第 Y、Z 页"
+4. 全部收齐 → `assemble()` 按页码排序拼合 → Base45 解码 → Brotli 解压 → 显示原文
+
+**涉及文件**：
+
+| 文件 | 变更 |
+|------|------|
+| QrGenerator.h/cpp | 新增 `generateQrPages()` 多页生成函数 |
+| Compressor.h/cpp | 新增 `MultiPageAssembler` 类（addPage/isComplete/assemble/getMissingPages/reset） |
+| MainWindow.h/cpp | 新增翻页控件（◀ ▶ 页码显示），扫描时检测 M5: 前缀并拼合 |
+
+### 二、设备别名功能
+
+**需求**：激活码记录和操作日志页面新增"设备别名"字段，别名唯一且可修改。
+
+**设计**：
+- `activation_record` 表新增 `device_alias` 列（VARCHAR(100)，UNIQUE）
+- `activation_log` 表**不存储** `device_alias`，通过 `serial_number` 关联 `activation_record` 查询
+- 修改别名时，日志页面自动显示最新值，无需冗余同步
+- 前端点击别名单元格即可编辑，Enter 保存，Escape 取消
+
+**涉及文件**：
+
+| 文件 | 变更 |
+|------|------|
+| ActivationRecord.java | 新增 `deviceAlias` 字段 |
+| ActivationLog.java | 新增 `deviceAlias` 字段（`@TableField(exist=false)`，虚拟字段） |
+| ActivationController.java | 新增 `PUT /{id}/alias` 接口 |
+| ActivationService.java | 新增 `updateDeviceAlias` 方法（含唯一性校验），`queryLogs` 关联查询别名 |
+| DatabaseInitializer.java | ALTER TABLE 迁移逻辑 |
+| main.html | 激活码记录表新增可编辑别名列，操作日志表新增只读别名列 |
+
+### 三、服务端修复与优化
+
+#### 问题1：RSA 密钥未打包进 JAR
+
+**现象**：`java -jar` 启动后报错找不到 RSA 密钥文件。
+
+**原因**：`rsa_keys/` 目录在项目根目录下，不在 `src/main/resources/` 里，Maven 打包时不会包含。
+
+**修复**：将密钥文件复制到 `src/main/resources/rsa_keys/`，`RsaKeyConfig` 优先从 classpath 加载。
+
+#### 问题2：数据库迁移不兼容 MySQL
+
+**现象**：`Unknown column 'device_alias' in 'field list'`
+
+**原因**：`ALTER TABLE ADD COLUMN IF NOT EXISTS` 是 MariaDB 特有语法，MySQL 不支持，ALTER 语句静默失败。
+
+**修复**：改为先查询 `information_schema.COLUMNS` 判断列是否存在，不存在才执行 ALTER TABLE。
+
+#### 问题3：密钥重启后变化导致激活码失效
+
+**现象**：服务重启后，之前生成的激活码全部验证失败。
+
+**原因**：RSA 密钥存储在项目根目录，JAR 部署时找不到外部密钥文件，启动时重新生成新密钥，导致旧激活码签名不匹配。
+
+**修复**：密钥打包进 JAR 的 classpath，确保每次启动使用同一套密钥。
+
+#### 问题4：激活码生成页面提示语冗余
+
+**修复**：去掉"由客户端软件自动生成，包含设备信息，服务端将自动解析"提示语。
+
+#### 问题5：多页扫描页码提示错误
+
+**现象**：扫描第2页时提示"已扫描 1/2 页"。
+
+**原因**：提示用的是 `assembler.pages.size()`（已收集页数），而非实际扫描的页码。
+
+**修复**：改为显示实际页码"已扫描第 2 页，还缺第 1 页"。
+
+### 经验总结
+
+1. **密钥必须固化**：RSA 密钥必须打包进 JAR 或通过外部配置挂载，绝不能运行时动态生成，否则重启后所有激活码失效。
+2. **数据库迁移要兼容 MySQL**：`IF NOT EXISTS` 语法在 MySQL 和 MariaDB 中支持程度不同，必须用 `information_schema` 先查询再操作。
+3. **关联查询优于冗余同步**：日志表不存储设备别名，通过 serial_number 关联查询，避免数据不一致和同步开销。
+4. **多页协议设计**：M5: 前缀 + 页码/总页数 + 分片数据，每张码独立可解析，收集齐后拼合，容错性好。
