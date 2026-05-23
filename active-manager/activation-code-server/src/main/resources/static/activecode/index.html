@@ -62,7 +62,7 @@
             <div class="form-group">
                 <label>唯一序列号</label>
                 <input type="text" id="genSerialNumber" placeholder="粘贴客户端弹窗中的唯一序列号">
-
+                <div class="hint">由客户端软件自动生成，包含设备信息，服务端将自动解析</div>
             </div>
 
             <div class="form-row">
@@ -92,24 +92,11 @@
 
         function copyText(btn) {
             const codeBox = btn.parentElement;
-            const text = codeBox.textContent.replace('复制', '').replace('已复制', '').trim();
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    btn.textContent = '已复制';
-                    setTimeout(() => btn.textContent = '复制', 1500);
-                });
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
+            const text = codeBox.textContent.replace('复制', '').trim();
+            navigator.clipboard.writeText(text).then(() => {
                 btn.textContent = '已复制';
                 setTimeout(() => btn.textContent = '复制', 1500);
-            }
+            });
         }
 
         function showResult(div, success, html) {
