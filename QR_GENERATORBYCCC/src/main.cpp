@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <gdiplus.h>
 #include "MainWindow.h"
+#include "Jones/ActivationGuard.h"
 
 #pragma comment(lib, "gdiplus.lib")
 
@@ -19,6 +20,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             pSetProcessDPIAware();
         }
     }
+
+    // Activation check - must pass before app can run
+    if (!ActivationGuard::LaunchWithProtection("QRCodeTool")) {
+        return 1001;
+    }
+
     // Initialize GDI+
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
@@ -39,6 +46,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    // Stop periodic activation check
+    ActivationGuard::StopPeriodicCheck();
 
     // Cleanup GDI+
     Gdiplus::GdiplusShutdown(gdiplusToken);

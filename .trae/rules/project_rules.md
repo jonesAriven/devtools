@@ -5,6 +5,7 @@
 ### 1. activation-code-server — 激活码服务端（激活码生成工具）
 - 路径: `D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-server`
 - 技术栈: Java 21 + Spring Boot 3.4.5 + MyBatis-Plus + MySQL
+- JDK路径: `D:\huliang\software\Java\jdk-21.0.11`（注意：不要使用同目录下的 jdk-25）
 - 职责:
   - 生成并管理激活码（RSA私钥签名）
   - 验证激活码有效性
@@ -79,3 +80,8 @@
 
 - 所有需要自动安装的软件/工具，必须安装到 `E:\huliang\softWare` 目录下
 - 禁止安装到其他目录（如 C:\Program Files、C:\Users 等）
+
+## JDK 版本
+
+- 统一使用 JDK 21（路径: `D:\huliang\software\Java\jdk-21.0.11`）
+- 禁止使用 `D:\huliang\software\Java\jdk-25`，该目录仅为测试用途

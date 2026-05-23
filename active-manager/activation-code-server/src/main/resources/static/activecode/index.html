@@ -92,11 +92,24 @@
 
         function copyText(btn) {
             const codeBox = btn.parentElement;
-            const text = codeBox.textContent.replace('复制', '').trim();
-            navigator.clipboard.writeText(text).then(() => {
+            const text = codeBox.textContent.replace('复制', '').replace('已复制', '').trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.textContent = '已复制';
+                    setTimeout(() => btn.textContent = '复制', 1500);
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
                 btn.textContent = '已复制';
                 setTimeout(() => btn.textContent = '复制', 1500);
-            });
+            }
         }
 
         function showResult(div, success, html) {

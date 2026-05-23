@@ -127,6 +127,11 @@ if(TARGET zlib)
     set_property(TARGET zlib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 endif()
 
+# --- Jones.Activation verifier library (C++ version) ---
+set(JONES_ACTIVATION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../active-manager/activation-code-verifier/cpp")
+set(JONES_ACTIVATION_INCLUDE "${JONES_ACTIVATION_DIR}/include")
+set(JONES_ACTIVATION_LIB "${JONES_ACTIVATION_DIR}/build/Release/JonesActivation.lib")
+
 # --- Application ---
 
 # Generate app.ico from gen_icon.ps1 if it doesn't exist or is outdated
@@ -157,6 +162,8 @@ add_dependencies(QRCodeTool generate_icon)
 target_include_directories(QRCodeTool PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(QRCodeTool PRIVATE ${brotli_SOURCE_DIR}/c/include)
 target_include_directories(QRCodeTool PRIVATE ${zxing_SOURCE_DIR}/core/src)
+# Jones.Activation verifier headers
+target_include_directories(QRCodeTool PRIVATE ${JONES_ACTIVATION_INCLUDE})
 
 target_link_libraries(QRCodeTool PRIVATE
     qrcodegen_lib
@@ -171,6 +178,14 @@ target_link_libraries(QRCodeTool PRIVATE
     comctl32
     shell32
     ole32
+    # Jones.Activation verifier library
+    ${JONES_ACTIVATION_LIB}
+    bcrypt
+    crypt32
+    advapi32
+    wbemuuid
+    oleaut32
+    iphlpapi
 )
 
 set_target_properties(QRCodeTool PROPERTIES

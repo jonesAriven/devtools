@@ -3,6 +3,7 @@ package com.jones.activation;
 import com.jones.activation.controller.AuthController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -17,15 +18,24 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private final AuthController authController;
 
+    @Value("${spring.datasource.url}")
+    private String datasourceUrl;
+
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
     public DatabaseInitializer(AuthController authController) {
         this.authController = authController;
     }
 
     @Override
     public void run(String... args) throws Exception {
-        String url = "jdbc:mysql://192.168.31.182:3306?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true";
-        String username = "tools";
-        String password = "toolsmarschat";
+        // 从配置的数据源URL中提取不含数据库名的URL，用于创建数据库
+        // 例如: jdbc:mysql://192.168.31.77:3306/tools?... -> jdbc:mysql://192.168.31.77:3306?...
+        String urlWithoutDb = datasourceUrl.replaceFirst("/tools\\?", "?");
 
         String[] sqlStatements = {
             "CREATE DATABASE IF NOT EXISTS tools DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci",
@@ -71,7 +81,7 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            Connection conn = DriverManager.getConnection(url, username, password);
+            Connection conn = DriverManager.getConnection(urlWithoutDb, username, password);
             Statement stmt = conn.createStatement();
 
             for (String sql : sqlStatements) {
