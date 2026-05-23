@@ -72,4 +72,11 @@ public class ActivationController {
         boolean deleted = activationService.deleteRecord(id);
         return Map.of("success", deleted, "message", deleted ? "删除成功" : "记录不存在");
     }
+
+    @PutMapping("/{id}/alias")
+    public Map<String, Object> updateAlias(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String alias = body.get("deviceAlias");
+        log.info("收到修改设备别名请求, id: {}, alias: {}", id, alias);
+        return activationService.updateDeviceAlias(id, alias);
+    }
 }

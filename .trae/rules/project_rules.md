@@ -85,3 +85,11 @@
 
 - 统一使用 JDK 21（路径: `D:\huliang\software\Java\jdk-21.0.11`）
 - 禁止使用 `D:\huliang\software\Java\jdk-25`，该目录仅为测试用途
+
+## 数据库变更规范
+
+- **禁止删除表或清空数据**，所有表结构变更必须以升级（ALTER TABLE）方式进行
+- 新增列：先查询 `information_schema.COLUMNS` 判断列是否存在，不存在才 ALTER TABLE ADD COLUMN
+- 新增索引：先查询 `information_schema.STATISTICS` 判断索引是否存在，不存在才添加
+- `CREATE TABLE IF NOT EXISTS` 仅用于首次建表，已有表的结构变更一律用 ALTER TABLE
+- `DatabaseInitializer` 中的迁移逻辑必须兼容已有数据，不能破坏现有记录

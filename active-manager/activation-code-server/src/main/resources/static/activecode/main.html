@@ -170,6 +170,7 @@
                         <th>序列号</th>
                         <th>初始序列号</th>
                         <th>机器码</th>
+                        <th>设备别名</th>
                         <th>设备ID</th>
                         <th>激活码</th>
                         <th>有效期</th>
@@ -209,6 +210,7 @@
                         <th>关联记录ID</th>
                         <th>序列号</th>
                         <th>设备ID</th>
+                        <th>设备别名</th>
                         <th>事件类型</th>
                         <th>事件描述</th>
                         <th>客户端IP</th>
@@ -379,6 +381,7 @@
                     <td><span class="mono">${r.serialNumber || '-'}</span></td>
                     <td><span class="mono">${r.initialSerial || '-'}</span></td>
                     <td><span class="mono">${r.machineCode || '-'}</span></td>
+                    <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id}, '${(r.deviceAlias || '').replace(/'/g, "\\'")}')" style="cursor:pointer;color:${r.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;" title="点击编辑">${r.deviceAlias || '点击设置'}</span></td>
                     <td><span class="mono">${r.deviceId || '-'}</span></td>
                     <td>${codePreview}</td>
                     <td>${expireMin}</td>
@@ -438,6 +441,7 @@
                     <td>${l.recordId || '-'}</td>
                     <td><span class="mono">${l.serialNumber || '-'}</span></td>
                     <td><span class="mono">${l.deviceId || '-'}</span></td>
+                    <td><span style="color:${l.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;">${l.deviceAlias || '-'}</span></td>
                     <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
                     <td style="max-width:260px;word-break:break-all;">${l.eventMessage || '-'}</td>
                     <td><span class="mono">${l.clientIp || '-'}</span></td>
@@ -469,6 +473,44 @@
                 if (data.success) loadRecords();
                 else alert(data.message || '删除失败');
             } catch (e) { alert('删除失败: ' + e.message); }
+        }
+
+        function editAlias(id, currentAlias) {
+            const cell = document.getElementById('alias-' + id);
+            const oldAlias = currentAlias || '';
+            cell.innerHTML = `<input type="text" id="alias-input-${id}" value="${oldAlias}" style="width:100px;padding:2px 6px;border:1px solid #667eea;border-radius:4px;font-size:12px;outline:none;" onkeydown="if(event.key==='Enter')saveAlias(${id});if(event.key==='Escape'){this.parentElement.textContent='${oldAlias || '点击设置'}';this.parentElement.style.color='${oldAlias ? '#667eea' : '#aaa'}';}" onblur="saveAlias(${id})">`;
+            document.getElementById('alias-input-' + id).focus();
+        }
+
+        async function saveAlias(id) {
+            const input = document.getElementById('alias-input-' + id);
+            if (!input) return;
+            const newAlias = input.value.trim();
+            const cell = document.getElementById('alias-' + id);
+            try {
+                const resp = await fetch('/activecode/api/activation/' + id + '/alias', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceAlias: newAlias })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    cell.textContent = newAlias || '点击设置';
+                    cell.style.color = newAlias ? '#667eea' : '#aaa';
+                    cell.onclick = function() { editAlias(id, newAlias); };
+                    // 更新缓存
+                    const record = cachedRecords.find(r => r.id == id);
+                    if (record) record.deviceAlias = newAlias;
+                } else {
+                    alert(data.message || '修改失败');
+                    cell.textContent = cell.dataset.oldAlias || '点击设置';
+                    cell.style.color = cell.dataset.oldAlias ? '#667eea' : '#aaa';
+                }
+            } catch (e) {
+                alert('修改失败: ' + e.message);
+                cell.textContent = '点击设置';
+                cell.style.color = '#aaa';
+            }
         }
 
         async function parseCode() {

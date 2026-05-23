@@ -19,6 +19,7 @@ public class ActivationRecord {
     private Integer expireMinutes;
     private String initialSerial;
     private String machineCode;
+    private String deviceAlias;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -48,6 +49,9 @@ public class ActivationRecord {
 
     public String getMachineCode() { return machineCode; }
     public void setMachineCode(String machineCode) { this.machineCode = machineCode; }
+
+    public String getDeviceAlias() { return deviceAlias; }
+    public void setDeviceAlias(String deviceAlias) { this.deviceAlias = deviceAlias; }
 
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }

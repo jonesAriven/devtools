@@ -14,6 +14,7 @@ public class ActivationLog {
     private Long recordId;
     private String serialNumber;
     private String deviceId;
+    private String deviceAlias;
     private String eventType;
     private String eventMessage;
     private String clientIp;
@@ -30,6 +31,9 @@ public class ActivationLog {
 
     public String getDeviceId() { return deviceId; }
     public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
+
+    public String getDeviceAlias() { return deviceAlias; }
+    public void setDeviceAlias(String deviceAlias) { this.deviceAlias = deviceAlias; }
 
     public String getEventType() { return eventType; }
     public void setEventType(String eventType) { this.eventType = eventType; }

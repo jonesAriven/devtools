@@ -19,6 +19,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ActivationService {
@@ -232,6 +233,8 @@ public class ActivationService {
                     .like(ActivationRecord::getInitialSerial, keyword)
                     .or()
                     .like(ActivationRecord::getMachineCode, keyword)
+                    .or()
+                    .like(ActivationRecord::getDeviceAlias, keyword)
             );
         }
 
@@ -264,6 +267,33 @@ public class ActivationService {
 
     public boolean deleteRecord(Long id) {
         return activationRecordMapper.deleteById(id) > 0;
+    }
+
+    public java.util.Map<String, Object> updateDeviceAlias(Long id, String alias) {
+        ActivationRecord record = activationRecordMapper.selectById(id);
+        if (record == null) {
+            return Map.of("success", false, "message", "记录不存在");
+        }
+
+        // 唯一性校验：别名不能与其他记录重复（空值允许重复）
+        if (alias != null && !alias.trim().isEmpty()) {
+            alias = alias.trim();
+            LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ActivationRecord::getDeviceAlias, alias);
+            queryWrapper.ne(ActivationRecord::getId, id);
+            ActivationRecord existing = activationRecordMapper.selectOne(queryWrapper);
+            if (existing != null) {
+                return Map.of("success", false, "message", "设备别名已存在，请使用其他名称");
+            }
+            record.setDeviceAlias(alias);
+        } else {
+            record.setDeviceAlias(null);
+        }
+
+        record.setUpdateTime(LocalDateTime.now());
+        activationRecordMapper.updateById(record);
+        log.info("更新设备别名, id: {}, alias: {}", id, alias);
+        return Map.of("success", true, "message", "设备别名更新成功");
     }
 
     public java.util.Map<String, Object> parseActivationCode(String activationCode) {
@@ -350,6 +380,22 @@ public class ActivationService {
             logEntry.setEventMessage(eventMessage);
             logEntry.setClientIp(clientIp);
             logEntry.setCreateTime(LocalDateTime.now());
+
+            // 从记录中获取设备别名
+            if (recordId != null) {
+                ActivationRecord record = activationRecordMapper.selectById(recordId);
+                if (record != null) {
+                    logEntry.setDeviceAlias(record.getDeviceAlias());
+                }
+            } else if (serialNumber != null) {
+                LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(ActivationRecord::getSerialNumber, serialNumber);
+                ActivationRecord record = activationRecordMapper.selectOne(queryWrapper);
+                if (record != null) {
+                    logEntry.setDeviceAlias(record.getDeviceAlias());
+                }
+            }
+
             activationLogMapper.insert(logEntry);
         } catch (Exception e) {
             log.error("保存激活日志失败", e);

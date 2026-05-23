@@ -50,15 +50,18 @@ public class DatabaseInitializer implements CommandLineRunner {
             "    expire_minutes INT DEFAULT NULL COMMENT '有效期(分钟)'," +
             "    initial_serial VARCHAR(256) DEFAULT NULL COMMENT '初始序列号'," +
             "    machine_code VARCHAR(256) DEFAULT NULL COMMENT '机器码'," +
+            "    device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名'," +
             "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
             "    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
-            "    UNIQUE KEY uk_serial_number (serial_number)" +
+            "    UNIQUE KEY uk_serial_number (serial_number)," +
+            "    UNIQUE KEY uk_device_alias (device_alias)" +
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='激活码记录表'",
             "CREATE TABLE IF NOT EXISTS activation_log (" +
             "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
             "    record_id BIGINT DEFAULT NULL COMMENT '关联记录ID'," +
             "    serial_number VARCHAR(512) DEFAULT NULL COMMENT '唯一序列号'," +
             "    device_id VARCHAR(128) DEFAULT NULL COMMENT '设备ID'," +
+            "    device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名'," +
             "    event_type VARCHAR(32) NOT NULL COMMENT '事件类型'," +
             "    event_message VARCHAR(512) DEFAULT NULL COMMENT '事件消息'," +
             "    client_ip VARCHAR(64) DEFAULT NULL COMMENT '客户端IP'," +
@@ -79,6 +82,13 @@ public class DatabaseInitializer implements CommandLineRunner {
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员用户表'"
         };
 
+        // 兼容已有数据库：如果表已存在但缺少 device_alias 列，则自动添加
+        // MySQL 不支持 ADD COLUMN IF NOT EXISTS，需要先查询列是否存在
+        String[][] alterChecks = {
+            {"activation_record", "device_alias", "ALTER TABLE activation_record ADD COLUMN device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名' AFTER machine_code"},
+            {"activation_log", "device_alias", "ALTER TABLE activation_log ADD COLUMN device_alias VARCHAR(128) DEFAULT NULL COMMENT '设备别名' AFTER device_id"}
+        };
+
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection conn = DriverManager.getConnection(urlWithoutDb, username, password);
@@ -87,6 +97,42 @@ public class DatabaseInitializer implements CommandLineRunner {
             for (String sql : sqlStatements) {
                 log.info("执行建表语句: {}", sql.substring(0, Math.min(sql.length(), 80)));
                 stmt.execute(sql);
+            }
+
+            // 检查并添加缺失的列
+            for (String[] alter : alterChecks) {
+                String tableName = alter[0];
+                String columnName = alter[1];
+                String alterSql = alter[2];
+                try {
+                    var rs = stmt.executeQuery("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'tools' AND TABLE_NAME = '" + tableName + "' AND COLUMN_NAME = '" + columnName + "'");
+                    rs.next();
+                    if (rs.getInt(1) == 0) {
+                        log.info("执行迁移语句: {}", alterSql);
+                        stmt.execute(alterSql);
+                        log.info("列 {}.{} 添加成功", tableName, columnName);
+                    } else {
+                        log.info("列 {}.{} 已存在，跳过", tableName, columnName);
+                    }
+                    rs.close();
+                } catch (Exception e) {
+                    log.warn("迁移语句执行异常: {}", e.getMessage());
+                }
+            }
+
+            // 添加唯一索引（如果不存在）
+            try {
+                var rs = stmt.executeQuery("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = 'tools' AND TABLE_NAME = 'activation_record' AND INDEX_NAME = 'uk_device_alias'");
+                rs.next();
+                if (rs.getInt(1) == 0) {
+                    stmt.execute("ALTER TABLE activation_record ADD UNIQUE INDEX uk_device_alias (device_alias)");
+                    log.info("唯一索引 uk_device_alias 添加成功");
+                } else {
+                    log.info("唯一索引 uk_device_alias 已存在，跳过");
+                }
+                rs.close();
+            } catch (Exception e) {
+                log.warn("添加唯一索引异常: {}", e.getMessage());
             }
 
             stmt.close();
