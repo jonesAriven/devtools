@@ -54,7 +54,6 @@ std::vector<uint8_t> brotliCompress(const std::string& data) {
         &encoded_size,
         nullptr);
 
-    // If size query didn't work, use a reasonable upper bound
     if (encoded_size == 0) {
         encoded_size = data.size() + (data.size() >> 2) + 1024;
     }
@@ -86,7 +85,6 @@ std::string brotliDecompress(const uint8_t* data, size_t len) {
     BrotliDecoderDecompress(len, data, &decoded_size, nullptr);
 
     if (decoded_size == 0) {
-        // Use a reasonable initial size and grow as needed
         decoded_size = len * 10;
     }
 
@@ -97,7 +95,6 @@ std::string brotliDecompress(const uint8_t* data, size_t len) {
         len, data, &actual_size, reinterpret_cast<uint8_t*>(output.data()));
 
     if (result != BROTLI_DECODER_RESULT_SUCCESS) {
-        // Try streaming decompression as fallback
         BrotliDecoderState* state = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
         if (!state) {
             throw std::runtime_error("Brotli decompression failed: cannot create decoder");
@@ -135,7 +132,6 @@ std::string gzipDecompress(const uint8_t* data, size_t len) {
     if (len == 0) return {};
 
     z_stream strm = {};
-    // 15 + 16 for gzip decoding
     int ret = inflateInit2(&strm, 15 + 16);
     if (ret != Z_OK) {
         throw std::runtime_error("GZip decompression init failed");
@@ -168,7 +164,6 @@ std::string gzipDecompress(const uint8_t* data, size_t len) {
 std::string compressText(const std::string& text, bool compress) {
     if (!compress) return text;
 
-    // UTF-8 encode -> Brotli compress -> Base45 encode -> "B5:" prefix
     std::vector<uint8_t> compressed = brotliCompress(text);
     std::string encoded = base45Encode(compressed);
     return "B5:" + encoded;
@@ -177,8 +172,27 @@ std::string compressText(const std::string& text, bool compress) {
 std::string decompressText(const std::string& text) {
     const std::string B5_PREFIX = "B5:";
     const std::string GZ_PREFIX = "GZ:";
+    const std::string M5_PREFIX = "M5:";
 
     logComp("decompressText: input_len=" + std::to_string(text.size()));
+
+    // Multi-page: single page of a multi-page QR set
+    if (text.compare(0, M5_PREFIX.size(), M5_PREFIX) == 0) {
+        logComp("Detected M5: prefix (multi-page Brotli+Base45)");
+        int page = 0, total = 0;
+        std::string chunk;
+        if (MultiPageAssembler::parseM5Header(text, page, total, chunk)) {
+            logComp("M5 page " + std::to_string(page) + "/" + std::to_string(total) + ", chunk_len=" + std::to_string(chunk.size()));
+            // For single-page case (total=1), decompress directly
+            if (total == 1) {
+                std::vector<uint8_t> decoded = base45Decode(chunk);
+                return brotliDecompress(decoded.data(), decoded.size());
+            }
+            // Multi-page: return info message, caller should use MultiPageAssembler
+            throw std::runtime_error("Multi-page QR detected (" + std::to_string(page) + "/" + std::to_string(total) + "), please scan all pages");
+        }
+        throw std::runtime_error("Invalid M5: format");
+    }
 
     if (text.compare(0, B5_PREFIX.size(), B5_PREFIX) == 0) {
         logComp("Detected B5: prefix (Brotli+Base45)");
@@ -213,6 +227,103 @@ std::string decompressText(const std::string& text) {
 
     logComp("No compression prefix, returning raw text");
     return text;
+}
+
+// === MultiPageAssembler ===
+
+bool MultiPageAssembler::parseM5Header(const std::string& text, int& outPage, int& outTotal, std::string& outChunk) {
+    const std::string M5_PREFIX = "M5:";
+    if (text.size() < M5_PREFIX.size() + 4) return false;  // minimum: "M5:1/1/X"
+    if (text.compare(0, M5_PREFIX.size(), M5_PREFIX) != 0) return false;
+
+    std::string rest = text.substr(M5_PREFIX.size());
+
+    // Find first '/' (page/total separator)
+    size_t slash1 = rest.find('/');
+    if (slash1 == std::string::npos) return false;
+
+    // Find second '/' (total/chunk separator)
+    size_t slash2 = rest.find('/', slash1 + 1);
+    if (slash2 == std::string::npos) return false;
+
+    std::string pageStr = rest.substr(0, slash1);
+    std::string totalStr = rest.substr(slash1 + 1, slash2 - slash1 - 1);
+
+    try {
+        outPage = std::stoi(pageStr);
+        outTotal = std::stoi(totalStr);
+    } catch (...) {
+        return false;
+    }
+
+    if (outPage < 1 || outTotal < 1 || outPage > outTotal) return false;
+
+    outChunk = rest.substr(slash2 + 1);
+    return true;
+}
+
+bool MultiPageAssembler::addPage(const std::string& text) {
+    int page = 0, total = 0;
+    std::string chunk;
+    if (!parseM5Header(text, page, total, chunk)) return false;
+
+    isMultiPage = true;
+    if (totalPages == 0) {
+        totalPages = total;
+    } else if (totalPages != total) {
+        // Page from a different set, reject
+        return false;
+    }
+
+    int pageIndex = page - 1;  // convert to 0-based
+    if (pages.find(pageIndex) != pages.end()) {
+        return false;  // already have this page
+    }
+
+    pages[pageIndex] = chunk;
+    return true;
+}
+
+bool MultiPageAssembler::isComplete() const {
+    if (!isMultiPage || totalPages == 0) return false;
+    return static_cast<int>(pages.size()) == totalPages;
+}
+
+std::string MultiPageAssembler::assemble() const {
+    if (!isComplete()) return "";
+
+    // Concatenate all chunks in order
+    std::string base45Data;
+    for (int i = 0; i < totalPages; i++) {
+        auto it = pages.find(i);
+        if (it == pages.end()) return "";
+        base45Data += it->second;
+    }
+
+    // Base45 decode -> Brotli decompress
+    try {
+        std::vector<uint8_t> decoded = base45Decode(base45Data);
+        return brotliDecompress(decoded.data(), decoded.size());
+    } catch (...) {
+        return "";
+    }
+}
+
+void MultiPageAssembler::reset() {
+    totalPages = 0;
+    pages.clear();
+    isMultiPage = false;
+}
+
+std::vector<int> MultiPageAssembler::getMissingPages() const {
+    std::vector<int> missing;
+    if (!isMultiPage || totalPages == 0) return missing;
+    for (int i = 0; i < totalPages; i++) {
+        if (pages.find(i) == pages.end()) {
+            missing.push_back(i + 1);  // return 1-based page numbers
+        }
+    }
+    return missing;
 }
 
 } // namespace qr

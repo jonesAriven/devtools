@@ -33,6 +33,9 @@ static void logToFile(const std::string& msg) {
 #define IDC_BTN_UPLOAD    1003
 #define IDC_TXT_CONTENT   1005
 #define IDC_CMB_ECL       1006
+#define IDC_BTN_PREV      1007
+#define IDC_BTN_NEXT      1008
+#define IDC_LBL_PAGE      1009
 #define IDT_TEXT_CHANGED   2001
 
 namespace qr {
@@ -52,6 +55,9 @@ MainWindow::MainWindow(HINSTANCE hInstance)
     , m_hBtnUpload(nullptr)
     , m_hTxtContent(nullptr)
     , m_hCmbEcl(nullptr)
+    , m_hBtnPrev(nullptr)
+    , m_hBtnNext(nullptr)
+    , m_hLblPage(nullptr)
     , m_hQrBitmap(nullptr)
     , m_hFont(nullptr)
     , m_hFontBold(nullptr)
@@ -60,6 +66,7 @@ MainWindow::MainWindow(HINSTANCE hInstance)
     , m_lastCompressed(false)
     , m_eclLevel(0)
     , m_qrRect({})
+    , m_currentPage(0)
 {
 }
 
@@ -72,6 +79,13 @@ MainWindow::~MainWindow()
         DeleteObject(m_hQrBitmap);
         m_hQrBitmap = nullptr;
     }
+    // Clean up all QR page bitmaps
+    for (auto& page : m_qrPages) {
+        if (page.bitmap) {
+            DeleteObject(page.bitmap);
+        }
+    }
+    m_qrPages.clear();
     if (m_hFont) {
         DeleteObject(m_hFont);
         m_hFont = nullptr;
@@ -88,8 +102,6 @@ MainWindow::~MainWindow()
 
 bool MainWindow::Create()
 {
-    // Load icons from embedded resource (app.ico embedded via resource.rc)
-    // This ensures the taskbar pinned icon matches the running app icon
     HICON hIconLarge = LoadIconW(m_hInstance, MAKEINTRESOURCEW(IDR_ICON1));
     HICON hIconSmall = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDR_ICON1),
         IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
@@ -128,7 +140,6 @@ bool MainWindow::Create()
         return false;
     }
 
-    // Set window icons explicitly (ensures taskbar shows the large icon)
     SendMessage(m_hWnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(hIconLarge));
     SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIconSmall));
 
@@ -207,6 +218,12 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
                 OnEclChanged();
             }
             break;
+        case IDC_BTN_PREV:
+            OnPrevPage();
+            break;
+        case IDC_BTN_NEXT:
+            OnNextPage();
+            break;
         default:
             return DefWindowProcW(m_hWnd, message, wParam, lParam);
         }
@@ -237,6 +254,14 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
             }
             return reinterpret_cast<LRESULT>(m_hCompressBrush);
         }
+        if (hCtrl == m_hLblPage) {
+            SetTextColor(hdcStatic, RGB(80, 80, 80));
+            SetBkColor(hdcStatic, RGB(240, 240, 240));
+            if (!m_hCompressBrush) {
+                m_hCompressBrush = CreateSolidBrush(RGB(240, 240, 240));
+            }
+            return reinterpret_cast<LRESULT>(m_hCompressBrush);
+        }
         return DefWindowProcW(m_hWnd, message, wParam, lParam);
     }
 
@@ -250,12 +275,10 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
         RECT rc;
         GetClientRect(m_hWnd, &rc);
 
-        // Fill background
         HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
         FillRect(hdc, &rc, hBgBrush);
         DeleteObject(hBgBrush);
 
-        // Draw QR code
         PaintQrCode(hdc, rc);
 
         EndPaint(m_hWnd, &ps);
@@ -274,12 +297,10 @@ LRESULT MainWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam)
 
 void MainWindow::PaintQrCode(HDC hdc, const RECT& clientRect)
 {
-    // Draw white background for QR area
     HBRUSH hWhiteBrush = CreateSolidBrush(RGB(255, 255, 255));
     FillRect(hdc, &m_qrRect, hWhiteBrush);
     DeleteObject(hWhiteBrush);
 
-    // Draw border
     HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
     HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
     HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
@@ -290,30 +311,24 @@ void MainWindow::PaintQrCode(HDC hdc, const RECT& clientRect)
 
     if (!m_hQrBitmap) return;
 
-    // Get bitmap dimensions
     BITMAP bm;
     GetObject(m_hQrBitmap, sizeof(bm), &bm);
 
-    // Calculate centered, aspect-ratio-preserving draw rect
     int bmpW = bm.bmWidth;
     int bmpH = bm.bmHeight;
     int areaW = m_qrRect.right - m_qrRect.left;
     int areaH = m_qrRect.bottom - m_qrRect.top;
 
-    // Scale to fit, maintaining aspect ratio
     float scale = (float)(std::min)(areaW, areaH) / (float)(std::max)(bmpW, bmpH);
     int drawW = (int)(bmpW * scale);
     int drawH = (int)(bmpH * scale);
 
-    // Center in the QR area
     int drawX = m_qrRect.left + (areaW - drawW) / 2;
     int drawY = m_qrRect.top + (areaH - drawH) / 2;
 
-    // Draw bitmap using SetDIBitsToDevice for pixel-perfect rendering
     HDC memDC = CreateCompatibleDC(hdc);
     HBITMAP hOldBmp = (HBITMAP)SelectObject(memDC, m_hQrBitmap);
 
-    // Use StretchBlt with HALFTONE for best quality scaling
     int oldStretchMode = SetStretchBltMode(hdc, HALFTONE);
     StretchBlt(hdc, drawX, drawY, drawW, drawH, memDC, 0, 0, bmpW, bmpH, SRCCOPY);
     SetStretchBltMode(hdc, oldStretchMode);
@@ -324,7 +339,6 @@ void MainWindow::PaintQrCode(HDC hdc, const RECT& clientRect)
 
 void MainWindow::BuildUI()
 {
-    // Create font
     m_hFont = CreateFontW(
         -MulDiv(10, 96, 72),
         0, 0, 0, FW_NORMAL,
@@ -337,7 +351,6 @@ void MainWindow::BuildUI()
         L"Microsoft YaHei"
     );
 
-    // Create bold font for compress label
     m_hFontBold = CreateFontW(
         -MulDiv(10, 96, 72),
         0, 0, 0, FW_BOLD,
@@ -350,10 +363,8 @@ void MainWindow::BuildUI()
         L"Microsoft YaHei"
     );
 
-    // Toolbar layout (left to right):
-    // [已压缩] [截图] [上传]  ...  [纠错率: ▼]
+    // Toolbar: [已压缩] [截图] [上传] [◀] [1/3] [▶]  ...  [纠错率: ▼]
 
-    // Compress status label (hidden by default, shown when compressed)
     m_hLblCompress = CreateWindowExW(
         0, L"STATIC", L"",
         WS_CHILD | WS_VISIBLE | SS_LEFT,
@@ -381,7 +392,35 @@ void MainWindow::BuildUI()
     );
     SendMessageW(m_hBtnUpload, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 
-    // Error correction level dropdown (right side of toolbar)
+    // Page navigation: [◀] [1/3] [▶]
+    m_hBtnPrev = CreateWindowExW(
+        0, L"BUTTON", L"\u25C0",
+        WS_CHILD | BS_PUSHBUTTON,
+        150, 3, 24, 24,
+        m_hWnd, reinterpret_cast<HMENU>(IDC_BTN_PREV),
+        m_hInstance, nullptr
+    );
+    SendMessageW(m_hBtnPrev, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+
+    m_hLblPage = CreateWindowExW(
+        0, L"STATIC", L"",
+        WS_CHILD | SS_CENTER,
+        176, 7, 50, 18,
+        m_hWnd, reinterpret_cast<HMENU>(IDC_LBL_PAGE),
+        m_hInstance, nullptr
+    );
+    SendMessageW(m_hLblPage, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+
+    m_hBtnNext = CreateWindowExW(
+        0, L"BUTTON", L"\u25B6",
+        WS_CHILD | BS_PUSHBUTTON,
+        228, 3, 24, 24,
+        m_hWnd, reinterpret_cast<HMENU>(IDC_BTN_NEXT),
+        m_hInstance, nullptr
+    );
+    SendMessageW(m_hBtnNext, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+
+    // Error correction level dropdown
     m_hCmbEcl = CreateWindowExW(
         0, L"COMBOBOX", L"",
         WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
@@ -394,9 +433,8 @@ void MainWindow::BuildUI()
     SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"M"));
     SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Q"));
     SendMessageW(m_hCmbEcl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"H"));
-    SendMessageW(m_hCmbEcl, CB_SETCURSEL, 0, 0);  // Default: L
+    SendMessageW(m_hCmbEcl, CB_SETCURSEL, 0, 0);
 
-    // Text input/output (no STATIC control for QR - we paint it ourselves)
     m_hTxtContent = CreateWindowExW(
         0, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | WS_BORDER |
@@ -407,11 +445,12 @@ void MainWindow::BuildUI()
     );
     SendMessageW(m_hTxtContent, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
 
-    // Subclass edit control to handle Ctrl+A (select all)
     SetWindowSubclass(m_hTxtContent, EditSubclassProc, 0, 0);
 
-    // Initialize QR display rect
     m_qrRect = { PADDING, TOOLBAR_HEIGHT + 4, PADDING + 420, TOOLBAR_HEIGHT + 4 + 400 };
+
+    // Initially hide page navigation
+    UpdatePageInfo();
 }
 
 void MainWindow::ResizeControls()
@@ -424,7 +463,7 @@ void MainWindow::ResizeControls()
     int imgX = PADDING;
     int imgY = TOOLBAR_HEIGHT + 4;
     int imgW = width - 2 * PADDING;
-    int imgH = imgW;  // Keep square
+    int imgH = imgW;
 
     int txtY = imgY + imgH + PADDING;
     int txtH = height - txtY - PADDING;
@@ -437,7 +476,6 @@ void MainWindow::ResizeControls()
 
     m_qrRect = { imgX, imgY, imgX + imgW, imgY + imgH };
     MoveWindow(m_hTxtContent, PADDING, txtY, width - 2 * PADDING, txtH, TRUE);
-    // Move ECL dropdown to right side of toolbar
     MoveWindow(m_hCmbEcl, width - 60, 2, 55, 200, TRUE);
     InvalidateRect(m_hWnd, nullptr, TRUE);
 }
@@ -447,33 +485,101 @@ void MainWindow::GenerateQr()
     try {
         std::string text = GetText();
         if (text.empty()) {
+            // Clean up old pages
+            for (auto& page : m_qrPages) {
+                if (page.bitmap) DeleteObject(page.bitmap);
+            }
+            m_qrPages.clear();
+            m_currentPage = 0;
             UpdateQrImage(nullptr);
             SetWindowTextW(m_hLblCompress, L"");
             m_lastCompressed = false;
+            UpdatePageInfo();
             return;
         }
 
         QrEcl ecl = static_cast<QrEcl>(m_eclLevel);
         bool compressed = false;
-        HBITMAP hNewBmp = qr::generateQrBitmap(text, m_compress, 600, compressed, ecl);
-        if (hNewBmp) {
-            logToFile("GenerateQr: bitmap created OK, compressed=" + std::to_string(compressed));
-        } else {
-            logToFile("GenerateQr: bitmap creation FAILED");
-        }
-        UpdateQrImage(hNewBmp);
+        std::vector<QrPage> pages = qr::generateQrPages(text, m_compress, 600, compressed, ecl);
 
-        // Update compress status label
+        if (pages.empty()) {
+            logToFile("GenerateQr: all pages failed");
+        } else {
+            logToFile("GenerateQr: " + std::to_string(pages.size()) + " page(s), compressed=" + std::to_string(compressed));
+        }
+
+        // Clean up old pages
+        for (auto& page : m_qrPages) {
+            if (page.bitmap) DeleteObject(page.bitmap);
+        }
+        m_qrPages = std::move(pages);
+        m_currentPage = 0;
+
+        // Show first page
+        if (!m_qrPages.empty() && m_qrPages[0].bitmap) {
+            UpdateQrImage(m_qrPages[0].bitmap);
+        } else {
+            UpdateQrImage(nullptr);
+        }
+
         if (compressed != m_lastCompressed) {
             m_lastCompressed = compressed;
             SetWindowTextW(m_hLblCompress, compressed ? L"\u5DF2\u538B\u7F29" : L"");
         }
+
+        UpdatePageInfo();
     } catch (const std::exception& e) {
         logToFile(std::string("GenerateQr exception: ") + e.what());
         UpdateQrImage(nullptr);
     } catch (...) {
         logToFile("GenerateQr unknown exception");
         UpdateQrImage(nullptr);
+    }
+}
+
+void MainWindow::OnPrevPage()
+{
+    if (m_currentPage > 0) {
+        m_currentPage--;
+        if (m_currentPage < (int)m_qrPages.size() && m_qrPages[m_currentPage].bitmap) {
+            UpdateQrImage(m_qrPages[m_currentPage].bitmap);
+        }
+        UpdatePageInfo();
+    }
+}
+
+void MainWindow::OnNextPage()
+{
+    if (m_currentPage < (int)m_qrPages.size() - 1) {
+        m_currentPage++;
+        if (m_currentPage < (int)m_qrPages.size() && m_qrPages[m_currentPage].bitmap) {
+            UpdateQrImage(m_qrPages[m_currentPage].bitmap);
+        }
+        UpdatePageInfo();
+    }
+}
+
+void MainWindow::UpdatePageInfo()
+{
+    int totalPages = (int)m_qrPages.size();
+    if (totalPages <= 1) {
+        // Single page or no pages - hide navigation
+        ShowWindow(m_hBtnPrev, SW_HIDE);
+        ShowWindow(m_hBtnNext, SW_HIDE);
+        ShowWindow(m_hLblPage, SW_HIDE);
+    } else {
+        // Multi-page - show navigation
+        ShowWindow(m_hBtnPrev, SW_SHOW);
+        ShowWindow(m_hBtnNext, SW_SHOW);
+        ShowWindow(m_hLblPage, SW_SHOW);
+
+        // Update page label
+        std::wstring pageText = std::to_wstring(m_currentPage + 1) + L"/" + std::to_wstring(totalPages);
+        SetWindowTextW(m_hLblPage, pageText.c_str());
+
+        // Enable/disable buttons
+        EnableWindow(m_hBtnPrev, m_currentPage > 0);
+        EnableWindow(m_hBtnNext, m_currentPage < totalPages - 1);
     }
 }
 
@@ -504,17 +610,53 @@ void MainWindow::OnCapture()
             logToFile(oss.str());
         }
 
-        if (!result.success) {
-            logToFile("Decode failed: all strategies failed");
+        if (!result.success || result.text.empty()) {
+            logToFile("Decode failed or empty");
             return;
         }
 
-        if (result.text.empty()) {
-            logToFile("Decode OK but text is empty");
-            return;
+        // Check if this is a multi-page QR code
+        if (result.text.compare(0, 3, "M5:") == 0) {
+            int page = 0, total = 0;
+            std::string chunk;
+            if (MultiPageAssembler::parseM5Header(result.text, page, total, chunk)) {
+                logToFile("Multi-page QR detected: page " + std::to_string(page) + "/" + std::to_string(total));
+
+                bool isNew = m_assembler.addPage(result.text);
+                if (isNew) {
+                    logToFile("Page " + std::to_string(page) + " added to assembler");
+                } else {
+                    logToFile("Page " + std::to_string(page) + " already collected or invalid");
+                }
+
+                if (m_assembler.isComplete()) {
+                    logToFile("All pages collected, assembling...");
+                    std::string assembled = m_assembler.assemble();
+                    if (!assembled.empty()) {
+                        SetText(assembled);
+                        logToFile("Multi-page assembly OK, len=" + std::to_string(assembled.size()));
+                    } else {
+                        logToFile("Multi-page assembly FAILED");
+                    }
+                    m_assembler.reset();
+                } else {
+                    // Show progress with actual page number
+                    auto missing = m_assembler.getMissingPages();
+                    std::wstring msg = L"\u5DF2\u626B\u63CF\u7B2C " + std::to_wstring(page) + L" \u9875\uFF08\u5171 " + std::to_wstring(total) + L" \u9875\uFF09\n\u8FD8\u7F3A\u7B2C ";
+                    for (size_t i = 0; i < missing.size(); i++) {
+                        if (i > 0) msg += L"\u3001";
+                        msg += std::to_wstring(missing[i]);
+                    }
+                    msg += L" \u9875";
+                    MessageBoxW(m_hWnd, msg.c_str(), L"\u591A\u9875\u4E8C\u7EF4\u7801", MB_OK | MB_ICONINFORMATION);
+                }
+                return;
+            }
         }
 
-        // Log raw decoded text (first 500 chars)
+        // Single page QR (B5:, GZ:, or plain text)
+        m_assembler.reset();  // reset any previous multi-page state
+
         {
             std::string preview = result.text.substr(0, 500);
             logToFile("Raw decoded (first 500): " + preview);
@@ -528,16 +670,15 @@ void MainWindow::OnCapture()
                 oss << "Decompress OK, len=" << decompressed.size();
                 logToFile(oss.str());
             }
-            // Log decompressed text (first 500 chars)
             if (!decompressed.empty()) {
                 logToFile("Decompressed (first 500): " + decompressed.substr(0, 500));
             }
         } catch (const std::exception& e) {
             logToFile(std::string("Decompress exception: ") + e.what());
-            decompressed = result.text; // fallback: show raw text
+            decompressed = result.text;
         } catch (...) {
             logToFile("Decompress unknown exception");
-            decompressed = result.text; // fallback: show raw text
+            decompressed = result.text;
         }
 
         if (!decompressed.empty()) {
@@ -569,12 +710,38 @@ void MainWindow::OnUpload()
         if (GetOpenFileNameW(&ofn)) {
             DecodeResult result = qr::decodeFromFile(filePath);
             if (result.success && !result.text.empty()) {
+                // Check multi-page
+                if (result.text.compare(0, 3, "M5:") == 0) {
+                    int page = 0, total = 0;
+                    std::string chunk;
+                    if (MultiPageAssembler::parseM5Header(result.text, page, total, chunk)) {
+                        m_assembler.addPage(result.text);
+                        if (m_assembler.isComplete()) {
+                            std::string assembled = m_assembler.assemble();
+                            if (!assembled.empty()) {
+                                SetText(assembled);
+                            }
+                            m_assembler.reset();
+                        } else {
+                            auto missing = m_assembler.getMissingPages();
+                            std::wstring msg = L"\u5DF2\u626B\u63CF\u7B2C " + std::to_wstring(page) + L" \u9875\uFF08\u5171 " + std::to_wstring(total) + L" \u9875\uFF09\n\u8FD8\u7F3A\u7B2C ";
+                            for (size_t i = 0; i < missing.size(); i++) {
+                                if (i > 0) msg += L"\u3001";
+                                msg += std::to_wstring(missing[i]);
+                            }
+                            msg += L" \u9875";
+                            MessageBoxW(m_hWnd, msg.c_str(), L"\u591A\u9875\u4E8C\u7EF4\u7801", MB_OK | MB_ICONINFORMATION);
+                        }
+                        return;
+                    }
+                }
+
+                m_assembler.reset();
                 std::string decompressed = qr::decompressText(result.text);
                 SetText(decompressed);
             }
         }
     } catch (...) {
-        // Suppress all exceptions
     }
 }
 
@@ -595,11 +762,7 @@ void MainWindow::OnEclChanged()
 
 void MainWindow::UpdateQrImage(HBITMAP hBmp)
 {
-    if (m_hQrBitmap) {
-        DeleteObject(m_hQrBitmap);
-        m_hQrBitmap = nullptr;
-    }
-
+    // Don't delete old bitmap - it's owned by m_qrPages now
     m_hQrBitmap = hBmp;
     InvalidateRect(m_hWnd, &m_qrRect, TRUE);
 }
@@ -608,8 +771,6 @@ void MainWindow::SetText(const std::string& text)
 {
     std::wstring wtext = Utf8ToWide(text);
     SetWindowTextW(m_hTxtContent, wtext.c_str());
-    // EN_CHANGE from SetWindowTextW may not fire reliably when called programmatically
-    // So directly generate QR code after setting text
     GenerateQr();
 }
 

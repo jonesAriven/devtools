@@ -1,6 +1,9 @@
 #pragma once
 #include <windows.h>
 #include <string>
+#include <vector>
+#include "QrGenerator.h"
+#include "Compressor.h"
 
 namespace qr {
 
@@ -24,7 +27,10 @@ private:
     void OnUpload();
     void OnTextChanged();
     void OnEclChanged();
+    void OnPrevPage();
+    void OnNextPage();
     void UpdateQrImage(HBITMAP hBmp);
+    void UpdatePageInfo();
     void SetText(const std::string& text);
     std::string GetText() const;
     std::wstring Utf8ToWide(const std::string& str) const;
@@ -38,6 +44,9 @@ private:
     HWND m_hBtnUpload;
     HWND m_hTxtContent;
     HWND m_hCmbEcl;
+    HWND m_hBtnPrev;
+    HWND m_hBtnNext;
+    HWND m_hLblPage;
 
     HBITMAP m_hQrBitmap;
     HFONT m_hFont;
@@ -47,6 +56,11 @@ private:
     bool m_lastCompressed;
     int m_eclLevel;  // 0=L, 1=M, 2=Q, 3=H
     RECT m_qrRect;  // QR code display area
+
+    // Multi-page support
+    std::vector<QrPage> m_qrPages;   // all generated QR pages
+    int m_currentPage;                 // 0-based current page index
+    MultiPageAssembler m_assembler;    // for scanning multi-page QR codes
 };
 
 } // namespace qr
