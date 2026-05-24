@@ -18,6 +18,7 @@ public:
 private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     static LRESULT CALLBACK EditSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+    static LRESULT CALLBACK FloatWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT HandleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 
     void BuildUI();
@@ -36,6 +37,10 @@ private:
     std::wstring Utf8ToWide(const std::string& str) const;
     std::string WideToUtf8(const std::wstring& wstr) const;
     void PaintQrCode(HDC hdc, const RECT& clientRect);
+
+    // Floating progress window
+    void ShowFloatProgress(const std::wstring& msg);
+    void CloseFloatProgress();
 
     HINSTANCE m_hInstance;
     HWND m_hWnd;
@@ -61,6 +66,10 @@ private:
     std::vector<QrPage> m_qrPages;   // all generated QR pages
     int m_currentPage;                 // 0-based current page index
     MultiPageAssembler m_assembler;    // for scanning multi-page QR codes
+
+    // Floating progress window
+    HWND m_hFloatWnd;
+    static const wchar_t FLOAT_CLASS_NAME[];
 };
 
 } // namespace qr

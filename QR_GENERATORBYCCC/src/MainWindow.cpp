@@ -41,6 +41,7 @@ static void logToFile(const std::string& msg) {
 namespace qr {
 
 static const wchar_t CLASS_NAME[] = L"QRCodeToolClass";
+const wchar_t MainWindow::FLOAT_CLASS_NAME[] = L"QRFloatProgressClass";
 static const int TOOLBAR_HEIGHT = 30;
 static const int PADDING = 10;
 static const int MIN_WIDTH = 440;
@@ -67,6 +68,7 @@ MainWindow::MainWindow(HINSTANCE hInstance)
     , m_eclLevel(0)
     , m_qrRect({})
     , m_currentPage(0)
+    , m_hFloatWnd(nullptr)
 {
 }
 
@@ -122,6 +124,21 @@ bool MainWindow::Create()
         if (err != ERROR_CLASS_ALREADY_EXISTS) {
             return false;
         }
+    }
+
+    // Register floating progress window class
+    static bool floatRegistered = false;
+    if (!floatRegistered) {
+        WNDCLASSEXW fwc = {};
+        fwc.cbSize = sizeof(fwc);
+        fwc.style = CS_HREDRAW | CS_VREDRAW;
+        fwc.lpfnWndProc = FloatWndProc;
+        fwc.hInstance = m_hInstance;
+        fwc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        fwc.hbrBackground = nullptr;
+        fwc.lpszClassName = FLOAT_CLASS_NAME;
+        RegisterClassExW(&fwc);
+        floatRegistered = true;
     }
 
     m_hWnd = CreateWindowExW(
@@ -586,6 +603,29 @@ void MainWindow::UpdatePageInfo()
 void MainWindow::OnCapture()
 {
     logToFile("=== OnCapture START ===");
+
+    // Clear text box if it has content (new scan session)
+    if (GetWindowTextLengthW(m_hTxtContent) > 0) {
+        // Use SetWindowTextW directly to avoid SetText() calling GenerateQr()
+        // which can cause re-entrancy issues during screen capture
+        SetWindowTextW(m_hTxtContent, L"");
+        KillTimer(m_hWnd, IDT_TEXT_CHANGED);  // cancel any pending text-change timer
+
+        // Clear QR display manually
+        for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
+        m_qrPages.clear();
+        m_currentPage = 0;
+        m_hQrBitmap = nullptr;
+        InvalidateRect(m_hWnd, &m_qrRect, TRUE);
+        SetWindowTextW(m_hLblCompress, L"");
+        m_lastCompressed = false;
+        UpdatePageInfo();
+
+        // Reset multi-page assembler for new scan session
+        m_assembler.reset();
+        CloseFloatProgress();
+    }
+
     try {
         HBITMAP hCaptured = qr::captureScreenSelection(m_hWnd);
         if (!hCaptured) {
@@ -622,15 +662,47 @@ void MainWindow::OnCapture()
             if (MultiPageAssembler::parseM5Header(result.text, page, total, chunk)) {
                 logToFile("Multi-page QR detected: page " + std::to_string(page) + "/" + std::to_string(total));
 
+                // Clear QR display when starting a new multi-page scan
+                if (m_assembler.pages.empty()) {
+                    for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
+                    m_qrPages.clear();
+                    m_currentPage = 0;
+                    UpdateQrImage(nullptr);
+                    UpdatePageInfo();
+                }
+
                 bool isNew = m_assembler.addPage(result.text);
                 if (isNew) {
                     logToFile("Page " + std::to_string(page) + " added to assembler");
                 } else {
                     logToFile("Page " + std::to_string(page) + " already collected or invalid");
+                    // Duplicate page - show orange warning in float
+                    auto missing = m_assembler.getMissingPages();
+                    std::wstring msg = L"\u5DF2\u6536\u96C6\u7B2C ";
+                    std::vector<int> collected;
+                    for (auto& kv : m_assembler.pages) {
+                        collected.push_back(kv.first + 1);
+                    }
+                    std::sort(collected.begin(), collected.end());
+                    for (size_t i = 0; i < collected.size(); i++) {
+                        if (i > 0) msg += L"\u3001";
+                        msg += std::to_wstring(collected[i]);
+                    }
+                    msg += L" \u9875\uFF0C\u8FD8\u7F3A\u7B2C ";
+                    for (size_t i = 0; i < missing.size(); i++) {
+                        if (i > 0) msg += L"\u3001";
+                        msg += std::to_wstring(missing[i]);
+                    }
+                    msg += L" \u9875";
+                    // Append orange text: "第X页已收集"
+                    msg += L"|\u7B2C" + std::to_wstring(page) + L"\u9875\u5DF2\u6536\u96C6";
+                    ShowFloatProgress(msg);
+                    return;
                 }
 
                 if (m_assembler.isComplete()) {
                     logToFile("All pages collected, assembling...");
+                    CloseFloatProgress();
                     std::string assembled = m_assembler.assemble();
                     if (!assembled.empty()) {
                         SetText(assembled);
@@ -640,15 +712,26 @@ void MainWindow::OnCapture()
                     }
                     m_assembler.reset();
                 } else {
-                    // Show progress with actual page number
+                    // Show floating progress: collected pages and missing pages
                     auto missing = m_assembler.getMissingPages();
-                    std::wstring msg = L"\u5DF2\u626B\u63CF\u7B2C " + std::to_wstring(page) + L" \u9875\uFF08\u5171 " + std::to_wstring(total) + L" \u9875\uFF09\n\u8FD8\u7F3A\u7B2C ";
+                    std::wstring msg = L"\u5DF2\u6536\u96C6\u7B2C ";
+                    // List collected pages (pages map uses 0-based keys, display as 1-based)
+                    std::vector<int> collected;
+                    for (auto& kv : m_assembler.pages) {
+                        collected.push_back(kv.first + 1);  // convert 0-based to 1-based
+                    }
+                    std::sort(collected.begin(), collected.end());
+                    for (size_t i = 0; i < collected.size(); i++) {
+                        if (i > 0) msg += L"\u3001";
+                        msg += std::to_wstring(collected[i]);
+                    }
+                    msg += L" \u9875\uFF0C\u8FD8\u7F3A\u7B2C ";
                     for (size_t i = 0; i < missing.size(); i++) {
                         if (i > 0) msg += L"\u3001";
                         msg += std::to_wstring(missing[i]);
                     }
                     msg += L" \u9875";
-                    MessageBoxW(m_hWnd, msg.c_str(), L"\u591A\u9875\u4E8C\u7EF4\u7801", MB_OK | MB_ICONINFORMATION);
+                    ShowFloatProgress(msg);
                 }
                 return;
             }
@@ -656,6 +739,11 @@ void MainWindow::OnCapture()
 
         // Single page QR (B5:, GZ:, or plain text)
         m_assembler.reset();  // reset any previous multi-page state
+
+        // Clear QR display before setting new
+        for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
+        m_qrPages.clear();
+        m_currentPage = 0;
 
         {
             std::string preview = result.text.substr(0, 500);
@@ -715,8 +803,19 @@ void MainWindow::OnUpload()
                     int page = 0, total = 0;
                     std::string chunk;
                     if (MultiPageAssembler::parseM5Header(result.text, page, total, chunk)) {
+                        // Clear old content when starting a new multi-page scan
+                        if (m_assembler.pages.empty()) {
+                            SetText("");
+                            for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
+                            m_qrPages.clear();
+                            m_currentPage = 0;
+                            UpdateQrImage(nullptr);
+                            UpdatePageInfo();
+                        }
+
                         m_assembler.addPage(result.text);
                         if (m_assembler.isComplete()) {
+                            CloseFloatProgress();
                             std::string assembled = m_assembler.assemble();
                             if (!assembled.empty()) {
                                 SetText(assembled);
@@ -724,13 +823,23 @@ void MainWindow::OnUpload()
                             m_assembler.reset();
                         } else {
                             auto missing = m_assembler.getMissingPages();
-                            std::wstring msg = L"\u5DF2\u626B\u63CF\u7B2C " + std::to_wstring(page) + L" \u9875\uFF08\u5171 " + std::to_wstring(total) + L" \u9875\uFF09\n\u8FD8\u7F3A\u7B2C ";
+                            std::wstring msg = L"\u5DF2\u6536\u96C6\u7B2C ";
+                            std::vector<int> collected;
+                            for (auto& kv : m_assembler.pages) {
+                                collected.push_back(kv.first + 1);  // convert 0-based to 1-based
+                            }
+                            std::sort(collected.begin(), collected.end());
+                            for (size_t i = 0; i < collected.size(); i++) {
+                                if (i > 0) msg += L"\u3001";
+                                msg += std::to_wstring(collected[i]);
+                            }
+                            msg += L" \u9875\uFF0C\u8FD8\u7F3A\u7B2C ";
                             for (size_t i = 0; i < missing.size(); i++) {
                                 if (i > 0) msg += L"\u3001";
                                 msg += std::to_wstring(missing[i]);
                             }
                             msg += L" \u9875";
-                            MessageBoxW(m_hWnd, msg.c_str(), L"\u591A\u9875\u4E8C\u7EF4\u7801", MB_OK | MB_ICONINFORMATION);
+                            ShowFloatProgress(msg);
                         }
                         return;
                     }
@@ -738,6 +847,10 @@ void MainWindow::OnUpload()
 
                 m_assembler.reset();
                 std::string decompressed = qr::decompressText(result.text);
+                // Clear old content before setting new
+                for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
+                m_qrPages.clear();
+                m_currentPage = 0;
                 SetText(decompressed);
             }
         }
@@ -806,6 +919,174 @@ std::string MainWindow::WideToUtf8(const std::wstring& wstr) const
     std::string str(len - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], len, nullptr, nullptr);
     return str;
+}
+
+// ============================================================
+// Floating progress window
+// ============================================================
+
+LRESULT CALLBACK MainWindow::FloatWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message) {
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+
+        // Semi-transparent dark background
+        HBRUSH bgBrush = CreateSolidBrush(RGB(40, 40, 40));
+        FillRect(hdc, &rc, bgBrush);
+        DeleteObject(bgBrush);
+
+        // Get the stored text (format: "main text|orange text" or just "main text")
+        wchar_t* text = (wchar_t*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+        if (text) {
+            SetBkMode(hdc, TRANSPARENT);
+            HFONT hFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+            HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+
+            // Split text by '|' separator
+            std::wstring fullText(text);
+            std::wstring mainText, orangeText;
+            size_t sepPos = fullText.find(L"|");
+            if (sepPos != std::wstring::npos) {
+                mainText = fullText.substr(0, sepPos);
+                orangeText = fullText.substr(sepPos + 1);
+            } else {
+                mainText = fullText;
+            }
+
+            // Draw main text (white)
+            SetTextColor(hdc, RGB(255, 255, 255));
+            RECT textRc = rc;
+            textRc.left += 16;
+            textRc.right -= 16;
+            textRc.top += 8;
+            textRc.bottom -= 8;
+
+            if (orangeText.empty()) {
+                DrawTextW(hdc, mainText.c_str(), -1, &textRc, DT_LEFT | DT_WORDBREAK | DT_VCENTER);
+            } else {
+                // Calculate main text size
+                SIZE mainSize = {};
+                GetTextExtentPoint32W(hdc, mainText.c_str(), (int)mainText.size(), &mainSize);
+
+                // Vertically center
+                SIZE orangeSize = {};
+                GetTextExtentPoint32W(hdc, orangeText.c_str(), (int)orangeText.size(), &orangeSize);
+                int totalW = mainSize.cx + orangeSize.cx;
+                int textY = textRc.top + (textRc.bottom - textRc.top - std::max(mainSize.cy, orangeSize.cy)) / 2;
+
+                // Draw main text
+                RECT mainRc = { textRc.left, textY, textRc.left + mainSize.cx, textY + mainSize.cy + 4 };
+                DrawTextW(hdc, mainText.c_str(), -1, &mainRc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+
+                // Draw orange text
+                SetTextColor(hdc, RGB(255, 165, 0));  // Orange
+                RECT orangeRc = { textRc.left + mainSize.cx, textY, textRc.right, textY + orangeSize.cy + 4 };
+                DrawTextW(hdc, orangeText.c_str(), -1, &orangeRc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+            }
+
+            SelectObject(hdc, hOldFont);
+            DeleteObject(hFont);
+        }
+
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
+
+    case WM_LBUTTONDOWN:
+        // Allow dragging the float window
+        SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        return 0;
+
+    case WM_RBUTTONDOWN:
+        // Right-click to close and cancel multi-page scan
+        {
+            MainWindow* mainWnd = reinterpret_cast<MainWindow*>(GetWindowLongPtrW(GetParent(hWnd), GWLP_USERDATA));
+            if (mainWnd) {
+                mainWnd->m_assembler.reset();
+                mainWnd->CloseFloatProgress();
+                mainWnd->UpdatePageInfo();
+            }
+        }
+        return 0;
+
+    case WM_DESTROY: {
+        wchar_t* text = (wchar_t*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+        if (text) {
+            delete[] text;
+            SetWindowLongPtrW(hWnd, GWLP_USERDATA, 0);
+        }
+        return 0;
+    }
+
+    case WM_ERASEBKGND:
+        return 1;
+    }
+
+    return DefWindowProcW(hWnd, message, wParam, lParam);
+}
+
+void MainWindow::ShowFloatProgress(const std::wstring& msg)
+{
+    // If float already exists, update its text
+    if (m_hFloatWnd && IsWindow(m_hFloatWnd)) {
+        wchar_t* oldText = (wchar_t*)GetWindowLongPtrW(m_hFloatWnd, GWLP_USERDATA);
+        if (oldText) delete[] oldText;
+
+        size_t len = msg.size() + 1;
+        wchar_t* textCopy = new wchar_t[len];
+        wcscpy_s(textCopy, len, msg.c_str());
+        SetWindowLongPtrW(m_hFloatWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(textCopy));
+
+        InvalidateRect(m_hFloatWnd, nullptr, TRUE);
+        return;
+    }
+
+    // Calculate position (centered in the QR display area)
+    RECT mainRc;
+    GetWindowRect(m_hWnd, &mainRc);
+    int floatW = 320;
+    int floatH = 60;
+    int floatX = mainRc.left + (mainRc.right - mainRc.left - floatW) / 2;
+    // Position below toolbar, centered in QR area
+    int floatY = mainRc.top + TOOLBAR_HEIGHT + 4 + (m_qrRect.bottom - m_qrRect.top - floatH) / 2;
+
+    m_hFloatWnd = CreateWindowExW(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
+        FLOAT_CLASS_NAME,
+        L"",
+        WS_POPUP,
+        floatX, floatY, floatW, floatH,
+        m_hWnd, nullptr, m_hInstance, nullptr
+    );
+
+    if (!m_hFloatWnd) return;
+
+    // Set semi-transparency
+    SetLayeredWindowAttributes(m_hFloatWnd, 0, 220, LWA_ALPHA);
+
+    // Store text in window data
+    size_t len = msg.size() + 1;
+    wchar_t* textCopy = new wchar_t[len];
+    wcscpy_s(textCopy, len, msg.c_str());
+    SetWindowLongPtrW(m_hFloatWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(textCopy));
+
+    ShowWindow(m_hFloatWnd, SW_SHOW);
+    UpdateWindow(m_hFloatWnd);
+}
+
+void MainWindow::CloseFloatProgress()
+{
+    if (m_hFloatWnd) {
+        DestroyWindow(m_hFloatWnd);
+        m_hFloatWnd = nullptr;
+    }
 }
 
 } // namespace qr
