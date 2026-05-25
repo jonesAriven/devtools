@@ -311,36 +311,105 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                                        20, 216, 440, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblHint, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-        // URL label
+        // URL label (full width, auto-wraps)
         HWND hLblUrl = CreateWindowW(L"STATIC", L"获取激活码：",
                                       WS_CHILD | WS_VISIBLE,
-                                      20, 240, 80, 20, hWnd, NULL, NULL, NULL);
+                                      20, 240, 440, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-        // URL link
+        // URL link (full width, auto-wraps)
         HWND hLnkUrl = CreateWindowW(L"STATIC", L"https://tools.marschat.online/activecode/index.html",
                                       WS_CHILD | WS_VISIBLE | SS_NOTIFY,
-                                      95, 240, 365, 20, hWnd, (HMENU)ID_LNK_URL, NULL, NULL);
+                                      20, 260, 440, 20, hWnd, (HMENU)ID_LNK_URL, NULL, NULL);
         SendMessage(hLnkUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Copy URL button
         HWND hBtnCopyUrl = CreateWindowW(L"BUTTON", L"复制地址",
                                           WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                          20, 264, 100, 22, hWnd, (HMENU)ID_BTN_COPY_URL, NULL, NULL);
+                                          20, 284, 100, 22, hWnd, (HMENU)ID_BTN_COPY_URL, NULL, NULL);
         SendMessage(hBtnCopyUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Activate button
         HWND hBtnActivate = CreateWindowW(L"BUTTON", L"激活",
                                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                           300, 300, 80, 28, hWnd, (HMENU)ID_BTN_ACTIVATE, NULL, NULL);
+                                           300, 320, 80, 28, hWnd, (HMENU)ID_BTN_ACTIVATE, NULL, NULL);
         SendMessage(hBtnActivate, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Exit button
         HWND hBtnExit = CreateWindowW(L"BUTTON", L"退出",
                                        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                       390, 300, 80, 28, hWnd, (HMENU)ID_BTN_EXIT, NULL, NULL);
+                                       390, 320, 80, 28, hWnd, (HMENU)ID_BTN_EXIT, NULL, NULL);
         SendMessage(hBtnExit, WM_SETFONT, (WPARAM)hFont, TRUE);
 
+        break;
+    }
+
+    case WM_SIZE: {
+        // Reposition controls when window is resized
+        int cx = LOWORD(lParam);
+        int cy = HIWORD(lParam);
+        int margin = 20;
+        int w = cx - margin * 2;
+
+        // Enumerate child windows and reposition
+        struct LayoutInfo {
+            int id;
+            int y;
+            int height;
+            bool fullWidth;  // true = stretch to full width, false = keep original width
+        };
+        LayoutInfo layout[] = {
+            { -1,           12,  25, true },   // Title "请输入激活码"
+            { -1,           45,  20, false },  // "唯一序列号:" label
+            { ID_TXT_SERIAL,67,  25, true },   // Serial number text
+            { ID_BTN_COPY_SN,96, 24, false },  // Copy serial button
+            { -1,           128, 20, false },  // "激活码:" label
+            { ID_TXT_CODE,  150, 60, true },   // Activation code input
+            { -1,           216, 20, true },   // Hint text
+            { -1,           240, 20, true },   // "获取激活码：" label
+            { ID_LNK_URL,   260, 20, true },   // URL link
+            { ID_BTN_COPY_URL,284,22, false },  // Copy URL button
+            { ID_BTN_ACTIVATE,320,28, false },  // Activate button
+            { ID_BTN_EXIT,  320, 28, false },  // Exit button
+        };
+
+        HWND hChild = GetWindow(hWnd, GW_CHILD);
+        int idx = 0;
+        while (hChild && idx < 12) {
+            int id = GetDlgCtrlID(hChild);
+            LayoutInfo& li = layout[idx];
+
+            int x = margin;
+            int ctrlW = li.fullWidth ? w : 0;
+            int ctrlH = li.height;
+
+            // Special positioning for buttons at bottom
+            if (id == ID_BTN_ACTIVATE) {
+                ctrlW = 80;
+                x = cx - margin - 80 - 90;
+            } else if (id == ID_BTN_EXIT) {
+                ctrlW = 80;
+                x = cx - margin - 80;
+            } else if (id == ID_BTN_COPY_SN) {
+                ctrlW = 100;
+            } else if (id == ID_BTN_COPY_URL) {
+                ctrlW = 100;
+            } else if (!li.fullWidth) {
+                // Labels keep their original width
+                RECT rc;
+                GetWindowRect(hChild, &rc);
+                ctrlW = rc.right - rc.left;
+            }
+
+            // Activation code input stretches vertically
+            if (id == ID_TXT_CODE) {
+                ctrlH = std::max(60, cy - li.y - 120);
+            }
+
+            MoveWindow(hChild, x, li.y, ctrlW, ctrlH, TRUE);
+            hChild = GetWindow(hChild, GW_HWNDNEXT);
+            idx++;
+        }
         break;
     }
 
@@ -495,10 +564,10 @@ std::string ActivationGuard::ShowActivationDialog(const std::string& initialSeri
         registered = true;
     }
 
-    // Create popup window
+    // Create popup window (resizable with thick frame)
     HWND hDlg = CreateWindowExW(0, L"ActivationDialog", L"软件激活",
-                                 WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 360,
+                                 WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
+                                 CW_USEDEFAULT, CW_USEDEFAULT, 560, 380,
                                  NULL, NULL, s_hInstance, NULL);
 
     ShowWindow(hDlg, SW_SHOW);
