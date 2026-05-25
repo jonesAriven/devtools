@@ -86,6 +86,13 @@
         .parse-result p { margin: 4px 0; }
         .parse-result .pl { color: #888; display: inline-block; width: 100px; }
         .parse-result .pv { color: #333; font-weight: 500; font-family: 'Consolas', monospace; word-break: break-all; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 24px; background: #fff; border-top: 1px solid #f0f0f0; }
+        .pagination button { padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fff; font-size: 12px; cursor: pointer; color: #555; }
+        .pagination button:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+        .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pagination button.active { background: #667eea; color: #fff; border-color: #667eea; }
+        .pagination .page-info { font-size: 12px; color: #888; margin: 0 8px; }
+        .toolbar input[type="date"] { width: 140px; }
     </style>
 </head>
 <body>
@@ -149,13 +156,13 @@
 
     <div id="recordsTab" class="tab-content">
         <div class="toolbar">
-            <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/初始序列号/机器码..." onkeydown="if(event.key==='Enter')loadRecords()">
+            <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/别名..." onkeydown="if(event.key==='Enter')loadRecords(1)">
             <select id="recStatus">
                 <option value="">全部状态</option>
                 <option value="active">有效</option>
                 <option value="expired">已过期</option>
             </select>
-            <button class="btn-primary" onclick="loadRecords()">查询</button>
+            <button class="btn-primary" onclick="loadRecords(1)">查询</button>
         </div>
         <div class="stats">
             <div class="stat-card total"><div class="num" id="statTotal">0</div><div class="label">总记录数</div></div>
@@ -185,12 +192,14 @@
                 <tbody id="recordsBody"></tbody>
             </table>
             <div class="empty" id="recordsEmpty" style="display:none;">暂无数据</div>
+            <div class="pagination" id="recPagination"></div>
         </div>
     </div>
 
     <div id="logsTab" class="tab-content">
         <div class="toolbar">
-            <input type="text" id="logSerial" placeholder="按序列号筛选..." onkeydown="if(event.key==='Enter')loadLogs()">
+            <input type="text" id="logSerial" placeholder="序列号..." onkeydown="if(event.key==='Enter')loadLogs(1)">
+            <input type="text" id="logDeviceId" placeholder="设备ID..." onkeydown="if(event.key==='Enter')loadLogs(1)">
             <select id="logEventType">
                 <option value="">全部事件</option>
                 <option value="GENERATE">生成激活码</option>
@@ -200,7 +209,9 @@
                 <option value="EXPIRED">已过期</option>
                 <option value="DEVICE_MISMATCH">设备不匹配</option>
             </select>
-            <button class="btn-primary" onclick="loadLogs()">查询</button>
+            <input type="date" id="logStartDate" title="开始日期">
+            <input type="date" id="logEndDate" title="结束日期">
+            <button class="btn-primary" onclick="loadLogs(1)">查询</button>
         </div>
         <div class="table-wrap">
             <table>
@@ -220,6 +231,7 @@
                 <tbody id="logsBody"></tbody>
             </table>
             <div class="empty" id="logsEmpty" style="display:none;">暂无日志</div>
+            <div class="pagination" id="logPagination"></div>
         </div>
     </div>
 
@@ -339,21 +351,30 @@
         }
 
         let cachedRecords = [];
+        let recPage = 1, recPages = 1, recTotal = 0;
+        let logPage = 1, logPages = 1, logTotal = 0;
 
-        async function loadRecords() {
+        async function loadRecords(page) {
+            if (page) recPage = page;
             const keyword = document.getElementById('recKeyword').value.trim();
             const status = document.getElementById('recStatus').value;
             try {
                 const params = new URLSearchParams();
                 if (keyword) params.set('keyword', keyword);
                 if (status) params.set('status', status);
+                params.set('page', recPage);
+                params.set('size', 20);
                 const resp = await fetch('/activecode/api/activation/list?' + params);
                 const data = await resp.json();
                 if (data.success) {
                     currentTime = data.currentTime || Date.now();
                     cachedRecords = data.data;
+                    recTotal = data.total;
+                    recPages = data.pages;
+                    recPage = data.page;
                     renderRecords(data.data);
-                    updateStats(data.data, currentTime);
+                    updateStats(data.total, currentTime, data.data);
+                    renderPagination('recPagination', recPage, recPages, recTotal, loadRecords);
                 }
             } catch (e) { console.error(e); }
         }
@@ -398,24 +419,38 @@
             }).join('');
         }
 
-        function updateStats(records, now) {
-            const total = records.length;
-            const active = records.filter(r => r.expireTime >= now).length;
+        function updateStats(total, now, records) {
+            const active = records ? records.filter(r => r.expireTime >= now).length : 0;
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statActive').textContent = active;
             document.getElementById('statExpired').textContent = total - active;
         }
 
-        async function loadLogs() {
+        async function loadLogs(page) {
+            if (page) logPage = page;
             const serialNumber = document.getElementById('logSerial').value.trim();
             const eventType = document.getElementById('logEventType').value;
+            const deviceId = document.getElementById('logDeviceId').value.trim();
+            const startDate = document.getElementById('logStartDate').value;
+            const endDate = document.getElementById('logEndDate').value;
             try {
                 const params = new URLSearchParams();
                 if (serialNumber) params.set('serialNumber', serialNumber);
                 if (eventType) params.set('eventType', eventType);
+                if (deviceId) params.set('deviceId', deviceId);
+                if (startDate) params.set('startDate', startDate);
+                if (endDate) params.set('endDate', endDate);
+                params.set('page', logPage);
+                params.set('size', 20);
                 const resp = await fetch('/activecode/api/activation/logs?' + params);
                 const data = await resp.json();
-                if (data.success) renderLogs(data.data);
+                if (data.success) {
+                    logTotal = data.total;
+                    logPages = data.pages;
+                    logPage = data.page;
+                    renderLogs(data.data);
+                    renderPagination('logPagination', logPage, logPages, logTotal, loadLogs);
+                }
             } catch (e) { console.error(e); }
         }
 
@@ -453,7 +488,31 @@
         function viewLogs(recordId, serialNumber) {
             switchTab('logs');
             if (serialNumber) document.getElementById('logSerial').value = serialNumber;
-            loadLogs();
+            loadLogs(1);
+        }
+
+        function renderPagination(containerId, current, totalPages, total, loadFn) {
+            const container = document.getElementById(containerId);
+            if (totalPages <= 1) { container.innerHTML = `<span class="page-info">共 ${total} 条</span>`; return; }
+            let html = `<button ${current <= 1 ? 'disabled' : ''} onclick="${loadFn.name}(${current - 1})">上一页</button>`;
+            const maxButtons = 5;
+            let start = Math.max(1, current - Math.floor(maxButtons / 2));
+            let end = Math.min(totalPages, start + maxButtons - 1);
+            if (end - start < maxButtons - 1) start = Math.max(1, end - maxButtons + 1);
+            if (start > 1) {
+                html += `<button onclick="${loadFn.name}(1)">1</button>`;
+                if (start > 2) html += `<span class="page-info">...</span>`;
+            }
+            for (let i = start; i <= end; i++) {
+                html += `<button class="${i === current ? 'active' : ''}" onclick="${loadFn.name}(${i})">${i}</button>`;
+            }
+            if (end < totalPages) {
+                if (end < totalPages - 1) html += `<span class="page-info">...</span>`;
+                html += `<button onclick="${loadFn.name}(${totalPages})">${totalPages}</button>`;
+            }
+            html += `<button ${current >= totalPages ? 'disabled' : ''} onclick="${loadFn.name}(${current + 1})">下一页</button>`;
+            html += `<span class="page-info">共 ${total} 条</span>`;
+            container.innerHTML = html;
         }
 
         function copyActivationCode(id) {
@@ -470,7 +529,7 @@
             try {
                 const resp = await fetch('/activecode/api/activation/' + id, { method: 'DELETE' });
                 const data = await resp.json();
-                if (data.success) loadRecords();
+                if (data.success) loadRecords(recPage);
                 else alert(data.message || '删除失败');
             } catch (e) { alert('删除失败: ' + e.message); }
         }

@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,18 +39,22 @@ public class ActivationController {
 
     @GetMapping("/list")
     public Map<String, Object> list(@RequestParam(required = false) String keyword,
-                                    @RequestParam(required = false) String status) {
-        List<ActivationRecord> records = activationService.queryRecords(keyword, status);
-        long now = System.currentTimeMillis();
-        return Map.of("success", true, "data", records, "total", records.size(), "currentTime", now);
+                                    @RequestParam(required = false) String status,
+                                    @RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(defaultValue = "20") int size) {
+        return activationService.queryRecords(keyword, status, page, size);
     }
 
     @GetMapping("/logs")
     public Map<String, Object> logs(@RequestParam(required = false) Long recordId,
                                     @RequestParam(required = false) String serialNumber,
-                                    @RequestParam(required = false) String eventType) {
-        List<ActivationLog> logs = activationService.queryLogs(recordId, serialNumber, eventType);
-        return Map.of("success", true, "data", logs, "total", logs.size());
+                                    @RequestParam(required = false) String eventType,
+                                    @RequestParam(required = false) String deviceId,
+                                    @RequestParam(required = false) String startDate,
+                                    @RequestParam(required = false) String endDate,
+                                    @RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(defaultValue = "20") int size) {
+        return activationService.queryLogs(recordId, serialNumber, eventType, deviceId, startDate, endDate, page, size);
     }
 
     @GetMapping("/parse-code")

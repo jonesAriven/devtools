@@ -1,6 +1,7 @@
 package com.jones.activation.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jones.activation.dto.GenerateRequest;
 import com.jones.activation.dto.GenerateResponse;
 import com.jones.activation.dto.VerifyRequest;
@@ -220,7 +221,7 @@ public class ActivationService {
                 .build();
     }
 
-    public List<ActivationRecord> queryRecords(String keyword, String status) {
+    public Map<String, Object> queryRecords(String keyword, String status, int page, int size) {
         LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.orderByDesc(ActivationRecord::getCreateTime);
 
@@ -244,10 +245,23 @@ public class ActivationService {
             queryWrapper.le(ActivationRecord::getExpireTime, System.currentTimeMillis());
         }
 
-        return activationRecordMapper.selectList(queryWrapper);
+        Page<ActivationRecord> pageResult = activationRecordMapper.selectPage(new Page<>(page, size), queryWrapper);
+        long now = System.currentTimeMillis();
+
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("success", true);
+        result.put("data", pageResult.getRecords());
+        result.put("total", pageResult.getTotal());
+        result.put("page", pageResult.getCurrent());
+        result.put("size", pageResult.getSize());
+        result.put("pages", pageResult.getPages());
+        result.put("currentTime", now);
+        return result;
     }
 
-    public List<ActivationLog> queryLogs(Long recordId, String serialNumber, String eventType) {
+    public Map<String, Object> queryLogs(Long recordId, String serialNumber, String eventType,
+                                          String deviceId, String startDate, String endDate,
+                                          int page, int size) {
         LambdaQueryWrapper<ActivationLog> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.orderByDesc(ActivationLog::getCreateTime);
 
@@ -255,17 +269,31 @@ public class ActivationService {
             queryWrapper.eq(ActivationLog::getRecordId, recordId);
         }
         if (serialNumber != null && !serialNumber.trim().isEmpty()) {
-            queryWrapper.eq(ActivationLog::getSerialNumber, serialNumber);
+            queryWrapper.like(ActivationLog::getSerialNumber, serialNumber);
         }
         if (eventType != null && !eventType.trim().isEmpty()) {
             queryWrapper.eq(ActivationLog::getEventType, eventType);
         }
+        if (deviceId != null && !deviceId.trim().isEmpty()) {
+            queryWrapper.like(ActivationLog::getDeviceId, deviceId);
+        }
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            try {
+                LocalDateTime start = LocalDateTime.parse(startDate + "T00:00:00");
+                queryWrapper.ge(ActivationLog::getCreateTime, start);
+            } catch (Exception ignored) {}
+        }
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            try {
+                LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
+                queryWrapper.le(ActivationLog::getCreateTime, end);
+            } catch (Exception ignored) {}
+        }
 
-        queryWrapper.last("LIMIT 200");
-        List<ActivationLog> logs = activationLogMapper.selectList(queryWrapper);
+        Page<ActivationLog> pageResult = activationLogMapper.selectPage(new Page<>(page, size), queryWrapper);
 
         // 关联查询设备别名：通过 serial_number 关联 activation_record 获取 device_alias
-        for (ActivationLog logEntry : logs) {
+        for (ActivationLog logEntry : pageResult.getRecords()) {
             if (logEntry.getSerialNumber() != null) {
                 LambdaQueryWrapper<ActivationRecord> recordQuery = new LambdaQueryWrapper<>();
                 recordQuery.eq(ActivationRecord::getSerialNumber, logEntry.getSerialNumber());
@@ -277,7 +305,14 @@ public class ActivationService {
             }
         }
 
-        return logs;
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("success", true);
+        result.put("data", pageResult.getRecords());
+        result.put("total", pageResult.getTotal());
+        result.put("page", pageResult.getCurrent());
+        result.put("size", pageResult.getSize());
+        result.put("pages", pageResult.getPages());
+        return result;
     }
 
     public boolean deleteRecord(Long id) {
