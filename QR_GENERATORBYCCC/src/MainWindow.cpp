@@ -461,6 +461,7 @@ void MainWindow::BuildUI()
         m_hInstance, nullptr
     );
     SendMessageW(m_hTxtContent, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), TRUE);
+    SendMessageW(m_hTxtContent, EM_SETLIMITTEXT, 0, 0);  // 0 = no limit
 
     SetWindowSubclass(m_hTxtContent, EditSubclassProc, 0, 0);
 
