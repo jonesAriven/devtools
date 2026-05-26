@@ -42,6 +42,10 @@ obj/
 *.suo
 *.cache
 
+# npm node_modules  
+node_modules/
+
+
 # Database init scripts (temp)
 init_db.py
 init-database.sql
