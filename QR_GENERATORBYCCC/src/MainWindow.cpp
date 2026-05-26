@@ -961,35 +961,30 @@ LRESULT CALLBACK MainWindow::FloatWndProc(HWND hWnd, UINT message, WPARAM wParam
                 mainText = fullText;
             }
 
-            // Draw main text (white)
-            SetTextColor(hdc, RGB(255, 255, 255));
             RECT textRc = rc;
             textRc.left += 16;
             textRc.right -= 16;
-            textRc.top += 8;
-            textRc.bottom -= 8;
+            textRc.top += 10;
+            textRc.bottom -= 10;
 
             if (orangeText.empty()) {
-                DrawTextW(hdc, mainText.c_str(), -1, &textRc, DT_LEFT | DT_WORDBREAK | DT_VCENTER);
+                // Single color text with word wrap
+                SetTextColor(hdc, RGB(255, 255, 255));
+                DrawTextW(hdc, mainText.c_str(), -1, &textRc, DT_LEFT | DT_WORDBREAK);
             } else {
-                // Calculate main text size
-                SIZE mainSize = {};
-                GetTextExtentPoint32W(hdc, mainText.c_str(), (int)mainText.size(), &mainSize);
+                // Two-color text: draw main text with word wrap, then orange text on next line
+                SetTextColor(hdc, RGB(255, 255, 255));
+                int mainHeight = DrawTextW(hdc, mainText.c_str(), -1, &textRc, DT_LEFT | DT_WORDBREAK | DT_CALCRECT);
 
-                // Vertically center
-                SIZE orangeSize = {};
-                GetTextExtentPoint32W(hdc, orangeText.c_str(), (int)orangeText.size(), &orangeSize);
-                int totalW = mainSize.cx + orangeSize.cx;
-                int textY = textRc.top + (textRc.bottom - textRc.top - std::max(mainSize.cy, orangeSize.cy)) / 2;
+                // Actually draw main text
+                DrawTextW(hdc, mainText.c_str(), -1, &textRc, DT_LEFT | DT_WORDBREAK);
 
-                // Draw main text
-                RECT mainRc = { textRc.left, textY, textRc.left + mainSize.cx, textY + mainSize.cy + 4 };
-                DrawTextW(hdc, mainText.c_str(), -1, &mainRc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-
-                // Draw orange text
-                SetTextColor(hdc, RGB(255, 165, 0));  // Orange
-                RECT orangeRc = { textRc.left + mainSize.cx, textY, textRc.right, textY + orangeSize.cy + 4 };
-                DrawTextW(hdc, orangeText.c_str(), -1, &orangeRc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+                // Draw orange text below main text
+                SetTextColor(hdc, RGB(255, 165, 0));
+                RECT orangeRc = textRc;
+                orangeRc.top += mainHeight + 4;
+                orangeRc.bottom = rc.bottom - 10;
+                DrawTextW(hdc, orangeText.c_str(), -1, &orangeRc, DT_LEFT | DT_WORDBREAK);
             }
 
             SelectObject(hdc, hOldFont);
@@ -1035,7 +1030,59 @@ LRESULT CALLBACK MainWindow::FloatWndProc(HWND hWnd, UINT message, WPARAM wParam
 
 void MainWindow::ShowFloatProgress(const std::wstring& msg)
 {
-    // If float already exists, update its text
+    // Calculate text size to determine window dimensions
+    HDC screenDc = GetDC(nullptr);
+    HFONT hFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+    HFONT hOldFont = (HFONT)SelectObject(screenDc, hFont);
+
+    // Split text by '|' separator
+    std::wstring mainText, orangeText;
+    size_t sepPos = msg.find(L"|");
+    if (sepPos != std::wstring::npos) {
+        mainText = msg.substr(0, sepPos);
+        orangeText = msg.substr(sepPos + 1);
+    } else {
+        mainText = msg;
+    }
+
+    // Calculate required size for main text (max width = 400, word wrap)
+    int maxWidth = 400;
+    RECT calcRc = { 0, 0, maxWidth, 0 };
+    int mainHeight = DrawTextW(screenDc, mainText.c_str(), -1, &calcRc, DT_LEFT | DT_WORDBREAK | DT_CALCRECT);
+    int mainWidth = calcRc.right;
+
+    int totalHeight = mainHeight;
+    int totalWidth = mainWidth;
+
+    // Calculate orange text size
+    if (!orangeText.empty()) {
+        RECT orangeCalcRc = { 0, 0, maxWidth, 0 };
+        int orangeHeight = DrawTextW(screenDc, orangeText.c_str(), -1, &orangeCalcRc, DT_LEFT | DT_WORDBREAK | DT_CALCRECT);
+        totalHeight += 4 + orangeHeight;
+        totalWidth = (std::max)(totalWidth, (int)orangeCalcRc.right);
+    }
+
+    SelectObject(screenDc, hOldFont);
+    DeleteObject(hFont);
+    ReleaseDC(nullptr, screenDc);
+
+    // Add padding
+    int floatW = totalWidth + 32;  // 16px padding each side
+    int floatH = totalHeight + 20; // 10px padding top/bottom
+    floatW = (std::max)(floatW, 200);   // minimum width
+    floatH = (std::max)(floatH, 50);    // minimum height
+    floatW = (std::min)(floatW, 500);   // maximum width
+    floatH = (std::min)(floatH, 300);   // maximum height
+
+    // Calculate position (centered in the QR display area)
+    RECT mainRc;
+    GetWindowRect(m_hWnd, &mainRc);
+    int floatX = mainRc.left + (mainRc.right - mainRc.left - floatW) / 2;
+    int floatY = mainRc.top + TOOLBAR_HEIGHT + 4 + (m_qrRect.bottom - m_qrRect.top - floatH) / 2;
+
+    // If float already exists, update its text and resize
     if (m_hFloatWnd && IsWindow(m_hFloatWnd)) {
         wchar_t* oldText = (wchar_t*)GetWindowLongPtrW(m_hFloatWnd, GWLP_USERDATA);
         if (oldText) delete[] oldText;
@@ -1045,18 +1092,10 @@ void MainWindow::ShowFloatProgress(const std::wstring& msg)
         wcscpy_s(textCopy, len, msg.c_str());
         SetWindowLongPtrW(m_hFloatWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(textCopy));
 
+        MoveWindow(m_hFloatWnd, floatX, floatY, floatW, floatH, TRUE);
         InvalidateRect(m_hFloatWnd, nullptr, TRUE);
         return;
     }
-
-    // Calculate position (centered in the QR display area)
-    RECT mainRc;
-    GetWindowRect(m_hWnd, &mainRc);
-    int floatW = 320;
-    int floatH = 60;
-    int floatX = mainRc.left + (mainRc.right - mainRc.left - floatW) / 2;
-    // Position below toolbar, centered in QR area
-    int floatY = mainRc.top + TOOLBAR_HEIGHT + 4 + (m_qrRect.bottom - m_qrRect.top - floatH) / 2;
 
     m_hFloatWnd = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
