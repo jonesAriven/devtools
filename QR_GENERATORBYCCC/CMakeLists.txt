@@ -188,7 +188,11 @@ target_link_libraries(QRCodeTool PRIVATE
     iphlpapi
 )
 
+# Generate timestamp suffix for output filename
+string(TIMESTAMP BUILD_TIMESTAMP "%Y%m%d%H%M")
+
 set_target_properties(QRCodeTool PROPERTIES
     WIN32_EXECUTABLE TRUE
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    OUTPUT_NAME "QRCodeTool-${BUILD_TIMESTAMP}"
 )

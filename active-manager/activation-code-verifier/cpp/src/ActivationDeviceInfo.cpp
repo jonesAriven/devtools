@@ -70,31 +70,45 @@ cleanup:
     return result;
 }
 
+// --- Cached hardware info (avoid repeated WMI queries) ---
+static std::string s_cachedCPUId;
+static std::string s_cachedBoardId;
+static std::string s_cachedDiskId;
+static std::string s_cachedMacRaw;
+static std::string s_cachedDeviceId;
+static std::string s_cachedMachineCode;
+
 // --- Hardware info ---
 static std::string GetCPUId() {
+    if (!s_cachedCPUId.empty()) return s_cachedCPUId;
     std::string val = WmiQuerySingle(L"SELECT ProcessorId FROM Win32_Processor", L"ProcessorId");
-    return val.empty() ? "CPU_UNKNOWN" : val;
+    s_cachedCPUId = val.empty() ? "CPU_UNKNOWN" : val;
+    return s_cachedCPUId;
 }
 
 static std::string GetMotherboardId() {
+    if (!s_cachedBoardId.empty()) return s_cachedBoardId;
     std::string val = WmiQuerySingle(L"SELECT SerialNumber FROM Win32_BaseBoard", L"SerialNumber");
-    return val.empty() ? "BOARD_UNKNOWN" : val;
+    s_cachedBoardId = val.empty() ? "BOARD_UNKNOWN" : val;
+    return s_cachedBoardId;
 }
 
 static std::string GetDiskId() {
+    if (!s_cachedDiskId.empty()) return s_cachedDiskId;
     std::string val = WmiQuerySingle(L"SELECT VolumeSerialNumber FROM Win32_LogicalDisk WHERE DriveType=3", L"VolumeSerialNumber");
-    return val.empty() ? "DISK_UNKNOWN" : val;
+    s_cachedDiskId = val.empty() ? "DISK_UNKNOWN" : val;
+    return s_cachedDiskId;
 }
 
 static std::string GetMacAddressRaw() {
-    // Try GetAdaptersInfo first (simpler than WMI)
+    if (!s_cachedMacRaw.empty()) return s_cachedMacRaw;
     ULONG bufLen = 0;
     GetAdaptersInfo(NULL, &bufLen);
-    if (bufLen == 0) return "";
+    if (bufLen == 0) { s_cachedMacRaw = ""; return s_cachedMacRaw; }
 
     std::vector<BYTE> buf(bufLen);
     PIP_ADAPTER_INFO pAdapterInfo = (PIP_ADAPTER_INFO)buf.data();
-    if (GetAdaptersInfo(pAdapterInfo, &bufLen) != ERROR_SUCCESS) return "";
+    if (GetAdaptersInfo(pAdapterInfo, &bufLen) != ERROR_SUCCESS) { s_cachedMacRaw = ""; return s_cachedMacRaw; }
 
     for (PIP_ADAPTER_INFO pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
         if (pAdapter->Type == MIB_IF_TYPE_ETHERNET || pAdapter->Type == IF_TYPE_IEEE80211) {
@@ -105,7 +119,8 @@ static std::string GetMacAddressRaw() {
                     sprintf_s(hex, "%02X", pAdapter->Address[i]);
                     mac += hex;
                 }
-                return mac;
+                s_cachedMacRaw = mac;
+                return s_cachedMacRaw;
             }
         }
     }
@@ -117,10 +132,12 @@ static std::string GetMacAddressRaw() {
         val.erase(std::remove(val.begin(), val.end(), ':'), val.end());
         val.erase(std::remove(val.begin(), val.end(), '-'), val.end());
     }
-    return val.empty() ? "MAC_UNKNOWN" : val;
+    s_cachedMacRaw = val.empty() ? "MAC_UNKNOWN" : val;
+    return s_cachedMacRaw;
 }
 
 std::string GetDeviceId() {
+    if (!s_cachedDeviceId.empty()) return s_cachedDeviceId;
     std::string cpuId = GetCPUId();
     std::string boardId = GetMotherboardId();
     std::string diskId = GetDiskId();
@@ -128,12 +145,17 @@ std::string GetDeviceId() {
 
     std::string combined = cpuId + boardId + diskId + macAddr;
     std::string hex = ActivationCrypto::SHA256Hex((const BYTE*)combined.data(), combined.size());
-    return hex.substr(0, 32);
+    s_cachedDeviceId = hex.substr(0, 32);
+    return s_cachedDeviceId;
 }
 
 std::string GetMachineCode() {
+    if (!s_cachedMachineCode.empty()) return s_cachedMachineCode;
     std::string mac = GetMacAddressRaw();
-    if (mac.empty() || mac == "MAC_UNKNOWN") return mac;
+    if (mac.empty() || mac == "MAC_UNKNOWN") {
+        s_cachedMachineCode = mac;
+        return s_cachedMachineCode;
+    }
 
     if (mac.length() >= 12) {
         std::string formatted;
@@ -141,9 +163,11 @@ std::string GetMachineCode() {
             if (i > 0) formatted += "-";
             formatted += mac.substr(i * 2, 2);
         }
-        return formatted;
+        s_cachedMachineCode = formatted;
+    } else {
+        s_cachedMachineCode = mac;
     }
-    return mac;
+    return s_cachedMachineCode;
 }
 
 // --- Serial number ---

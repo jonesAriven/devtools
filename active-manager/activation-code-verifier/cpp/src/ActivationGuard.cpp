@@ -104,17 +104,13 @@ bool ActivationGuard::LaunchWithProtection(const std::string& initialSerial, int
     s_hInstance = GetModuleHandle(NULL);
     std::string licPath = GetExeDir() + "\\activation.dat";
 
-    DebugLogGuard("LaunchWithProtection: licPath=" + licPath);
-
     // Try to load saved activation code
     std::string savedCode = ActivationSecureStorage::Load(licPath);
-    DebugLogGuard("Load saved code: " + (savedCode.empty() ? std::string("EMPTY") : std::string("length=") + std::to_string(savedCode.length())));
 
     if (!savedCode.empty()) {
         ActivationVerifyResult result = CheckWithAutoDevice(savedCode);
 
         if (result.success && !result.expired && !result.deviceMismatch) {
-            DebugLogGuard("Saved code verified OK, starting periodic check");
             StartPeriodicCheckWithAutoDevice(savedCode, checkIntervalMs, [licPath](const std::string&) {
                 ActivationSecureStorage::Delete(licPath);
                 ShowExpiredDialog("");
@@ -122,9 +118,6 @@ bool ActivationGuard::LaunchWithProtection(const std::string& initialSerial, int
             return true;
         }
 
-        DebugLogGuard("Saved code verify failed: success=" + std::to_string(result.success) +
-                       " expired=" + std::to_string(result.expired) +
-                       " mismatch=" + std::to_string(result.deviceMismatch));
         if (result.expired || result.deviceMismatch) {
             ActivationSecureStorage::Delete(licPath);
         }
@@ -134,11 +127,8 @@ bool ActivationGuard::LaunchWithProtection(const std::string& initialSerial, int
     std::string activationCode = ShowActivationDialog(initialSerial, licPath);
 
     if (activationCode.empty()) {
-        DebugLogGuard("User chose to exit (no activation code)");
         return false;
     }
-
-    DebugLogGuard("Activation dialog returned code, length=" + std::to_string(activationCode.length()));
 
     StartPeriodicCheckWithAutoDevice(activationCode, checkIntervalMs, [licPath](const std::string&) {
         ActivationSecureStorage::Delete(licPath);

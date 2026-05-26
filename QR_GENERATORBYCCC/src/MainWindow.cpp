@@ -13,20 +13,6 @@
 #include <ctime>
 #include <sstream>
 
-// Simple file logger
-static void logToFile(const std::string& msg) {
-    std::string path = "qr_debug.log";
-    std::ofstream f(path, std::ios::app);
-    if (f.is_open()) {
-        time_t now = time(nullptr);
-        struct tm t;
-        localtime_s(&t, &now);
-        char ts[32];
-        strftime(ts, sizeof(ts), "%H:%M:%S", &t);
-        f << "[" << ts << "] " << msg << std::endl;
-    }
-}
-
 // Control IDs
 #define IDC_CHK_COMPRESS  1001
 #define IDC_BTN_CAPTURE   1002
@@ -520,12 +506,6 @@ void MainWindow::GenerateQr()
         bool compressed = false;
         std::vector<QrPage> pages = qr::generateQrPages(text, m_compress, 600, compressed, ecl);
 
-        if (pages.empty()) {
-            logToFile("GenerateQr: all pages failed");
-        } else {
-            logToFile("GenerateQr: " + std::to_string(pages.size()) + " page(s), compressed=" + std::to_string(compressed));
-        }
-
         // Clean up old pages
         for (auto& page : m_qrPages) {
             if (page.bitmap) DeleteObject(page.bitmap);
@@ -547,10 +527,8 @@ void MainWindow::GenerateQr()
 
         UpdatePageInfo();
     } catch (const std::exception& e) {
-        logToFile(std::string("GenerateQr exception: ") + e.what());
         UpdateQrImage(nullptr);
     } catch (...) {
-        logToFile("GenerateQr unknown exception");
         UpdateQrImage(nullptr);
     }
 }
@@ -603,8 +581,6 @@ void MainWindow::UpdatePageInfo()
 
 void MainWindow::OnCapture()
 {
-    logToFile("=== OnCapture START ===");
-
     // Clear text box if it has content (new scan session)
     if (GetWindowTextLengthW(m_hTxtContent) > 0) {
         // Use SetWindowTextW directly to avoid SetText() calling GenerateQr()
@@ -630,29 +606,13 @@ void MainWindow::OnCapture()
     try {
         HBITMAP hCaptured = qr::captureScreenSelection(m_hWnd);
         if (!hCaptured) {
-            logToFile("Capture returned NULL");
             return;
-        }
-
-        BITMAP bm;
-        GetObject(hCaptured, sizeof(bm), &bm);
-        {
-            std::ostringstream oss;
-            oss << "Captured: " << bm.bmWidth << "x" << bm.bmHeight << ", " << bm.bmBitsPixel << "bpp";
-            logToFile(oss.str());
         }
 
         DecodeResult result = qr::decodeFromBitmap(hCaptured);
         DeleteObject(hCaptured);
 
-        {
-            std::ostringstream oss;
-            oss << "Decode result: success=" << result.success << ", text_len=" << result.text.size() << ", strategy=" << result.strategy;
-            logToFile(oss.str());
-        }
-
         if (!result.success || result.text.empty()) {
-            logToFile("Decode failed or empty");
             return;
         }
 
@@ -661,8 +621,6 @@ void MainWindow::OnCapture()
             int page = 0, total = 0;
             std::string chunk;
             if (MultiPageAssembler::parseM5Header(result.text, page, total, chunk)) {
-                logToFile("Multi-page QR detected: page " + std::to_string(page) + "/" + std::to_string(total));
-
                 // Clear QR display when starting a new multi-page scan
                 if (m_assembler.pages.empty()) {
                     for (auto& p : m_qrPages) { if (p.bitmap) DeleteObject(p.bitmap); }
@@ -673,10 +631,7 @@ void MainWindow::OnCapture()
                 }
 
                 bool isNew = m_assembler.addPage(result.text);
-                if (isNew) {
-                    logToFile("Page " + std::to_string(page) + " added to assembler");
-                } else {
-                    logToFile("Page " + std::to_string(page) + " already collected or invalid");
+                if (!isNew) {
                     // Duplicate page - show orange warning in float
                     auto missing = m_assembler.getMissingPages();
                     std::wstring msg = L"\u5DF2\u6536\u96C6\u7B2C ";
@@ -702,14 +657,10 @@ void MainWindow::OnCapture()
                 }
 
                 if (m_assembler.isComplete()) {
-                    logToFile("All pages collected, assembling...");
                     CloseFloatProgress();
                     std::string assembled = m_assembler.assemble();
                     if (!assembled.empty()) {
                         SetText(assembled);
-                        logToFile("Multi-page assembly OK, len=" + std::to_string(assembled.size()));
-                    } else {
-                        logToFile("Multi-page assembly FAILED");
                     }
                     m_assembler.reset();
                 } else {
@@ -746,40 +697,18 @@ void MainWindow::OnCapture()
         m_qrPages.clear();
         m_currentPage = 0;
 
-        {
-            std::string preview = result.text.substr(0, 500);
-            logToFile("Raw decoded (first 500): " + preview);
-        }
-
         std::string decompressed;
         try {
             decompressed = qr::decompressText(result.text);
-            {
-                std::ostringstream oss;
-                oss << "Decompress OK, len=" << decompressed.size();
-                logToFile(oss.str());
-            }
-            if (!decompressed.empty()) {
-                logToFile("Decompressed (first 500): " + decompressed.substr(0, 500));
-            }
-        } catch (const std::exception& e) {
-            logToFile(std::string("Decompress exception: ") + e.what());
-            decompressed = result.text;
         } catch (...) {
-            logToFile("Decompress unknown exception");
             decompressed = result.text;
         }
 
         if (!decompressed.empty()) {
             SetText(decompressed);
-            logToFile("SetText done, len=" + std::to_string(decompressed.size()));
         }
-    } catch (const std::exception& e) {
-        logToFile(std::string("OnCapture exception: ") + e.what());
     } catch (...) {
-        logToFile("OnCapture unknown exception");
     }
-    logToFile("=== OnCapture END ===");
 }
 
 void MainWindow::OnUpload()
