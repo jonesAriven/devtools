@@ -44,8 +44,7 @@ obj/
 
 # npm node_modules  
 node_modules/
-
-
+dist/
 # Database init scripts (temp)
 init_db.py
 init-database.sql

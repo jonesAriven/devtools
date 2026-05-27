@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  frp-manager:
+    build: .
+    image: frp-manager:1.0.0
+    container_name: frp-manager
+    ports:
+      - "18082:18082"
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped

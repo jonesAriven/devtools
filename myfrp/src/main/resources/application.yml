@@ -17,6 +17,8 @@ spring:
 
 server:
   port: 18082
+  servlet:
+    context-path: /frp_manager
 
 mybatis-plus:
   configuration:
