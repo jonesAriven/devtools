@@ -7,6 +7,16 @@
 
 namespace qr {
 
+// Hotkey configuration
+struct HotkeyConfig {
+    UINT modifiers;  // MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN combination
+    UINT vk;         // Virtual key code
+    bool enabled;
+    bool IsDefault() const {
+        return modifiers == (MOD_ALT | MOD_CONTROL) && vk == 'S' && enabled;
+    }
+};
+
 class MainWindow {
 public:
     MainWindow(HINSTANCE hInstance);
@@ -14,6 +24,12 @@ public:
 
     bool Create();
     void Show(int nCmdShow);
+
+    // Called when global hotkey is triggered
+    void OnGlobalHotkey();
+
+    // Public access for float window callback
+    void OnCaptureFromFloat();
 
 private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -42,6 +58,18 @@ private:
     void ShowFloatProgress(const std::wstring& msg);
     void CloseFloatProgress();
 
+    // Global hotkey
+    void RegisterGlobalHotkey();
+    void UnregisterGlobalHotkey();
+    void LoadHotkeyConfig();
+    void SaveHotkeyConfig();
+    std::wstring GetHotkeyDisplayText() const;
+
+    // Settings dialog
+    void ShowSettingsDialog();
+    static INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK HotkeyEditSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+
     HINSTANCE m_hInstance;
     HWND m_hWnd;
     HWND m_hLblCompress;
@@ -52,6 +80,7 @@ private:
     HWND m_hBtnPrev;
     HWND m_hBtnNext;
     HWND m_hLblPage;
+    HWND m_hBtnSettings;  // Settings button in toolbar
 
     HBITMAP m_hQrBitmap;
     HFONT m_hFont;
@@ -70,6 +99,11 @@ private:
     // Floating progress window
     HWND m_hFloatWnd;
     static const wchar_t FLOAT_CLASS_NAME[];
+
+    // Global hotkey
+    static const int HOTKEY_ID = 100;
+    HotkeyConfig m_hotkeyConfig;
+    bool m_hotkeyRegistered;
 };
 
 } // namespace qr

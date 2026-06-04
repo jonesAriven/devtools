@@ -12,6 +12,7 @@ struct CaptureState {
     bool completed;
     bool cancelled;
     RECT selectedRect;
+    bool showHint;  // show initial hint text
 };
 
 static CaptureState g_captureState;
@@ -102,11 +103,73 @@ static LRESULT CALLBACK OverlayWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
         SelectObject(memDC, hOld);
         DeleteDC(memDC);
 
+        // Draw hint text when not dragging (initial state)
+        if (g_captureState.showHint && !g_captureState.dragging) {
+            const wchar_t* hintLine1 = L"\u8BF7\u62D6\u62FD\u9009\u62E9\u622A\u56FE\u533A\u57DF";
+            const wchar_t* hintLine2 = L"ESC \u53D6\u6D88";
+
+            HFONT hHintFont = CreateFontW(-20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+            HFONT hOldFont = (HFONT)SelectObject(hdc, hHintFont);
+
+            SetBkMode(hdc, TRANSPARENT);
+
+            // Calculate text sizes
+            SIZE sz1, sz2;
+            GetTextExtentPoint32W(hdc, hintLine1, (int)wcslen(hintLine1), &sz1);
+            GetTextExtentPoint32W(hdc, hintLine2, (int)wcslen(hintLine2), &sz2);
+
+            int textW = (sz1.cx > sz2.cx ? sz1.cx : sz2.cx) + 40;
+            int textH = sz1.cy + sz2.cy + 30;
+            int textX = (cx - textW) / 2;
+            int textY = (cy - textH) / 2;
+
+            // Draw semi-transparent background box
+            HDC boxDC = CreateCompatibleDC(hdc);
+            HBITMAP boxBmp = CreateCompatibleBitmap(hdc, textW, textH);
+            HBITMAP hOldBox = (HBITMAP)SelectObject(boxDC, boxBmp);
+            HBRUSH bgBrush = CreateSolidBrush(RGB(0, 0, 0));
+            RECT boxRc = {0, 0, textW, textH};
+            FillRect(boxDC, &boxRc, bgBrush);
+            DeleteObject(bgBrush);
+            BLENDFUNCTION bf2 = {};
+            bf2.BlendOp = AC_SRC_OVER;
+            bf2.SourceConstantAlpha = 180;
+            bf2.AlphaFormat = 0;
+            AlphaBlend(hdc, textX, textY, textW, textH, boxDC, 0, 0, textW, textH, bf2);
+            SelectObject(boxDC, hOldBox);
+            DeleteObject(boxBmp);
+            DeleteDC(boxDC);
+
+            // Draw hint text
+            SetTextColor(hdc, RGB(255, 255, 255));
+            int line1X = textX + (textW - sz1.cx) / 2;
+            int line1Y = textY + 12;
+            TextOutW(hdc, line1X, line1Y, hintLine1, (int)wcslen(hintLine1));
+
+            HFONT hSmallFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+            SelectObject(hdc, hSmallFont);
+            SetTextColor(hdc, RGB(200, 200, 200));
+            SIZE sz2b;
+            GetTextExtentPoint32W(hdc, hintLine2, (int)wcslen(hintLine2), &sz2b);
+            int line2X = textX + (textW - sz2b.cx) / 2;
+            int line2Y = line1Y + sz1.cy + 6;
+            TextOutW(hdc, line2X, line2Y, hintLine2, (int)wcslen(hintLine2));
+
+            SelectObject(hdc, hOldFont);
+            DeleteObject(hHintFont);
+            DeleteObject(hSmallFont);
+        }
+
         EndPaint(hWnd, &ps);
         return 0;
     }
 
     case WM_LBUTTONDOWN: {
+        g_captureState.showHint = false;  // hide hint on first click
         g_captureState.startPoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
         g_captureState.endPoint = g_captureState.startPoint;
         g_captureState.dragging = true;
@@ -180,6 +243,7 @@ HBITMAP captureScreenSelection(HWND parentWindow) {
     g_captureState.dragging = false;
     g_captureState.completed = false;
     g_captureState.cancelled = false;
+    g_captureState.showHint = true;
 
     // Register overlay window class
     static bool registered = false;
