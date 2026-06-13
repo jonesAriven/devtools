@@ -101,7 +101,7 @@
         "models": [
           {
             "id": "ep-20260607141832-vxbtn",
-            "name": "豆包图文识别",
+            "name": "\u8c46\u5305\u56fe\u6587\u8bc6\u522b",
             "reasoning": false,
             "input": [
               "text",
@@ -129,15 +129,15 @@
           "alias": "DeepSeek"
         },
         "openai/ep-20260607141832-vxbtn": {
-          "alias": "豆包图文"
+          "alias": "\u8c46\u5305\u56fe\u6587"
         }
       },
       "workspace": "/root/.openclaw/workspace",
       "memorySearch": {
         "provider": "openai",
         "remote": {
-          "baseUrl": "https://api.yunjintao.com/v1/",
-          "apiKey": "sk-2PpZGQchm_rFbwu_syM7MNnf-f5gpfGwZrUOkrY3tq0"
+          "baseUrl": "https://api.yunjintao.com/v1",
+          "apiKey": "sk-fo3zQh72L1e1XYaKo2CCDL9nVKG_vUsMCZCwr77-Xig"
         },
         "model": "text-embedding-3-large"
       },
@@ -323,5 +323,19 @@
   ],
   "browser": {
     "noSandbox": true
+  },
+  "mcp": {
+    "servers": {
+      "rag-memory": {
+        "command": "python3",
+        "args": [
+          "/opt/rag-mcp/mcp_server.py"
+        ],
+        "env": {
+          "RAG_EMBEDDING_URL": "http://100.105.196.63:8081",
+          "RAG_QDRANT_URL": "http://100.105.196.63:6333"
+        }
+      }
+    }
   }
 }
