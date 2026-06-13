@@ -5,7 +5,7 @@
       "deepseek": {
         "baseUrl": "https://api.deepseek.com",
         "api": "openai-completions",
-        "apikey": "sk-daec3f07912c46cd9af741922bc9830a",
+        "apiKey": "sk-daec3f07912c46cd9af741922bc9830a",
         "models": [
           {
             "id": "deepseek-v4-flash",
