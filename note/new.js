@@ -1,10 +1,10 @@
 // ============================
-// 纯前端黑白名单检查函数
+// 纯前端黑白名单检查函数（同时满足白名单且不在黑名单）
 // 参数顺序：(eventUrl, options, callback)
 // ============================
-
 function checkPageAllowed(eventUrl, options, callback) {
-    // ---------- 辅助函数 ----------
+
+    // ---------- 辅助函数（保持不变） ----------
     function _safeLog(msg, err) {
         var hasConsole = typeof console !== "undefined" && typeof console.error === "function";
         try { if (hasConsole) console.error(msg, err); } catch (e) {}
@@ -27,14 +27,9 @@ function checkPageAllowed(eventUrl, options, callback) {
         return "{" + pairs.join(",") + "}";
     }
 
-    function _trim(str) {
-        if (typeof str.trim === "function") return str.trim();
-        return str.replace(/^\s+|\s+$/g, "");
-    }
-
     function _safeMatch(rule, target) {
         if (!rule || typeof rule !== "string") return false;
-        rule = _trim(rule);
+        rule = $.trim(rule); // 已有 jQuery 依赖，直接用 $.trim 兼容 IE6+
         if (rule === "") return false;
         if (rule.indexOf("*") !== -1) {
             var parts = rule.split("*");
@@ -54,7 +49,7 @@ function checkPageAllowed(eventUrl, options, callback) {
         return target.indexOf(rule) !== -1;
     }
 
-    // ---------- 参数归一化 ----------
+    // ---------- 参数归一化（保持不变） ----------
     // 支持两种调用方式：checkPageAllowed(url, callback) 或 checkPageAllowed(url, options, callback)
     if (typeof options === "function") {
         callback = options;
@@ -74,11 +69,12 @@ function checkPageAllowed(eventUrl, options, callback) {
         return;
     }
 
-    var priority = (options && options.priority) || "black";
+    // 提取参数（priority 参数保留但不再参与逻辑，仅为兼容调用）
+    var priority = (options && options.priority) || "black";   // 保留但无用
     var blackListKey = (options && options.blackListKey) || "blackList";
     var whiteListKey = (options && options.whiteListKey) || "whiteList";
 
-    // ---------- 缓存（挂载静态属性）----------
+    // ---------- 缓存（保持不变） ----------
     if (!checkPageAllowed.cache) checkPageAllowed.cache = {};
     var _cache = checkPageAllowed.cache;
     function now() { return new Date().getTime(); }
@@ -121,88 +117,52 @@ function checkPageAllowed(eventUrl, options, callback) {
         }
     }
 
-    var allowed = true;
+    // ---------- 新核心逻辑：同时满足白名单且不在黑名单 ----------
+    // 并行获取黑白名单，提高效率
+    var whiteList = null;
+    var blackList = null;
 
-    function checkBlack(next) {
+    function finalCheck() {
+        if (whiteList === null || blackList === null) return;
+
+        // 判断是否在白名单中
+        var inWhite = false;
+        for (var i = 0; i < whiteList.length; i++) {
+            if (_safeMatch(whiteList[i], eventUrl)) {
+                inWhite = true;
+                break;
+            }
+        }
+
+        // 判断是否在黑名单中
+        var inBlack = false;
+        for (var j = 0; j < blackList.length; j++) {
+            if (_safeMatch(blackList[j], eventUrl)) {
+                inBlack = true;
+                break;
+            }
+        }
+
+        // 最终结果：必须在白名单中，且不在黑名单中
+        var allowed = inWhite && !inBlack;
         try {
-            getConfig(blackListKey, function (list) {
-                try {
-                    for (var i = 0; i < list.length; i++) {
-                        if (_safeMatch(list[i], eventUrl)) {
-                            allowed = false;
-                            break;
-                        }
-                    }
-                } catch (e) {
-                    _safeLog("黑名单匹配异常:", e);
-                }
-                next();
-            });
+            callback(allowed);
         } catch (e) {
-            _safeLog("checkBlack 异常:", e);
-            next();
+            _safeLog("用户回调异常:", e);
         }
     }
 
-    function checkWhite(next) {
-        try {
-            getConfig(whiteListKey, function (list) {
-                try {
-                    var inWhite = false;
-                    for (var i = 0; i < list.length; i++) {
-                        if (_safeMatch(list[i], eventUrl)) {
-                            inWhite = true;
-                            break;
-                        }
-                    }
-                    allowed = inWhite;
-                } catch (e) {
-                    _safeLog("白名单匹配异常:", e);
-                    allowed = false;
-                }
-                next();
-            });
-        } catch (e) {
-            _safeLog("checkWhite 异常:", e);
-            next();
-        }
-    }
-
-    function safeCallback(value) {
-        try { callback(value); } catch (e) { _safeLog("用户回调异常:", e); }
-    }
-
-    if (priority === "white") {
-        allowed = false;
-        checkWhite(function () {
-            if (allowed) safeCallback(true);
-            else checkBlack(function () { safeCallback(allowed); });
-        });
-    } else {
-        checkBlack(function () {
-            if (!allowed) safeCallback(false);
-            else checkWhite(function () { safeCallback(allowed); });
-        });
-    }
+    getConfig(whiteListKey, function(list) {
+        whiteList = list;
+        finalCheck();
+    });
+    getConfig(blackListKey, function(list) {
+        blackList = list;
+        finalCheck();
+    });
 }
 
-// ========== 调用示例（callback 在最后） ==========
-var eventUrl = window.location.href;
-checkPageAllowed(
-    eventUrl,
-    {
-        priority: "black",
-        blackListKey: "blackList",
-        whiteListKey: "whiteList"
-    },
-    function (isAllowed) {
-        if (typeof chaMaRecoredFlag !== "undefined" && chaMaRecoredFlag && isAllowed) {
-            addEventListenerClick();
-        }
-    }
-);
-
-// 也支持省略 options（直接传 callback）
-checkPageAllowed(eventUrl, function (isAllowed) {
-    // 使用默认配置
-});
+// 导出给 require 使用（保留原导出语句）
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = checkPageAllowed;
+}

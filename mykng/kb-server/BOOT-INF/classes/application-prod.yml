@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:mysql://172.18.0.3:3306/knowledge_base?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=5000
+    username: kb
+    password: kb123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      keepalive-time: 60000
+      connection-timeout: 5000
+  data:
+    mongodb:
+      uri: mongodb://172.18.0.4:27017/knowledge_base?connectTimeoutMS=5000
+    redis:
+      host: 172.18.0.2
+      port: 6379
+      password: ''
+      timeout: 5000
+server:
+  servlet:
+    context-path: /kb
+  port: 8080
+minio:
+  endpoint: http://172.18.0.5:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+meilisearch:
+  host: http://172.18.0.6:7700
+  api-key: masterKey

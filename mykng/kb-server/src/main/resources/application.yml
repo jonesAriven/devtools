@@ -1,0 +1,44 @@
+server:
+  servlet:
+    context-path: /kb
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000
+
+minio:
+  endpoint: http://192.168.31.182:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+
+meilisearch:
+  host: http://192.168.31.182:7700
+  api-key: masterKey
+
+logging:
+  level:
+    com.jones.kb: debug

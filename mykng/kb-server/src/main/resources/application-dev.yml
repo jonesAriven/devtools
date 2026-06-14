@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:mysql://192.168.31.182:3306/knowledge_base?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: kb
+    password: kb123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      keepalive-time: 60000
+      connection-timeout: 5000
+  data:
+    mongodb:
+      uri: mongodb://192.168.31.182:27017/knowledge_base
+    redis:
+      host: 192.168.31.182
+      port: 6379
+      database: 0
