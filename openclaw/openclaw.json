@@ -187,6 +187,10 @@
   },
   "agents": {
     "defaults": {
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "5m"
+      },
       "model": {
         "primary": "mimo/mimo-v2.5"
       },
