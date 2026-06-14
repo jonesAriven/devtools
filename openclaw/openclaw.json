@@ -214,7 +214,17 @@
         "model": "text-embedding-3-large"
       },
       "compaction": {
-        "mode": "manual"
+        "mode": "safeguard"
+      },
+      "params": {
+        "inferenceParams": {
+          "temperature": 0.1,
+          "top_p": 0.8,
+          "thinkingMode": "medium"
+        },
+        "toolDefaults": {
+          "maxRetries": 2
+        }
       }
     },
     "list": [
