@@ -1,0 +1,435 @@
+{
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com",
+        "api": "openai-completions",
+        "apiKey": "sk-daec3f07912c46cd9af741922bc9830a",
+        "models": [
+          {
+            "id": "deepseek-v4-flash",
+            "name": "DeepSeek V4 Flash",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 1000000,
+            "maxTokens": 384000,
+            "cost": {
+              "input": 0.14,
+              "output": 0.28,
+              "cacheRead": 0.028,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "supportsReasoningEffort": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          },
+          {
+            "id": "deepseek-v4-pro",
+            "name": "DeepSeek V4 Pro",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 1000000,
+            "maxTokens": 384000,
+            "cost": {
+              "input": 1.74,
+              "output": 3.48,
+              "cacheRead": 0.145,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "supportsReasoningEffort": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          },
+          {
+            "id": "deepseek-chat",
+            "name": "DeepSeek Chat",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 131072,
+            "maxTokens": 8192,
+            "cost": {
+              "input": 0.28,
+              "output": 0.42,
+              "cacheRead": 0.028,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          },
+          {
+            "id": "deepseek-reasoner",
+            "name": "DeepSeek Reasoner",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 131072,
+            "maxTokens": 65536,
+            "cost": {
+              "input": 0.28,
+              "output": 0.42,
+              "cacheRead": 0.028,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "supportsReasoningEffort": false,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          }
+        ]
+      },
+      "openai": {
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "ep-20260607141832-vxbtn",
+            "name": "\u8c46\u5305\u56fe\u6587\u8bc6\u522b",
+            "reasoning": false,
+            "input": [
+              "text",
+              "image"
+            ],
+            "contextWindow": 32768,
+            "maxTokens": 4096,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          }
+        ]
+      },
+      "zhipu": {
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "apiKey": "e2113c57a9b2413296bda696a2ab9705.tVmsQbgQjpsTMIb5",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "glm-5.1",
+            "name": "glm-5.1",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 131072,
+            "maxTokens": 4096,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          },
+          {
+            "id": "glm-4-flash",
+            "name": "GLM4 Flash",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 131072,
+            "maxTokens": 4096,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          },
+          {
+            "id": "glm-4.7-flash",
+            "name": "GLM4.7 Flash",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 200000,
+            "maxTokens": 4096,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            },
+            "api": "openai-completions"
+          }
+        ]
+      },
+      "mimo": {
+        "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+        "apiKey": "tp-c2xtv0qs81ifs5tf24qhhw9vu4yw7rwru685lvrccubqdwlr",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "mimo-v2.5",
+            "name": "小米MiLM2.5旗舰",
+            "contextWindow": 1000000,
+            "maxTokens": 128000,
+            "reasoning": false
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "5m"
+      },
+      "model": {
+        "primary": "mimo/mimo-v2.5"
+      },
+      "models": {
+        "deepseek/deepseek-v4-flash": {
+          "alias": "deepseek-v4-flash"
+        },
+        "openai/ep-20260607141832-vxbtn": {
+          "alias": "豆包图文识别"
+        },
+        "zhipu/glm-4-flash": {
+          "alias": "智普"
+        },
+        "mimo/mimo-v2.5": {
+          "alias": "小米miMIMO旗舰",
+          "params": {
+            "extraBody": {
+              "thinking": {
+                "type": "disabled"
+              }
+            }
+          }
+        }
+      },
+      "workspace": "/root/.openclaw/workspace",
+      "memorySearch": {
+        "provider": "openai",
+        "remote": {
+          "baseUrl": "https://api.yunjintao.com/v1",
+          "apiKey": "sk-fo3zQh72L1e1XYaKo2CCDL9nVKG_vUsMCZCwr77-Xig"
+        },
+        "model": "text-embedding-3-large"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "params": {
+        "inferenceParams": {
+          "temperature": 0.1,
+          "top_p": 0.8,
+          "thinkingMode": "medium"
+        },
+        "toolDefaults": {
+          "maxRetries": 2
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "workspace": "~/.openclaw/workspace/"
+      },
+      {
+        "id": "wechat2",
+        "workspace": "~/.openclaw/workspace/"
+      },
+      {
+        "id": "review",
+        "workspace": "~/.openclaw/workspace-review/"
+      }
+    ]
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "controlUi": {
+      "allowedOrigins": [
+        "openclaw.marschat.online",
+        "https://openclaw.marschat.online"
+      ],
+      "allowInsecureAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "trustedProxy": {
+        "userHeader": "x-forwarded-user",
+        "requiredHeaders": [
+          "x-forwarded-proto",
+          "x-forwarded-host"
+        ],
+        "allowUsers": [
+          "huliang"
+        ]
+      },
+      "password": "e3eb525f051ec6dcf8ac5c2dde21bb56f4322752103fd542",
+      "token": "fb3494b3620d7f4f8d8c5de9a83f4160a0cce49ccb3bbeff"
+    },
+    "trustedProxies": [
+      "127.0.0.1",
+      "::1"
+    ],
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    },
+    "nodes": {
+      "denyCommands": [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "contacts.add",
+        "calendar.add",
+        "reminders.add",
+        "sms.send"
+      ]
+    }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "profile": "full",
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "feishu": [
+          "ou_b2439e923d1b07702ebb49db60806536"
+        ],
+        "openclaw-weixin": [
+          "o9cq808p-edsu7apmsfdgsivwvko@im.wechat"
+        ],
+        "qqbot": [
+          "all"
+        ]
+      }
+    }
+  },
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
+    }
+  },
+  "wizard": {
+    "lastRunAt": "2026-05-10T08:36:51.068Z",
+    "lastRunVersion": "2026.5.7",
+    "lastRunCommand": "onboard",
+    "lastRunMode": "local"
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.6.1",
+    "lastTouchedAt": "2026-06-07T06:19:56.909Z"
+  },
+  "plugins": {
+    "entries": {
+      "skillhub": {
+        "enabled": true,
+        "config": {
+          "primaryCli": "skillhub",
+          "fallbackCli": "clawhub",
+          "primaryLabel": "cn-optimized",
+          "fallbackLabel": "public-registry"
+        }
+      },
+      "adp-openclaw": {
+        "enabled": true
+      },
+      "feishu": {
+        "enabled": true
+      },
+      "deepseek": {
+        "enabled": true
+      },
+      "memory-core": {
+        "config": {
+          "dreaming": {
+            "enabled": true
+          }
+        },
+        "enabled": true
+      },
+      "openclaw-weixin": {
+        "enabled": true
+      },
+      "qqbot": {
+        "enabled": true
+      },
+      "wecom-openclaw-plugin": {
+        "enabled": true
+      },
+      "browser": {
+        "enabled": true
+      }
+    }
+  },
+  "channels": {
+    "openclaw-weixin": {
+      "channelConfigUpdatedAt": "2026-05-13T16:18:58.633Z"
+    },
+    "qqbot": {
+      "enabled": true,
+      "appId": "1903918749",
+      "clientSecret": "CIPWenw6GRco1FUjzGXp8Rl6SoBZyNnE"
+    },
+    "feishu": {
+      "enabled": true,
+      "appId": "cli_a97a4fd76878dbd4",
+      "streaming": false,
+      "appSecret": "sOEYPy37FEYGEFGT2dqE6c8nM7R7UdNf",
+      "connectionMode": "websocket",
+      "domain": "feishu",
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "ou_b2439e923d1b07702ebb49db60806536"
+      ],
+      "groupPolicy": "allowlist"
+    }
+  },
+  "bindings": [
+    {
+      "match": {
+        "channel": "qqbot"
+      },
+      "agentId": "main"
+    },
+    {
+      "match": {
+        "channel": "openclaw-weixin",
+        "accountId": "b706945dcbf4-im-bot"
+      },
+      "agentId": "review"
+    }
+  ],
+  "browser": {
+    "noSandbox": true
+  },
+  "mcp": {
+    "servers": {
+      "rag-memory": {
+        "command": "python3",
+        "args": [
+          "/opt/rag-mcp/mcp_server.py"
+        ],
+        "env": {
+          "RAG_EMBEDDING_URL": "http://100.105.196.63:8081",
+          "RAG_QDRANT_URL": "http://100.105.196.63:6333"
+        }
+      }
+    }
+  }
+}
