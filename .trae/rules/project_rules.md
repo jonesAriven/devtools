@@ -86,6 +86,12 @@
 - 统一使用 JDK 21（路径: `D:\huliang\software\Java\jdk-21.0.11`）
 - 禁止使用 `D:\huliang\software\Java\jdk-25`，该目录仅为测试用途
 
+## 前端包管理规范
+
+- 统一使用 **pnpm** 作为前端包管理工具，禁止使用 npm 或 yarn
+- npm 私服地址：`https://nexus.marschat.online/repository/npm-public/`
+- 所有前端项目的 `.npmrc` 必须配置：`registry=https://nexus.marschat.online/repository/npm-public/`
+
 ## 数据库变更规范
 
 - **禁止删除表或清空数据**，所有表结构变更必须以升级（ALTER TABLE）方式进行
