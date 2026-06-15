@@ -183,6 +183,119 @@
             "reasoning": false
           }
         ]
+      },
+      "volcengine-plan": {
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
+        "apiKey": "ark-e6894b2b-b7f7-41de-8fa1-d4860d6259b0-580f2",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "ark-code-latest",
+            "name": "ark-code-latest",
+            "contextWindow": 256000,
+            "maxTokens": 32000,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "doubao-seed-code",
+            "name": "doubao-seed-code",
+            "contextWindow": 256000,
+            "maxTokens": 32000,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "glm-5.1",
+            "name": "glm-5.1",
+            "contextWindow": 200000,
+            "maxTokens": 65536,
+            "input": [
+              "text"
+            ]
+          },
+          {
+            "id": "deepseek-v4-flash",
+            "name": "deepseek-v4-flash",
+            "contextWindow": 1024000,
+            "maxTokens": 65536,
+            "input": [
+              "text"
+            ]
+          },
+          {
+            "id": "deepseek-v4-pro",
+            "name": "deepseek-v4-pro",
+            "contextWindow": 1024000,
+            "maxTokens": 65536,
+            "input": [
+              "text"
+            ]
+          },
+          {
+            "id": "doubao-seed-2.0-code",
+            "name": "doubao-seed-2.0-code",
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "doubao-seed-2.0-pro",
+            "name": "doubao-seed-2.0-pro",
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "doubao-seed-2.0-lite",
+            "name": "doubao-seed-2.0-lite",
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "minimax-m2.7",
+            "name": "minimax-m2.7",
+            "contextWindow": 200000,
+            "maxTokens": 65536,
+            "input": [
+              "text"
+            ]
+          },
+          {
+            "id": "minimax-m3",
+            "name": "minimax-m3",
+            "contextWindow": 512000,
+            "maxTokens": 65536,
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          {
+            "id": "kimi-k2.6",
+            "name": "kimi-k2.6",
+            "contextWindow": 256000,
+            "maxTokens": 32000,
+            "input": [
+              "text",
+              "image"
+            ]
+          }
+        ]
       }
     }
   },
@@ -193,11 +306,11 @@
         "ttl": "5m"
       },
       "model": {
-        "primary": "mimo/mimo-v2.5"
+        "primary": "volcengine-plan/deepseek-v4-flash"
       },
       "models": {
         "deepseek/deepseek-v4-flash": {
-          "alias": "deepseek-v4-flash"
+          "alias": "deepseek"
         },
         "openai/ep-20260607141832-vxbtn": {
           "alias": "豆包图文识别"
@@ -214,6 +327,42 @@
               }
             }
           }
+        },
+        "volcengine-plan/ark-code-latest": {
+          "alias": "deepseek"
+        },
+        "volcengine-plan/doubao-seed-2.0-code": {
+          "alias": "volcengine-plan/doubao-seed-2.0-code"
+        },
+        "volcengine-plan/doubao-seed-2.0-pro": {
+          "alias": "volcengine-plan/doubao-seed-2.0-pro"
+        },
+        "volcengine-plan/doubao-seed-2.0-lite": {
+          "alias": "volcengine-plan/doubao-seed-2.0-lite"
+        },
+        "volcengine-plan/doubao-seed-code": {
+          "alias": "volcengine-plan/doubao-seed-code"
+        },
+        "volcengine-plan/glm-5.1": {
+          "alias": "volcengine-plan/glm-5.1"
+        },
+        "volcengine-plan/glm-5.2": {
+          "alias": "volcengine-plan/glm-5.2"
+        },
+        "volcengine-plan/minimax-m2.7": {
+          "alias": "volcengine-plan/minimax-m2.7"
+        },
+        "volcengine-plan/minimax-m3": {
+          "alias": "volcengine-plan/minimax-m3"
+        },
+        "volcengine-plan/kimi-k2.6": {
+          "alias": "volcengine-plan/kimi-k2.6"
+        },
+        "volcengine-plan/deepseek-v4-flash": {
+          "alias": "volcengine-plan/deepseek-v4-flash"
+        },
+        "volcengine-plan/deepseek-v4-pro": {
+          "alias": "volcengine-plan/deepseek-v4-pro"
         }
       },
       "workspace": "/root/.openclaw/workspace",
