@@ -301,6 +301,7 @@
   },
   "agents": {
     "defaults": {
+      "contextInjection": "continuation-skip",
       "contextPruning": {
         "mode": "cache-ttl",
         "ttl": "5m"
@@ -370,7 +371,7 @@
         "provider": "openai",
         "remote": {
           "baseUrl": "https://api.yunjintao.com/v1",
-          "apiKey": "sk-fo3zQh72L1e1XYaKo2CCDL9nVKG_vUsMCZCwr77-Xig"
+          "apiKey": "sk-DdYba1Jew_pbZilnK34XwXrqn2joVI37Mbd16r6QYIs"
         },
         "model": "text-embedding-3-large"
       },
