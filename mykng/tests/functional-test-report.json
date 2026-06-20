@@ -1,0 +1,242 @@
+{
+  "timestamp": "2026-06-21T05:37:23.188363",
+  "base_url": "http://localhost:8090/kb/api",
+  "summary": {
+    "total": 46,
+    "passed": 30,
+    "failed": 16,
+    "skipped": 0
+  },
+  "details": [
+    {
+      "name": "登录成功",
+      "status": "PASS",
+      "detail": "token长度=215"
+    },
+    {
+      "name": "创建空间",
+      "status": "PASS",
+      "detail": "id=2"
+    },
+    {
+      "name": "上传文件",
+      "status": "FAIL",
+      "detail": "{\"code\":500,\"message\":\"分片上传失败: \\n### Error updating database.  Cause: java.sql.SQLException: Field '"
+    },
+    {
+      "name": "创建文档",
+      "status": "PASS",
+      "detail": "docId=2 title=功能测试文档_1781991425"
+    },
+    {
+      "name": "编辑文档",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "编辑后标题生效",
+      "status": "PASS",
+      "detail": "title=功能测试文档_1781991425(已编辑)"
+    },
+    {
+      "name": "搜索关键词能找到文档",
+      "status": "FAIL",
+      "detail": "搜索结果0条，未找到目标文档"
+    },
+    {
+      "name": "创建标签",
+      "status": "PASS",
+      "detail": "tagId=2 name=测试标签_1781991427"
+    },
+    {
+      "name": "绑定标签",
+      "status": "FAIL",
+      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceId: 资源ID不能为空; resourceType: 资源类型不能为空\",\"da"
+    },
+    {
+      "name": "创建子文件夹",
+      "status": "PASS",
+      "detail": "folderId=2"
+    },
+    {
+      "name": "移动文档到子文件夹",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "创建分享",
+      "status": "FAIL",
+      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceType: 资源类型不能为空; resourceId: 资源ID不能为空\",\"da"
+    },
+    {
+      "name": "删除文档到回收站",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "文档出现在回收站",
+      "status": "FAIL",
+      "detail": "不在回收站中"
+    },
+    {
+      "name": "从回收站恢复文档",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "恢复后文档不可访问",
+      "status": "FAIL",
+      "detail": "{\"code\":500,\"message\":\"文档不存在\",\"data\":null,\"traceId\":null}"
+    },
+    {
+      "name": "永久删除文档",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "创建测试文档数量",
+      "status": "PASS",
+      "detail": "成功创建3个"
+    },
+    {
+      "name": "搜索Redis返回2条结果",
+      "status": "FAIL",
+      "detail": "实际返回0条"
+    },
+    {
+      "name": "搜索MySQL索引返回1条结果",
+      "status": "FAIL",
+      "detail": "实际返回0条"
+    },
+    {
+      "name": "不存在关键词返回0条",
+      "status": "PASS",
+      "detail": "正确返回空结果"
+    },
+    {
+      "name": "空关键词不崩溃",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "特殊字符不崩溃(SQL注入防护)",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "分页size=1返回1条",
+      "status": "FAIL",
+      "detail": "期望=1, 实际=0 分页正常"
+    },
+    {
+      "name": "创建文件夹A",
+      "status": "PASS",
+      "detail": "id=3 parentId=0"
+    },
+    {
+      "name": "创建文件夹A1",
+      "status": "PASS",
+      "detail": "id=4 parentId=3"
+    },
+    {
+      "name": "创建文件夹B",
+      "status": "PASS",
+      "detail": "id=5 parentId=0"
+    },
+    {
+      "name": "文件夹树层级正确(A下有A1)",
+      "status": "FAIL",
+      "detail": "A的子节点数=0"
+    },
+    {
+      "name": "创建分享",
+      "status": "FAIL",
+      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceType: 资源类型不能为空; resourceId: 资源ID不能为空\",\"da"
+    },
+    {
+      "name": "删除文档到回收站",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "文档在回收站中",
+      "status": "FAIL",
+      "detail": "回收站共0项"
+    },
+    {
+      "name": "恢复文档",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "恢复后文档不可访问",
+      "status": "FAIL",
+      "detail": "{\"code\":500,\"message\":\"文档不存在\",\"data\":null,\"traceId\":null}"
+    },
+    {
+      "name": "永久删除文档",
+      "status": "PASS",
+      "detail": "已永久删除或不存在"
+    },
+    {
+      "name": "创建标签",
+      "status": "PASS",
+      "detail": "id=3"
+    },
+    {
+      "name": "标签出现在列表中",
+      "status": "PASS",
+      "detail": "共2个标签"
+    },
+    {
+      "name": "绑定标签到文档",
+      "status": "FAIL",
+      "detail": "HTTP=400"
+    },
+    {
+      "name": "解绑标签",
+      "status": "FAIL",
+      "detail": "HTTP=500"
+    },
+    {
+      "name": "版本历史接口可用",
+      "status": "FAIL",
+      "detail": "HTTP=500 (可能未启用版本控制)"
+    },
+    {
+      "name": "无Token访问被拒绝",
+      "status": "PASS",
+      "detail": "HTTP=401"
+    },
+    {
+      "name": "错误Token被拒绝",
+      "status": "PASS",
+      "detail": "HTTP=401"
+    },
+    {
+      "name": "SQL注入登录被拦截",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "XSS输入被处理",
+      "status": "PASS",
+      "detail": "name=<script>alert(1)</script> (存储原样或转义)"
+    },
+    {
+      "name": "收藏网页",
+      "status": "PASS",
+      "detail": "webId=1"
+    },
+    {
+      "name": "搜索网页收藏",
+      "status": "PASS",
+      "detail": "HTTP=200"
+    },
+    {
+      "name": "清理完成",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}
