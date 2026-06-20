@@ -19,7 +19,7 @@ spring:
       timeout: 5000ms
 
 crypto:
-  aes-key: ${CRYPTO_AES_KEY:kbCryptoAesKey2026!!32BytesLong!!}
+  aes-key: ${CRYPTO_AES_KEY:Y2Iqb3BzLWFlcy0yNTYta2V5LWZvci1lbmNyeXB0aW9u}
 
 jwt:
   secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}

@@ -71,7 +71,7 @@ services:
       - kb-net
 
   meilisearch:
-    image: getmeili/meilisearch:v1.6
+    image: getmeili/meilisearch:v1.12
     container_name: kb-meilisearch
     restart: unless-stopped
     ports:
@@ -90,8 +90,8 @@ services:
       - kb-net
 
   mongodb:
-    image: mongo:7
-    container_name: kb-mongodb
+    image: mongo:7.0
+    container_name: kb-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -127,10 +127,10 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       - KB_CONTEXT=${KB_CONTEXT:-/kb}
-      - KB_AUTH_HOST=kb-auth
-      - KB_FILE_HOST=kb-file
-      - KB_KNOWLEDGE_HOST=kb-knowledge
-      - KB_OPS_HOST=kb-ops
+      - KB_AUTH_HOST=kb-auth:8081
+      - KB_FILE_HOST=kb-file:8082
+      - KB_KNOWLEDGE_HOST=kb-knowledge:8083
+      - KB_OPS_HOST=kb-ops:8084
     depends_on:
       kb-auth:
         condition: service_started

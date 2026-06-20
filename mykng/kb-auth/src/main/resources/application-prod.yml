@@ -24,7 +24,7 @@ jwt:
   refresh-token-expiration: 604800000
 
 crypto:
-  aes-key: ${CRYPTO_AES_KEY:kbCryptoAesKey2026!!32BytesLong!!}
+  aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
 logging:
   level:
