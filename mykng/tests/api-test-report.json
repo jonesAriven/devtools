@@ -1,0 +1,467 @@
+{
+  "timestamp": "2026-06-21T05:23:02.426974",
+  "base_url": "http://localhost:8090/kb/api",
+  "summary": {
+    "passed": 59,
+    "failed": 7,
+    "skipped": 10
+  },
+  "details": [
+    {
+      "name": "POST /auth/login - 管理员登录",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.27
+    },
+    {
+      "name": "POST /auth/login - 错误密码拒绝",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.52
+    },
+    {
+      "name": "GET /user/profile - 获取用户信息",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.14
+    },
+    {
+      "name": "PUT /user/profile - 更新用户信息",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.19
+    },
+    {
+      "name": "POST /auth/refresh - 刷新Token",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.2
+    },
+    {
+      "name": "PUT /user/password - 修改密码(不变)",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.32
+    },
+    {
+      "name": "POST /token - 创建API Token",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.15
+    },
+    {
+      "name": "PUT /token/{id}/toggle - 切换Token状态",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.3
+    },
+    {
+      "name": "DELETE /token/{id} - 删除Token",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.33
+    },
+    {
+      "name": "POST /token/verify - 验证无效Token",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.1
+    },
+    {
+      "name": "POST /space - 创建空间",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.31
+    },
+    {
+      "name": "GET /space/list - 查询空间列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.1
+    },
+    {
+      "name": "PUT /space/{id} - 更新空间",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.1
+    },
+    {
+      "name": "POST /folder - 创建文件夹",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.73
+    },
+    {
+      "name": "GET /folder/tree/{spaceId} - 文件夹树",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.11
+    },
+    {
+      "name": "PUT /folder/{id} - 更新文件夹",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.12
+    },
+    {
+      "name": "PUT /folder/{id}/sort - 文件夹排序",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.11
+    },
+    {
+      "name": "POST /doc - 创建文档",
+      "status": "PASS",
+      "msg": "",
+      "duration": 1.06
+    },
+    {
+      "name": "GET /doc/{id} - 获取文档",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "PUT /doc/{id} - 更新文档",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.32
+    },
+    {
+      "name": "PUT /doc/{id}/star - 收藏文档",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.07
+    },
+    {
+      "name": "PUT /doc/{id}/move - 移动文档",
+      "status": "FAIL",
+      "msg": "",
+      "duration": 0.04
+    },
+    {
+      "name": "GET /search?q=测试 - 关键词搜索",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.12
+    },
+    {
+      "name": "GET /search?q=不存在 - 空结果",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.06
+    },
+    {
+      "name": "POST /tag - 创建标签",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.09
+    },
+    {
+      "name": "GET /tag/list - 标签列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.04
+    },
+    {
+      "name": "POST /tag/bind - 绑定标签到文档",
+      "status": "FAIL",
+      "msg": "",
+      "duration": 0.06
+    },
+    {
+      "name": "DELETE /tag/{id} - 删除标签",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.07
+    },
+    {
+      "name": "GET /trash/list - 回收站列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.46
+    },
+    {
+      "name": "POST /trash/restore/{type}/{id} - 恢复文档",
+      "status": "FAIL",
+      "msg": "code=500 msg=不支持的资源类型",
+      "duration": 0.03
+    },
+    {
+      "name": "POST /share - 创建分享",
+      "status": "FAIL",
+      "msg": "HTTP 400",
+      "duration": 0.03
+    },
+    {
+      "name": "GET /share/list - 分享列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.07
+    },
+    {
+      "name": "GET /share/verify/{code}",
+      "status": "SKIP",
+      "msg": "无分享码",
+      "duration": 0
+    },
+    {
+      "name": "GET /share/verify/{code} - 验证分享(无需认证)",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "GET /share/detail/{code}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "GET /share/detail/{code} - 获取分享详情",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "DELETE /share/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "DELETE /share/{id} - 删除分享",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "GET /version/list/{type}/{id} - 版本列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.04
+    },
+    {
+      "name": "POST /web/collect - 收藏网页",
+      "status": "FAIL",
+      "msg": "HTTP 400",
+      "duration": 0.03
+    },
+    {
+      "name": "GET /web/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "GET /web/{id} - 获取网页收藏",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "DELETE /web/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "DELETE /web/{id} - 删除网页收藏",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "GET /file/list - 文件列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 1.09
+    },
+    {
+      "name": "POST /file/upload - 上传文件",
+      "status": "FAIL",
+      "msg": "code=500 msg=分片上传失败: \n### Error updating database.  Cause: java.sql.SQLException: Field 'file_id' doesn't have a default value\n### The error may exist in com/kb/file/mapper/FileChunkMapper.java (best guess)\n### The error may involve com.kb.file.mapper.FileChunkMapper.insert-Inline\n### The error occurred while setting parameters\n### SQL: INSERT INTO file_chunk  ( chunk_path, created_at )  VALUES (  ?, ?  )\n### Cause: java.sql.SQLException: Field 'file_id' doesn't have a default value\n; Field 'file_id' doesn't have a default value",
+      "duration": 1.21
+    },
+    {
+      "name": "GET /file/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "GET /file/{id} - 获取文件信息",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "GET /file/{id}/parse-status",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "GET /file/{id}/parse-status - 解析状态",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "PUT /file/{id}/star",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "PUT /file/{id}/star - 收藏文件",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "DELETE /file/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "DELETE /file/{id} - 删除文件",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "GET /bucket/list - 存储桶列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "GET /bucket/{id}/stats - 存储桶统计",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.06
+    },
+    {
+      "name": "GET /ops/dashboard - 看板数据",
+      "status": "PASS",
+      "msg": "",
+      "duration": 1.12
+    },
+    {
+      "name": "POST /ops/dashboard/snapshot/refresh - 刷新看板",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.31
+    },
+    {
+      "name": "POST /ops/host - 创建主机",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.47
+    },
+    {
+      "name": "GET /ops/host/list - 主机列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.21
+    },
+    {
+      "name": "GET /ops/host/{id} - 获取主机详情",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "PUT /ops/host/{id} - 更新主机",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.11
+    },
+    {
+      "name": "DELETE /ops/host/{id} - 删除主机",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.1
+    },
+    {
+      "name": "GET /ops/service/list - 服务列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "POST /ops/service - 创建服务",
+      "status": "FAIL",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "DELETE /ops/service/{id}",
+      "status": "SKIP",
+      "msg": "",
+      "duration": 0
+    },
+    {
+      "name": "DELETE /ops/service/{id} - 删除服务",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.0
+    },
+    {
+      "name": "POST /ops/knowledge - 创建运维知识",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.1
+    },
+    {
+      "name": "GET /ops/knowledge/list - 运维知识列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.08
+    },
+    {
+      "name": "GET /ops/knowledge/{id} - 获取运维知识",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.09
+    },
+    {
+      "name": "DELETE /ops/knowledge/{id} - 删除运维知识",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.08
+    },
+    {
+      "name": "GET /ops/deployment/list - 部署记录列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.06
+    },
+    {
+      "name": "GET /ops/deployment/recent - 最近部署",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "GET /ops/conflict/list - 矛盾列表",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.05
+    },
+    {
+      "name": "POST /ops/import - JSON导入",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.06
+    },
+    {
+      "name": "清理测试数据 + 登出",
+      "status": "PASS",
+      "msg": "",
+      "duration": 0.34
+    }
+  ]
+}
