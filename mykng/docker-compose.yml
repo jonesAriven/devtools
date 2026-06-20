@@ -122,10 +122,11 @@ services:
     container_name: kb-gateway
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8090:8090"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMust256BitsLong!!}
+      - SERVER_PORT=8090
+      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       - KB_CONTEXT=${KB_CONTEXT:-/kb}
       - KB_AUTH_HOST=kb-auth
       - KB_FILE_HOST=kb-file
@@ -143,8 +144,7 @@ services:
       dockerfile: Dockerfile
     container_name: kb-auth
     restart: unless-stopped
-    ports:
-      - "8081:8081"
+    # 不映射宿主机端口，仅 Docker 内网通信
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - MYSQL_HOST=mysql
@@ -170,8 +170,7 @@ services:
       dockerfile: Dockerfile
     container_name: kb-file
     restart: unless-stopped
-    ports:
-      - "8082:8082"
+    # 不映射宿主机端口，仅 Docker 内网通信
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - MYSQL_HOST=mysql
@@ -211,8 +210,7 @@ services:
       dockerfile: Dockerfile
     container_name: kb-knowledge
     restart: unless-stopped
-    ports:
-      - "8083:8083"
+    # 不映射宿主机端口，仅 Docker 内网通信
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - MYSQL_HOST=mysql
@@ -253,8 +251,7 @@ services:
       dockerfile: Dockerfile
     container_name: kb-ops
     restart: unless-stopped
-    ports:
-      - "8084:8084"
+    # 不映射宿主机端口，仅 Docker 内网通信
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - MYSQL_HOST=mysql

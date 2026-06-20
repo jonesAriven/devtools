@@ -44,7 +44,7 @@ case "$1" in
     log "服务状态:"
     docker compose ps
     echo ""
-    log "网关地址: http://localhost:8080"
+    log "网关地址: http://localhost:8090"
     log "查看日志: ./deploy.sh logs"
     ;;
 
