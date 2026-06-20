@@ -1,0 +1,21 @@
+# Build artifacts
+**/target/
+**/node_modules/
+**/dist/
+**/.vite/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env secrets (keep .env.example)
+# .env
+
+# Logs
+*.log
+/data/logs/

@@ -3,6 +3,7 @@ export interface R<T> {
   code: number
   message: string
   data: T
+  traceId?: string
 }
 
 /** 分页结果 */
@@ -329,6 +330,108 @@ export interface ResourceItem {
   folderId: number
   spaceId: number
   starred: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// ============================================================
+// 微服务新增类型 (v6)
+// ============================================================
+
+/** API Token */
+export interface ApiToken {
+  id: number
+  name: string
+  token: string
+  scopes: string[]
+  status: number
+  expireAt: string | null
+  lastUsedAt: string | null
+  createdAt: string
+}
+
+/** 创建 API Token 请求 */
+export interface CreateTokenRequest {
+  name: string
+  scopes: string[]
+  expireAt?: string
+}
+
+/** 运维 - 主机 */
+export interface OpsHost {
+  id: number
+  name: string
+  ip: string
+  sshPort: number
+  os: string
+  cpuCores: number
+  memoryMb: number
+  diskGb: number
+  status: string
+  tags: string
+  remark: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 运维 - 服务 */
+export interface OpsService {
+  id: number
+  name: string
+  hostId: number
+  hostName: string
+  port: number
+  version: string
+  type: string
+  status: string
+  healthCheckUrl: string
+  remark: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 运维 - 部署记录 */
+export interface Deployment {
+  id: number
+  serviceName: string
+  hostName: string
+  version: string
+  status: string
+  deployTime: string
+  deployer: string
+  remark: string
+  createdAt: string
+}
+
+/** 运维 - 矛盾检测结果 */
+export interface OpsConflict {
+  id: number
+  type: string
+  severity: string
+  description: string
+  serviceName: string
+  hostName: string
+  resolved: boolean
+  createdAt: string
+}
+
+/** 运维 - 看板数据 */
+export interface DashboardVO {
+  hostStats: { total: number; online: number; offline: number }
+  serviceStats: { total: number; running: number; stopped: number }
+  typeDistribution: Record<string, number>
+  deployTrend: { date: string; count: number }[]
+  recentDeploys: Deployment[]
+  recentConflicts: OpsConflict[]
+}
+
+/** 运维 - 知识 */
+export interface OpsKnowledge {
+  id: number
+  title: string
+  category: string
+  content: string
+  tags: string
   createdAt: string
   updatedAt: string
 }

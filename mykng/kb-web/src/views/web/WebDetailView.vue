@@ -2,7 +2,7 @@
   <div class="web-detail-page">
     <div class="page-header">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item :to="{ path: '/kb/dashboard' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: `${CONTEXT_PATH}/dashboard` }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>网页收藏详情</el-breadcrumb-item>
       </el-breadcrumb>
       <div class="page-actions">
@@ -67,6 +67,7 @@ import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
 import ShareDialog from '@/components/ShareDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { CONTEXT_PATH } from '@/config'
 
 const props = defineProps<{
   id: string

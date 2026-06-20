@@ -4,7 +4,7 @@
 
     <el-row :gutter="16">
       <el-col :span="6">
-        <div class="stat-card" @click="$router.push('/kb/space/' + spaceStore.currentSpace?.id)">
+        <div class="stat-card" @click="$router.push(`${CONTEXT_PATH}/space/${spaceStore.currentSpace?.id}`)">
           <el-icon :size="32" color="#409eff"><Folder /></el-icon>
           <div class="stat-info">
             <div class="stat-value">{{ spaceStore.spaceList.length }}</div>
@@ -70,7 +70,7 @@
           <div class="card-title">快捷操作</div>
           <div class="quick-actions">
             <el-button type="primary" :icon="Upload" @click="showUpload = true">上传文件</el-button>
-            <el-button type="success" :icon="EditPen" @click="$router.push('/kb/doc/create')">新建笔记</el-button>
+            <el-button type="success" :icon="EditPen" @click="$router.push(`${CONTEXT_PATH}/doc/create`)">新建笔记</el-button>
             <el-button type="warning" :icon="Link" @click="showWebDialog = true">收藏网页</el-button>
           </div>
         </div>
@@ -120,6 +120,7 @@ import { formatRelativeTime } from '@/utils/format'
 import type { ResourceItem } from '@/types'
 import FileUpload from '@/components/FileUpload.vue'
 import { ElMessage } from 'element-plus'
+import { CONTEXT_PATH } from '@/config'
 
 const router = useRouter()
 const spaceStore = useSpaceStore()
@@ -152,11 +153,11 @@ function loadDashboard() {
 
 function goToResource(item: ResourceItem) {
   if (item.type === 'file') {
-    router.push(`/kb/file/${item.id}`)
+    router.push(`${CONTEXT_PATH}/file/${item.id}`)
   } else if (item.type === 'doc') {
-    router.push(`/kb/doc/${item.id}`)
+    router.push(`${CONTEXT_PATH}/doc/${item.id}`)
   } else if (item.type === 'web') {
-    router.push(`/kb/web/${item.id}`)
+    router.push(`${CONTEXT_PATH}/web/${item.id}`)
   }
 }
 

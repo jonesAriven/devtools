@@ -4,6 +4,7 @@ import type { User } from '@/types'
 import { login as loginApi, logout as logoutApi } from '@/api/auth'
 import { setToken, setRefreshToken, clearTokens, getToken } from '@/utils/token'
 import router from '@/router'
+import { CONTEXT_PATH } from '@/config'
 
 export const useUserStore = defineStore('user', () => {
   const accessToken = ref<string | null>(getToken())
@@ -33,7 +34,7 @@ export const useUserStore = defineStore('user', () => {
     profile.value = null
     isLoggedIn.value = false
     clearTokens()
-    router.push('/kb/login')
+    router.push(`${CONTEXT_PATH}/login`)
   }
 
   function setProfile(user: User) {

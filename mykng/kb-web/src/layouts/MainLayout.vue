@@ -14,18 +14,29 @@
           active-text-color="#409eff"
           router
         >
-          <el-menu-item index="/kb/dashboard">
+          <el-menu-item :index="`${CONTEXT_PATH}/dashboard`">
             <el-icon><DataBoard /></el-icon>
             <template #title>仪表盘</template>
           </el-menu-item>
-          <el-menu-item index="/kb/trash">
+          <el-menu-item :index="`${CONTEXT_PATH}/trash`">
             <el-icon><Delete /></el-icon>
             <template #title>回收站</template>
           </el-menu-item>
-          <el-menu-item index="/kb/settings">
+          <el-menu-item :index="`${CONTEXT_PATH}/settings`">
             <el-icon><Setting /></el-icon>
             <template #title>系统设置</template>
           </el-menu-item>
+          <el-sub-menu :index="`${CONTEXT_PATH}/ops`">
+            <template #title>
+              <el-icon><Monitor /></el-icon>
+              <span>运维管理</span>
+            </template>
+            <el-menu-item :index="`${CONTEXT_PATH}/ops`">运维看板</el-menu-item>
+            <el-menu-item :index="`${CONTEXT_PATH}/ops/hosts`">主机管理</el-menu-item>
+            <el-menu-item :index="`${CONTEXT_PATH}/ops/services`">服务管理</el-menu-item>
+            <el-menu-item :index="`${CONTEXT_PATH}/ops/conflicts`">矛盾检测</el-menu-item>
+            <el-menu-item :index="`${CONTEXT_PATH}/ops/knowledge`">运维知识</el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
         <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
@@ -40,7 +51,7 @@
             <el-menu-item
               v-for="space in spaceStore.spaceList"
               :key="space.id"
-              :index="`/kb/space/${space.id}`"
+              :index="`${CONTEXT_PATH}/space/${space.id}`"
             >
               <el-icon><Folder /></el-icon>
               <template #title>{{ space.name }}</template>
@@ -98,6 +109,7 @@ import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useAuth } from '@/composables/useAuth'
 import SearchBar from '@/components/SearchBar.vue'
+import { CONTEXT_PATH } from '@/config'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,7 +132,7 @@ async function handleCommand(command: string) {
   if (command === 'logout') {
     await logout()
   } else if (command === 'settings') {
-    router.push('/kb/settings')
+    router.push(`${CONTEXT_PATH}/settings`)
   }
 }
 </script>

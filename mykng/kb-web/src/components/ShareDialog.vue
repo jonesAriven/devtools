@@ -49,6 +49,7 @@ import { ref, computed, reactive, watch } from 'vue'
 import { createShare } from '@/api/share'
 import type { Share } from '@/types'
 import { ElMessage } from 'element-plus'
+import { CONTEXT_PATH } from '@/config'
 
 const props = defineProps<{
   visible: boolean
@@ -83,7 +84,7 @@ watch(() => props.visible, (val) => {
 
 const shareLink = computed(() => {
   if (!shareResult.value) return ''
-  return `${window.location.origin}/kb/share/${shareResult.value.code}`
+  return `${window.location.origin}${CONTEXT_PATH}/share/${shareResult.value.code}`
 })
 
 async function handleCreateShare() {

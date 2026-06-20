@@ -1,0 +1,95 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kb-gateway
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  cloud:
+    gateway:
+      # ============================================================
+      # 统一上下文路径：${KB_CONTEXT:/kb}
+      # 修改此环境变量即可改变所有路由前缀，无需改代码
+      # ============================================================
+      # 路径结构: ${KB_CONTEXT}/api/${module}/${action}
+      #   /kb     → KB_CONTEXT (可配置，默认 /kb)
+      #   /api    → API 标识 (固定)
+      #   /auth   → 功能模块 (Controller 定义)
+      # StripPrefix=2 去掉 /kb/api 两段，后端收到 /auth/login
+      routes:
+        - id: kb-auth
+          uri: http://${kb.gateway.services.auth:localhost:8081}
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/auth/**,${KB_CONTEXT:/kb}/api/user/**,${KB_CONTEXT:/kb}/api/token/**
+          filters:
+            - StripPrefix=2
+
+        - id: kb-file
+          uri: http://${kb.gateway.services.file:localhost:8082}
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/file/**,${KB_CONTEXT:/kb}/api/bucket/**
+          filters:
+            - StripPrefix=2
+
+        - id: kb-knowledge
+          uri: http://${kb.gateway.services.knowledge:localhost:8083}
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/doc/**,${KB_CONTEXT:/kb}/api/folder/**,${KB_CONTEXT:/kb}/api/web/**,${KB_CONTEXT:/kb}/api/search/**,${KB_CONTEXT:/kb}/api/share/**,${KB_CONTEXT:/kb}/api/tag/**,${KB_CONTEXT:/kb}/api/space/**,${KB_CONTEXT:/kb}/api/trash/**,${KB_CONTEXT:/kb}/api/version/**
+          filters:
+            - StripPrefix=2
+
+        - id: kb-ops
+          uri: http://${kb.gateway.services.ops:localhost:8084}
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/ops/**,${KB_CONTEXT:/kb}/api/log/**
+          filters:
+            - StripPrefix=2
+
+      # CORS 跨域
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+
+# 网关业务配置
+kb:
+  gateway:
+    # 统一上下文路径（与 KB_CONTEXT 环境变量一致）
+    context-path: ${KB_CONTEXT:/kb}
+    jwt:
+      # 与 kb-auth 保持一致的 HMAC-SHA 密钥
+      secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
+      header: Authorization
+    # 鉴权白名单（使用 KB_CONTEXT 变量）
+    whitelist:
+      - ${KB_CONTEXT:/kb}/api/auth/login
+      - ${KB_CONTEXT:/kb}/api/auth/refresh
+      - ${KB_CONTEXT:/kb}/api/share/verify/**
+    # 下游服务地址（dev=本地端口，docker/prod 用服务名）
+    services:
+      auth: localhost:8081
+      file: localhost:8082
+      knowledge: localhost:8083
+      ops: localhost:8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.kb.gateway: debug
+    org.springframework.cloud.gateway: info

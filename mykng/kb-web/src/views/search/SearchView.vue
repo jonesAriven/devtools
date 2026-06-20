@@ -91,6 +91,7 @@ import StarToggle from '@/components/StarToggle.vue'
 import { toggleFileStar } from '@/api/file'
 import { toggleDocStar } from '@/api/doc'
 import { toggleWebPageStar } from '@/api/web'
+import { CONTEXT_PATH } from '@/config'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,11 +134,11 @@ function typeLabel(type: string): string {
 
 function goToResource(item: SearchResult) {
   if (item.type === 'file') {
-    router.push(`/kb/file/${item.id}`)
+    router.push(`${CONTEXT_PATH}/file/${item.id}`)
   } else if (item.type === 'doc') {
-    router.push(`/kb/doc/${item.id}`)
+    router.push(`${CONTEXT_PATH}/doc/${item.id}`)
   } else if (item.type === 'web') {
-    router.push(`/kb/web/${item.id}`)
+    router.push(`${CONTEXT_PATH}/web/${item.id}`)
   }
 }
 

@@ -1,0 +1,3 @@
+# Auto Configuration for kb-common
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.kb.common.trace.TraceIdAutoConfig

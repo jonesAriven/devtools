@@ -4,8 +4,11 @@ import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens } fro
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+/** 统一上下文路径（从 .env VITE_CONTEXT_PATH 读取） */
+const ctx = import.meta.env.VITE_CONTEXT_PATH || '/kb'
+
 const request = axios.create({
-  baseURL: '/kb/api',
+  baseURL: `${ctx}/api`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,6 +34,10 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const data = response.data as R<any>
+    // 存储 traceId 到 headers 供调试
+    if (data.traceId) {
+      response.headers['x-trace-id'] = data.traceId
+    }
     if (data.code !== 0 && data.code !== 200) {
       ElMessage.error(data.message || '请求失败')
       return Promise.reject(new Error(data.message || '请求失败'))
@@ -44,7 +51,7 @@ request.interceptors.response.use(
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
         clearTokens()
-        router.push('/kb/login')
+        router.push(`${ctx}/login`)
         return Promise.reject(error)
       }
 
@@ -61,7 +68,7 @@ request.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const res = await axios.post('/kb/api/auth/refresh', { refreshToken })
+        const res = await axios.post(`${ctx}/api/auth/refresh`, { refreshToken })
         const data = res.data as R<{ accessToken: string; refreshToken: string }>
         if (data.code === 0 || data.code === 200) {
           setToken(data.data.accessToken)
@@ -72,12 +79,12 @@ request.interceptors.response.use(
           return request(originalRequest)
         } else {
           clearTokens()
-          router.push('/kb/login')
+          router.push(`${ctx}/login`)
           return Promise.reject(error)
         }
       } catch {
         clearTokens()
-        router.push('/kb/login')
+        router.push(`${ctx}/login`)
         return Promise.reject(error)
       } finally {
         isRefreshing = false

@@ -3,29 +3,30 @@ import type { RouteRecordRaw } from 'vue-router'
 import { getToken } from '@/utils/token'
 import MainLayout from '@/layouts/MainLayout.vue'
 import ShareLayout from '@/layouts/ShareLayout.vue'
+import { CONTEXT_PATH as ctx } from '@/config'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/kb/login',
+    path: `${ctx}/login`,
     name: 'Login',
     component: () => import('@/views/login/LoginView.vue'),
     meta: { requiresAuth: false },
   },
   {
-    path: '/kb/share/:code',
+    path: `${ctx}/share/:code`,
     name: 'ShareAccess',
     component: () => import('@/views/share/ShareAccessView.vue'),
     meta: { requiresAuth: false },
     props: true,
   },
   {
-    path: '/kb',
+    path: ctx,
     component: MainLayout,
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
-        redirect: '/kb/dashboard',
+        redirect: `${ctx}/dashboard`,
       },
       {
         path: 'dashboard',
@@ -76,12 +77,37 @@ const routes: RouteRecordRaw[] = [
         name: 'Settings',
         component: () => import('@/views/settings/SettingsView.vue'),
       },
+      {
+        path: 'ops',
+        name: 'OpsDashboard',
+        component: () => import('@/views/ops/OpsDashboardView.vue'),
+      },
+      {
+        path: 'ops/hosts',
+        name: 'OpsHosts',
+        component: () => import('@/views/ops/OpsHostsView.vue'),
+      },
+      {
+        path: 'ops/services',
+        name: 'OpsServices',
+        component: () => import('@/views/ops/OpsServicesView.vue'),
+      },
+      {
+        path: 'ops/conflicts',
+        name: 'OpsConflicts',
+        component: () => import('@/views/ops/OpsConflictsView.vue'),
+      },
+      {
+        path: 'ops/knowledge',
+        name: 'OpsKnowledge',
+        component: () => import('@/views/ops/OpsKnowledgeView.vue'),
+      },
     ],
   },
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(ctx),
   routes,
 })
 

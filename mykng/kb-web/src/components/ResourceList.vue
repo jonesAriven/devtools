@@ -90,6 +90,7 @@ import { toggleWebPageStar } from '@/api/web'
 import { formatRelativeTime } from '@/utils/format'
 import type { KbFile, Doc, WebPage } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
+import { CONTEXT_PATH } from '@/config'
 
 interface ResourceListItem {
   id: number
@@ -169,11 +170,11 @@ function typeLabel(type: string): string {
 
 function goToResource(item: ResourceListItem) {
   if (item.type === 'file') {
-    router.push(`/kb/file/${item.id}`)
+    router.push(`${CONTEXT_PATH}/file/${item.id}`)
   } else if (item.type === 'doc') {
-    router.push(`/kb/doc/${item.id}`)
+    router.push(`${CONTEXT_PATH}/doc/${item.id}`)
   } else if (item.type === 'web') {
-    router.push(`/kb/web/${item.id}`)
+    router.push(`${CONTEXT_PATH}/web/${item.id}`)
   }
 }
 

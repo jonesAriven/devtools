@@ -2,7 +2,7 @@
   <div class="space-page">
     <div class="space-header">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item :to="{ path: '/kb/dashboard' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: `${CONTEXT_PATH}/dashboard` }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>{{ spaceStore.currentSpace?.name || '空间' }}</el-breadcrumb-item>
       </el-breadcrumb>
       <div class="space-actions">
@@ -54,6 +54,7 @@ import FolderTree from '@/components/FolderTree.vue'
 import ResourceList from '@/components/ResourceList.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import { ElMessage } from 'element-plus'
+import { CONTEXT_PATH } from '@/config'
 
 const props = defineProps<{
   spaceId: string
@@ -95,7 +96,7 @@ function handleFolderSelect(folderId: number | null) {
 
 function goCreateDoc() {
   router.push({
-    path: '/kb/doc/create',
+    path: `${CONTEXT_PATH}/doc/create`,
     query: { spaceId: props.spaceId, folderId: currentFolderId.value?.toString() },
   })
 }

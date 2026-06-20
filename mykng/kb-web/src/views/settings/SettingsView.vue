@@ -132,19 +132,56 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="API Token" name="token">
+        <div class="info-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
+            <span style="font-weight: bold">API Token 管理</span>
+            <el-button type="primary" size="small" @click="showTokenDialog = true">新建 Token</el-button>
+          </div>
+          <el-table :data="tokenList" v-loading="tokenLoading" style="width: 100%">
+            <el-table-column prop="name" label="名称" width="150" />
+            <el-table-column prop="token" label="Token" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span style="font-family: monospace; font-size: 12px">{{ row.token.substring(0, 16) }}...</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="scopes" label="权限" width="150">
+              <template #default="{ row }">
+                <el-tag v-for="scope in row.scopes" :key="scope" size="small" style="margin-right: 4px">{{ scope }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+                  {{ row.status === 1 ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180" />
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" @click="toggleTokenStatus(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
+                <el-button size="small" type="danger" @click="handleDeleteToken(row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { updateUserProfile, changePassword } from '@/api/user'
 import { getBucketList, createBucket, deleteBucket, testBucketConnection, setDefaultBucket } from '@/api/bucket'
 import { getLogList } from '@/api/log'
+import { getTokenList, createToken, deleteToken, toggleTokenStatus } from '@/api/token'
 import { formatDate } from '@/utils/format'
-import type { Bucket, OperationLog } from '@/types'
+import type { Bucket, OperationLog, ApiToken, CreateTokenRequest } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const userStore = useUserStore()
@@ -262,6 +299,55 @@ async function loadLogs() {
   logList.value = res.data.data.list
   logTotal.value = res.data.data.total
 }
+
+// ============================================================
+// API Token 管理
+// ============================================================
+const tokenList = ref<ApiToken[]>([])
+const tokenLoading = ref(false)
+const showTokenDialog = ref(false)
+const tokenForm = reactive<CreateTokenRequest>({
+  name: '',
+  scopes: ['read'],
+  expireAt: undefined,
+})
+
+async function loadTokens() {
+  tokenLoading.value = true
+  try {
+    const res = await getTokenList()
+    tokenList.value = res.data.data
+  } finally {
+    tokenLoading.value = false
+  }
+}
+
+async function handleCreateToken() {
+  await createToken(tokenForm)
+  ElMessage.success('Token 创建成功')
+  showTokenDialog.value = false
+  tokenForm.name = ''
+  tokenForm.scopes = ['read']
+  loadTokens()
+}
+
+async function handleDeleteToken(id: number) {
+  await ElMessageBox.confirm('确定要删除此 Token 吗？', '提示', { type: 'warning' })
+  await deleteToken(id)
+  ElMessage.success('已删除')
+  loadTokens()
+}
+
+async function toggleTokenStat(id: number) {
+  await toggleTokenStatus(id)
+  ElMessage.success('状态已切换')
+  loadTokens()
+}
+
+// 监听 tab 切换，加载对应数据
+watch(activeTab, (val) => {
+  if (val === 'token') loadTokens()
+})
 </script>
 
 <style scoped lang="scss">

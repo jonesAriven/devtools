@@ -1,0 +1,295 @@
+# ============================================================
+# mykng 知识库微服务 Docker Compose 编排
+# ============================================================
+# 启动: docker compose up -d
+# 构建: docker compose build
+# 日志: docker compose logs -f [service]
+# 停止: docker compose down
+# 重建: docker compose up -d --build [service]
+# ============================================================
+
+services:
+  # ========== 基础设施 ==========
+  
+  mysql:
+    image: mysql:8.0
+    container_name: kb-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - kb-mysql-data:/var/lib/mysql
+      - ./init-sql:/docker-entrypoint-initdb.d
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-kb123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: kb-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - kb-redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - kb-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: kb-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - kb-minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-net
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: kb-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      MEILI_ENV: production
+    volumes:
+      - kb-meili-data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-net
+
+  mongodb:
+    image: mongo:7
+    container_name: kb-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-kb}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-kb123456}
+    volumes:
+      - kb-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-net
+
+  # ========== 微服务 ==========
+  # 启动顺序: gateway → auth → file → knowledge → ops
+  # gateway 不依赖其他服务（路由延迟生效）
+  # auth/file/knowledge/ops 依赖 mysql + redis
+  # file 额外依赖 minio + meilisearch + mongodb
+  # knowledge 额外依赖 meilisearch + mongodb
+
+  kb-gateway:
+    build:
+      context: ./kb-gateway
+      dockerfile: Dockerfile
+    container_name: kb-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMust256BitsLong!!}
+      - KB_CONTEXT=${KB_CONTEXT:-/kb}
+      - KB_AUTH_HOST=kb-auth
+      - KB_FILE_HOST=kb-file
+      - KB_KNOWLEDGE_HOST=kb-knowledge
+      - KB_OPS_HOST=kb-ops
+    depends_on:
+      kb-auth:
+        condition: service_started
+    networks:
+      - kb-net
+
+  kb-auth:
+    build:
+      context: ./kb-auth
+      dockerfile: Dockerfile
+    container_name: kb-auth
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_auth
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMust256BitsLong!!}
+      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-kbCryptoAesKey2026!!32BytesLong!!}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kb-net
+
+  kb-file:
+    build:
+      context: ./kb-file
+      dockerfile: Dockerfile
+    container_name: kb-file
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_file
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=kb
+      - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
+      - MONGO_DB=kb_file
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - kb-net
+
+  kb-knowledge:
+    build:
+      context: ./kb-knowledge
+      dockerfile: Dockerfile
+    container_name: kb-knowledge
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_knowledge
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=kb
+      - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
+      - MONGO_DB=kb_knowledge
+      - KB_AUTH_HOST=kb-auth
+      - KB_FILE_HOST=kb-file
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      kb-auth:
+        condition: service_started
+      kb-file:
+        condition: service_started
+    networks:
+      - kb-net
+
+  kb-ops:
+    build:
+      context: ./kb-ops
+      dockerfile: Dockerfile
+    container_name: kb-ops
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_ops
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-kbCryptoAesKey2026!!32BytesLong!!}
+      - KB_AUTH_HOST=kb-auth
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kb-auth:
+        condition: service_started
+    networks:
+      - kb-net
+
+# ========== 数据卷 ==========
+volumes:
+  kb-mysql-data:
+    driver: local
+  kb-redis-data:
+    driver: local
+  kb-minio-data:
+    driver: local
+  kb-meili-data:
+    driver: local
+  kb-mongo-data:
+    driver: local
+
+# ========== 网络 ==========
+networks:
+  kb-net:
+    driver: bridge

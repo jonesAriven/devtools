@@ -1,0 +1,39 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: kb-knowledge
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# MeiliSearch 配置
+meilisearch:
+  host: http://192.168.31.182:7700
+  api-key: masterKey
+
+# Redis 事件通道
+kb:
+  event:
+    channel: kb:events
+  feign:
+    auth-url: http://kb-auth:8081
+    file-url: http://kb-file:8082
+
+logging:
+  level:
+    com.kb.knowledge: debug

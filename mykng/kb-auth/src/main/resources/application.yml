@@ -1,0 +1,41 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: kb-auth
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
+  access-token-expiration: 900000      # 15 分钟
+  refresh-token-expiration: 604800000  # 7 天
+
+# AES-256-GCM 加密密钥（32字节 Base64），用于 API Token 加密存储
+crypto:
+  aes-key: "YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE="
+
+# API Token 配置
+api-token:
+  prefix: "kb_"
+  expire-days: 365
+
+logging:
+  level:
+    com.kb.auth: debug

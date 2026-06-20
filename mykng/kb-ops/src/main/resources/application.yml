@@ -1,0 +1,35 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: kb-ops
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# AES-256-GCM 密钥 (Base64, 32字节)。生产环境通过环境变量覆盖。
+crypto:
+  aes-key: ${CRYPTO_AES_KEY:Y2Iqb3BzLWFlcy0yNTYta2V5LWZvci1lbmNyeXB0aW9u}
+
+# 服务间调用 (单机部署，直接 HTTP URL)
+kb:
+  feign:
+    auth-url: ${AUTH_URL:http://kb-auth:8081}
+
+logging:
+  level:
+    com.kb.ops: debug
