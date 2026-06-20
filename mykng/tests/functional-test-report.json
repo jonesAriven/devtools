@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-06-21T05:37:23.188363",
+  "timestamp": "2026-06-21T06:09:28.934808",
   "base_url": "http://localhost:8090/kb/api",
   "summary": {
-    "total": 46,
-    "passed": 30,
-    "failed": 16,
+    "total": 57,
+    "passed": 57,
+    "failed": 0,
     "skipped": 0
   },
   "details": [
@@ -16,17 +16,62 @@
     {
       "name": "创建空间",
       "status": "PASS",
-      "detail": "id=2"
+      "detail": "id=37"
     },
     {
       "name": "上传文件",
-      "status": "FAIL",
-      "detail": "{\"code\":500,\"message\":\"分片上传失败: \\n### Error updating database.  Cause: java.sql.SQLException: Field '"
+      "status": "PASS",
+      "detail": "fileId=5"
+    },
+    {
+      "name": "上传后文件出现在列表中",
+      "status": "PASS",
+      "detail": "列表共2个文件，包含目标文件"
+    },
+    {
+      "name": "文件名正确",
+      "status": "PASS",
+      "detail": "实际=功能测试文件.txt"
+    },
+    {
+      "name": "文件已入库",
+      "status": "PASS",
+      "detail": "id=5"
+    },
+    {
+      "name": "解析状态可查询",
+      "status": "PASS",
+      "detail": "status=READY"
+    },
+    {
+      "name": "收藏文件",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "收藏状态生效",
+      "status": "PASS",
+      "detail": "starred=1"
+    },
+    {
+      "name": "取消收藏",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "删除文件",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "删除后文件从列表消失",
+      "status": "PASS",
+      "detail": "文件已不在列表中"
     },
     {
       "name": "创建文档",
       "status": "PASS",
-      "detail": "docId=2 title=功能测试文档_1781991425"
+      "detail": "docId=33 title=功能测试文档_1781993349"
     },
     {
       "name": "编辑文档",
@@ -36,27 +81,27 @@
     {
       "name": "编辑后标题生效",
       "status": "PASS",
-      "detail": "title=功能测试文档_1781991425(已编辑)"
+      "detail": "title=功能测试文档_1781993349(已编辑)"
     },
     {
       "name": "搜索关键词能找到文档",
-      "status": "FAIL",
-      "detail": "搜索结果0条，未找到目标文档"
+      "status": "PASS",
+      "detail": "搜索结果1条，包含目标文档"
     },
     {
       "name": "创建标签",
       "status": "PASS",
-      "detail": "tagId=2 name=测试标签_1781991427"
+      "detail": "tagId=13 name=测试标签_1781993352"
     },
     {
-      "name": "绑定标签",
-      "status": "FAIL",
-      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceId: 资源ID不能为空; resourceType: 资源类型不能为空\",\"da"
+      "name": "绑定标签到文档",
+      "status": "PASS",
+      "detail": ""
     },
     {
       "name": "创建子文件夹",
       "status": "PASS",
-      "detail": "folderId=2"
+      "detail": "folderId=18"
     },
     {
       "name": "移动文档到子文件夹",
@@ -64,9 +109,9 @@
       "detail": ""
     },
     {
-      "name": "创建分享",
-      "status": "FAIL",
-      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceType: 资源类型不能为空; resourceId: 资源ID不能为空\",\"da"
+      "name": "创建分享链接",
+      "status": "PASS",
+      "detail": "code=6b1c0ee8d13443c4b014fc25b0e6cad2"
     },
     {
       "name": "删除文档到回收站",
@@ -75,8 +120,8 @@
     },
     {
       "name": "文档出现在回收站",
-      "status": "FAIL",
-      "detail": "不在回收站中"
+      "status": "PASS",
+      "detail": "在回收站中"
     },
     {
       "name": "从回收站恢复文档",
@@ -84,9 +129,9 @@
       "detail": ""
     },
     {
-      "name": "恢复后文档不可访问",
-      "status": "FAIL",
-      "detail": "{\"code\":500,\"message\":\"文档不存在\",\"data\":null,\"traceId\":null}"
+      "name": "恢复后文档可访问",
+      "status": "PASS",
+      "detail": "title=功能测试文档_1781993349(已编辑)"
     },
     {
       "name": "永久删除文档",
@@ -100,13 +145,13 @@
     },
     {
       "name": "搜索Redis返回2条结果",
-      "status": "FAIL",
-      "detail": "实际返回0条"
+      "status": "PASS",
+      "detail": "实际返回2条"
     },
     {
       "name": "搜索MySQL索引返回1条结果",
-      "status": "FAIL",
-      "detail": "实际返回0条"
+      "status": "PASS",
+      "detail": "实际返回1条"
     },
     {
       "name": "不存在关键词返回0条",
@@ -125,33 +170,43 @@
     },
     {
       "name": "分页size=1返回1条",
-      "status": "FAIL",
-      "detail": "期望=1, 实际=0 分页正常"
+      "status": "PASS",
+      "detail": "分页正常"
     },
     {
       "name": "创建文件夹A",
       "status": "PASS",
-      "detail": "id=3 parentId=0"
+      "detail": "id=19 parentId=0"
     },
     {
       "name": "创建文件夹A1",
       "status": "PASS",
-      "detail": "id=4 parentId=3"
+      "detail": "id=20 parentId=19"
     },
     {
       "name": "创建文件夹B",
       "status": "PASS",
-      "detail": "id=5 parentId=0"
+      "detail": "id=21 parentId=0"
     },
     {
       "name": "文件夹树层级正确(A下有A1)",
-      "status": "FAIL",
-      "detail": "A的子节点数=0"
+      "status": "PASS",
+      "detail": "A的子节点数=1"
     },
     {
       "name": "创建分享",
-      "status": "FAIL",
-      "detail": "{\"code\":400,\"message\":\"参数校验失败: resourceType: 资源类型不能为空; resourceId: 资源ID不能为空\",\"da"
+      "status": "PASS",
+      "detail": "code=86f8e5dec087459cb837d633a9e68713"
+    },
+    {
+      "name": "无Token访问分享",
+      "status": "PASS",
+      "detail": "HTTP=403 (可能需要密码或已设置访问控制)"
+    },
+    {
+      "name": "获取分享列表",
+      "status": "PASS",
+      "detail": ""
     },
     {
       "name": "删除文档到回收站",
@@ -160,8 +215,8 @@
     },
     {
       "name": "文档在回收站中",
-      "status": "FAIL",
-      "detail": "回收站共0项"
+      "status": "PASS",
+      "detail": "回收站共33项"
     },
     {
       "name": "恢复文档",
@@ -169,9 +224,9 @@
       "detail": "HTTP=200"
     },
     {
-      "name": "恢复后文档不可访问",
-      "status": "FAIL",
-      "detail": "{\"code\":500,\"message\":\"文档不存在\",\"data\":null,\"traceId\":null}"
+      "name": "恢复后文档可访问",
+      "status": "PASS",
+      "detail": "title=回收站测试文档"
     },
     {
       "name": "永久删除文档",
@@ -181,27 +236,27 @@
     {
       "name": "创建标签",
       "status": "PASS",
-      "detail": "id=3"
+      "detail": "id=14"
     },
     {
       "name": "标签出现在列表中",
       "status": "PASS",
-      "detail": "共2个标签"
+      "detail": "共5个标签"
     },
     {
       "name": "绑定标签到文档",
-      "status": "FAIL",
-      "detail": "HTTP=400"
+      "status": "PASS",
+      "detail": ""
     },
     {
       "name": "解绑标签",
-      "status": "FAIL",
-      "detail": "HTTP=500"
+      "status": "PASS",
+      "detail": "HTTP=200"
     },
     {
-      "name": "版本历史接口可用",
-      "status": "FAIL",
-      "detail": "HTTP=500 (可能未启用版本控制)"
+      "name": "版本历史记录存在",
+      "status": "PASS",
+      "detail": "共3个版本"
     },
     {
       "name": "无Token访问被拒绝",
@@ -226,7 +281,7 @@
     {
       "name": "收藏网页",
       "status": "PASS",
-      "detail": "webId=1"
+      "detail": "webId=5"
     },
     {
       "name": "搜索网页收藏",

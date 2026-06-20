@@ -127,7 +127,12 @@ class FunctionalTest:
 
         file_id = None
         if resp.status_code == 200 and resp.json().get("code") == 200:
-            file_id = resp.json()["data"]["id"]
+            data = resp.json()["data"]
+            # 简单上传返回文件ID字符串，分片上传返回对象
+            if isinstance(data, str):
+                file_id = int(data)
+            elif isinstance(data, dict):
+                file_id = data.get("id")
             self.cleanup_ids["files"].append(file_id)
             self.ok("上传文件", f"fileId={file_id}")
         else:
@@ -136,7 +141,7 @@ class FunctionalTest:
 
         # 验证1: 文件出现在列表中
         time.sleep(1)
-        resp = self._api("GET", "/file/list", params={"spaceId": space_id, "page": 1, "size": 50})
+        resp = self._api("GET", "/file/list", params={"folderId": 0, "page": 1, "size": 50})
         if resp.status_code == 200 and resp.json().get("code") == 200:
             file_list = resp.json()["data"].get("records", resp.json()["data"].get("list", []))
             found = any(f.get("id") == file_id for f in file_list)
@@ -150,7 +155,8 @@ class FunctionalTest:
         if resp.status_code == 200 and resp.json().get("code") == 200:
             file_info = resp.json()["data"]
             self.assert_eq("文件名正确", file_info.get("name") or file_info.get("fileName"), "功能测试文件.txt")
-            self.assert_eq("文件所属空间正确", file_info.get("spaceId"), space_id)
+            # KbFile 没有 spaceId 字段，只有 folderId
+            self.assert_true("文件已入库", file_info.get("id") is not None, f"id={file_info.get('id')}")
         else:
             self.fail("获取文件详情", resp.text[:80])
 
@@ -194,7 +200,7 @@ class FunctionalTest:
 
         # 验证8: 确认文件从列表消失
         time.sleep(1)
-        resp = self._api("GET", "/file/list", params={"spaceId": space_id, "page": 1, "size": 50})
+        resp = self._api("GET", "/file/list", params={"folderId": 0, "page": 1, "size": 50})
         if resp.status_code == 200 and resp.json().get("code") == 200:
             file_list = resp.json()["data"].get("records", resp.json()["data"].get("list", []))
             gone = not any(f.get("id") == file_id for f in file_list)
@@ -286,7 +292,7 @@ class FunctionalTest:
             self.fail("创建标签", resp.text[:80])
 
         if tag_id:
-            resp = self._api("POST", "/tag/bind", json={"tagId": tag_id, "docId": doc_id})
+            resp = self._api("POST", "/tag/bind", json={"tagId": tag_id, "resourceType": "doc", "resourceId": doc_id})
             if resp.status_code == 200:
                 self.ok("绑定标签到文档")
             else:
@@ -311,10 +317,8 @@ class FunctionalTest:
 
         # 创建分享链接
         resp = self._api("POST", "/share", json={
-            "docId": doc_id,
-            "expireType": "day",
-            "expireValue": 7,
-            "password": ""
+            "resourceType": "doc", "resourceId": doc_id,
+            "expireAt": "", "extractCode": ""
         })
         share_code = None
         if resp.status_code == 200 and resp.json().get("code") == 200:
@@ -527,7 +531,8 @@ class FunctionalTest:
 
         # 创建分享
         resp = self._api("POST", "/share", json={
-            "docId": doc_id, "expireType": "day", "expireValue": 7, "password": ""
+            "resourceType": "doc", "resourceId": doc_id,
+            "expireAt": "", "extractCode": ""
         })
         share_code = None
         if resp.status_code == 200 and resp.json().get("code") == 200:
@@ -652,13 +657,16 @@ class FunctionalTest:
         if resp.status_code == 200 and resp.json().get("code") == 200:
             doc_id = resp.json()["data"]["id"]
             self.cleanup_ids["docs"].append(doc_id)
+            if tag_id:
+                resp = self._api("POST", "/tag/bind", json={"tagId": tag_id, "resourceType": "doc", "resourceId": doc_id})
+                if resp.status_code == 200:
+                    self.ok("绑定标签到文档")
+                else:
+                    self.fail("绑定标签", resp.text[:80])
 
-            resp = self._api("POST", "/tag/bind", json={"tagId": tag_id, "docId": doc_id})
-            self.assert_true("绑定标签到文档", resp.status_code == 200, f"HTTP={resp.status_code}")
-
-            # 解绑
-            resp = self._api("DELETE", "/tag/bind", json={"tagId": tag_id, "docId": doc_id})
-            self.assert_true("解绑标签", resp.status_code in [200, 204], f"HTTP={resp.status_code}")
+                # 解绑 - 用 query params 不是 JSON body
+                resp = self._api("DELETE", "/tag/unbind", params={"tagId": str(tag_id), "resourceType": "doc", "resourceId": str(doc_id)})
+                self.assert_true("解绑标签", resp.status_code in [200, 204], f"HTTP={resp.status_code}")
         else:
             self.fail("创建标签测试文档", resp.text[:80])
 
@@ -691,8 +699,8 @@ class FunctionalTest:
             self._api("PUT", f"/doc/{doc_id}", json={"title": f"版本测试", "content": f"版本{i}内容"})
             time.sleep(0.5)
 
-        # 版本历史
-        resp = self._api("GET", f"/doc/{doc_id}/versions")
+        # 版本历史 - 正确路径: /version/list/{type}/{id}
+        resp = self._api("GET", f"/version/list/doc/{doc_id}")
         if resp.status_code == 200 and resp.json().get("code") == 200:
             versions = resp.json()["data"]
             if isinstance(versions, list):

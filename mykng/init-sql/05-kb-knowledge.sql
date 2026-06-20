@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS `tag` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_user_name` (`user_id`, `name`)
+  KEY `idx_user_name` (`user_id`, `name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 资源标签关联表

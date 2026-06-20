@@ -44,6 +44,10 @@ public class KbFileServiceImpl implements KbFileService {
 
     @Override
     public String uploadChunk(Long userId, String fileId, Integer chunkNumber, MultipartFile file) {
+        // 简单上传模式（无 fileId/chunkNumber）
+        if (fileId == null || fileId.isBlank()) {
+            return simpleUpload(userId, file);
+        }
         try {
             String objectName = "chunks/" + fileId + "/" + chunkNumber;
             minioService.upload(BUCKET, objectName, file);
@@ -58,6 +62,33 @@ public class KbFileServiceImpl implements KbFileService {
             return "chunk " + chunkNumber + " uploaded";
         } catch (Exception e) {
             throw new BusinessException("分片上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 简单上传模式：直接上传整个文件到 MinIO，不经过分片流程
+     */
+    private String simpleUpload(Long userId, MultipartFile file) {
+        try {
+            String ext = FileUtil.extName(file.getOriginalFilename());
+            String objectName = "files/" + IdUtil.fastSimpleUUID() + "." + ext;
+            minioService.upload(BUCKET, objectName, file);
+
+            KbFile kbFile = new KbFile();
+            kbFile.setFolderId(0L);
+            kbFile.setUserId(userId);
+            kbFile.setName(file.getOriginalFilename());
+            kbFile.setType(ext != null ? ext : "");
+            kbFile.setSize(file.getSize());
+            kbFile.setMinioPath(objectName);
+            kbFile.setParseStatus("PENDING");
+            kbFile.setStarred(0);
+            kbFileMapper.insert(kbFile);
+
+            fileParseTrigger.trigger(kbFile.getId(), kbFile.getMinioPath(), kbFile.getType());
+            return String.valueOf(kbFile.getId());
+        } catch (Exception e) {
+            throw new BusinessException("文件上传失败: " + e.getMessage());
         }
     }
 

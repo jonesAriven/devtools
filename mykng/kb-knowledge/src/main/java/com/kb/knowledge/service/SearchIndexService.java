@@ -9,6 +9,8 @@ import com.kb.knowledge.mongo.doc.WebContent;
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
+import com.meilisearch.sdk.model.Settings;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,29 @@ public class SearchIndexService {
     public static final String INDEX_FOLDERS = "kb_folders";
 
     private final Client meiliSearchClient;
+
+    /**
+     * 启动时初始化索引和 filterable attributes
+     */
+    @PostConstruct
+    public void initIndexes() {
+        configureIndex(INDEX_DOCS, new String[]{"userId", "folderId", "starred"});
+        configureIndex(INDEX_WEBPAGES, new String[]{"userId", "folderId", "starred"});
+        configureIndex(INDEX_FOLDERS, new String[]{"spaceId", "parentId"});
+        log.info("MeiliSearch 索引初始化完成");
+    }
+
+    private void configureIndex(String uid, String[] filterableAttributes) {
+        try {
+            Index index = meiliSearchClient.index(uid);
+            Settings settings = new Settings();
+            settings.setFilterableAttributes(filterableAttributes);
+            index.updateSettings(settings);
+            log.info("MeiliSearch 索引 {} filterableAttributes 已设置: {}", uid, String.join(", ", filterableAttributes));
+        } catch (MeilisearchException e) {
+            log.warn("MeiliSearch 索引 {} 配置失败（可能索引尚不存在，将在首次写入时自动创建）: {}", uid, e.getMessage());
+        }
+    }
 
     /**
      * 写入/更新笔记索引

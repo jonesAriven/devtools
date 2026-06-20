@@ -53,7 +53,16 @@ public class FolderServiceImpl implements FolderService {
                 .collect(Collectors.groupingBy(Folder::getParentId));
 
         List<Folder> roots = parentMap.getOrDefault(0L, new ArrayList<>());
+        setChildren(roots, parentMap);
         return roots;
+    }
+
+    private void setChildren(List<Folder> folders, Map<Long, List<Folder>> parentMap) {
+        for (Folder folder : folders) {
+            List<Folder> children = parentMap.getOrDefault(folder.getId(), new ArrayList<>());
+            folder.setChildren(children);
+            setChildren(children, parentMap);
+        }
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.kb.knowledge.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kb.common.exception.BusinessException;
 import com.kb.common.page.PageResult;
 import com.kb.common.result.Result;
@@ -49,11 +48,9 @@ public class TrashServiceImpl implements TrashService {
             }
         }
 
-        // 文档回收站：本地查询
+        // 文档回收站：本地查询（绕过 @TableLogic）
         if (type == null || "doc".equals(type)) {
-            docMapper.selectList(new LambdaQueryWrapper<Doc>()
-                            .eq(Doc::getUserId, userId)
-                            .eq(Doc::getDeleted, 1))
+            docMapper.selectTrashList(userId)
                     .forEach(d -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", d.getId());
@@ -64,11 +61,9 @@ public class TrashServiceImpl implements TrashService {
                     });
         }
 
-        // 网页回收站：本地查询
+        // 网页回收站：本地查询（绕过 @TableLogic）
         if (type == null || "web".equals(type)) {
-            webPageMapper.selectList(new LambdaQueryWrapper<WebPage>()
-                            .eq(WebPage::getUserId, userId)
-                            .eq(WebPage::getDeleted, 1))
+            webPageMapper.selectTrashList(userId)
                     .forEach(w -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", w.getId());
@@ -99,20 +94,18 @@ public class TrashServiceImpl implements TrashService {
                 }
             }
             case "doc" -> {
-                Doc doc = docMapper.selectById(id);
+                Doc doc = docMapper.selectDeletedById(id);
                 if (doc == null || !doc.getUserId().equals(userId)) {
                     throw new BusinessException("文档不存在");
                 }
-                doc.setDeleted(0);
-                docMapper.updateById(doc);
+                docMapper.restoreById(id);
             }
             case "web" -> {
-                WebPage webPage = webPageMapper.selectById(id);
+                WebPage webPage = webPageMapper.selectDeletedById(id);
                 if (webPage == null || !webPage.getUserId().equals(userId)) {
                     throw new BusinessException("网页不存在");
                 }
-                webPage.setDeleted(0);
-                webPageMapper.updateById(webPage);
+                webPageMapper.restoreById(id);
             }
             default -> throw new BusinessException("不支持的资源类型");
         }
@@ -129,8 +122,8 @@ public class TrashServiceImpl implements TrashService {
                     throw new BusinessException("永久删除文件失败: " + e.getMessage());
                 }
             }
-            case "doc" -> docMapper.deleteById(id);
-            case "web" -> webPageMapper.deleteById(id);
+            case "doc" -> docMapper.physicalDeleteById(id);
+            case "web" -> webPageMapper.physicalDeleteById(id);
             default -> throw new BusinessException("不支持的资源类型");
         }
     }
