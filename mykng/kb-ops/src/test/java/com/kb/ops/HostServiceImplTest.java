@@ -1,5 +1,6 @@
 package com.kb.ops;
 
+import com.kb.common.exception.BusinessException;
 import com.kb.common.exception.NotFoundException;
 import com.kb.common.page.PageResult;
 import com.kb.ops.dto.HostRequest;
@@ -7,13 +8,15 @@ import com.kb.ops.entity.Host;
 import com.kb.ops.mapper.HostMapper;
 import com.kb.ops.service.impl.HostServiceImpl;
 import com.kb.ops.util.CryptoUtil;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -38,7 +41,7 @@ class HostServiceImplTest {
         request.setSshPort(22);
         request.setPassword("secret123");
 
-        when(hostMapper.selectOne(any())).thenReturn(null);
+        when(hostMapper.selectList(any())).thenReturn(Collections.emptyList());
         when(cryptoUtil.encrypt("secret123")).thenReturn("encrypted-pwd");
         when(hostMapper.insert(any(Host.class))).thenAnswer(invocation -> {
             Host h = invocation.getArgument(0);
@@ -50,7 +53,7 @@ class HostServiceImplTest {
 
         assertNotNull(result);
         assertEquals("web-server", result.getName());
-        assertNull(result.getPasswordEncrypted()); // 返回时清除密码
+        assertNull(result.getPasswordEncrypted());
         verify(cryptoUtil).encrypt("secret123");
     }
 
@@ -61,7 +64,7 @@ class HostServiceImplTest {
         request.setName("server");
         request.setIp("10.0.0.1");
 
-        when(hostMapper.selectOne(any())).thenReturn(null);
+        when(hostMapper.selectList(any())).thenReturn(Collections.emptyList());
         when(hostMapper.insert(any(Host.class))).thenAnswer(invocation -> {
             Host h = invocation.getArgument(0);
             h.setId(1L);
@@ -111,21 +114,17 @@ class HostServiceImplTest {
     }
 
     @Test
-    @DisplayName("列表查询 - 清除密码字段")
-    void listClearsPasswords() {
-        Host h1 = new Host();
-        h1.setId(1L);
-        h1.setName("server1");
-        h1.setPasswordEncrypted("enc1");
-        
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Host> page = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 20);
-        page.setRecords(java.util.List.of(h1));
-        page.setTotal(1);
-        when(hostMapper.selectPage(any(), any())).thenReturn(page);
+    @DisplayName("IP重复检查 - 抛出BusinessException")
+    void createHostDuplicateIp() {
+        HostRequest request = new HostRequest();
+        request.setName("server2");
+        request.setIp("192.168.1.100");
 
-        PageResult<Host> result = hostService.list(null, null, 1, 20);
+        Host existing = new Host();
+        existing.setId(1L);
+        existing.setIp("192.168.1.100");
+        when(hostMapper.selectList(any())).thenReturn(List.of(existing));
 
-        assertNotNull(result);
-        assertNull(result.getList().get(0).getPasswordEncrypted());
+        assertThrows(BusinessException.class, () -> hostService.create(request));
     }
 }

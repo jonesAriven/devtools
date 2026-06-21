@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/kb_knowledge?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: kb@2024
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+    mongodb:
+      uri: mongodb://localhost:27017/kb_knowledge
+
+meilisearch:
+  host: http://localhost:7700
+  key: kbMeiliKey2026!!Secure
+
+server:
+  port: 0
+
+logging:
+  level:
+    com.kb: WARN

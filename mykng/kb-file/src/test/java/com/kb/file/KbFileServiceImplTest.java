@@ -50,14 +50,18 @@ class KbFileServiceImplTest {
     void simpleUploadSuccess() {
         MultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain", "hello".getBytes());
 
-        when(kbFileMapper.insert(any(KbFile.class))).thenReturn(1);
+        when(kbFileMapper.insert(any(KbFile.class))).thenAnswer(invocation -> {
+            KbFile f = invocation.getArgument(0);
+            f.setId(1L);
+            return 1;
+        });
 
         String result = fileService.uploadChunk(1L, null, null, file);
 
         assertNotNull(result);
         verify(minioService).upload(eq("kb-file"), anyString(), eq(file));
         verify(kbFileMapper).insert(any(KbFile.class));
-        verify(searchIndexService).indexFile(any(KbFile.class), anyString());
+        verify(fileParseTrigger).trigger(anyLong(), anyString(), anyString());
     }
 
     @Test
@@ -113,17 +117,21 @@ class KbFileServiceImplTest {
     }
 
     @Test
-    @DisplayName("删除文件 - 软删除")
+    @DisplayName("删除文件 - 物理删除+清除MinIO+清除索引")
     void deleteFile() {
         KbFile file = new KbFile();
         file.setId(1L);
         file.setUserId(1L);
+        file.setMinioPath("files/abc.txt");
 
         when(kbFileMapper.selectById(1L)).thenReturn(file);
-        when(kbFileMapper.updateById(any(KbFile.class))).thenReturn(1);
+        when(kbFileMapper.deleteById(1L)).thenReturn(1);
 
         assertDoesNotThrow(() -> fileService.delete(1L, 1L));
-        verify(kbFileMapper).updateById(any(KbFile.class));
+        verify(minioService).remove("kb-file", "files/abc.txt");
+        verify(searchIndexService).removeIndex(1L);
+        verify(kbFileMapper).deleteById(1L);
+        verify(eventPublisher).publishFileDeleted(1L, 1L);
     }
 
     @Test

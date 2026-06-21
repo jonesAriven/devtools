@@ -63,7 +63,7 @@ CONFIGS = {
     "folder_tree": {
         "name": "文件夹树",
         "method": "GET",
-        "path": "/folder/tree",
+        "path": "/folder/tree/1",
         "needs_auth": True,
         "concurrency": [1, 5, 10, 20],
         "requests_per_level": 40,

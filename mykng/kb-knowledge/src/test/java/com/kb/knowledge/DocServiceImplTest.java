@@ -81,10 +81,11 @@ class DocServiceImplTest {
         content.setVersion(1);
         content.setIsCurrent(true);
         when(docContentRepository.findByDocIdAndIsCurrentTrue(1L)).thenReturn(Optional.of(content));
+        when(docContentRepository.findByDocIdOrderByVersionDesc(1L)).thenReturn(Arrays.asList(content));
 
         assertDoesNotThrow(() -> docService.update(1L, 1L, request));
         verify(docMapper).updateById(any(Doc.class));
-        verify(docContentRepository).save(any(DocContent.class));
+        verify(docContentRepository, times(2)).save(any(DocContent.class));
     }
 
     @Test
@@ -96,8 +97,8 @@ class DocServiceImplTest {
         when(docMapper.selectById(1L)).thenReturn(doc);
 
         assertDoesNotThrow(() -> docService.delete(1L, 1L));
-        verify(docMapper).updateById(any(Doc.class));
-        verify(searchIndexService).removeDoc(1L);
+        verify(docMapper).deleteById(1L);
+        verify(searchIndexService).removeDocIndex(1L);
     }
 
     @Test
@@ -120,7 +121,7 @@ class DocServiceImplTest {
         doc.setStarred(0);
         when(docMapper.selectById(1L)).thenReturn(doc);
 
-        assertDoesNotThrow(() -> docService.toggleStar(1L, 1L));
+        assertDoesNotThrow(() -> docService.star(1L, 1L));
         verify(docMapper).updateById(any(Doc.class));
     }
 }

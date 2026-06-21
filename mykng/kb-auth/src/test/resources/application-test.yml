@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/kb_auth?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: kb@2024
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+
+server:
+  port: 0
+
+logging:
+  level:
+    com.kb: WARN

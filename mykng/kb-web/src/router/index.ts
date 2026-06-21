@@ -7,26 +7,26 @@ import { CONTEXT_PATH as ctx } from '@/config'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: `${ctx}/login`,
+    path: `/login`,
     name: 'Login',
     component: () => import('@/views/login/LoginView.vue'),
     meta: { requiresAuth: false },
   },
   {
-    path: `${ctx}/share/:code`,
+    path: `/share/:code`,
     name: 'ShareAccess',
     component: () => import('@/views/share/ShareAccessView.vue'),
     meta: { requiresAuth: false },
     props: true,
   },
   {
-    path: ctx,
+    path: ``,
     component: MainLayout,
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
-        redirect: `${ctx}/dashboard`,
+        redirect: `/dashboard`,
       },
       {
         path: 'dashboard',

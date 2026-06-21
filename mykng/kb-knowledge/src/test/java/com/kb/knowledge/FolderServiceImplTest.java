@@ -67,7 +67,7 @@ class FolderServiceImplTest {
     @DisplayName("获取文件夹树 - 空间不存在")
     void getTreeSpaceNotFound() {
         when(spaceMapper.selectById(999L)).thenReturn(null);
-        assertThrows(BusinessException.class, () -> folderService.getTree(1L, 999L));
+        assertThrows(BusinessException.class, () -> folderService.getTree(999L, 1L));
     }
 
     @Test
@@ -77,7 +77,7 @@ class FolderServiceImplTest {
         space.setId(1L);
         space.setUserId(2L);
         when(spaceMapper.selectById(1L)).thenReturn(space);
-        assertThrows(BusinessException.class, () -> folderService.getTree(1L, 1L));
+        assertThrows(BusinessException.class, () -> folderService.getTree(1L, 999L));
     }
 
     @Test
