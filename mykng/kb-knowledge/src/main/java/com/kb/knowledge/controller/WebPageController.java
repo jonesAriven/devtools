@@ -3,6 +3,7 @@ package com.kb.knowledge.controller;
 import com.kb.common.page.PageResult;
 import com.kb.common.result.Result;
 import com.kb.knowledge.dto.web.WebCollectRequest;
+import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.WebPage;
 import com.kb.knowledge.service.WebPageService;
 import jakarta.validation.Valid;
@@ -46,6 +47,17 @@ public class WebPageController {
     public Result<Void> star(@PathVariable Long id) {
         webPageService.star(id, getCurrentUserId());
         return Result.ok();
+    }
+
+    @PutMapping("/{id}/move")
+    public Result<Void> move(@PathVariable Long id, @Valid @RequestBody WebMoveRequest request) {
+        webPageService.move(id, getCurrentUserId(), request);
+        return Result.ok();
+    }
+
+    @PostMapping("/{id}/refetch")
+    public Result<WebPage> refetch(@PathVariable Long id) {
+        return Result.ok(webPageService.refetch(id, getCurrentUserId()));
     }
 
     private Long getCurrentUserId() {

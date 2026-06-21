@@ -3,7 +3,7 @@ import type { R, WebPage, CreateWebPageRequest, PageResult, PageParams } from '@
 
 /** 收藏网页 */
 export function createWebPage(data: CreateWebPageRequest) {
-  return request.post<R<WebPage>>('/web', data)
+  return request.post<R<WebPage>>('/web/collect', data)
 }
 
 /** 获取网页收藏详情 */

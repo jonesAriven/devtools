@@ -2,6 +2,7 @@ package com.kb.knowledge.service;
 
 import com.kb.common.page.PageResult;
 import com.kb.knowledge.dto.web.WebCollectRequest;
+import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.WebPage;
 
 public interface WebPageService {
@@ -15,4 +16,8 @@ public interface WebPageService {
     void delete(Long id, Long userId);
 
     void star(Long id, Long userId);
+
+    void move(Long id, Long userId, WebMoveRequest request);
+
+    WebPage refetch(Long id, Long userId);
 }

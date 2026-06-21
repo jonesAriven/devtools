@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kb.common.exception.BusinessException;
 import com.kb.common.page.PageResult;
 import com.kb.knowledge.dto.web.WebCollectRequest;
+import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.entity.WebPage;
 import com.kb.knowledge.mapper.VersionMapper;
@@ -129,5 +130,63 @@ public class WebPageServiceImpl implements WebPageService {
         WebPage webPage = getById(id, userId);
         webPage.setStarred(webPage.getStarred() == 1 ? 0 : 1);
         webPageMapper.updateById(webPage);
+    }
+
+    @Override
+    @Transactional
+    public void move(Long id, Long userId, WebMoveRequest request) {
+        WebPage webPage = getById(id, userId);
+        webPage.setFolderId(request.getFolderId());
+        webPageMapper.updateById(webPage);
+    }
+
+    @Override
+    @Transactional
+    public WebPage refetch(Long id, Long userId) {
+        WebPage webPage = getById(id, userId);
+
+        String htmlContent;
+        try {
+            htmlContent = HttpUtil.get(webPage.getUrl(), 10000);
+        } catch (Exception e) {
+            throw new BusinessException("网页重新抓取失败: " + e.getMessage());
+        }
+
+        String title = extractTitle(htmlContent);
+        if (title == null || title.isBlank()) {
+            title = webPage.getUrl();
+        }
+
+        // 更新标题
+        webPage.setTitle(title);
+        webPageMapper.updateById(webPage);
+
+        // 将旧版本标记为非当前
+        webContentRepository.findByWebIdAndIsCurrentTrue(id).ifPresent(old -> {
+            old.setIsCurrent(false);
+            webContentRepository.save(old);
+        });
+
+        // 保存新版本内容
+        Integer maxVersion = webContentRepository.findByWebIdOrderByVersionDesc(id)
+                .stream().findFirst().map(WebContent::getVersion).orElse(1);
+        WebContent content = new WebContent();
+        content.setWebId(id);
+        content.setUserId(userId);
+        content.setUrl(webPage.getUrl());
+        content.setTitle(title);
+        content.setContent(htmlContent);
+        content.setVersion(maxVersion + 1);
+        content.setIsCurrent(true);
+        webContentRepository.save(content);
+
+        // 更新 MeiliSearch 索引
+        searchIndexService.indexWebPage(webPage, htmlContent);
+
+        // 发布操作事件
+        eventPublisher.publishKnowledgeEvent(userId, "REFETCH", "web", id,
+                "重新抓取网页: " + webPage.getUrl());
+
+        return webPage;
     }
 }

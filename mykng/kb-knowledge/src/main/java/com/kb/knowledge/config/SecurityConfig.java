@@ -34,8 +34,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/share/verify/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/share/detail/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/share/verify/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/share/detail/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
