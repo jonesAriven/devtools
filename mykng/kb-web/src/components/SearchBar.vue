@@ -84,7 +84,9 @@ function handleSelectSuggest(item: string) {
 <style scoped lang="scss">
 .search-bar {
   position: relative;
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
+  flex: 1;
 }
 
 .search-input {

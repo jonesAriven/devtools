@@ -12,7 +12,7 @@
         </el-radio-group>
       </div>
       <div class="list-sort">
-        <el-select v-model="sortBy" size="small" style="width: 120px" @change="loadResources">
+        <el-select v-model="sortBy" size="small" class="sort-select" @change="loadResources">
           <el-option label="按名称" value="name" />
           <el-option label="按时间" value="time" />
           <el-option label="按类型" value="type" />
@@ -197,6 +197,12 @@ async function handleToggleStar(item: ResourceListItem) {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sort-select {
+    width: 120px;
   }
 
   .loading-state {

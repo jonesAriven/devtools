@@ -5,7 +5,7 @@
     <el-tabs v-model="activeTab">
       <el-tab-pane label="个人信息" name="profile">
         <div class="info-card">
-          <el-form :model="profileForm" label-width="100px" style="max-width: 500px">
+          <el-form :model="profileForm" label-width="100px" class="settings-form">
             <el-form-item label="用户名">
               <el-input :model-value="userStore.profile?.username" disabled />
             </el-form-item>
@@ -24,7 +24,7 @@
 
       <el-tab-pane label="修改密码" name="password">
         <div class="info-card">
-          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px" style="max-width: 500px">
+          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px" class="settings-form">
             <el-form-item label="当前密码" prop="oldPassword">
               <el-input v-model="passwordForm.oldPassword" type="password" show-password />
             </el-form-item>
@@ -68,7 +68,7 @@
           </el-table>
         </div>
 
-        <el-dialog v-model="showBucketDialog" title="新增存储桶" width="600px">
+        <el-dialog v-model="showBucketDialog" title="新增存储桶" width="90%" style="max-width: 600px">
           <el-form :model="bucketForm" label-width="100px">
             <el-form-item label="名称">
               <el-input v-model="bucketForm.name" />
@@ -352,6 +352,15 @@ watch(activeTab, (val) => {
 
 <style scoped lang="scss">
 .settings-page {
+  .settings-form {
+    max-width: 500px;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .card-header {
     display: flex;
     align-items: center;

@@ -14,6 +14,7 @@
     />
 
     <div class="info-card">
+      <div class="table-wrapper">
       <el-table :data="trashList" stripe style="width: 100%">
         <el-table-column prop="name" label="名称" min-width="200" />
         <el-table-column prop="type" label="类型" width="100">
@@ -38,6 +39,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <div class="pagination-wrapper">
         <el-pagination
@@ -104,6 +106,11 @@ async function handleEmptyTrash() {
 
 <style scoped lang="scss">
 .trash-page {
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .page-header {
     display: flex;
     align-items: center;

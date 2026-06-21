@@ -3,7 +3,7 @@
     <div class="page-title">仪表盘</div>
 
     <el-row :gutter="16">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <div class="stat-card" @click="$router.push(`${CONTEXT_PATH}/space/${spaceStore.currentSpace?.id}`)">
           <el-icon :size="32" color="#409eff"><Folder /></el-icon>
           <div class="stat-info">
@@ -12,7 +12,7 @@
           </div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <div class="stat-card">
           <el-icon :size="32" color="#67c23a"><Document /></el-icon>
           <div class="stat-info">
@@ -21,7 +21,7 @@
           </div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <div class="stat-card">
           <el-icon :size="32" color="#e6a23c"><EditPen /></el-icon>
           <div class="stat-info">
@@ -30,7 +30,7 @@
           </div>
         </div>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6">
         <div class="stat-card">
           <el-icon :size="32" color="#f56c6c"><Link /></el-icon>
           <div class="stat-info">
@@ -42,7 +42,7 @@
     </el-row>
 
     <el-row :gutter="16" style="margin-top: 16px">
-      <el-col :span="16">
+      <el-col :xs="24" :md="16">
         <div class="info-card">
           <div class="card-title">最近访问</div>
           <div v-if="recentItems.length === 0" class="empty-state">
@@ -65,7 +65,7 @@
         </div>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <div class="info-card">
           <div class="card-title">快捷操作</div>
           <div class="quick-actions">
@@ -96,7 +96,7 @@
 
     <FileUpload v-model:visible="showUpload" />
 
-    <el-dialog v-model="showWebDialog" title="收藏网页" width="500px">
+    <el-dialog v-model="showWebDialog" title="收藏网页" width="90%" style="max-width: 500px">
       <el-form :model="webForm" label-width="80px">
         <el-form-item label="网页地址">
           <el-input v-model="webForm.url" placeholder="请输入网页URL" />

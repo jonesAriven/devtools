@@ -14,7 +14,7 @@
     </div>
 
     <el-row :gutter="16">
-      <el-col :span="16">
+      <el-col :xs="24" :md="16">
         <div class="info-card">
           <div class="web-title">{{ webPage?.title }}</div>
           <div class="web-url">
@@ -29,7 +29,7 @@
         </div>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <div class="info-card">
           <div class="card-title">标签</div>
           <TagInput
@@ -114,6 +114,12 @@ async function handleDelete() {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-actions {
+    flex-wrap: wrap;
   }
 
   .page-actions {
