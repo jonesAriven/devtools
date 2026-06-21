@@ -124,4 +124,14 @@ async function handleEmptyTrash() {
     margin-top: 16px;
   }
 }
+
+@media (max-width: 768px) {
+  .trash-page {
+    .page-header {
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+  }
+}
 </style>

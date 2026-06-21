@@ -194,4 +194,21 @@ async function handleRollback(versionId: number) {
     }
   }
 }
+
+@media (max-width: 768px) {
+  .file-detail-page {
+    .page-actions {
+      flex-wrap: wrap;
+      gap: 4px;
+
+      .el-button {
+        margin: 0;
+      }
+    }
+
+    .file-content-preview {
+      max-height: 300px;
+    }
+  }
+}
 </style>

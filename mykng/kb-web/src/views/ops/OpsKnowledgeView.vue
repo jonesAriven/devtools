@@ -94,4 +94,9 @@ onMounted(loadData)
 <style scoped>
 .header-bar { display: flex; justify-content: space-between; align-items: center; }
 .mr-1 { margin-right: 4px; }
+
+@media (max-width: 768px) {
+  .header-bar { flex-wrap: wrap; gap: 8px; }
+  .ops-knowledge :deep(.el-table) { font-size: 12px; }
+}
 </style>

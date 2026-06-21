@@ -271,4 +271,24 @@ function handleClose() {
     flex-shrink: 0;
   }
 }
+
+@media (max-width: 768px) {
+  .upload-drop-zone {
+    padding: 24px 12px;
+
+    .upload-icon {
+      font-size: 36px;
+    }
+  }
+
+  .upload-file-item {
+    flex-wrap: wrap;
+
+    .file-progress {
+      width: 100%;
+      order: 3;
+      margin-top: 4px;
+    }
+  }
+}
 </style>

@@ -101,4 +101,10 @@ onMounted(loadData)
 .trend-bar .count { width: 20px; font-size: 12px; text-align: right; }
 .mt-2 { margin-top: 8px; }
 .mt-4 { margin-top: 16px; }
+
+@media (max-width: 768px) {
+  .deploy-trend { gap: 4px; }
+  .trend-bar { font-size: 11px; }
+  .trend-bar .date { width: 36px; }
+}
 </style>

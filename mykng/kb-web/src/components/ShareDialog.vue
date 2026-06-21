@@ -139,4 +139,13 @@ function handleClose() {
 .share-result {
   margin-top: 8px;
 }
+
+@media (max-width: 768px) {
+  .share-form,
+  .share-result {
+    :deep(.el-form-item__label) {
+      width: 70px !important;
+    }
+  }
+}
 </style>

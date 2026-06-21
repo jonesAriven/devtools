@@ -121,6 +121,7 @@ async function handleAddWeb() {
 }
 </script>
 
+
 <style scoped lang="scss">
 .space-page {
   height: calc(100vh - 82px);
@@ -165,5 +166,22 @@ async function handleAddWeb() {
   padding: 12px;
   overflow-y: auto;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .space-page {
+    height: auto;
+    min-height: calc(100vh - 82px);
+  }
+
+  .space-body {
+    flex-direction: column;
+  }
+
+  .space-sidebar {
+    width: 100%;
+    max-height: 240px;
+    margin-bottom: 12px;
+  }
 }
 </style>

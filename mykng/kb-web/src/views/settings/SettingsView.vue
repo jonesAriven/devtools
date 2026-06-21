@@ -374,4 +374,12 @@ watch(activeTab, (val) => {
     margin-top: 16px;
   }
 }
+
+@media (max-width: 768px) {
+  .settings-page {
+    .settings-form {
+      max-width: 100%;
+    }
+  }
+}
 </style>

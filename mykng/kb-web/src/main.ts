@@ -10,6 +10,7 @@ import 'element-plus/theme-chalk/el-notification.css'
 import 'element-plus/theme-chalk/el-loading.css'
 
 import './styles/index.scss'
+import './styles/mobile.scss'
 
 const app = createApp(App)
 app.use(createPinia())

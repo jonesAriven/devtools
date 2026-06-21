@@ -309,4 +309,38 @@ async function handleToggleStar(item: ResourceListItem) {
     margin-top: 16px;
   }
 }
+
+@media (max-width: 768px) {
+  .resource-list {
+    .list-header {
+      flex-direction: column;
+      align-items: stretch;
+
+      .sort-select {
+        width: 100%;
+      }
+    }
+
+    .list-view {
+      .resource-item {
+        .resource-actions {
+          flex-shrink: 0;
+
+          .el-button {
+            padding: 4px;
+          }
+        }
+      }
+    }
+
+    .grid-view {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+
+      .grid-item {
+        padding: 12px 4px;
+      }
+    }
+  }
+}
 </style>

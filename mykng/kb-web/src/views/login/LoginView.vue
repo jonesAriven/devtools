@@ -109,4 +109,14 @@ async function handleLogin() {
 .login-btn {
   width: 100%;
 }
+
+@media (max-width: 768px) {
+  .login-card {
+    padding: 24px 16px;
+  }
+
+  .login-title {
+    font-size: 20px;
+  }
+}
 </style>

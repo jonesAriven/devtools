@@ -205,4 +205,21 @@ async function handleToggleStar(item: SearchResult) {
     margin-top: 16px;
   }
 }
+
+@media (max-width: 768px) {
+  .search-page {
+    .search-input {
+      max-width: 100%;
+    }
+
+    .filter-card {
+      position: static;
+      margin-bottom: 12px;
+    }
+
+    .resource-highlight {
+      font-size: 11px;
+    }
+  }
+}
 </style>

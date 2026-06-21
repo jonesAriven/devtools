@@ -170,4 +170,30 @@ async function handleDownload() {
     height: auto;
   }
 }
+
+@media (max-width: 768px) {
+  .share-access-page {
+    max-width: 100%;
+  }
+
+  .extract-code-card {
+    padding: 24px 16px;
+  }
+
+  .share-content-card {
+    padding: 16px;
+  }
+
+  .share-resource-title {
+    font-size: 18px;
+  }
+
+  .share-meta {
+    span + span {
+      display: block;
+      margin-left: 0;
+      margin-top: 4px;
+    }
+  }
+}
 </style>

@@ -184,4 +184,36 @@ async function handleCreate() {
     }
   }
 }
+
+@media (max-width: 768px) {
+  .doc-create-page {
+    .doc-header {
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .doc-title-input {
+      :deep(.el-input__inner) {
+        font-size: 16px;
+      }
+    }
+
+    .doc-actions {
+      .el-button {
+        width: 100%;
+      }
+    }
+
+    .editor-container {
+      .editor-content {
+        min-height: 300px;
+      }
+    }
+
+    .info-card {
+      margin-top: 12px;
+    }
+  }
+}
 </style>
