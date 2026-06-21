@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,7 @@ import jakarta.annotation.PostConstruct;
 public class IndexEventListener implements MessageListener {
 
     private final RedisMessageListenerContainer redisMessageListenerContainer;
-    private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @PostConstruct
     public void init() {
@@ -35,8 +36,13 @@ public class IndexEventListener implements MessageListener {
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            String body = new String(message.getBody());
-            KbEvent event = objectMapper.readValue(body, KbEvent.class);
+            // 使用 RedisTemplate 的 value serializer 反序列化（与发布端 EventPublisher 一致）
+            // RedisTemplate 配置了 activateDefaultTyping，序列化/反序列化格式完全匹配
+            Object obj = redisTemplate.getValueSerializer().deserialize(message.getBody());
+            if (!(obj instanceof KbEvent event)) {
+                log.warn("收到非 KbEvent 类型的消息: {}", obj.getClass().getSimpleName());
+                return;
+            }
             log.info("收到跨服务事件: {} entityId={}", event.getEvent(), event.getEntityId());
 
             switch (event.getEvent()) {
