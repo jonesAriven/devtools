@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-22T20:49:32.939566",
+  "timestamp": "2026-06-22T20:51:09.375415",
   "base_url": "http://localhost:8090/kb/api",
   "summary": {
     "total": 57,
@@ -16,17 +16,17 @@
     {
       "name": "创建空间",
       "status": "PASS",
-      "detail": "id=92"
+      "detail": "id=102"
     },
     {
       "name": "上传文件",
       "status": "PASS",
-      "detail": "fileId=27"
+      "detail": "fileId=29"
     },
     {
       "name": "上传后文件出现在列表中",
       "status": "PASS",
-      "detail": "列表共14个文件，包含目标文件"
+      "detail": "列表共15个文件，包含目标文件"
     },
     {
       "name": "文件名正确",
@@ -36,7 +36,7 @@
     {
       "name": "文件已入库",
       "status": "PASS",
-      "detail": "id=27"
+      "detail": "id=29"
     },
     {
       "name": "解析状态可查询",
@@ -71,7 +71,7 @@
     {
       "name": "创建文档",
       "status": "PASS",
-      "detail": "docId=91 title=功能测试文档_1782132550"
+      "detail": "docId=100 title=功能测试文档_1782132647"
     },
     {
       "name": "编辑文档",
@@ -81,7 +81,7 @@
     {
       "name": "编辑后标题生效",
       "status": "PASS",
-      "detail": "title=功能测试文档_1782132550(已编辑)"
+      "detail": "title=功能测试文档_1782132647(已编辑)"
     },
     {
       "name": "搜索关键词能找到文档",
@@ -91,7 +91,7 @@
     {
       "name": "创建标签",
       "status": "PASS",
-      "detail": "tagId=35 name=测试标签_1782132552"
+      "detail": "tagId=38 name=测试标签_1782132650"
     },
     {
       "name": "绑定标签到文档",
@@ -101,7 +101,7 @@
     {
       "name": "创建子文件夹",
       "status": "PASS",
-      "detail": "folderId=52"
+      "detail": "folderId=57"
     },
     {
       "name": "移动文档到子文件夹",
@@ -111,7 +111,7 @@
     {
       "name": "创建分享链接",
       "status": "PASS",
-      "detail": "code=6452eaab3e52435ebe12407a588fc6eb"
+      "detail": "code=8093e953cbe0420480e4ea60403a3d46"
     },
     {
       "name": "删除文档到回收站",
@@ -131,7 +131,7 @@
     {
       "name": "恢复后文档可访问",
       "status": "PASS",
-      "detail": "title=功能测试文档_1782132550(已编辑)"
+      "detail": "title=功能测试文档_1782132647(已编辑)"
     },
     {
       "name": "永久删除文档",
@@ -176,17 +176,17 @@
     {
       "name": "创建文件夹A",
       "status": "PASS",
-      "detail": "id=53 parentId=0"
+      "detail": "id=58 parentId=0"
     },
     {
       "name": "创建文件夹A1",
       "status": "PASS",
-      "detail": "id=54 parentId=53"
+      "detail": "id=59 parentId=58"
     },
     {
       "name": "创建文件夹B",
       "status": "PASS",
-      "detail": "id=55 parentId=0"
+      "detail": "id=60 parentId=0"
     },
     {
       "name": "文件夹树层级正确(A下有A1)",
@@ -196,7 +196,7 @@
     {
       "name": "创建分享",
       "status": "PASS",
-      "detail": "code=08e03fe770a44cd1951588ad2a5051b2"
+      "detail": "code=eb500ca97c954301a2a6caa7152455be"
     },
     {
       "name": "无Token访问分享",
@@ -236,7 +236,7 @@
     {
       "name": "创建标签",
       "status": "PASS",
-      "detail": "id=36"
+      "detail": "id=39"
     },
     {
       "name": "标签出现在列表中",
@@ -281,7 +281,7 @@
     {
       "name": "收藏网页",
       "status": "PASS",
-      "detail": "webId=18"
+      "detail": "webId=19"
     },
     {
       "name": "搜索网页收藏",
