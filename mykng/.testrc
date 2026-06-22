@@ -1,0 +1,11 @@
+# mykng 测试套件配置
+# 格式: <名称>|<命令>|<超时秒>|<模式:quick|full|always>
+# quick=快速模式包含, full=仅全量模式, always=总是包含
+
+功能测试(57项)|python3 tests/test_functional.py|60|quick
+接口测试(76项)|python3 tests/test_api.py|60|quick
+全量API(87端点)|python3 tests/test_api_full.py|120|full
+Java单元测试|cd kb-parent && mvn test -Dtest='*Test,!*IntegrationTest,!*ApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false 2>&1|180|quick
+Java集成测试|cd kb-parent && mvn test -Dtest='*IntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false 2>&1|180|full
+E2E测试(31场景)|/opt/playwright-venv/bin/python tests/test_e2e.py|120|full
+性能压测|python3 tests/test_performance.py|90|full

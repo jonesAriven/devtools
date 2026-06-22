@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-22T08:49:16.623779",
+  "timestamp": "2026-06-22T20:49:37.794677",
   "base_url": "http://localhost:8090/kb/api",
   "summary": {
     "passed": 59,
@@ -11,67 +11,67 @@
       "name": "POST /auth/login - 管理员登录",
       "status": "PASS",
       "msg": "",
-      "duration": 0.3
+      "duration": 0.12
     },
     {
       "name": "POST /auth/login - 错误密码拒绝",
       "status": "PASS",
       "msg": "",
-      "duration": 0.22
+      "duration": 0.12
     },
     {
       "name": "GET /user/profile - 获取用户信息",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.03
     },
     {
       "name": "PUT /user/profile - 更新用户信息",
       "status": "PASS",
       "msg": "",
-      "duration": 0.05
+      "duration": 0.03
     },
     {
       "name": "POST /auth/refresh - 刷新Token",
       "status": "PASS",
       "msg": "",
-      "duration": 0.16
+      "duration": 0.06
     },
     {
       "name": "PUT /user/password - 修改密码(不变)",
       "status": "PASS",
       "msg": "",
-      "duration": 0.72
+      "duration": 0.21
     },
     {
       "name": "POST /token - 创建API Token",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.05
     },
     {
       "name": "PUT /token/{id}/toggle - 切换Token状态",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.04
     },
     {
       "name": "DELETE /token/{id} - 删除Token",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.05
     },
     {
       "name": "POST /token/verify - 验证无效Token",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.03
     },
     {
       "name": "POST /space - 创建空间",
       "status": "PASS",
       "msg": "",
-      "duration": 0.06
+      "duration": 0.09
     },
     {
       "name": "GET /space/list - 查询空间列表",
@@ -83,79 +83,79 @@
       "name": "PUT /space/{id} - 更新空间",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.04
     },
     {
       "name": "POST /folder - 创建文件夹",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.12
     },
     {
       "name": "GET /folder/tree/{spaceId} - 文件夹树",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.07
     },
     {
       "name": "PUT /folder/{id} - 更新文件夹",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.1
     },
     {
       "name": "PUT /folder/{id}/sort - 文件夹排序",
       "status": "PASS",
       "msg": "",
-      "duration": 0.13
+      "duration": 0.12
     },
     {
       "name": "POST /doc - 创建文档",
       "status": "PASS",
       "msg": "",
-      "duration": 0.33
+      "duration": 0.06
     },
     {
       "name": "GET /doc/{id} - 获取文档",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.05
     },
     {
       "name": "PUT /doc/{id} - 更新文档",
       "status": "PASS",
       "msg": "",
-      "duration": 0.16
+      "duration": 0.13
     },
     {
       "name": "PUT /doc/{id}/star - 收藏文档",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.11
     },
     {
       "name": "PUT /doc/{id}/move - 移动文档",
       "status": "FAIL",
       "msg": "",
-      "duration": 0.02
+      "duration": 0.07
     },
     {
       "name": "GET /search?q=测试 - 关键词搜索",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.09
     },
     {
       "name": "GET /search?q=不存在 - 空结果",
       "status": "PASS",
       "msg": "",
-      "duration": 0.02
+      "duration": 0.09
     },
     {
       "name": "POST /tag - 创建标签",
       "status": "PASS",
       "msg": "",
-      "duration": 0.05
+      "duration": 0.12
     },
     {
       "name": "GET /tag/list - 标签列表",
@@ -167,19 +167,19 @@
       "name": "POST /tag/bind - 绑定标签到文档",
       "status": "FAIL",
       "msg": "",
-      "duration": 0.03
+      "duration": 0.02
     },
     {
       "name": "DELETE /tag/{id} - 删除标签",
       "status": "PASS",
       "msg": "",
-      "duration": 0.1
+      "duration": 0.06
     },
     {
       "name": "GET /trash/list - 回收站列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.11
     },
     {
       "name": "POST /trash/restore/{type}/{id} - 恢复文档",
@@ -191,13 +191,13 @@
       "name": "POST /share - 创建分享",
       "status": "FAIL",
       "msg": "HTTP 400",
-      "duration": 0.08
+      "duration": 0.06
     },
     {
       "name": "GET /share/list - 分享列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.05
+      "duration": 0.09
     },
     {
       "name": "GET /share/verify/{code}",
@@ -239,7 +239,7 @@
       "name": "GET /version/list/{type}/{id} - 版本列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.02
     },
     {
       "name": "POST /web/collect - 收藏网页",
@@ -275,7 +275,7 @@
       "name": "GET /file/list - 文件列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.09
+      "duration": 0.08
     },
     {
       "name": "POST /file/upload - 上传文件",
@@ -341,61 +341,61 @@
       "name": "GET /bucket/{id}/stats - 存储桶统计",
       "status": "PASS",
       "msg": "",
-      "duration": 0.08
+      "duration": 0.05
     },
     {
       "name": "GET /ops/dashboard - 看板数据",
       "status": "PASS",
       "msg": "",
-      "duration": 0.12
+      "duration": 0.2
     },
     {
       "name": "POST /ops/dashboard/snapshot/refresh - 刷新看板",
       "status": "PASS",
       "msg": "",
-      "duration": 0.44
+      "duration": 0.13
     },
     {
       "name": "POST /ops/host - 创建主机",
       "status": "PASS",
       "msg": "",
-      "duration": 0.19
+      "duration": 0.04
     },
     {
       "name": "GET /ops/host/list - 主机列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.13
+      "duration": 0.03
     },
     {
       "name": "GET /ops/host/{id} - 获取主机详情",
       "status": "PASS",
       "msg": "",
-      "duration": 0.05
+      "duration": 0.02
     },
     {
       "name": "PUT /ops/host/{id} - 更新主机",
       "status": "PASS",
       "msg": "",
-      "duration": 0.12
+      "duration": 0.05
     },
     {
       "name": "DELETE /ops/host/{id} - 删除主机",
       "status": "PASS",
       "msg": "",
-      "duration": 0.14
+      "duration": 0.05
     },
     {
       "name": "GET /ops/service/list - 服务列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.05
+      "duration": 0.06
     },
     {
       "name": "POST /ops/service - 创建服务",
       "status": "FAIL",
       "msg": "",
-      "duration": 0.28
+      "duration": 0.07
     },
     {
       "name": "DELETE /ops/service/{id}",
@@ -413,7 +413,7 @@
       "name": "POST /ops/knowledge - 创建运维知识",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.11
     },
     {
       "name": "GET /ops/knowledge/list - 运维知识列表",
@@ -425,43 +425,43 @@
       "name": "GET /ops/knowledge/{id} - 获取运维知识",
       "status": "PASS",
       "msg": "",
-      "duration": 0.07
+      "duration": 0.06
     },
     {
       "name": "DELETE /ops/knowledge/{id} - 删除运维知识",
       "status": "PASS",
       "msg": "",
-      "duration": 0.28
+      "duration": 0.05
     },
     {
       "name": "GET /ops/deployment/list - 部署记录列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.04
+      "duration": 0.05
     },
     {
       "name": "GET /ops/deployment/recent - 最近部署",
       "status": "PASS",
       "msg": "",
-      "duration": 0.02
+      "duration": 0.04
     },
     {
       "name": "GET /ops/conflict/list - 矛盾列表",
       "status": "PASS",
       "msg": "",
-      "duration": 0.03
+      "duration": 0.05
     },
     {
       "name": "POST /ops/import - JSON导入",
       "status": "PASS",
       "msg": "",
-      "duration": 0.03
+      "duration": 0.08
     },
     {
       "name": "清理测试数据 + 登出",
       "status": "PASS",
       "msg": "",
-      "duration": 0.47
+      "duration": 0.24
     }
   ]
 }
