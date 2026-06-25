@@ -119,3 +119,21 @@ CREATE TABLE IF NOT EXISTS `ops_snapshot` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_date_key` (`snapshot_date`, `metric_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='运维看板快照表';
+
+-- 操作日志表
+CREATE TABLE IF NOT EXISTS `operation_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint DEFAULT NULL,
+  `username` varchar(100) DEFAULT NULL,
+  `action` varchar(50) NOT NULL COMMENT 'LOGIN/UPLOAD/DELETE/UPDATE等',
+  `resource_type` varchar(50) DEFAULT NULL,
+  `resource_id` bigint DEFAULT NULL,
+  `detail` varchar(2000) DEFAULT NULL,
+  `ip` varchar(50) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_action` (`action`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';

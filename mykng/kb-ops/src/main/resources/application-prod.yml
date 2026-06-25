@@ -19,15 +19,12 @@ spring:
       timeout: 5000ms
 
 crypto:
-  aes-key: ${CRYPTO_AES_KEY:Y2Iqb3BzLWFlcy0yNTYta2V5LWZvci1lbmNyeXB0aW9u}
-
-jwt:
-  secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
+  aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
 # Feign 客户端配置
 kb:
-  auth:
-    host: ${KB_AUTH_HOST:http://kb-auth:8081}
+  feign:
+    auth-url: ${KB_AUTH_HOST:http://kb-auth:8081}
 
 logging:
   level:

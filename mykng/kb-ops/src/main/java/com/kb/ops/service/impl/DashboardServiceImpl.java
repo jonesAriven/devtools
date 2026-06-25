@@ -62,9 +62,14 @@ public class DashboardServiceImpl implements DashboardService {
                         s -> s.getType() == null ? "unknown" : s.getType(),
                         Collectors.counting()));
 
-        // 最近 7 天部署趋势
+        // 最近 7 天部署趋势（直接查询7天数据，而非复用LIMIT 10结果）
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        Map<String, Long> trendMap = recentRecords.stream()
+        LocalDateTime sevenDaysAgo = LocalDate.now().minusDays(6).atStartOfDay();
+        List<DeploymentRecord> trendRecords = recordMapper.selectList(
+                new LambdaQueryWrapper<DeploymentRecord>()
+                        .ge(DeploymentRecord::getDeployTime, sevenDaysAgo)
+                        .orderByDesc(DeploymentRecord::getDeployTime));
+        Map<String, Long> trendMap = trendRecords.stream()
                 .filter(r -> r.getDeployTime() != null)
                 .collect(Collectors.groupingBy(
                         r -> r.getDeployTime().toLocalDate().format(fmt),

@@ -47,12 +47,9 @@ public class OpsKnowledgeServiceImpl implements OpsKnowledgeService {
         if (k == null) {
             throw new NotFoundException("运维知识", id);
         }
-        // 阅读量 +1
-        OpsKnowledge update = new OpsKnowledge();
-        update.setId(id);
-        update.setViewCount((k.getViewCount() == null ? 0 : k.getViewCount()) + 1);
-        knowledgeMapper.updateById(update);
-        k.setViewCount(update.getViewCount());
+        // 阅读量原子+1（避免并发竞态）
+        knowledgeMapper.incrementViewCount(id);
+        k.setViewCount((k.getViewCount() == null ? 0 : k.getViewCount()) + 1);
         return k;
     }
 

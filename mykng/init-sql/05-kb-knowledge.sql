@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `space` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 目录表
 CREATE TABLE IF NOT EXISTS `folder` (
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `folder` (
   PRIMARY KEY (`id`),
   KEY `idx_space_id` (`space_id`),
   KEY `idx_parent_id` (`parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 笔记表
 CREATE TABLE IF NOT EXISTS `doc` (
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `doc` (
   PRIMARY KEY (`id`),
   KEY `idx_folder_id` (`folder_id`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 网页收藏表
 CREATE TABLE IF NOT EXISTS `web_page` (
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS `web_page` (
   PRIMARY KEY (`id`),
   KEY `idx_folder_id` (`folder_id`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 标签表
 CREATE TABLE IF NOT EXISTS `tag` (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `tag` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_user_name` (`user_id`, `name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 资源标签关联表
 CREATE TABLE IF NOT EXISTS `resource_tag` (
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS `resource_tag` (
   PRIMARY KEY (`id`),
   KEY `idx_tag_id` (`tag_id`),
   KEY `idx_resource` (`resource_type`, `resource_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 分享表
 CREATE TABLE IF NOT EXISTS `share` (
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `share` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_code` (`code`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 分享访问日志表
 CREATE TABLE IF NOT EXISTS `share_access_log` (
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS `share_access_log` (
   `accessed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_share_id` (`share_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 版本表
 CREATE TABLE IF NOT EXISTS `version` (
@@ -126,4 +126,4 @@ CREATE TABLE IF NOT EXISTS `version` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_resource` (`resource_type`, `resource_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -23,7 +23,7 @@ mybatis-plus:
 
 # AES-256-GCM 密钥 (Base64, 32字节)。生产环境通过环境变量覆盖。
 crypto:
-  aes-key: ${CRYPTO_AES_KEY:Y2Iqb3BzLWFlcy0yNTYta2V5LWZvci1lbmNyeXB0aW9u}
+  aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
 # 服务间调用 (单机部署，直接 HTTP URL)
 kb:

@@ -12,6 +12,7 @@ import com.kb.ops.mapper.OpsServiceMapper;
 import com.kb.ops.service.DeploymentRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +36,7 @@ public class DeploymentRecordServiceImpl implements DeploymentRecordService {
     }
 
     @Override
+    @Transactional
     public DeploymentRecord create(DeploymentRecordRequest request) {
         OpsService svc = serviceMapper.selectById(request.getServiceId());
         if (svc == null) {

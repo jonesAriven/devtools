@@ -76,6 +76,15 @@
         // Fixed: 1 month = 30 days = 43200 minutes
         const EXPIRE_MINUTES = 43200;
 
+        // Auto-fill serial number from URL parameter ?sn=xxx
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const sn = params.get('sn');
+            if (sn) {
+                document.getElementById('genSerialNumber').value = sn;
+            }
+        })();
+
         function copyText(btn) {
             const codeBox = btn.parentElement;
             const text = codeBox.textContent.replace('复制', '').replace('已复制', '').trim();

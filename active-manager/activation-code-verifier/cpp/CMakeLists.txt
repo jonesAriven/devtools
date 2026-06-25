@@ -12,6 +12,24 @@ if(MSVC)
     add_link_options(/LTCG /OPT:REF /OPT:ICF)
 endif()
 
+# --- FetchContent for qrcodegen ---
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+
+FetchContent_Declare(
+    qrcodegen
+    GIT_REPOSITORY https://github.com/nayuki/QR-Code-generator.git
+    GIT_TAG        v1.8.0
+)
+FetchContent_GetProperties(qrcodegen)
+if(NOT qrcodegen_POPULATED)
+    FetchContent_Populate(qrcodegen)
+endif()
+add_library(qrcodegen_lib STATIC ${qrcodegen_SOURCE_DIR}/c/qrcodegen.c)
+target_include_directories(qrcodegen_lib PUBLIC ${qrcodegen_SOURCE_DIR}/c)
+target_compile_options(qrcodegen_lib PRIVATE /MT /O2 /Os /GL /Gy /EHsc)
+set_property(TARGET qrcodegen_lib PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 # Jones.Activation static library
 set(VERIFIER_SOURCES
     src/ActivationCrypto.cpp
@@ -30,6 +48,7 @@ target_include_directories(JonesActivation PUBLIC
 )
 
 target_link_libraries(JonesActivation PUBLIC
+    qrcodegen_lib
     bcrypt
     crypt32
     advapi32
@@ -39,4 +58,5 @@ target_link_libraries(JonesActivation PUBLIC
     shell32
     ole32
     comctl32
+    gdiplus
 )

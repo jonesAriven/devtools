@@ -31,6 +31,7 @@ services:
       retries: 10
     networks:
       - kb-net
+    mem_limit: 512m
 
   redis:
     image: redis:7-alpine
@@ -69,6 +70,7 @@ services:
       retries: 5
     networks:
       - kb-net
+    mem_limit: 512m
 
   meilisearch:
     image: getmeili/meilisearch:v1.12
@@ -77,7 +79,7 @@ services:
     ports:
       - "7700:7700"
     environment:
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
       MEILI_ENV: production
     volumes:
       - kb-meili-data:/meili_data
@@ -88,6 +90,7 @@ services:
       retries: 5
     networks:
       - kb-net
+    mem_limit: 256m
 
   mongodb:
     image: mongo:7.0
@@ -107,6 +110,7 @@ services:
       retries: 5
     networks:
       - kb-net
+    mem_limit: 512m
 
   # ========== 微服务 ==========
   # 启动顺序: gateway → auth → file → knowledge → ops
@@ -125,7 +129,7 @@ services:
       - "8090:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
+      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
       - KB_CONTEXT=${KB_CONTEXT:-/kb}
       - KB_AUTH_HOST=kb-auth:8081
       - KB_FILE_HOST=kb-file:8082
@@ -136,6 +140,7 @@ services:
         condition: service_started
     networks:
       - kb-net
+    mem_limit: 384m
 
   kb-auth:
     build:
@@ -153,8 +158,8 @@ services:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMust256BitsLong!!}
-      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-kbCryptoAesKey2026!!32BytesLong!!}
+      - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
+      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
     depends_on:
       mysql:
         condition: service_healthy
@@ -162,6 +167,7 @@ services:
         condition: service_healthy
     networks:
       - kb-net
+    mem_limit: 512m
 
   kb-file:
     build:
@@ -183,7 +189,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MEILI_HOST=http://meilisearch:7700
-      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
       - MONGO_HOST=mongodb
       - MONGO_PORT=27017
       - MONGO_USER=kb
@@ -202,6 +208,7 @@ services:
         condition: service_healthy
     networks:
       - kb-net
+    mem_limit: 512m
 
   kb-knowledge:
     build:
@@ -220,7 +227,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MEILI_HOST=http://meilisearch:7700
-      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026}
+      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
       - MONGO_HOST=mongodb
       - MONGO_PORT=27017
       - MONGO_USER=kb
@@ -243,6 +250,7 @@ services:
         condition: service_started
     networks:
       - kb-net
+    mem_limit: 512m
 
   kb-ops:
     build:
@@ -260,7 +268,7 @@ services:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-kbCryptoAesKey2026!!32BytesLong!!}
+      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
       - KB_AUTH_HOST=kb-auth
     depends_on:
       mysql:
@@ -271,6 +279,7 @@ services:
         condition: service_started
     networks:
       - kb-net
+    mem_limit: 384m
 
 # ========== 数据卷 ==========
 volumes:

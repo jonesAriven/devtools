@@ -8,6 +8,10 @@
 #include <shellapi.h>
 #include <algorithm>
 #include <fstream>
+#include <gdiplus.h>
+extern "C" {
+#include <qrcodegen.h>
+}
 
 // Debug log helper for ActivationGuard
 static void DebugLogGuard(const std::string& msg) {
@@ -231,6 +235,77 @@ void ActivationGuard::ShowExpiredDialog(const std::string& msg) {
 #define ID_BTN_EXIT     2005
 #define ID_BTN_COPY_URL 2006
 #define ID_LNK_URL      2007
+#define ID_STATIC_QR    2008
+
+// URL-encode a string for use in query parameters
+static std::string UrlEncode(const std::string& value) {
+    std::string encoded;
+    for (unsigned char c : value) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            encoded += c;
+        } else {
+            char buf[4];
+            sprintf_s(buf, "%%%02X", c);
+            encoded += buf;
+        }
+    }
+    return encoded;
+}
+
+// Generate QR code HBITMAP from text string (using C API)
+static HBITMAP GenerateQrBitmap(const std::string& text, int pixelSize = 4, int border = 4) {
+    // Encode text to QR code using C API
+    uint8_t qrcode[qrcodegen_BUFFER_LEN_MAX];
+    uint8_t tempBuffer[qrcodegen_BUFFER_LEN_MAX];
+    if (!qrcodegen_encodeText(text.c_str(), tempBuffer, qrcode, qrcodegen_Ecc_LOW,
+                               qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX, qrcodegen_Mask_AUTO, true)) {
+        return NULL;
+    }
+
+    int size = qrcodegen_getSize(qrcode);
+    int imgSize = (size + border * 2) * pixelSize;
+
+    // Create DIB section
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = imgSize;
+    bmi.bmiHeader.biHeight = -imgSize; // top-down
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    HDC hdcScreen = GetDC(NULL);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+
+    VOID* pBits = nullptr;
+    HBITMAP hBmp = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+
+    if (hBmp && pBits) {
+        DWORD* pixels = (DWORD*)pBits;
+        // Fill white background
+        for (int i = 0; i < imgSize * imgSize; i++) {
+            pixels[i] = 0x00FFFFFF;
+        }
+        // Draw QR modules (black)
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (qrcodegen_getModule(qrcode, x, y)) {
+                    for (int dy = 0; dy < pixelSize; dy++) {
+                        for (int dx = 0; dx < pixelSize; dx++) {
+                            int px = (x + border) * pixelSize + dx;
+                            int py = (y + border) * pixelSize + dy;
+                            pixels[py * imgSize + px] = 0x00000000;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    DeleteDC(hdcMem);
+    ReleaseDC(NULL, hdcScreen);
+    return hBmp;
+}
 
 static std::string g_serialNumber;
 static std::string g_activatedCode;
@@ -256,22 +331,28 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                                         DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"微软雅黑");
         HFONT hFontMono = CreateFontW(13, 0, 0, 0, FW_NORMAL, 0, 0, 0,
                                         DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Consolas");
+        HFONT hFontSmall = CreateFontW(12, 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                                         DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"微软雅黑");
+
+        // --- Left side: form controls ---
+        const int leftW = 420;
+        const int mx = 20; // left margin
 
         // Title
-        CreateWindowW(L"STATIC", L"请输入激活码", WS_CHILD | WS_VISIBLE,
-                      20, 12, 440, 25, hWnd, NULL, NULL, NULL);
-        SendMessage(GetWindow(hWnd, GW_CHILD), WM_SETFONT, (WPARAM)hFontBold, TRUE);
+        HWND hTitle = CreateWindowW(L"STATIC", L"请输入激活码", WS_CHILD | WS_VISIBLE,
+                      mx, 12, leftW, 25, hWnd, NULL, NULL, NULL);
+        SendMessage(hTitle, WM_SETFONT, (WPARAM)hFontBold, TRUE);
 
         // Serial number label
         HWND hLblSN = CreateWindowW(L"STATIC", L"唯一序列号:", WS_CHILD | WS_VISIBLE,
-                                     20, 45, 100, 20, hWnd, NULL, NULL, NULL);
+                                     mx, 45, 100, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblSN, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Serial number text (read-only)
         std::wstring wSerial(g_serialNumber.begin(), g_serialNumber.end());
         HWND hTxtSN = CreateWindowW(L"EDIT", wSerial.c_str(),
                                      WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_READONLY,
-                                     20, 67, 440, 25, hWnd, (HMENU)ID_TXT_SERIAL, NULL, NULL);
+                                     mx, 67, leftW, 25, hWnd, (HMENU)ID_TXT_SERIAL, NULL, NULL);
         SendMessage(hTxtSN, WM_SETFONT, (WPARAM)hFontMono, TRUE);
         SendMessage(hTxtSN, EM_SETREADONLY, TRUE, 0);
         SetWindowSubclass(hTxtSN, EditSubclassProc, 0, 0);
@@ -279,57 +360,84 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         // Copy serial button
         HWND hBtnCopySN = CreateWindowW(L"BUTTON", L"复制序列号",
                                          WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                         20, 96, 100, 24, hWnd, (HMENU)ID_BTN_COPY_SN, NULL, NULL);
+                                         mx, 96, 100, 24, hWnd, (HMENU)ID_BTN_COPY_SN, NULL, NULL);
         SendMessage(hBtnCopySN, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Activation code label
         HWND hLblCode = CreateWindowW(L"STATIC", L"激活码:", WS_CHILD | WS_VISIBLE,
-                                       20, 128, 100, 20, hWnd, NULL, NULL, NULL);
+                                       mx, 128, 100, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblCode, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Activation code input (multi-line)
         HWND hTxtCode = CreateWindowW(L"EDIT", L"",
                                        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE |
                                        ES_AUTOVSCROLL | WS_VSCROLL,
-                                       20, 150, 440, 60, hWnd, (HMENU)ID_TXT_CODE, NULL, NULL);
+                                       mx, 150, leftW, 60, hWnd, (HMENU)ID_TXT_CODE, NULL, NULL);
         SendMessage(hTxtCode, WM_SETFONT, (WPARAM)hFontMono, TRUE);
         SetWindowSubclass(hTxtCode, EditSubclassProc, 0, 0);
 
         // Hint text
         HWND hLblHint = CreateWindowW(L"STATIC", L"请将上方唯一序列号发给管理员，获取激活码后粘贴到上方输入框",
                                        WS_CHILD | WS_VISIBLE,
-                                       20, 216, 440, 20, hWnd, NULL, NULL, NULL);
+                                       mx, 216, leftW, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblHint, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-        // URL label (full width, auto-wraps)
+        // URL label
         HWND hLblUrl = CreateWindowW(L"STATIC", L"获取激活码：",
                                       WS_CHILD | WS_VISIBLE,
-                                      20, 240, 440, 20, hWnd, NULL, NULL, NULL);
+                                      mx, 240, leftW, 20, hWnd, NULL, NULL, NULL);
         SendMessage(hLblUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-        // URL link (full width, auto-wraps)
+        // URL link
         HWND hLnkUrl = CreateWindowW(L"STATIC", L"https://tools.marschat.online/activecode/index.html",
                                       WS_CHILD | WS_VISIBLE | SS_NOTIFY,
-                                      20, 260, 440, 20, hWnd, (HMENU)ID_LNK_URL, NULL, NULL);
+                                      mx, 260, leftW, 20, hWnd, (HMENU)ID_LNK_URL, NULL, NULL);
         SendMessage(hLnkUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Copy URL button
         HWND hBtnCopyUrl = CreateWindowW(L"BUTTON", L"复制地址",
                                           WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                          20, 284, 100, 22, hWnd, (HMENU)ID_BTN_COPY_URL, NULL, NULL);
+                                          mx, 284, 100, 22, hWnd, (HMENU)ID_BTN_COPY_URL, NULL, NULL);
         SendMessage(hBtnCopyUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Activate button
         HWND hBtnActivate = CreateWindowW(L"BUTTON", L"激活",
                                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                           300, 320, 80, 28, hWnd, (HMENU)ID_BTN_ACTIVATE, NULL, NULL);
+                                           mx + leftW - 170, 320, 80, 28, hWnd, (HMENU)ID_BTN_ACTIVATE, NULL, NULL);
         SendMessage(hBtnActivate, WM_SETFONT, (WPARAM)hFont, TRUE);
 
         // Exit button
         HWND hBtnExit = CreateWindowW(L"BUTTON", L"退出",
                                        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                       390, 320, 80, 28, hWnd, (HMENU)ID_BTN_EXIT, NULL, NULL);
+                                       mx + leftW - 80, 320, 80, 28, hWnd, (HMENU)ID_BTN_EXIT, NULL, NULL);
         SendMessage(hBtnExit, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+        // --- Right side: QR code ---
+        const int qrX = mx + leftW + 20;
+        const int qrY = 20;
+        const int qrDisplaySize = 160;
+
+        // Generate QR code with URL + serial number
+        std::string qrUrl = std::string("https://tools.marschat.online/activecode/index.html?sn=") + UrlEncode(g_serialNumber);
+        HBITMAP hQrBmp = GenerateQrBitmap(qrUrl, 3, 4);
+        // Store bitmap handle for later cleanup
+        SetPropW(hWnd, L"QrBitmap", reinterpret_cast<HANDLE>(hQrBmp));
+
+        // QR code static control (uses WM_SETIMAGE with STM_IMAGE)
+        HWND hStaticQr = CreateWindowW(L"STATIC", NULL,
+                                        WS_CHILD | WS_VISIBLE | SS_BITMAP | SS_CENTERIMAGE,
+                                        qrX, qrY, qrDisplaySize, qrDisplaySize,
+                                        hWnd, (HMENU)ID_STATIC_QR, NULL, NULL);
+        if (hQrBmp) {
+            SendMessage(hStaticQr, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hQrBmp);
+        }
+
+        // QR hint text
+        HWND hLblQrHint = CreateWindowW(L"STATIC", L"微信扫码获取激活码",
+                                          WS_CHILD | WS_VISIBLE | SS_CENTER,
+                                          qrX, qrY + qrDisplaySize + 6, qrDisplaySize, 20,
+                                          hWnd, NULL, NULL, NULL);
+        SendMessage(hLblQrHint, WM_SETFONT, (WPARAM)hFontSmall, TRUE);
 
         break;
     }
@@ -339,56 +447,55 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         int cx = LOWORD(lParam);
         int cy = HIWORD(lParam);
         int margin = 20;
-        int w = cx - margin * 2;
+        int leftW = 420;
 
-        // Enumerate child windows and reposition
+        // Left side controls: fixed width, reposition vertically
         struct LayoutInfo {
             int id;
             int y;
             int height;
-            bool fullWidth;  // true = stretch to full width, false = keep original width
+            int width;  // 0 = full leftW, -1 = auto, >0 = fixed
         };
         LayoutInfo layout[] = {
-            { -1,           12,  25, true },   // Title "请输入激活码"
-            { -1,           45,  20, false },  // "唯一序列号:" label
-            { ID_TXT_SERIAL,67,  25, true },   // Serial number text
-            { ID_BTN_COPY_SN,96, 24, false },  // Copy serial button
-            { -1,           128, 20, false },  // "激活码:" label
-            { ID_TXT_CODE,  150, 60, true },   // Activation code input
-            { -1,           216, 20, true },   // Hint text
-            { -1,           240, 20, true },   // "获取激活码：" label
-            { ID_LNK_URL,   260, 20, true },   // URL link
-            { ID_BTN_COPY_URL,284,22, false },  // Copy URL button
-            { ID_BTN_ACTIVATE,320,28, false },  // Activate button
-            { ID_BTN_EXIT,  320, 28, false },  // Exit button
+            { -1,           12,  25, 0 },   // Title
+            { -1,           45,  20, -1 },  // "唯一序列号:" label
+            { ID_TXT_SERIAL,67,  25, 0 },   // Serial number text
+            { ID_BTN_COPY_SN,96, 24, 100 }, // Copy serial button
+            { -1,           128, 20, -1 },  // "激活码:" label
+            { ID_TXT_CODE,  150, 60, 0 },   // Activation code input
+            { -1,           216, 20, 0 },   // Hint text
+            { -1,           240, 20, 0 },   // "获取激活码：" label
+            { ID_LNK_URL,   260, 20, 0 },   // URL link
+            { ID_BTN_COPY_URL,284,22, 100 },// Copy URL button
+            { ID_BTN_ACTIVATE,320,28, 80 }, // Activate button
+            { ID_BTN_EXIT,  320, 28, 80 },  // Exit button
         };
 
         HWND hChild = GetWindow(hWnd, GW_CHILD);
         int idx = 0;
-        while (hChild && idx < 12) {
+        int totalItems = sizeof(layout) / sizeof(layout[0]);
+        while (hChild && idx < totalItems) {
             int id = GetDlgCtrlID(hChild);
             LayoutInfo& li = layout[idx];
 
             int x = margin;
-            int ctrlW = li.fullWidth ? w : 0;
-            int ctrlH = li.height;
+            int ctrlW, ctrlH = li.height;
 
-            // Special positioning for buttons at bottom
-            if (id == ID_BTN_ACTIVATE) {
-                ctrlW = 80;
-                x = cx - margin - 80 - 90;
-            } else if (id == ID_BTN_EXIT) {
-                ctrlW = 80;
-                x = cx - margin - 80;
-            } else if (id == ID_BTN_COPY_SN) {
-                ctrlW = 100;
-            } else if (id == ID_BTN_COPY_URL) {
-                ctrlW = 100;
-            } else if (!li.fullWidth) {
-                // Labels keep their original width
+            if (li.width == 0) {
+                ctrlW = leftW;
+            } else if (li.width == -1) {
                 RECT rc;
                 GetWindowRect(hChild, &rc);
                 ctrlW = rc.right - rc.left;
+            } else {
+                ctrlW = li.width;
+            }
+
+            // Special positioning for bottom buttons
+            if (id == ID_BTN_ACTIVATE) {
+                x = margin + leftW - 170;
+            } else if (id == ID_BTN_EXIT) {
+                x = margin + leftW - 80;
             }
 
             // Activation code input stretches vertically
@@ -399,6 +506,29 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
             MoveWindow(hChild, x, li.y, ctrlW, ctrlH, TRUE);
             hChild = GetWindow(hChild, GW_HWNDNEXT);
             idx++;
+        }
+
+        // Right side: QR code and hint - reposition based on window size
+        HWND hQr = GetDlgItem(hWnd, ID_STATIC_QR);
+        if (hQr) {
+            int qrX = margin + leftW + 20;
+            int qrY = 20;
+            int qrSize = 160;
+            MoveWindow(hQr, qrX, qrY, qrSize, qrSize, TRUE);
+        }
+        // QR hint label (last child, no ID)
+        // Find it by iterating remaining children
+        while (hChild) {
+            int id = GetDlgCtrlID(hChild);
+            if (id == 0 || id == ID_STATIC_QR) {
+                // QR hint or QR static - position it
+                if (id == 0) {
+                    // This is the QR hint label
+                    int qrX = margin + leftW + 20;
+                    MoveWindow(hChild, qrX, 20 + 160 + 6, 160, 20, TRUE);
+                }
+            }
+            hChild = GetWindow(hChild, GW_HWNDNEXT);
         }
         break;
     }
@@ -522,6 +652,16 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         break;
     }
 
+    case WM_DESTROY: {
+        // Clean up QR bitmap
+        HBITMAP hQrBmp = (HBITMAP)GetPropW(hWnd, L"QrBitmap");
+        if (hQrBmp) {
+            DeleteObject(hQrBmp);
+            RemovePropW(hWnd, L"QrBitmap");
+        }
+        break;
+    }
+
     case WM_CLOSE:
         g_exitApp = true;
         DestroyWindow(hWnd);
@@ -557,7 +697,7 @@ std::string ActivationGuard::ShowActivationDialog(const std::string& initialSeri
     // Create popup window (resizable with thick frame)
     HWND hDlg = CreateWindowExW(0, L"ActivationDialog", L"软件激活",
                                  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 560, 380,
+                                 CW_USEDEFAULT, CW_USEDEFAULT, 660, 380,
                                  NULL, NULL, s_hInstance, NULL);
 
     ShowWindow(hDlg, SW_SHOW);
