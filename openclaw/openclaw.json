@@ -102,7 +102,7 @@
         "models": [
           {
             "id": "ep-20260607141832-vxbtn",
-            "name": "\u8c46\u5305\u56fe\u6587\u8bc6\u522b",
+            "name": "豆包图文识别",
             "reasoning": false,
             "input": [
               "text",
@@ -219,6 +219,15 @@
             ]
           },
           {
+            "id": "glm-5.2",
+            "name": "glm-5.2",
+            "contextWindow": 1000000,
+            "maxTokens": 128000,
+            "input": [
+              "text"
+            ]
+          },
+          {
             "id": "deepseek-v4-flash",
             "name": "deepseek-v4-flash",
             "contextWindow": 1024000,
@@ -296,6 +305,80 @@
             ]
           }
         ]
+      },
+      "stepfun": {
+        "baseUrl": "https://api.stepfun.com/v1",
+        "apiKey": "4sPcwI6w7UFg2zksr9cj99gwdPIvZR5xjuntHJgTf6gVZJt8Wwz5Lx5vQDBxU47KL",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "step-3.7-flash",
+            "name": "Step 3.7 Flash",
+            "api": "openai-completions",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "cost": {
+              "input": 1.35,
+              "output": 8.1,
+              "cacheRead": 0.27,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsReasoningEffort": true,
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            }
+          },
+          {
+            "id": "step-3.5-flash",
+            "name": "Step 3.5 Flash",
+            "api": "openai-completions",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "cost": {
+              "input": 0.7,
+              "output": 2.1,
+              "cacheRead": 0.14,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsReasoningEffort": true,
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            }
+          },
+          {
+            "id": "step-3.5-flash-2603",
+            "name": "Step 3.5 Flash 2603 (Agent优化)",
+            "api": "openai-completions",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 256000,
+            "maxTokens": 65536,
+            "cost": {
+              "input": 0.7,
+              "output": 2.1,
+              "cacheRead": 0.14,
+              "cacheWrite": 0
+            },
+            "compat": {
+              "supportsReasoningEffort": true,
+              "supportsUsageInStreaming": true,
+              "maxTokensField": "max_tokens"
+            }
+          }
+        ]
       }
     }
   },
@@ -307,7 +390,10 @@
         "ttl": "5m"
       },
       "model": {
-        "primary": "volcengine-plan/deepseek-v4-flash"
+        "primary": "volcengine-plan/glm-5.2",
+        "fallbacks": [
+          "mimo/mimo-v2.5"
+        ]
       },
       "models": {
         "deepseek/deepseek-v4-flash": {
@@ -370,7 +456,7 @@
       "memorySearch": {
         "provider": "openai",
         "remote": {
-          "baseUrl": "https://api.yunjintao.com/v1",
+          "baseUrl": "http://127.0.0.1:8787",
           "apiKey": "sk-DdYba1Jew_pbZilnK34XwXrqn2joVI37Mbd16r6QYIs"
         },
         "model": "text-embedding-3-large"
@@ -385,8 +471,17 @@
           "thinkingMode": "medium"
         },
         "toolDefaults": {
-          "maxRetries": 2
+          "maxRetries": 2,
+          "maxToolCalls": 50
         }
+      },
+      "runRetries": {
+        "max": 3,
+        "min": 2
+      },
+      "timeoutSeconds": 1200,
+      "heartbeat": {
+        "every": "2h"
       }
     },
     "list": [
@@ -473,31 +568,129 @@
   "skills": {
     "install": {
       "nodeManager": "npm"
+    },
+    "entries": {
+      "self-improving-agent": {
+        "enabled": false
+      },
+      "proactive-agent": {
+        "enabled": false
+      },
+      "agent-browser": {
+        "enabled": false
+      },
+      "1password": {
+        "enabled": false
+      },
+      "blogwatcher": {
+        "enabled": false
+      },
+      "blucli": {
+        "enabled": false
+      },
+      "camsnap": {
+        "enabled": false
+      },
+      "coding-agent": {
+        "enabled": false
+      },
+      "discord": {
+        "enabled": false
+      },
+      "eightctl": {
+        "enabled": false
+      },
+      "gemini": {
+        "enabled": false
+      },
+      "gifgrep": {
+        "enabled": false
+      },
+      "gog": {
+        "enabled": false
+      },
+      "goplaces": {
+        "enabled": false
+      },
+      "himalaya": {
+        "enabled": false
+      },
+      "nano-pdf": {
+        "enabled": false
+      },
+      "obsidian": {
+        "enabled": false
+      },
+      "openai-whisper": {
+        "enabled": false
+      },
+      "openhue": {
+        "enabled": false
+      },
+      "oracle": {
+        "enabled": false
+      },
+      "ordercli": {
+        "enabled": false
+      },
+      "sag": {
+        "enabled": false
+      },
+      "sherpa-onnx-tts": {
+        "enabled": false
+      },
+      "slack": {
+        "enabled": false
+      },
+      "songsee": {
+        "enabled": false
+      },
+      "sonoscli": {
+        "enabled": false
+      },
+      "spotify-player": {
+        "enabled": false
+      },
+      "tavily": {
+        "enabled": false
+      },
+      "tencent-cloud-cos": {
+        "enabled": false
+      },
+      "trello": {
+        "enabled": false
+      },
+      "voice-call": {
+        "enabled": false
+      },
+      "wacli": {
+        "enabled": false
+      },
+      "wecom-send-media": {
+        "enabled": false
+      },
+      "wecom-send-template-card": {
+        "enabled": false
+      },
+      "xurl": {
+        "enabled": false
+      }
     }
   },
   "wizard": {
-    "lastRunAt": "2026-05-10T08:36:51.068Z",
-    "lastRunVersion": "2026.5.7",
-    "lastRunCommand": "onboard",
+    "lastRunAt": "2026-06-22T23:55:01.738Z",
+    "lastRunVersion": "2026.6.9",
+    "lastRunCommand": "doctor",
     "lastRunMode": "local"
   },
   "meta": {
-    "lastTouchedVersion": "2026.6.1",
-    "lastTouchedAt": "2026-06-07T06:19:56.909Z"
+    "lastTouchedVersion": "2026.6.9",
+    "lastTouchedAt": "2026-06-22T23:55:48.714Z"
   },
   "plugins": {
     "entries": {
-      "skillhub": {
-        "enabled": true,
-        "config": {
-          "primaryCli": "skillhub",
-          "fallbackCli": "clawhub",
-          "primaryLabel": "cn-optimized",
-          "fallbackLabel": "public-registry"
-        }
-      },
       "adp-openclaw": {
-        "enabled": true
+        "enabled": false
       },
       "feishu": {
         "enabled": true
@@ -508,7 +701,7 @@
       "memory-core": {
         "config": {
           "dreaming": {
-            "enabled": true
+            "enabled": false
           }
         },
         "enabled": true
@@ -524,17 +717,31 @@
       },
       "browser": {
         "enabled": true
+      },
+      "volcengine": {
+        "enabled": true
+      },
+      "openai": {
+        "enabled": true
       }
     }
   },
   "channels": {
     "openclaw-weixin": {
-      "channelConfigUpdatedAt": "2026-05-13T16:18:58.633Z"
+      "channelConfigUpdatedAt": "2026-06-18T01:07:11.954Z"
     },
     "qqbot": {
       "enabled": true,
       "appId": "1903918749",
-      "clientSecret": "CIPWenw6GRco1FUjzGXp8Rl6SoBZyNnE"
+      "clientSecret": "CIPWenw6GRco1FUjzGXp8Rl6SoBZyNnE",
+      "accounts": {
+        "xiaom": {
+          "enabled": true,
+          "name": "小q",
+          "appId": "1904169960",
+          "clientSecret": "a7TdZIn58xYv40iC"
+        }
+      }
     },
     "feishu": {
       "enabled": true,
@@ -547,7 +754,10 @@
       "allowFrom": [
         "ou_b2439e923d1b07702ebb49db60806536"
       ],
-      "groupPolicy": "allowlist"
+      "groupPolicy": "allowlist",
+      "groupAllowFrom": [
+        "ou_b2439e923d1b07702ebb49db60806536"
+      ]
     }
   },
   "bindings": [
