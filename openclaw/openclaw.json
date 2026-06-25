@@ -450,6 +450,15 @@
         },
         "volcengine-plan/deepseek-v4-pro": {
           "alias": "volcengine-plan/deepseek-v4-pro"
+        },
+        "stepfun/step-3.7-flash": {
+          "alias": "stepfun/step-3.7-flash-多模态推理（文本+图片）"
+        },
+        "stepfun/step-3.5-flash": {
+          "alias": "stepfun/step-3.5-flash-纯文本推理"
+        },
+        "stepfun/step-3.5-flash-2603": {
+          "alias": "stepfun/step-3.5-flash-2603-Agent优化版"
         }
       },
       "workspace": "/root/.openclaw/workspace",
