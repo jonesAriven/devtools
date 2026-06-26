@@ -50,4 +50,9 @@ public class OperationLogServiceImpl implements OperationLogService {
         Page<OperationLog> p = logMapper.selectPage(new Page<>(page, size), wrapper);
         return PageResult.of(p.getRecords(), p.getTotal(), page, size);
     }
+
+    @Override
+    public OperationLog getById(Long id) {
+        return logMapper.selectById(id);
+    }
 }

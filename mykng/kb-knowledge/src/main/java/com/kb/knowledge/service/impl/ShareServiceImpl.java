@@ -53,7 +53,9 @@ public class ShareServiceImpl implements ShareService {
         share.setCode(IdUtil.fastSimpleUUID());
         share.setExtractCode(request.getExtractCode() != null ? request.getExtractCode() : RandomUtil.randomNumbers(4));
         if (request.getExpireAt() != null && !request.getExpireAt().isBlank()) {
-            share.setExpireAt(LocalDateTime.parse(request.getExpireAt()));
+            // 兼容两种常见格式：ISO(2026-12-31T23:59:59) 和 标准(2026-12-31 23:59:59)
+            String expireAtStr = request.getExpireAt().replace(" ", "T");
+            share.setExpireAt(LocalDateTime.parse(expireAtStr));
         }
         share.setViewCount(0);
         shareMapper.insert(share);

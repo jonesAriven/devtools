@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/log")
+@RequestMapping("/ops/log")
 @RequiredArgsConstructor
 public class OperationLogController {
 
@@ -21,5 +21,10 @@ public class OperationLogController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.ok(logService.list(userId, action, page, size));
+    }
+
+    @GetMapping("/{id}")
+    public Result<OperationLog> detail(@PathVariable Long id) {
+        return Result.ok(logService.getById(id));
     }
 }

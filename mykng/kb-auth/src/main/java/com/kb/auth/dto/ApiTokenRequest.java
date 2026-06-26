@@ -1,5 +1,6 @@
 package com.kb.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -14,6 +15,7 @@ public class ApiTokenRequest {
     /** 权限范围，逗号分隔 */
     private String scope;
 
-    /** 过期时间，null 表示永不过期 */
+    /** 过期时间，null 表示永不过期。接受 yyyy-MM-dd HH:mm:ss 格式 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime expireAt;
 }
