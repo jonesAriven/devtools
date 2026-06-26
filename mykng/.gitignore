@@ -20,3 +20,7 @@ Thumbs.db
 *.log
 /data/logs/
 !.testrc
+
+# 自动生成的测试报告（每次运行覆盖，不入库）
+tests/*-test-report.json
+tests/screenshots/
