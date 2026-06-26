@@ -50,3 +50,7 @@ init_db.py
 init-database.sql
 build/
 *.h
+
+# 外部仓库和配置备份
+openclaw-work-space
+openclaw/
