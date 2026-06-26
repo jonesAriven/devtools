@@ -390,9 +390,9 @@
         "ttl": "5m"
       },
       "model": {
-        "primary": "volcengine-plan/glm-5.2",
+        "primary": "stepfun/step-3.7-flash-多模态推理（文本+图片）",
         "fallbacks": [
-          "mimo/mimo-v2.5"
+          "volcengine-plan/glm-5.2"
         ]
       },
       "models": {

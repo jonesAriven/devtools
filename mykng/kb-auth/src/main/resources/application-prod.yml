@@ -30,3 +30,12 @@ logging:
   level:
     com.kb: INFO
     org.springframework: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

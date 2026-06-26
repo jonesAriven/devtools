@@ -8,7 +8,6 @@ import com.kb.knowledge.mongo.doc.DocContent;
 import com.kb.knowledge.mongo.doc.WebContent;
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
-import com.meilisearch.sdk.exceptions.MeilisearchException;
 import com.meilisearch.sdk.model.Settings;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +50,21 @@ public class SearchIndexService {
     private void configureIndex(String uid, String[] filterableAttributes) {
         try {
             Index index = meiliSearchClient.index(uid);
+            // 显式创建索引并指定主键为 "id"，
+            // 避免文档含多个以 id 结尾的字段时主键推断失败
+            // （参考错误：index_primary_key_multiple_candidates_found）
+            try {
+                meiliSearchClient.createIndex(uid, "id");
+                log.info("MeiliSearch 索引 {} 创建任务已提交（primaryKey=id）", uid);
+            } catch (Exception ce) {
+                // 索引已存在或主键已固定，忽略创建异常
+                log.debug("MeiliSearch 索引 {} 创建任务结果: {}", uid, ce.getMessage());
+            }
             Settings settings = new Settings();
             settings.setFilterableAttributes(filterableAttributes);
             index.updateSettings(settings);
             log.info("MeiliSearch 索引 {} filterableAttributes 已设置: {}", uid, String.join(", ", filterableAttributes));
-        } catch (MeilisearchException e) {
+        } catch (Exception e) {
             log.warn("MeiliSearch 索引 {} 配置失败（可能索引尚不存在，将在首次写入时自动创建）: {}", uid, e.getMessage());
         }
     }
@@ -77,9 +86,9 @@ public class SearchIndexService {
             document.put("createdAt", doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null);
             document.put("updatedAt", doc.getUpdatedAt() != null ? doc.getUpdatedAt().toString() : null);
             index.addDocuments(JSONUtil.toJsonStr(document));
-            log.info("写入 MeiliSearch 笔记索引成功 docId={}", doc.getId());
-        } catch (MeilisearchException e) {
-            log.error("写入 MeiliSearch 笔记索引失败 docId={}: {}", doc.getId(), e.getMessage());
+            log.info("已提交 MeiliSearch 笔记索引任务 docId={}", doc.getId());
+        } catch (Exception e) {
+            log.error("已提交 MeiliSearch 笔记索引失败 docId={}: {}", doc.getId(), e.getMessage());
         }
     }
 
@@ -90,8 +99,8 @@ public class SearchIndexService {
         try {
             Index index = meiliSearchClient.index(INDEX_DOCS);
             index.deleteDocument(String.valueOf(docId));
-            log.info("删除 MeiliSearch 笔记索引成功 docId={}", docId);
-        } catch (MeilisearchException e) {
+            log.info("删除 MeiliSearch 笔记索引任务 docId={}", docId);
+        } catch (Exception e) {
             log.error("删除 MeiliSearch 笔记索引失败 docId={}: {}", docId, e.getMessage());
         }
     }
@@ -113,9 +122,9 @@ public class SearchIndexService {
             document.put("starred", webPage.getStarred());
             document.put("createdAt", webPage.getCreatedAt() != null ? webPage.getCreatedAt().toString() : null);
             index.addDocuments(JSONUtil.toJsonStr(document));
-            log.info("写入 MeiliSearch 网页索引成功 webId={}", webPage.getId());
-        } catch (MeilisearchException e) {
-            log.error("写入 MeiliSearch 网页索引失败 webId={}: {}", webPage.getId(), e.getMessage());
+            log.info("已提交 MeiliSearch 网页索引任务 webId={}", webPage.getId());
+        } catch (Exception e) {
+            log.error("已提交 MeiliSearch 网页索引失败 webId={}: {}", webPage.getId(), e.getMessage());
         }
     }
 
@@ -126,8 +135,8 @@ public class SearchIndexService {
         try {
             Index index = meiliSearchClient.index(INDEX_WEBPAGES);
             index.deleteDocument(String.valueOf(webId));
-            log.info("删除 MeiliSearch 网页索引成功 webId={}", webId);
-        } catch (MeilisearchException e) {
+            log.info("删除 MeiliSearch 网页索引任务 webId={}", webId);
+        } catch (Exception e) {
             log.error("删除 MeiliSearch 网页索引失败 webId={}: {}", webId, e.getMessage());
         }
     }
@@ -147,9 +156,9 @@ public class SearchIndexService {
             document.put("sortOrder", folder.getSortOrder());
             document.put("createdAt", folder.getCreatedAt() != null ? folder.getCreatedAt().toString() : null);
             index.addDocuments(JSONUtil.toJsonStr(document));
-            log.info("写入 MeiliSearch 目录索引成功 folderId={}", folder.getId());
-        } catch (MeilisearchException e) {
-            log.error("写入 MeiliSearch 目录索引失败 folderId={}: {}", folder.getId(), e.getMessage());
+            log.info("已提交 MeiliSearch 目录索引任务 folderId={}", folder.getId());
+        } catch (Exception e) {
+            log.error("已提交 MeiliSearch 目录索引失败 folderId={}: {}", folder.getId(), e.getMessage());
         }
     }
 
@@ -160,8 +169,8 @@ public class SearchIndexService {
         try {
             Index index = meiliSearchClient.index(INDEX_FOLDERS);
             index.deleteDocument(String.valueOf(folderId));
-            log.info("删除 MeiliSearch 目录索引成功 folderId={}", folderId);
-        } catch (MeilisearchException e) {
+            log.info("删除 MeiliSearch 目录索引任务 folderId={}", folderId);
+        } catch (Exception e) {
             log.error("删除 MeiliSearch 目录索引失败 folderId={}: {}", folderId, e.getMessage());
         }
     }

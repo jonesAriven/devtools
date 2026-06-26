@@ -28,8 +28,8 @@ done
 
 # === MongoDB 备份 ===
 echo "  导出 MongoDB..."
-docker exec kb-mongodb mongodump --uri="mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" \
-  --archive > "$BACKUP_DIR/mongodb/mongodb_${DATE}.archive" 2>/dev/null
+docker exec kb-mongo mongodump --uri="mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" \
+  --archive > "$BACKUP_DIR/mongodb/mongodb_${DATE}.archive" 2>&1
 
 # === 清理过期备份 ===
 echo "  清理 7 天前的备份..."

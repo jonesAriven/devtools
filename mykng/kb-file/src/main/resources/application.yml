@@ -45,3 +45,12 @@ kb:
 logging:
   level:
     com.kb.file: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

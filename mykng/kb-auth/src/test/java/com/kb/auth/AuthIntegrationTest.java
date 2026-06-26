@@ -5,7 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -20,6 +22,7 @@ class AuthIntegrationTest {
 
     @Autowired private TestRestTemplate restTemplate;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private RedisTemplate<String, Object> redisTemplate;
 
     @Test
     @DisplayName("登录成功返回token")
@@ -34,7 +37,7 @@ class AuthIntegrationTest {
         assertEquals(HttpStatus.OK, resp.getStatusCode());
         assertNotNull(resp.getBody());
         assertEquals(200, resp.getBody().get("code"));
-        assertNotNull(((Map) resp.getBody().get("data")).get("token"));
+        assertNotNull(((Map) resp.getBody().get("data")).get("accessToken"));
     }
 
     @Test

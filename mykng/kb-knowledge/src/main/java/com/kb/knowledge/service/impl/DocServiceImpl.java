@@ -8,8 +8,10 @@ import com.kb.knowledge.dto.doc.DocCreateRequest;
 import com.kb.knowledge.dto.doc.DocMoveRequest;
 import com.kb.knowledge.dto.doc.DocUpdateRequest;
 import com.kb.knowledge.entity.Doc;
+import com.kb.knowledge.entity.ResourceTag;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.mapper.DocMapper;
+import com.kb.knowledge.mapper.ResourceTagMapper;
 import com.kb.knowledge.mapper.VersionMapper;
 import com.kb.knowledge.mongo.doc.DocContent;
 import com.kb.knowledge.mongo.repository.DocContentRepository;
@@ -19,6 +21,8 @@ import com.kb.knowledge.service.SearchIndexService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +33,7 @@ public class DocServiceImpl implements DocService {
 
     private final DocMapper docMapper;
     private final VersionMapper versionMapper;
+    private final ResourceTagMapper resourceTagMapper;
     private final DocContentRepository docContentRepository;
     private final EventPublisher eventPublisher;
     private final SearchIndexService searchIndexService;
@@ -69,8 +74,14 @@ public class DocServiceImpl implements DocService {
         version.setVersionNum(1);
         versionMapper.insert(version);
 
-        // 写入 MeiliSearch 索引
-        searchIndexService.indexDoc(doc, request.getContent());
+        // 写入 MeiliSearch 索引（事务提交后执行，避免事务回滚但索引已写入的不一致）
+        final String indexContent = request.getContent();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                searchIndexService.indexDoc(doc, indexContent);
+            }
+        });
 
         // 发布操作事件（替代 OperationLogService）
         eventPublisher.publishKnowledgeEvent(userId, "CREATE", "doc", doc.getId(),
@@ -122,10 +133,15 @@ public class DocServiceImpl implements DocService {
             versionMapper.insert(version);
         }
 
-        // 更新 MeiliSearch 索引
-        String currentContent = docContentRepository.findByDocIdAndIsCurrentTrue(id)
+        // 更新 MeiliSearch 索引（事务提交后执行，避免事务回滚但索引已写入的不一致）
+        final String indexContent = docContentRepository.findByDocIdAndIsCurrentTrue(id)
                 .map(DocContent::getContent).orElse("");
-        searchIndexService.indexDoc(doc, currentContent);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                searchIndexService.indexDoc(doc, indexContent);
+            }
+        });
 
         // 发布操作事件
         eventPublisher.publishKnowledgeEvent(userId, "MODIFY", "doc", id, "更新文档");
@@ -133,12 +149,33 @@ public class DocServiceImpl implements DocService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id, Long userId) {
         Doc doc = getById(id, userId);
         docMapper.deleteById(id);
 
-        // 删除 MeiliSearch 索引
-        searchIndexService.removeDocIndex(id);
+        // 级联清理关联数据
+        // 1. MongoDB DocContent（所有版本）
+        List<DocContent> contents = docContentRepository.findByDocIdOrderByVersionDesc(id);
+        if (!contents.isEmpty()) {
+            docContentRepository.deleteAll(contents);
+        }
+        // 2. MySQL Version
+        versionMapper.delete(new LambdaQueryWrapper<Version>()
+                .eq(Version::getResourceId, id)
+                .eq(Version::getResourceType, "doc"));
+        // 3. MySQL ResourceTag
+        resourceTagMapper.delete(new LambdaQueryWrapper<ResourceTag>()
+                .eq(ResourceTag::getResourceId, id));
+
+        // 删除 MeiliSearch 索引（事务提交后执行，避免索引先删而数据回滚）
+        final Long docId = id;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                searchIndexService.removeDocIndex(docId);
+            }
+        });
 
         // 发布操作事件
         eventPublisher.publishKnowledgeEvent(userId, "DELETE", "doc", id,

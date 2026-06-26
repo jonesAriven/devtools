@@ -1,0 +1,1 @@
+{"code":200,"message":"success","data":{"id":1,"username":"admin","password":null,"email":null,"phone":null,"wechatOpenid":null,"avatar":null,"nickname":"管理员","status":1,"deleted":0,"createdAt":"2026-06-25T22:00:01","updatedAt":"2026-06-25T22:04:11"},"traceId":null}

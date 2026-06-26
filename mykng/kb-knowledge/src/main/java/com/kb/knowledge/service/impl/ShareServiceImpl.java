@@ -3,6 +3,7 @@ package com.kb.knowledge.service.impl;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kb.common.exception.BusinessException;
 import com.kb.common.page.PageResult;
@@ -99,8 +100,9 @@ public class ShareServiceImpl implements ShareService {
             throw new BusinessException("提取码错误");
         }
 
-        share.setViewCount(share.getViewCount() + 1);
-        shareMapper.updateById(share);
+        shareMapper.update(null, new LambdaUpdateWrapper<Share>()
+                .eq(Share::getId, share.getId())
+                .setSql("view_count = view_count + 1"));
 
         return share;
     }
@@ -137,25 +139,28 @@ public class ShareServiceImpl implements ShareService {
             }
             case "doc" -> {
                 Doc doc = docMapper.selectById(share.getResourceId());
-                if (doc != null) {
-                    result.put("resource", doc);
-                    docContentRepository.findByDocIdAndIsCurrentTrue(doc.getId())
-                            .ifPresent(dc -> result.put("content", dc));
+                if (doc == null) {
+                    throw new BusinessException("分享的资源已被删除");
                 }
+                result.put("resource", doc);
+                docContentRepository.findByDocIdAndIsCurrentTrue(doc.getId())
+                        .ifPresent(dc -> result.put("content", dc));
             }
             case "web" -> {
                 WebPage webPage = webPageMapper.selectById(share.getResourceId());
-                if (webPage != null) {
-                    result.put("resource", webPage);
-                    webContentRepository.findByWebIdAndIsCurrentTrue(webPage.getId())
-                            .ifPresent(wc -> result.put("content", wc));
+                if (webPage == null) {
+                    throw new BusinessException("分享的资源已被删除");
                 }
+                result.put("resource", webPage);
+                webContentRepository.findByWebIdAndIsCurrentTrue(webPage.getId())
+                        .ifPresent(wc -> result.put("content", wc));
             }
             case "folder" -> {
                 Folder folder = folderMapper.selectById(share.getResourceId());
-                if (folder != null) {
-                    result.put("resource", folder);
+                if (folder == null) {
+                    throw new BusinessException("分享的资源已被删除");
                 }
+                result.put("resource", folder);
             }
         }
 

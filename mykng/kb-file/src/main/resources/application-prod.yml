@@ -28,7 +28,7 @@ minio:
 
 meilisearch:
   host: ${MEILI_HOST:http://meilisearch:7700}
-  key: ${MEILI_KEY:kbMeiliKey2026}
+  api-key: ${MEILI_KEY:kbMeiliKey2026!!Secure}
 
 jwt:
   secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
@@ -37,3 +37,12 @@ logging:
   level:
     com.kb: INFO
     org.springframework: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

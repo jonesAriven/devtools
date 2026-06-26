@@ -33,3 +33,12 @@ kb:
 logging:
   level:
     com.kb.ops: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

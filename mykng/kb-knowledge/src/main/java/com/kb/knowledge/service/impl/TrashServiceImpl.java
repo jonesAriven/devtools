@@ -1,6 +1,7 @@
 package com.kb.knowledge.service.impl;
 
 import com.kb.common.exception.BusinessException;
+import com.kb.common.exception.NoPermissionException;
 import com.kb.common.page.PageResult;
 import com.kb.common.result.Result;
 import com.kb.knowledge.entity.Doc;
@@ -122,8 +123,26 @@ public class TrashServiceImpl implements TrashService {
                     throw new BusinessException("永久删除文件失败: " + e.getMessage());
                 }
             }
-            case "doc" -> docMapper.physicalDeleteById(id);
-            case "web" -> webPageMapper.physicalDeleteById(id);
+            case "doc" -> {
+                Doc doc = docMapper.selectDeletedById(id);
+                if (doc == null) {
+                    throw new BusinessException("文档不存在");
+                }
+                if (!doc.getUserId().equals(userId)) {
+                    throw new NoPermissionException();
+                }
+                docMapper.physicalDeleteById(id);
+            }
+            case "web" -> {
+                WebPage webPage = webPageMapper.selectDeletedById(id);
+                if (webPage == null) {
+                    throw new BusinessException("网页不存在");
+                }
+                if (!webPage.getUserId().equals(userId)) {
+                    throw new NoPermissionException();
+                }
+                webPageMapper.physicalDeleteById(id);
+            }
             default -> throw new BusinessException("不支持的资源类型");
         }
     }

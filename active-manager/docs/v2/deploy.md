@@ -17,7 +17,7 @@
 ### 步骤1：本地打包JAR
 
 ```bash
-cd D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-server
+cd D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server
 mvn clean package -DskipTests
 ```
 
@@ -62,7 +62,7 @@ docker logs activecode
 ### 步骤1：本地重新打包
 
 ```bash
-cd D:\huliang\java\ideaworkspace\jonesDevtools\active-manager\activation-code-server
+cd D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server
 mvn clean package -DskipTests
 ```
 

@@ -16,7 +16,7 @@ RUN apk add --no-cache tzdata && \
 
 EXPOSE 8082
 
-ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8"
+ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8"
 ENV SPRING_PROFILES_ACTIVE=prod
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/kb-file.jar"]

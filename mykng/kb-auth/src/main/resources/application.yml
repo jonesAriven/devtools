@@ -39,3 +39,12 @@ api-token:
 logging:
   level:
     com.kb.auth: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

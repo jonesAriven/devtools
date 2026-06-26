@@ -16,7 +16,7 @@ import com.kb.knowledge.service.SearchService;
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
-import com.meilisearch.sdk.model.Searchable;
+import com.meilisearch.sdk.model.SearchResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -57,20 +57,29 @@ public class SearchServiceImpl implements SearchService {
         }
 
         // MeiliSearch 全文搜索
+        if (q == null || q.isBlank()) {
+            throw new BusinessException("搜索关键词不能为空");
+        }
         try {
+            long total = 0;
             if (type == null || "doc".equals(type)) {
-                results.addAll(searchIndex("kb_docs", q, userId, "doc"));
+                IndexSearchResult r = searchIndex("kb_docs", q, userId, "doc");
+                results.addAll(r.hits());
+                total += r.totalHits();
             }
             if (type == null || "web".equals(type)) {
-                results.addAll(searchIndex("kb_webpages", q, userId, "web"));
+                IndexSearchResult r = searchIndex("kb_webpages", q, userId, "web");
+                results.addAll(r.hits());
+                total += r.totalHits();
             }
             if (type == null || "file".equals(type)) {
-                results.addAll(searchIndex("kb_files", q, userId, "file"));
+                IndexSearchResult r = searchIndex("kb_files", q, userId, "file");
+                results.addAll(r.hits());
+                total += r.totalHits();
             }
 
             int start = (page - 1) * size;
             int end = Math.min(start + size, results.size());
-            long total = results.size();
             if (start >= results.size()) {
                 return new PageResult<>(Collections.emptyList(), total, page, size);
             }
@@ -85,8 +94,9 @@ public class SearchServiceImpl implements SearchService {
      * 搜索单个 MeiliSearch 索引
      */
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> searchIndex(String indexUid, String q, Long userId, String resourceType) {
+    private IndexSearchResult searchIndex(String indexUid, String q, Long userId, String resourceType) {
         List<Map<String, Object>> results = new ArrayList<>();
+        int totalHits = 0;
         try {
             Index index = meiliSearchClient.index(indexUid);
             SearchRequest searchRequest = SearchRequest.builder()
@@ -94,8 +104,9 @@ public class SearchServiceImpl implements SearchService {
                     .filter(new String[]{"userId = " + userId})
                     .limit(100)
                     .build();
-            Searchable searchable = index.search(searchRequest);
-            for (Object hit : searchable.getHits()) {
+            SearchResult searchResult = (SearchResult) index.search(searchRequest);
+            totalHits = searchResult.getEstimatedTotalHits();
+            for (Object hit : searchResult.getHits()) {
                 if (hit instanceof Map) {
                     Map<String, Object> hitMap = (Map<String, Object>) hit;
                     hitMap.putIfAbsent("type", resourceType);
@@ -105,8 +116,13 @@ public class SearchServiceImpl implements SearchService {
         } catch (Exception e) {
             log.warn("搜索索引 {} 失败: {}", indexUid, e.getMessage());
         }
-        return results;
+        return new IndexSearchResult(results, totalHits);
     }
+
+    /**
+     * 单个索引的搜索结果（含命中数估算）
+     */
+    private record IndexSearchResult(List<Map<String, Object>> hits, int totalHits) {}
 
     /**
      * 数据库回退搜索（MeiliSearch 不可用时）

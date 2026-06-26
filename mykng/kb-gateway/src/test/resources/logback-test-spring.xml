@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 测试环境日志配置：仅控制台输出。
+     规避主配置 logback-spring.xml 中 FILE appender 写入 Linux 路径 /data/logs 在 Windows 上
+     抛 FileNotFoundException 导致 ApplicationContext 加载失败的问题。 -->
+<configuration>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name"
+                    defaultValue="kb-gateway"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level ${APP_NAME} - %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

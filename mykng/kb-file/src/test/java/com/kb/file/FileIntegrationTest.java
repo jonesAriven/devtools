@@ -1,10 +1,15 @@
 package com.kb.file;
 
+import com.kb.file.mongo.repository.FileContentRepository;
+import com.kb.file.service.MinioService;
+import com.kb.file.service.SearchIndexService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -19,10 +24,19 @@ class FileIntegrationTest {
 
     @Autowired private TestRestTemplate restTemplate;
 
+    // 排除 Redis 自动配置后，RedisConfig.redisTemplate 需要 RedisConnectionFactory，
+    // 这里用 MockBean 替换 RedisTemplate，跳过 RedisConfig 的 @Bean 方法。
+    @MockBean private RedisTemplate<String, Object> redisTemplate;
+    // 集成测试环境无 MinIO / MeiliSearch，Mock 外部服务 Bean。
+    @MockBean private MinioService minioService;
+    @MockBean private SearchIndexService searchIndexService;
+    // 排除 MongoDB 自动配置后 FileContentRepository 无工厂创建，Mock 提供 Bean 供 FileParseServiceImpl 注入。
+    @MockBean private FileContentRepository fileContentRepository;
+
     @Test
-    @DisplayName("健康检查 - Spring上下文正常启动（含MinIO连接）")
+    @DisplayName("健康检查 - Spring上下文正常启动")
     void contextLoads() {
-        // Context startup validates MinIO + MySQL connections
+        // Context startup validates H2 + mocked MinIO/MeiliSearch/Redis
     }
 
     @Test

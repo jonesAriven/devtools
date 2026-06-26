@@ -7,8 +7,10 @@ import com.kb.common.exception.BusinessException;
 import com.kb.common.page.PageResult;
 import com.kb.knowledge.dto.web.WebCollectRequest;
 import com.kb.knowledge.dto.web.WebMoveRequest;
+import com.kb.knowledge.entity.ResourceTag;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.entity.WebPage;
+import com.kb.knowledge.mapper.ResourceTagMapper;
 import com.kb.knowledge.mapper.VersionMapper;
 import com.kb.knowledge.mapper.WebPageMapper;
 import com.kb.knowledge.mongo.doc.WebContent;
@@ -21,6 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.List;
 
 @Service
@@ -30,12 +36,14 @@ public class WebPageServiceImpl implements WebPageService {
     private final WebPageMapper webPageMapper;
     private final VersionMapper versionMapper;
     private final WebContentRepository webContentRepository;
+    private final ResourceTagMapper resourceTagMapper;
     private final EventPublisher eventPublisher;
     private final SearchIndexService searchIndexService;
 
     @Override
     @Transactional
     public WebPage collect(Long userId, WebCollectRequest request) {
+        validateUrl(request.getUrl());
         String htmlContent;
         try {
             htmlContent = HttpUtil.get(request.getUrl(), 10000);
@@ -82,6 +90,26 @@ public class WebPageServiceImpl implements WebPageService {
         return webPage;
     }
 
+    private void validateUrl(String urlString) {
+        try {
+            URL url = new URL(urlString);
+            String protocol = url.getProtocol().toLowerCase();
+            if (!"http".equals(protocol) && !"https".equals(protocol)) {
+                throw new BusinessException("仅允许 http/https 协议");
+            }
+            String host = url.getHost();
+            InetAddress addr = InetAddress.getByName(host);
+            if (addr.isAnyLocalAddress() || addr.isLoopbackAddress()
+                    || addr.isSiteLocalAddress() || addr.isLinkLocalAddress()) {
+                throw new BusinessException("不允许访问内网或保留地址");
+            }
+        } catch (MalformedURLException e) {
+            throw new BusinessException("URL 格式错误");
+        } catch (UnknownHostException e) {
+            throw new BusinessException("无法解析主机名");
+        }
+    }
+
     private String extractTitle(String html) {
         if (html == null) return null;
         int start = html.indexOf("<title>");
@@ -113,12 +141,26 @@ public class WebPageServiceImpl implements WebPageService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id, Long userId) {
         WebPage webPage = getById(id, userId);
         webPageMapper.deleteById(id);
 
         // 删除 MeiliSearch 索引
         searchIndexService.removeWebPageIndex(id);
+
+        // 级联清理 MongoDB 中的 WebContent
+        webContentRepository.findByWebIdOrderByVersionDesc(id)
+                .forEach(wc -> webContentRepository.delete(wc));
+
+        // 级联清理 MySQL 中的 Version
+        versionMapper.delete(new LambdaQueryWrapper<Version>()
+                .eq(Version::getResourceId, id)
+                .eq(Version::getResourceType, "web"));
+
+        // 级联清理 MySQL 中的 ResourceTag
+        resourceTagMapper.delete(new LambdaQueryWrapper<ResourceTag>()
+                .eq(ResourceTag::getResourceId, id));
 
         // 发布操作事件
         eventPublisher.publishKnowledgeEvent(userId, "DELETE", "web", id,
@@ -145,6 +187,7 @@ public class WebPageServiceImpl implements WebPageService {
     public WebPage refetch(Long id, Long userId) {
         WebPage webPage = getById(id, userId);
 
+        validateUrl(webPage.getUrl());
         String htmlContent;
         try {
             htmlContent = HttpUtil.get(webPage.getUrl(), 10000);
@@ -169,7 +212,7 @@ public class WebPageServiceImpl implements WebPageService {
 
         // 保存新版本内容
         Integer maxVersion = webContentRepository.findByWebIdOrderByVersionDesc(id)
-                .stream().findFirst().map(WebContent::getVersion).orElse(1);
+                .stream().findFirst().map(WebContent::getVersion).orElse(0);
         WebContent content = new WebContent();
         content.setWebId(id);
         content.setUserId(userId);

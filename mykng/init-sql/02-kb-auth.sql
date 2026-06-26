@@ -69,6 +69,6 @@ CREATE TABLE IF NOT EXISTS `ops_api_token` (
 
 -- 初始管理员账号（密码: admin123, BCrypt加密）
 INSERT INTO `user` (`username`, `password`, `nickname`, `status`)
-SELECT 'admin', '$2a$10$N.ZOn9G6/YLFixAOPMg/h.z7pCu6v2XyFDtC4q.jeeGm/TEZyj3C6', '管理员', 1
+SELECT 'admin', '$2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK', '管理员', 1
 WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE `username` = 'admin');
 

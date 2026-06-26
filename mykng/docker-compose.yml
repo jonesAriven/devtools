@@ -135,12 +135,18 @@ services:
       - KB_FILE_HOST=kb-file:8082
       - KB_KNOWLEDGE_HOST=kb-knowledge:8083
       - KB_OPS_HOST=kb-ops:8084
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       kb-auth:
-        condition: service_started
+        condition: service_healthy
     networks:
       - kb-net
-    mem_limit: 384m
+    mem_limit: 512m
 
   kb-auth:
     build:
@@ -160,6 +166,12 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       mysql:
         condition: service_healthy
@@ -195,6 +207,12 @@ services:
       - MONGO_USER=kb
       - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
       - MONGO_DB=kb_file
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       mysql:
         condition: service_healthy
@@ -235,6 +253,12 @@ services:
       - MONGO_DB=kb_knowledge
       - KB_AUTH_HOST=kb-auth
       - KB_FILE_HOST=kb-file
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       mysql:
         condition: service_healthy
@@ -245,9 +269,9 @@ services:
       mongodb:
         condition: service_healthy
       kb-auth:
-        condition: service_started
+        condition: service_healthy
       kb-file:
-        condition: service_started
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 512m
@@ -270,16 +294,22 @@ services:
       - REDIS_PORT=6379
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
       - KB_AUTH_HOST=kb-auth
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
       kb-auth:
-        condition: service_started
+        condition: service_healthy
     networks:
       - kb-net
-    mem_limit: 384m
+    mem_limit: 512m
 
 # ========== 数据卷 ==========
 volumes:

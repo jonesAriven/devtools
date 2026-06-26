@@ -5,10 +5,14 @@ import com.kb.common.exception.BusinessException;
 import com.kb.knowledge.dto.folder.FolderCreateRequest;
 import com.kb.knowledge.dto.folder.FolderMoveRequest;
 import com.kb.knowledge.dto.folder.FolderSortRequest;
+import com.kb.knowledge.entity.Doc;
 import com.kb.knowledge.entity.Folder;
 import com.kb.knowledge.entity.Space;
+import com.kb.knowledge.entity.WebPage;
+import com.kb.knowledge.mapper.DocMapper;
 import com.kb.knowledge.mapper.FolderMapper;
 import com.kb.knowledge.mapper.SpaceMapper;
+import com.kb.knowledge.mapper.WebPageMapper;
 import com.kb.knowledge.service.EventPublisher;
 import com.kb.knowledge.service.FolderService;
 import com.kb.knowledge.service.SearchIndexService;
@@ -26,6 +30,8 @@ public class FolderServiceImpl implements FolderService {
 
     private final FolderMapper folderMapper;
     private final SpaceMapper spaceMapper;
+    private final DocMapper docMapper;
+    private final WebPageMapper webPageMapper;
     private final EventPublisher eventPublisher;
     private final SearchIndexService searchIndexService;
 
@@ -50,7 +56,7 @@ public class FolderServiceImpl implements FolderService {
 
     private List<Folder> buildTree(List<Folder> allFolders) {
         Map<Long, List<Folder>> parentMap = allFolders.stream()
-                .collect(Collectors.groupingBy(Folder::getParentId));
+                .collect(Collectors.groupingBy(f -> f.getParentId() == null ? 0L : f.getParentId()));
 
         List<Folder> roots = parentMap.getOrDefault(0L, new ArrayList<>());
         setChildren(roots, parentMap);
@@ -67,6 +73,7 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     public Folder create(Long userId, FolderCreateRequest request) {
+        checkSpaceOwner(request.getSpaceId(), userId);
         Folder folder = new Folder();
         folder.setSpaceId(request.getSpaceId());
         folder.setParentId(request.getParentId() != null ? request.getParentId() : 0L);
@@ -112,6 +119,13 @@ public class FolderServiceImpl implements FolderService {
             throw new BusinessException("文件夹下存在子文件夹，无法删除");
         }
 
+        if (docMapper.selectCount(new LambdaQueryWrapper<Doc>().eq(Doc::getFolderId, id)) > 0) {
+            throw new BusinessException("目录下存在文档，请先迁移或删除");
+        }
+        if (webPageMapper.selectCount(new LambdaQueryWrapper<WebPage>().eq(WebPage::getFolderId, id)) > 0) {
+            throw new BusinessException("目录下存在网页收藏，请先迁移或删除");
+        }
+
         folderMapper.deleteById(id);
 
         // 删除 MeiliSearch 索引
@@ -129,6 +143,26 @@ public class FolderServiceImpl implements FolderService {
             throw new BusinessException("文件夹不存在");
         }
         checkSpaceOwner(folder.getSpaceId(), userId);
+
+        Long targetParentId = request.getParentId();
+        if (targetParentId != null && targetParentId != 0L) {
+            Folder target = folderMapper.selectById(targetParentId);
+            if (target == null) {
+                throw new BusinessException("目标目录不存在");
+            }
+            Long ancestorId = targetParentId;
+            while (ancestorId != null && ancestorId != 0L) {
+                if (ancestorId.equals(id)) {
+                    throw new BusinessException("不能将目录移动到其子目录下");
+                }
+                Folder ancestor = folderMapper.selectById(ancestorId);
+                if (ancestor == null) {
+                    break;
+                }
+                ancestorId = ancestor.getParentId();
+            }
+        }
+
         folder.setParentId(request.getParentId());
         folderMapper.updateById(folder);
 
