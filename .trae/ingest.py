@@ -315,9 +315,9 @@ def ingest_all():
 def ingest_changed():
     """增量灌入 git pull 后变更的文件"""
     import subprocess
-    # 获取变更的 .md 文件
+    # 获取变更的 .md 文件（-c core.quotepath=false 避免中文路径被八进制转义）
     result = subprocess.run(
-        ["git", "diff", "HEAD@{1}", "--name-only", "--diff-filter=ACMR", "*.md"],
+        ["git", "-c", "core.quotepath=false", "diff", "HEAD@{1}", "--name-only", "--diff-filter=ACMR", "*.md"],
         cwd=REPO_PATH, capture_output=True, text=True, timeout=30,
     )
     changed = [l.strip() for l in result.stdout.splitlines() if l.strip()]
@@ -353,7 +353,7 @@ def ingest_deleted():
     """删除已从仓库删除的文件对应的向量"""
     import subprocess
     result = subprocess.run(
-        ["git", "diff", "HEAD@{1}", "--name-only", "--diff-filter=D", "*.md"],
+        ["git", "-c", "core.quotepath=false", "diff", "HEAD@{1}", "--name-only", "--diff-filter=D", "*.md"],
         cwd=REPO_PATH, capture_output=True, text=True, timeout=30,
     )
     deleted = [l.strip() for l in result.stdout.splitlines() if l.strip()]

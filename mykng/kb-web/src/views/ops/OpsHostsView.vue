@@ -63,7 +63,7 @@ const form = reactive<Partial<OpsHost>>({})
 async function loadData() {
   loading.value = true
   try {
-    const res = await getHostList({ page: 1, pageSize: 100 })
+    const res = await getHostList({ page: 1, size: 100 })
     list.value = res.data.data.list
   } catch { ElMessage.error('加载主机列表失败') }
   finally { loading.value = false }

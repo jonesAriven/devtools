@@ -34,6 +34,7 @@ public class DocServiceImpl implements DocService {
     private final DocMapper docMapper;
     private final VersionMapper versionMapper;
     private final ResourceTagMapper resourceTagMapper;
+    private final com.kb.knowledge.mapper.FolderMapper folderMapper;
     private final DocContentRepository docContentRepository;
     private final EventPublisher eventPublisher;
     private final SearchIndexService searchIndexService;
@@ -94,6 +95,20 @@ public class DocServiceImpl implements DocService {
         Doc doc = docMapper.selectById(id);
         if (doc == null || !doc.getUserId().equals(userId)) {
             throw new BusinessException("文档不存在");
+        }
+        // 从 MongoDB 获取最新版本的内容
+        List<DocContent> contents = docContentRepository.findByDocIdOrderByVersionDesc(id);
+        if (!contents.isEmpty()) {
+            DocContent latest = contents.get(0);
+            doc.setContent(latest.getContent());
+            doc.setWordCount(latest.getContent() != null ? latest.getContent().length() : 0);
+        }
+        // 从 folder 表获取 spaceId
+        if (doc.getFolderId() != null) {
+            com.kb.knowledge.entity.Folder folder = folderMapper.selectById(doc.getFolderId());
+            if (folder != null) {
+                doc.setSpaceId(folder.getSpaceId());
+            }
         }
         return doc;
     }

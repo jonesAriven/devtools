@@ -162,7 +162,7 @@ const filteredList = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getFileList({ page: page.value, pageSize: pageSize.value, folderId: 0 })
+    const res = await getFileList({ page: page.value, size: pageSize.value, folderId: 0 })
     list.value = res.data.data.list
     total.value = res.data.data.total
   } catch {

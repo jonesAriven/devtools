@@ -10,7 +10,7 @@ export function usePagination(defaultPageSize = 20) {
 
   const pageParams = computed<PageParams>(() => ({
     page: page.value,
-    pageSize: pageSize.value,
+    size: pageSize.value,
   }))
 
   function handleCurrentChange(val: number) {

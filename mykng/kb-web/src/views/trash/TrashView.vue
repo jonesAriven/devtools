@@ -73,7 +73,7 @@ onMounted(() => {
 })
 
 async function loadTrash() {
-  const res = await getTrashList({ page: page.value, pageSize: pageSize.value })
+  const res = await getTrashList({ page: page.value, size: pageSize.value })
   trashList.value = res.data.data.list
   total.value = res.data.data.total
 }

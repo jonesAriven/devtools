@@ -128,7 +128,7 @@ async function loadResources() {
   loading.value = true
   try {
     const folderId = props.folderId || 0
-    const params = { page: page.value, pageSize, folderId }
+    const params = { page: page.value, size: pageSize, folderId: props.folderId || undefined }
     const [fileRes, docRes, webRes] = await Promise.all([
       getFileList(params as any),
       getDocList(params as any),

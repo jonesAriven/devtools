@@ -139,7 +139,7 @@ async function doSearch() {
     keyword: keyword.value,
     type: typeVal,
     page: page.value,
-    pageSize,
+    size: pageSize,
   })
   results.value = res.data.data.list || []
   total.value = res.data.data.total || 0

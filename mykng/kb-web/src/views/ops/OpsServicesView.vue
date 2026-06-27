@@ -60,7 +60,7 @@ const form = reactive<Partial<OpsService>>({})
 async function loadData() {
   loading.value = true
   try {
-    const res = await getServiceList({ page: 1, pageSize: 100 })
+    const res = await getServiceList({ page: 1, size: 100 })
     list.value = res.data.data.list
   } catch { ElMessage.error('加载服务列表失败') }
   finally { loading.value = false }

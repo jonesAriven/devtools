@@ -171,7 +171,7 @@ async function loadData() {
   try {
     const res = await getLogList({
       page: page.value,
-      pageSize: pageSize.value,
+      size: pageSize.value,
       action: filterAction.value || undefined,
       resourceType: filterResourceType.value || undefined,
     })

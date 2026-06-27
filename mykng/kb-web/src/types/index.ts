@@ -11,13 +11,13 @@ export interface PageResult<T> {
   list: T[]
   total: number
   page: number
-  pageSize: number
+  size: number
 }
 
 /** 分页请求参数 */
 export interface PageParams {
   page: number
-  pageSize: number
+  size: number
 }
 
 /** 用户 */
@@ -304,7 +304,7 @@ export interface SearchParams {
   folderId?: number
   tagId?: number
   page?: number
-  pageSize?: number
+  size?: number
 }
 
 /** 回收站项 */

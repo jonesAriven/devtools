@@ -7,7 +7,7 @@ interface SearchParams {
   folderId?: number
   tagId?: number
   page?: number
-  pageSize?: number
+  size?: number
 }
 
 /** 全文搜索 */
@@ -19,7 +19,7 @@ export function search(params: SearchParams) {
       folderId: params.folderId,
       tagId: params.tagId,
       page: params.page,
-      size: params.pageSize,
+      size: params.size,
     },
   })
 }

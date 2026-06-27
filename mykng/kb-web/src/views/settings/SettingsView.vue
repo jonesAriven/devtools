@@ -295,7 +295,7 @@ async function handleDeleteBucket(id: number) {
 }
 
 async function loadLogs() {
-  const res = await getLogList({ page: logPage.value, pageSize: 20 })
+  const res = await getLogList({ page: logPage.value, size: 20 })
   logList.value = res.data.data.list
   logTotal.value = res.data.data.total
 }

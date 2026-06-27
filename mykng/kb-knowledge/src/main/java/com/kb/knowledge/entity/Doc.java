@@ -28,4 +28,13 @@ public class Doc {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+
+    @TableField(exist = false)
+    private String content;
+
+    @TableField(exist = false)
+    private Long spaceId;
+
+    @TableField(exist = false)
+    private Integer wordCount;
 }
