@@ -22,6 +22,11 @@ public class FolderController {
 
     private final FolderService folderService;
 
+    @GetMapping("/tree")
+    public Result<List<Folder>> getTreeByParam(@RequestParam Long spaceId) {
+        return Result.ok(folderService.getTree(spaceId, getCurrentUserId()));
+    }
+
     @GetMapping("/tree/{spaceId}")
     public Result<List<Folder>> getTree(@PathVariable Long spaceId) {
         return Result.ok(folderService.getTree(spaceId, getCurrentUserId()));
