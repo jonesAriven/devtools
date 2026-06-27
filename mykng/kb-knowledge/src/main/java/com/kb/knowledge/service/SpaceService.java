@@ -10,6 +10,8 @@ public interface SpaceService {
 
     List<Space> listByUserId(Long userId);
 
+    Space getById(Long id, Long userId);
+
     Space create(Long userId, SpaceCreateRequest request);
 
     Space update(Long id, Long userId, SpaceUpdateRequest request);

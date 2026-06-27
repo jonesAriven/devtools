@@ -29,6 +29,11 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     @Override
+    public Space getById(Long id, Long userId) {
+        return getAndCheckOwner(id, userId);
+    }
+
+    @Override
     public Space create(Long userId, SpaceCreateRequest request) {
         Space space = new Space();
         space.setUserId(userId);

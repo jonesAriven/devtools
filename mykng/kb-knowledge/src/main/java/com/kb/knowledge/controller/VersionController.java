@@ -17,8 +17,19 @@ public class VersionController {
 
     private final VersionService versionService;
 
+    @GetMapping("/list")
+    public Result<List<Version>> listVersions(
+            @RequestParam(required = false) String resourceType,
+            @RequestParam(required = false) Long resourceId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long id) {
+        String resType = resourceType != null ? resourceType : type;
+        Long resId = resourceId != null ? resourceId : id;
+        return Result.ok(versionService.listVersions(resType, resId));
+    }
+
     @GetMapping("/list/{type}/{id}")
-    public Result<List<Version>> listVersions(@PathVariable String type, @PathVariable Long id) {
+    public Result<List<Version>> listVersionsByPath(@PathVariable String type, @PathVariable Long id) {
         return Result.ok(versionService.listVersions(type, id));
     }
 

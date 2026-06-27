@@ -315,8 +315,8 @@ const tokenForm = reactive<CreateTokenRequest>({
 async function loadTokens() {
   tokenLoading.value = true
   try {
-    const res = await getTokenList()
-    tokenList.value = res.data.data
+    const res = await getTokenList({ page: 1, size: 50 })
+    tokenList.value = res.data.data.list || []
   } finally {
     tokenLoading.value = false
   }

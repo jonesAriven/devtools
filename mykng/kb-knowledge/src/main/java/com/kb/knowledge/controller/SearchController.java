@@ -8,6 +8,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,6 +28,17 @@ public class SearchController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.ok(searchService.search(getCurrentUserId(), q, type, folderId, tagId, page, size));
+    }
+
+    @GetMapping("/suggest")
+    public Result<List<String>> suggest(@RequestParam(required = false) String q,
+                                        @RequestParam(required = false) String keyword) {
+        String query = (q != null && !q.isBlank()) ? q : keyword;
+        if (query == null || query.isBlank()) {
+            return Result.ok(new ArrayList<>());
+        }
+        // 简单实现：返回空建议列表，后续可对接MeiliSearch suggestion
+        return Result.ok(new ArrayList<>());
     }
 
     private Long getCurrentUserId() {

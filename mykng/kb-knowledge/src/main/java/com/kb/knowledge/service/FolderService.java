@@ -11,6 +11,8 @@ public interface FolderService {
 
     List<Folder> getTree(Long spaceId, Long userId);
 
+    Folder getById(Long id, Long userId);
+
     Folder create(Long userId, FolderCreateRequest request);
 
     Folder update(Long id, Long userId, String name);

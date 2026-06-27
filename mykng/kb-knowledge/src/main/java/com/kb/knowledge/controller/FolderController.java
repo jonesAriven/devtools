@@ -32,6 +32,11 @@ public class FolderController {
         return Result.ok(folderService.getTree(spaceId, getCurrentUserId()));
     }
 
+    @GetMapping("/{id}")
+    public Result<Folder> getById(@PathVariable Long id) {
+        return Result.ok(folderService.getById(id, getCurrentUserId()));
+    }
+
     @PostMapping
     public Result<Folder> create(@Valid @RequestBody FolderCreateRequest request) {
         return Result.ok(folderService.create(getCurrentUserId(), request));

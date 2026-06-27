@@ -54,6 +54,16 @@ public class FolderServiceImpl implements FolderService {
         return buildTree(allFolders);
     }
 
+    @Override
+    public Folder getById(Long id, Long userId) {
+        Folder folder = folderMapper.selectById(id);
+        if (folder == null) {
+            throw new BusinessException("文件夹不存在");
+        }
+        checkSpaceOwner(folder.getSpaceId(), userId);
+        return folder;
+    }
+
     private List<Folder> buildTree(List<Folder> allFolders) {
         Map<Long, List<Folder>> parentMap = allFolders.stream()
                 .collect(Collectors.groupingBy(f -> f.getParentId() == null ? 0L : f.getParentId()));

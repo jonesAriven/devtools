@@ -25,6 +25,11 @@ public class SpaceController {
         return Result.ok(spaceService.listByUserId(getCurrentUserId()));
     }
 
+    @GetMapping("/{id}")
+    public Result<Space> getById(@PathVariable Long id) {
+        return Result.ok(spaceService.getById(id, getCurrentUserId()));
+    }
+
     @PostMapping
     public Result<Space> create(@Valid @RequestBody SpaceCreateRequest request) {
         return Result.ok(spaceService.create(getCurrentUserId(), request));
