@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -108,10 +109,11 @@ public class AuthServiceImpl implements AuthService {
 
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
 
-        RefreshToken storedToken = refreshTokenMapper.selectOne(
+        List<RefreshToken> tokens = refreshTokenMapper.selectList(
                 new LambdaQueryWrapper<RefreshToken>()
                         .eq(RefreshToken::getUserId, userId)
                         .eq(RefreshToken::getToken, refreshToken));
+        RefreshToken storedToken = tokens.stream().findFirst().orElse(null);
         if (storedToken == null) {
             throw new BusinessException(401, "RefreshToken不存在");
         }
@@ -121,7 +123,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(401, "用户不存在或已被禁用");
         }
 
-        refreshTokenMapper.deleteById(storedToken.getId());
+        // 删除该 refresh token 对应的所有记录（防止重复 token 残留导致下次 selectOne 抛 TooManyResultsException）
+        refreshTokenMapper.delete(
+                new LambdaQueryWrapper<RefreshToken>()
+                        .eq(RefreshToken::getUserId, userId)
+                        .eq(RefreshToken::getToken, refreshToken));
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
