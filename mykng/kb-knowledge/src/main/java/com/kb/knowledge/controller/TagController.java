@@ -50,6 +50,24 @@ public class TagController {
         return Result.ok();
     }
 
+    @GetMapping("/resource")
+    public Result<List<Tag>> getResourceTags(@RequestParam Long resourceId,
+                                             @RequestParam String resourceType) {
+        return Result.ok(tagService.getTagsByResource(getCurrentUserId(), resourceId, resourceType));
+    }
+
+    @PostMapping("/resource")
+    public Result<Void> addResourceTag(@Valid @RequestBody TagBindRequest request) {
+        tagService.bind(getCurrentUserId(), request);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/resource")
+    public Result<Void> removeResourceTag(@RequestBody TagBindRequest request) {
+        tagService.unbind(getCurrentUserId(), request.getTagId(), request.getResourceType(), request.getResourceId());
+        return Result.ok();
+    }
+
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return Long.parseLong(auth.getName());

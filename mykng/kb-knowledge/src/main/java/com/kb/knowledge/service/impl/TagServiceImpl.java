@@ -100,4 +100,20 @@ public class TagServiceImpl implements TagService {
                         .eq(ResourceTag::getResourceType, resourceType)
                         .eq(ResourceTag::getResourceId, resourceId));
     }
+
+    @Override
+    public List<Tag> getTagsByResource(Long userId, Long resourceId, String resourceType) {
+        List<ResourceTag> rts = resourceTagMapper.selectList(
+                new LambdaQueryWrapper<ResourceTag>()
+                        .eq(ResourceTag::getResourceId, resourceId)
+                        .eq(ResourceTag::getResourceType, resourceType));
+        if (rts.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<Long> tagIds = rts.stream().map(ResourceTag::getTagId).toList();
+        return tagMapper.selectList(
+                new LambdaQueryWrapper<Tag>()
+                        .in(Tag::getId, tagIds)
+                        .eq(Tag::getUserId, userId));
+    }
 }

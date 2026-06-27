@@ -56,6 +56,11 @@ public class KbFileController {
         return Result.ok(kbFileService.getDownloadUrl(id, getCurrentUserId()));
     }
 
+    @GetMapping("/{id}/content")
+    public Result<String> getContent(@PathVariable Long id) {
+        return Result.ok(kbFileService.getContent(id, getCurrentUserId()));
+    }
+
     @PostMapping("/{id}/reparse")
     public Result<Void> reparse(@PathVariable Long id) {
         kbFileService.reparse(id, getCurrentUserId());

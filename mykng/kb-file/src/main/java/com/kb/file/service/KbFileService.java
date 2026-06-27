@@ -27,4 +27,6 @@ public interface KbFileService {
     void star(Long id, Long userId);
 
     void move(Long id, Long userId, FileMoveRequest request);
+
+    String getContent(Long id, Long userId);
 }

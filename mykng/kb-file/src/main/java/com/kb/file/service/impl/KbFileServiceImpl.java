@@ -12,6 +12,7 @@ import com.kb.file.entity.FileChunk;
 import com.kb.file.entity.KbFile;
 import com.kb.file.mapper.FileChunkMapper;
 import com.kb.file.mapper.KbFileMapper;
+import com.kb.file.mongo.repository.FileContentRepository;
 import com.kb.file.service.EventPublisher;
 import com.kb.file.service.FileParseTrigger;
 import com.kb.file.service.KbFileService;
@@ -41,6 +42,7 @@ public class KbFileServiceImpl implements KbFileService {
     private final FileParseTrigger fileParseTrigger;
     private final EventPublisher eventPublisher;
     private final SearchIndexService searchIndexService;
+    private final FileContentRepository fileContentRepository;
 
     @Override
     public String uploadChunk(Long userId, String fileId, Integer chunkNumber, MultipartFile file) {
@@ -221,6 +223,14 @@ public class KbFileServiceImpl implements KbFileService {
         KbFile file = getById(id, userId);
         file.setFolderId(request.getFolderId());
         kbFileMapper.updateById(file);
+    }
+
+    @Override
+    public String getContent(Long id, Long userId) {
+        KbFile file = getById(id, userId);
+        return fileContentRepository.findByFileIdAndIsCurrentTrue(id)
+                .map(c -> c.getContent() != null ? c.getContent() : "")
+                .orElse("");
     }
 
     // ======================== 私有方法 ========================

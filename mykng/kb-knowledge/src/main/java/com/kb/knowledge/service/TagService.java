@@ -16,4 +16,6 @@ public interface TagService {
     void bind(Long userId, TagBindRequest request);
 
     void unbind(Long userId, Long tagId, String resourceType, Long resourceId);
+
+    List<Tag> getTagsByResource(Long userId, Long resourceId, String resourceType);
 }
