@@ -5,6 +5,7 @@ import com.kb.knowledge.feign.dto.FileDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
@@ -56,4 +57,7 @@ public interface FileClient {
      */
     @org.springframework.web.bind.annotation.DeleteMapping("/file/{id}/permanent")
     Result<Void> permanentDelete(@PathVariable("id") Long id);
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/file/trash/empty")
+    Result<Void> emptyTrash(@RequestParam("userId") Long userId);
 }

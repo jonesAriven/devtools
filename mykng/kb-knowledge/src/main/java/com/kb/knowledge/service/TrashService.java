@@ -11,4 +11,6 @@ public interface TrashService {
     void restore(Long userId, String type, Long id);
 
     void permanentDelete(Long userId, String type, Long id);
+
+    void empty(Long userId);
 }

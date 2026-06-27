@@ -41,7 +41,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchSuggest } from '@/api/search'
-import { CONTEXT_PATH } from '@/config'
 
 const router = useRouter()
 const keyword = ref('')
@@ -71,13 +70,13 @@ async function handleSuggest() {
 function handleSearch() {
   showSuggest.value = false
   if (!keyword.value.trim()) return
-  router.push({ path: `${CONTEXT_PATH}/search`, query: { q: keyword.value } })
+  router.push({ path: '/search', query: { q: keyword.value } })
 }
 
 function handleSelectSuggest(item: string) {
   keyword.value = item
   showSuggest.value = false
-  router.push({ path: `${CONTEXT_PATH}/search`, query: { q: item } })
+  router.push({ path: '/search', query: { q: item } })
 }
 </script>
 

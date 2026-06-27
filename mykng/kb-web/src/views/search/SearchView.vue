@@ -7,13 +7,14 @@
         size="large"
         clearable
         class="search-input"
-        @keyup.enter="handleSearch"
+        @keyup.enter="handleNewSearch"
+        @clear="handleClear"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
         <template #append>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button type="primary" @click="handleNewSearch">搜索</el-button>
         </template>
       </el-input>
     </div>
@@ -24,7 +25,7 @@
           <div class="card-title">筛选条件</div>
           <el-form label-width="60px" label-position="top">
             <el-form-item label="类型">
-              <el-select v-model="filters.type" placeholder="全部" clearable style="width: 100%" @change="handleSearch">
+              <el-select v-model="filters.type" placeholder="全部" clearable style="width: 100%" @change="handleNewSearch">
                 <el-option label="全部" value="all" />
                 <el-option label="文件" value="file" />
                 <el-option label="笔记" value="doc" />
@@ -73,7 +74,7 @@
               :page-size="pageSize"
               :total="total"
               layout="prev, pager, next"
-              @current-change="handleSearch"
+              @current-change="handlePageChange"
             />
           </div>
         </div>
@@ -91,7 +92,6 @@ import StarToggle from '@/components/StarToggle.vue'
 import { toggleFileStar } from '@/api/file'
 import { toggleDocStar } from '@/api/doc'
 import { toggleWebPageStar } from '@/api/web'
-import { CONTEXT_PATH } from '@/config'
 
 const route = useRoute()
 const router = useRouter()
@@ -110,21 +110,39 @@ const filters = reactive({
 onMounted(() => {
   if (route.query.q) {
     keyword.value = route.query.q as string
-    handleSearch()
+    handleNewSearch()
   }
 })
 
-async function handleSearch() {
+async function handleNewSearch() {
+  page.value = 1
+  await doSearch()
+}
+
+async function handlePageChange(p: number) {
+  page.value = p
+  await doSearch()
+}
+
+function handleClear() {
+  keyword.value = ''
+  results.value = []
+  total.value = 0
+  searched.value = false
+}
+
+async function doSearch() {
   if (!keyword.value.trim()) return
   searched.value = true
+  const typeVal = filters.type && filters.type !== 'all' ? filters.type : undefined
   const res = await search({
     keyword: keyword.value,
-    type: (filters.type as any) || undefined,
+    type: typeVal,
     page: page.value,
     pageSize,
   })
-  results.value = res.data.data.list
-  total.value = res.data.data.total
+  results.value = res.data.data.list || []
+  total.value = res.data.data.total || 0
 }
 
 function typeLabel(type: string): string {
@@ -134,11 +152,11 @@ function typeLabel(type: string): string {
 
 function goToResource(item: SearchResult) {
   if (item.type === 'file') {
-    router.push(`${CONTEXT_PATH}/file/${item.id}`)
+    router.push(`/file/${item.id}`)
   } else if (item.type === 'doc') {
-    router.push(`${CONTEXT_PATH}/doc/${item.id}`)
+    router.push(`/doc/${item.id}`)
   } else if (item.type === 'web') {
-    router.push(`${CONTEXT_PATH}/web/${item.id}`)
+    router.push(`/web/${item.id}`)
   }
 }
 

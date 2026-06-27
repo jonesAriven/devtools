@@ -137,3 +137,81 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
   KEY `idx_action` (`action`),
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- 端口管理表
+CREATE TABLE IF NOT EXISTS `ops_port` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT,
+    `host_id`       BIGINT       NOT NULL COMMENT '关联主机ID',
+    `port`          INT          NOT NULL COMMENT '端口号',
+    `protocol`      VARCHAR(16)  DEFAULT 'TCP' COMMENT '协议: TCP/UDP',
+    `service_id`    BIGINT       DEFAULT NULL COMMENT '关联服务ID(可空)',
+    `purpose`       VARCHAR(256) DEFAULT NULL COMMENT '用途说明',
+    `status`        INT          DEFAULT 1 COMMENT '1=开放 0=关闭',
+    `exposed`       INT          DEFAULT 0 COMMENT '是否对外暴露 0=否 1=是',
+    `remark`        VARCHAR(512) DEFAULT NULL COMMENT '备注',
+    `deleted`       INT          DEFAULT 0 COMMENT '逻辑删除',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_host_id` (`host_id`),
+    KEY `idx_service_id` (`service_id`),
+    KEY `idx_port` (`port`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='端口管理表';
+
+-- 凭据管理表
+CREATE TABLE IF NOT EXISTS `ops_credential` (
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+    `name`               VARCHAR(128) NOT NULL COMMENT '凭据名称',
+    `type`               VARCHAR(64)  NOT NULL COMMENT '类型: SSH/DB/API_TOKEN/OTHER',
+    `username`           VARCHAR(128) DEFAULT NULL COMMENT '用户名',
+    `password_encrypted` TEXT         DEFAULT NULL COMMENT '加密后的密码(AES-256-GCM)',
+    `secret_key`         TEXT         DEFAULT NULL COMMENT 'API key 类密钥(加密存储)',
+    `host_id`            BIGINT       DEFAULT NULL COMMENT '关联主机ID(可空)',
+    `service_id`         BIGINT       DEFAULT NULL COMMENT '关联服务ID(可空)',
+    `remark`             VARCHAR(512) DEFAULT NULL COMMENT '备注',
+    `deleted`            INT          DEFAULT 0 COMMENT '逻辑删除',
+    `created_at`         DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_type` (`type`),
+    KEY `idx_host_id` (`host_id`),
+    KEY `idx_service_id` (`service_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='凭据管理表';
+
+-- 域名管理表
+CREATE TABLE IF NOT EXISTS `ops_domain` (
+    `id`              BIGINT       NOT NULL AUTO_INCREMENT,
+    `domain`          VARCHAR(256) NOT NULL COMMENT '域名',
+    `type`            VARCHAR(32)  DEFAULT NULL COMMENT '类型: 顶级域/子域',
+    `purpose`         VARCHAR(256) DEFAULT NULL COMMENT '用途',
+    `registrar`       VARCHAR(128) DEFAULT NULL COMMENT '注册商',
+    `expires_at`      DATETIME     DEFAULT NULL COMMENT '域名到期时间',
+    `ssl_expires_at`  DATETIME     DEFAULT NULL COMMENT 'SSL证书到期时间',
+    `status`          INT          DEFAULT 1 COMMENT '1=正常 0=过期 2=即将过期',
+    `remark`          VARCHAR(512) DEFAULT NULL COMMENT '备注',
+    `deleted`         INT          DEFAULT 0 COMMENT '逻辑删除',
+    `created_at`      DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_domain` (`domain`),
+    KEY `idx_status` (`status`),
+    KEY `idx_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='域名管理表';
+
+-- 服务依赖关系表
+CREATE TABLE IF NOT EXISTS `ops_dependency` (
+    `id`                       BIGINT       NOT NULL AUTO_INCREMENT,
+    `service_id`               BIGINT       NOT NULL COMMENT '依赖方服务ID',
+    `service_name`             VARCHAR(128) DEFAULT NULL COMMENT '依赖方服务名(冗余)',
+    `depends_on_service_id`   BIGINT       NOT NULL COMMENT '被依赖服务ID',
+    `depends_on_service_name`  VARCHAR(128) DEFAULT NULL COMMENT '被依赖服务名(冗余)',
+    `dependency_type`          VARCHAR(32)  DEFAULT 'REQUIRED' COMMENT '依赖类型: REQUIRED/OPTIONAL/WEAK',
+    `description`              VARCHAR(512) DEFAULT NULL COMMENT '依赖描述',
+    `deleted`                  INT          DEFAULT 0 COMMENT '逻辑删除',
+    `created_at`               DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`               DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_service_id` (`service_id`),
+    KEY `idx_depends_on_service_id` (`depends_on_service_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='服务依赖关系表';

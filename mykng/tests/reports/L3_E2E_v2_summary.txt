@@ -1,0 +1,23 @@
+total=17
+passed=16
+failed=1
+pass_rate=94.1
+
+--- 用例明细 ---
+L3-PAGE-001|登录页 /kb/login|PASS|HTTP 200 | title=知识库 | 含 input+button
+L3-PAGE-002|仪表盘 /kb/dashboard|PASS|HTTP 200 | 命中关键字: ['仪表盘', '空间'] | url=https://kb.marschat.online/kb/dashboard
+L3-PAGE-003|空间内容 /kb/space/1|PASS|HTTP 200 | 命中关键字: ['空间'] | url=https://kb.marschat.online/kb/space/1
+L3-PAGE-004|文件详情 /kb/file/1|PASS|HTTP 200 | url=https://kb.marschat.online/kb/file/1
+L3-PAGE-005|创建文档 /kb/doc/create|PASS|HTTP 200 | url=https://kb.marschat.online/kb/doc/create
+L3-PAGE-006|文档详情 /kb/doc/1|PASS|HTTP 200 | url=https://kb.marschat.online/kb/doc/1
+L3-PAGE-007|网页详情 /kb/web/1|PASS|HTTP 200 | url=https://kb.marschat.online/kb/web/1
+L3-PAGE-008|搜索页 /kb/search|PASS|HTTP 200 | 命中关键字: ['搜索'] | url=https://kb.marschat.online/kb/search
+L3-PAGE-009|回收站 /kb/trash|PASS|HTTP 200 | 命中关键字: ['回收站'] | url=https://kb.marschat.online/kb/trash
+L3-PAGE-010|设置 /kb/settings|PASS|HTTP 200 | 命中关键字: ['设置', '用户'] | url=https://kb.marschat.online/kb/settings
+L3-PAGE-011|运维总览 /kb/ops|PASS|HTTP 200 | 命中关键字: ['运维', '主机'] | url=https://kb.marschat.online/kb/ops
+L3-PAGE-012|主机管理 /kb/ops/hosts|PASS|HTTP 200 | 命中关键字: ['主机'] | url=https://kb.marschat.online/kb/ops/hosts
+L3-PAGE-013|分享页 /kb/share/non-existent-code|FAIL|HTTP 200 | 公开分享页被重定向到登录页 url=https://kb.marschat.online/kb/login?redirect=/kb/login（应显示'分享不存在'提示）
+L3-PAGE-TAG|标签管理 /kb/tag|PASS|HTTP 200 | 标题=OK 表格=2 新建按钮=OK | url=https://kb.marschat.online/kb/tag
+L3-PAGE-SHARE|分享中心 /kb/share|PASS|HTTP 200 | 标题=OK 表格=3 | url=https://kb.marschat.online/kb/share
+L3-PAGE-FILE|文件管理 /kb/file|PASS|HTTP 200 | 标题=OK 上传按钮=OK | url=https://kb.marschat.online/kb/file
+L3-PAGE-OPS-LOG|运维日志 /kb/ops/log|PASS|HTTP 200 | 标题=OK 表格=2 action筛选=OK | url=https://kb.marschat.online/kb/ops/log

@@ -36,4 +36,7 @@ public interface DocMapper extends BaseMapper<Doc> {
      */
     @Delete("DELETE FROM doc WHERE id = #{id}")
     int physicalDeleteById(@Param("id") Long id);
+
+    @Delete("DELETE FROM doc WHERE user_id = #{userId} AND deleted = 1")
+    int physicalDeleteAllByUserId(@Param("userId") Long userId);
 }

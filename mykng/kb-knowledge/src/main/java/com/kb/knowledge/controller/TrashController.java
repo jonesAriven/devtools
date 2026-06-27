@@ -37,6 +37,12 @@ public class TrashController {
         return Result.ok();
     }
 
+    @DeleteMapping("/empty")
+    public Result<Void> emptyTrash() {
+        trashService.empty(getCurrentUserId());
+        return Result.ok();
+    }
+
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return Long.parseLong(auth.getName());

@@ -1,110 +1,116 @@
 <template>
   <div class="dashboard-page">
-    <div class="page-title">仪表盘</div>
+    <!-- 统计卡片 -->
+    <div class="stat-cards">
+      <div class="stat-card stat-card--blue" @click="router.push(`/space/${spaceStore.currentSpace?.id || ''}`)">
+        <div class="stat-info">
+          <div class="stat-label">文档数</div>
+          <div class="stat-value">{{ stats.docCount }}</div>
+        </div>
+        <div class="stat-icon stat-icon--blue">
+          <el-icon :size="28"><Document /></el-icon>
+        </div>
+      </div>
+      <div class="stat-card stat-card--green" @click="router.push(`/space/${spaceStore.currentSpace?.id || ''}`)">
+        <div class="stat-info">
+          <div class="stat-label">空间数</div>
+          <div class="stat-value">{{ stats.spaceCount }}</div>
+        </div>
+        <div class="stat-icon stat-icon--green">
+          <el-icon :size="28"><FolderOpened /></el-icon>
+        </div>
+      </div>
+      <div class="stat-card stat-card--orange" @click="router.push('/tag')">
+        <div class="stat-info">
+          <div class="stat-label">标签数</div>
+          <div class="stat-value">{{ stats.tagCount }}</div>
+        </div>
+        <div class="stat-icon stat-icon--orange">
+          <el-icon :size="28"><PriceTag /></el-icon>
+        </div>
+      </div>
+      <div class="stat-card stat-card--purple" @click="router.push('/share')">
+        <div class="stat-info">
+          <div class="stat-label">分享数</div>
+          <div class="stat-value">{{ stats.shareCount }}</div>
+        </div>
+        <div class="stat-icon stat-icon--purple">
+          <el-icon :size="28"><Share /></el-icon>
+        </div>
+      </div>
+    </div>
 
-    <el-row :gutter="16">
-      <el-col :xs="12" :sm="12" :md="6">
-        <div class="stat-card" @click="$router.push(`${CONTEXT_PATH}/space/${spaceStore.currentSpace?.id}`)">
-          <el-icon :size="32" color="#409eff"><Folder /></el-icon>
-          <div class="stat-info">
-            <div class="stat-value">{{ spaceStore.spaceList.length }}</div>
-            <div class="stat-label">知识空间</div>
-          </div>
+    <!-- 主内容区 -->
+    <div class="main-content">
+      <!-- 最近文档 -->
+      <div class="panel panel--recent">
+        <div class="panel-header">
+          <el-icon class="panel-icon"><Clock /></el-icon>
+          <span class="panel-title">最近文档</span>
         </div>
-      </el-col>
-      <el-col :xs="12" :sm="12" :md="6">
-        <div class="stat-card">
-          <el-icon :size="32" color="#67c23a"><Document /></el-icon>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.fileCount }}</div>
-            <div class="stat-label">文件</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :xs="12" :sm="12" :md="6">
-        <div class="stat-card">
-          <el-icon :size="32" color="#e6a23c"><EditPen /></el-icon>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.docCount }}</div>
-            <div class="stat-label">笔记</div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :xs="12" :sm="12" :md="6">
-        <div class="stat-card">
-          <el-icon :size="32" color="#f56c6c"><Link /></el-icon>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.webCount }}</div>
-            <div class="stat-label">网页收藏</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16" style="margin-top: 16px">
-      <el-col :xs="24" :md="16">
-        <div class="info-card">
-          <div class="card-title">最近访问</div>
-          <div v-if="recentItems.length === 0" class="empty-state">
-            <el-icon class="empty-icon"><Clock /></el-icon>
-            <div class="empty-text">暂无最近访问记录</div>
-          </div>
+        <div class="panel-body">
+          <div v-if="recentDocs.length === 0" class="empty-text">暂无文档</div>
           <div v-else>
-            <div v-for="item in recentItems" :key="item.id" class="resource-item" @click="goToResource(item)">
-              <el-icon class="resource-icon">
-                <Document v-if="item.type === 'doc'" />
-                <Picture v-else-if="item.type === 'file'" />
-                <Link v-else />
-              </el-icon>
-              <div class="resource-info">
-                <div class="resource-name">{{ item.title }}</div>
-                <div class="resource-meta">{{ formatRelativeTime(item.updatedAt) }}</div>
+            <div v-for="item in recentDocs" :key="item.id" class="recent-item" @click="goToItem(item)">
+              <el-icon class="recent-icon"><Document /></el-icon>
+              <div class="recent-info">
+                <div class="recent-name">{{ item.title }}</div>
+                <div class="recent-time">{{ formatRelativeTime(item.updatedAt) }}</div>
               </div>
             </div>
           </div>
         </div>
-      </el-col>
+      </div>
 
-      <el-col :xs="24" :md="8">
-        <div class="info-card">
-          <div class="card-title">快捷操作</div>
-          <div class="quick-actions">
-            <el-button type="primary" :icon="Upload" @click="showUpload = true">上传文件</el-button>
-            <el-button type="success" :icon="EditPen" @click="$router.push(`${CONTEXT_PATH}/doc/create`)">新建笔记</el-button>
-            <el-button type="warning" :icon="Link" @click="showWebDialog = true">收藏网页</el-button>
-          </div>
+      <!-- 快捷操作 -->
+      <div class="panel panel--actions">
+        <div class="panel-header">
+          <span class="panel-title">快捷操作</span>
         </div>
-
-        <div class="info-card" style="margin-top: 16px">
-          <div class="card-title">星标资源</div>
-          <div v-if="starredItems.length === 0" class="empty-state">
-            <el-icon class="empty-icon"><Star /></el-icon>
-            <div class="empty-text">暂无星标资源</div>
-          </div>
-          <div v-else>
-            <div v-for="item in starredItems" :key="item.id" class="resource-item" @click="goToResource(item)">
-              <el-icon class="resource-icon" color="#e6a23c"><Star /></el-icon>
-              <div class="resource-info">
-                <div class="resource-name">{{ item.title }}</div>
-                <div class="resource-meta">{{ item.type === 'doc' ? '笔记' : item.type === 'file' ? '文件' : '网页' }}</div>
+        <div class="panel-body">
+          <div class="quick-actions-grid">
+            <div class="quick-action" @click="handleCreateSpace">
+              <div class="quick-action__icon">
+                <el-icon :size="24"><Plus /></el-icon>
               </div>
+              <div class="quick-action__label">新建空间</div>
+            </div>
+            <div class="quick-action" @click="router.push('/search')">
+              <div class="quick-action__icon">
+                <el-icon :size="24"><Search /></el-icon>
+              </div>
+              <div class="quick-action__label">搜索文档</div>
+            </div>
+            <div class="quick-action" @click="router.push('/tag')">
+              <div class="quick-action__icon">
+                <el-icon :size="24"><PriceTag /></el-icon>
+              </div>
+              <div class="quick-action__label">我的标签</div>
+            </div>
+            <div class="quick-action" @click="router.push('/share')">
+              <div class="quick-action__icon">
+                <el-icon :size="24"><Share /></el-icon>
+              </div>
+              <div class="quick-action__label">分享中心</div>
             </div>
           </div>
         </div>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <FileUpload v-model:visible="showUpload" />
-
-    <el-dialog v-model="showWebDialog" title="收藏网页" width="90%" style="max-width: 500px">
-      <el-form :model="webForm" label-width="80px">
-        <el-form-item label="网页地址">
-          <el-input v-model="webForm.url" placeholder="请输入网页URL" />
+    <!-- 新建空间对话框 -->
+    <el-dialog v-model="showSpaceDialog" title="新建空间" width="90%" style="max-width: 420px">
+      <el-form :model="spaceForm" label-width="80px">
+        <el-form-item label="空间名称">
+          <el-input v-model="spaceForm.name" placeholder="请输入空间名称" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="spaceForm.description" type="textarea" :rows="3" placeholder="空间描述（可选）" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showWebDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleAddWeb">收藏</el-button>
+        <el-button @click="showSpaceDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateSpaceSubmit">创建</el-button>
       </template>
     </el-dialog>
   </div>
@@ -113,115 +119,322 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Upload, EditPen, Link } from '@element-plus/icons-vue'
+import { Document, FolderOpened, PriceTag, Share, Clock, Plus, Search } from '@element-plus/icons-vue'
 import { useSpaceStore } from '@/stores/space'
-import { createWebPage } from '@/api/web'
+import { createSpace, getSpaceList } from '@/api/space'
+import { getMyShares } from '@/api/share'
+import { getTagList } from '@/api/tag'
+import { getDocList } from '@/api/doc'
 import { formatRelativeTime } from '@/utils/format'
-import type { ResourceItem } from '@/types'
-import FileUpload from '@/components/FileUpload.vue'
 import { ElMessage } from 'element-plus'
-import { CONTEXT_PATH } from '@/config'
 
 const router = useRouter()
 const spaceStore = useSpaceStore()
 
 const stats = reactive({
-  fileCount: 0,
   docCount: 0,
-  webCount: 0,
+  spaceCount: 0,
+  tagCount: 0,
+  shareCount: 0,
 })
 
-const recentItems = ref<ResourceItem[]>([])
-const starredItems = ref<ResourceItem[]>([])
-const showUpload = ref(false)
-const showWebDialog = ref(false)
-
-const webForm = reactive({
-  url: '',
+const recentDocs = ref<any[]>([])
+const showSpaceDialog = ref(false)
+const spaceForm = reactive({
+  name: '',
+  description: '',
 })
 
 onMounted(() => {
-  loadDashboard()
+  loadStats()
 })
 
-function loadDashboard() {
-  // 后续对接后端API获取统计数据
-  stats.fileCount = 0
-  stats.docCount = 0
-  stats.webCount = 0
-}
+async function loadStats() {
+  try {
+    const [spacesRes, tagsRes, sharesRes, docsRes] = await Promise.allSettled([
+      getSpaceList(),
+      getTagList(),
+      getMyShares(),
+      getDocList({ page: 1, size: 10 }),
+    ])
 
-function goToResource(item: ResourceItem) {
-  if (item.type === 'file') {
-    router.push(`${CONTEXT_PATH}/file/${item.id}`)
-  } else if (item.type === 'doc') {
-    router.push(`${CONTEXT_PATH}/doc/${item.id}`)
-  } else if (item.type === 'web') {
-    router.push(`${CONTEXT_PATH}/web/${item.id}`)
+    if (spacesRes.status === 'fulfilled' && spacesRes.value?.data?.data) {
+      const list = spacesRes.value.data.data
+      stats.spaceCount = Array.isArray(list) ? list.length : 0
+    }
+    if (tagsRes.status === 'fulfilled' && tagsRes.value?.data?.data) {
+      const list = tagsRes.value.data.data
+      stats.tagCount = Array.isArray(list) ? list.length : 0
+    }
+    if (sharesRes.status === 'fulfilled' && sharesRes.value?.data?.data) {
+      const list = sharesRes.value.data.data
+      stats.shareCount = Array.isArray(list) ? list.length : 0
+    }
+    if (docsRes.status === 'fulfilled' && docsRes.value?.data?.data) {
+      const pageResult = docsRes.value.data.data
+      const list = pageResult.list || []
+      stats.docCount = pageResult.total || list.length
+      recentDocs.value = list.slice(0, 6)
+    }
+  } catch {
+    // 统计加载失败不阻塞页面
   }
 }
 
-async function handleAddWeb() {
-  if (!webForm.url) {
-    ElMessage.warning('请输入网页地址')
-    return
+function goToItem(item: any) {
+  if (item.type === 'doc') {
+    router.push(`/doc/${item.id}`)
   }
-  const spaceId = spaceStore.currentSpace?.id
-  if (!spaceId) {
-    ElMessage.warning('请先选择一个空间')
+}
+
+function handleCreateSpace() {
+  spaceForm.name = ''
+  spaceForm.description = ''
+  showSpaceDialog.value = true
+}
+
+async function handleCreateSpaceSubmit() {
+  if (!spaceForm.name.trim()) {
+    ElMessage.warning('请输入空间名称')
     return
   }
   try {
-    await createWebPage({ url: webForm.url, folderId: 0, spaceId })
-    ElMessage.success('收藏成功')
-    showWebDialog.value = false
-    webForm.url = ''
+    await createSpace({ name: spaceForm.name, description: spaceForm.description })
+    ElMessage.success('空间创建成功')
+    showSpaceDialog.value = false
+    spaceStore.fetchSpaceList()
+    loadStats()
   } catch {
-    // 错误已在拦截器中处理
+    // 错误已在拦截器处理
   }
 }
 </script>
 
 <style scoped lang="scss">
 .dashboard-page {
+  padding: 20px 24px;
+  min-height: 100%;
+  background-color: #faf8f5;
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 4px solid;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  &--blue {
+    border-left-color: #409eff;
+    .stat-icon--blue { background-color: #ecf5ff; color: #409eff; }
+  }
+  &--green {
+    border-left-color: #67c23a;
+    .stat-icon--green { background-color: #f0f9eb; color: #67c23a; }
+  }
+  &--orange {
+    border-left-color: #e6a23c;
+    .stat-icon--orange { background-color: #fdf6ec; color: #e6a23c; }
+  }
+  &--purple {
+    border-left-color: #9b59b6;
+    .stat-icon--purple { background-color: #f3e8ff; color: #9b59b6; }
+  }
+}
+
+.stat-info {
+  .stat-label {
+    font-size: 14px;
+    color: #909399;
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #303133;
+    line-height: 1;
+  }
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.panel-icon {
+  color: #c9a96e;
+  font-size: 18px;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.panel-body {
+  padding: 8px 0;
+  min-height: 200px;
+}
+
+.empty-text {
+  text-align: center;
+  padding: 60px 0;
+  color: #c0c4cc;
+  font-size: 14px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #faf8f5;
+  }
+}
+
+.recent-icon {
+  font-size: 20px;
+  color: #409eff;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.recent-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-name {
+  font-size: 14px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-time {
+  font-size: 12px;
+  color: #c0c4cc;
+  margin-top: 2px;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 20px;
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #faf8f5;
+
+    .quick-action__icon {
+      background-color: #c9a96e;
+      color: #fff;
+    }
+  }
+}
+
+.quick-action__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #2c3e50;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  transition: all 0.25s ease;
+}
+
+.quick-action__label {
+  font-size: 13px;
+  color: #606266;
+}
+
+@media (max-width: 1024px) {
+  .stat-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-page {
+    padding: 12px;
+  }
+  .stat-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
   .stat-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 4px;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
-    cursor: pointer;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
-    }
+    padding: 14px 16px;
   }
-
-  .stat-info {
-    .stat-value {
-      font-size: 24px;
-      font-weight: 600;
-      color: #303133;
-    }
-
-    .stat-label {
-      font-size: 13px;
-      color: #909399;
-      margin-top: 2px;
-    }
+  .stat-value {
+    font-size: 22px !important;
   }
-
-  .quick-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    .el-button {
-      width: 100%;
-    }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
   }
 }
 </style>

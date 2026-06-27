@@ -13,8 +13,10 @@ export function formatFileSize(bytes: number): string {
 /**
  * 格式化日期为 YYYY-MM-DD HH:mm
  */
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date | undefined | null): string {
+  if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
@@ -26,10 +28,13 @@ export function formatDate(date: string | Date): string {
 /**
  * 格式化为相对时间（如"3分钟前"）
  */
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(date: string | Date | undefined | null): string {
+  if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
   const now = new Date()
   const diff = now.getTime() - d.getTime()
+  if (diff < 0) return '刚刚'
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)

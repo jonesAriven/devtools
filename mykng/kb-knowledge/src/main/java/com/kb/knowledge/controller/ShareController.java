@@ -11,6 +11,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/share")
 @RequiredArgsConstructor
@@ -28,6 +30,11 @@ public class ShareController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         return Result.ok(shareService.list(getCurrentUserId(), page, size));
+    }
+
+    @GetMapping("/my")
+    public Result<List<Share>> getMyShares() {
+        return Result.ok(shareService.listMyShares(getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}")

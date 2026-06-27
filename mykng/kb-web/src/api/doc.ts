@@ -22,7 +22,7 @@ export function deleteDoc(id: number) {
 }
 
 /** 获取目录下的笔记列表 */
-export function getDocList(params: PageParams & { folderId: number }) {
+export function getDocList(params: { page?: number; size?: number; folderId?: number }) {
   return request.get<R<PageResult<Doc>>>('/doc/list', { params })
 }
 

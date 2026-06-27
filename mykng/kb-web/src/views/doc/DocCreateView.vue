@@ -40,7 +40,6 @@
 import { ref, reactive, onMounted, onBeforeUnmount, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDoc } from '@/api/doc'
-import { CONTEXT_PATH } from '@/config'
 import { getFolderTree } from '@/api/folder'
 import type { Folder } from '@/types'
 import { ElMessage } from 'element-plus'
@@ -138,7 +137,7 @@ async function handleCreate() {
       spaceId: doc.spaceId,
     })
     ElMessage.success('创建成功')
-    router.push(`${CONTEXT_PATH}/doc/${res.data.data.id}`)
+    router.push(`/doc/${res.data.data.id}`)
   } catch {
     // 错误已在拦截器中处理
   } finally {

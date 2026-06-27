@@ -29,9 +29,10 @@ public class TrashServiceImpl implements TrashService {
     @Override
     public PageResult<Map<String, Object>> list(Long userId, String type, int page, int size) {
         List<Map<String, Object>> allItems = new ArrayList<>();
+        String lowerType = type != null ? type.toLowerCase() : null;
 
         // 文件回收站：通过 Feign 调用 kb-file
-        if (type == null || "file".equals(type)) {
+        if (lowerType == null || "file".equals(lowerType)) {
             try {
                 Result<List<FileDTO>> fileResult = fileClient.listTrash(userId);
                 if (fileResult != null && fileResult.getCode() == 200 && fileResult.getData() != null) {
@@ -50,7 +51,7 @@ public class TrashServiceImpl implements TrashService {
         }
 
         // 文档回收站：本地查询（绕过 @TableLogic）
-        if (type == null || "doc".equals(type)) {
+        if (lowerType == null || "doc".equals(lowerType)) {
             docMapper.selectTrashList(userId)
                     .forEach(d -> {
                         Map<String, Object> map = new HashMap<>();
@@ -63,7 +64,7 @@ public class TrashServiceImpl implements TrashService {
         }
 
         // 网页回收站：本地查询（绕过 @TableLogic）
-        if (type == null || "web".equals(type)) {
+        if (lowerType == null || "web".equals(lowerType)) {
             webPageMapper.selectTrashList(userId)
                     .forEach(w -> {
                         Map<String, Object> map = new HashMap<>();
@@ -85,7 +86,8 @@ public class TrashServiceImpl implements TrashService {
 
     @Override
     public void restore(Long userId, String type, Long id) {
-        switch (type) {
+        String lowerType = type != null ? type.toLowerCase() : null;
+        switch (lowerType) {
             case "file" -> {
                 // 通过 Feign 调用 kb-file 恢复文件
                 try {
@@ -114,7 +116,8 @@ public class TrashServiceImpl implements TrashService {
 
     @Override
     public void permanentDelete(Long userId, String type, Long id) {
-        switch (type) {
+        String lowerType = type != null ? type.toLowerCase() : null;
+        switch (lowerType) {
             case "file" -> {
                 // 通过 Feign 调用 kb-file 永久删除文件
                 try {
@@ -145,5 +148,16 @@ public class TrashServiceImpl implements TrashService {
             }
             default -> throw new BusinessException("不支持的资源类型");
         }
+    }
+
+    @Override
+    public void empty(Long userId) {
+        try {
+            fileClient.emptyTrash(userId);
+        } catch (Exception e) {
+            log.warn("Feign 清空文件回收站失败: {}", e.getMessage());
+        }
+        docMapper.physicalDeleteAllByUserId(userId);
+        webPageMapper.physicalDeleteAllByUserId(userId);
     }
 }

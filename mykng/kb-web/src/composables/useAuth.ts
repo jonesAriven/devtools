@@ -2,7 +2,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { CONTEXT_PATH } from '@/config'
 
 export function useAuth() {
   const router = useRouter()
@@ -14,7 +13,7 @@ export function useAuth() {
     try {
       await userStore.login(username, password)
       ElMessage.success('登录成功')
-      const redirect = (router.currentRoute.value.query.redirect as string) || `${CONTEXT_PATH}/dashboard`
+      const redirect = (router.currentRoute.value.query.redirect as string) || '/dashboard'
       router.push(redirect)
     } catch (error: any) {
       ElMessage.error(error.message || '登录失败')

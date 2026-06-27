@@ -20,7 +20,6 @@
       <div class="share-resource-title">{{ shareInfo?.title || '分享内容' }}</div>
       <div class="share-meta">
         <span>分享时间：{{ formatDate(shareInfo?.createdAt || '') }}</span>
-        <span>浏览次数：{{ shareInfo?.viewCount || 0 }}</span>
       </div>
 
       <el-divider />
@@ -34,6 +33,9 @@
           <el-button type="primary" @click="handleDownload">下载文件</el-button>
         </div>
       </div>
+      <div v-else-if="!loading" class="empty-hint">
+        <el-empty description="分享内容加载失败或已过期" />
+      </div>
     </div>
   </div>
 </template>
@@ -42,7 +44,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getShareByCode, verifyExtractCode, getShareContent } from '@/api/share'
-import { downloadFile } from '@/api/file'
+import { getFileDownloadUrl } from '@/api/file'
 import { formatDate, formatFileSize } from '@/utils/format'
 import type { Share } from '@/types'
 import { ElMessage } from 'element-plus'
@@ -58,12 +60,14 @@ const needExtractCode = ref(false)
 const extractCode = ref('')
 const verified = ref(false)
 const verifying = ref(false)
+const loading = ref(false)
 
 onMounted(async () => {
   await loadShare()
 })
 
 async function loadShare() {
+  loading.value = true
   try {
     const res = await getShareByCode(props.code)
     shareInfo.value = res.data.data
@@ -74,6 +78,8 @@ async function loadShare() {
     }
   } catch {
     ElMessage.error('分享不存在或已过期')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -92,27 +98,36 @@ async function handleVerify() {
       ElMessage.error('提取码错误')
     }
   } catch {
-    // 错误已在拦截器中处理
+    ElMessage.error('验证失败')
   } finally {
     verifying.value = false
   }
 }
 
 async function loadContent() {
-  const res = await getShareContent(props.code, extractCode.value || undefined)
-  shareResource.value = res.data.data
+  try {
+    const res = await getShareContent(props.code, extractCode.value || undefined)
+    shareResource.value = res.data.data
+  } catch {
+    // 错误已在拦截器处理
+  }
 }
 
 async function handleDownload() {
   if (!shareResource.value) return
-  const res = await downloadFile(shareResource.value.id)
-  const blob = new Blob([res.data])
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = shareResource.value.name || 'download'
-  link.click()
-  window.URL.revokeObjectURL(url)
+  try {
+    const res = await getFileDownloadUrl(shareResource.value.id)
+    const url = res.data.data
+    if (url) {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = shareResource.value.name || 'download'
+      link.target = '_blank'
+      link.click()
+    }
+  } catch {
+    ElMessage.error('下载失败')
+  }
 }
 </script>
 
@@ -120,6 +135,9 @@ async function handleDownload() {
 .share-access-page {
   max-width: 800px;
   margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+  background-color: #faf8f5;
 }
 
 .extract-code-card {
@@ -171,9 +189,14 @@ async function handleDownload() {
   }
 }
 
+.empty-hint {
+  padding: 40px 0;
+}
+
 @media (max-width: 768px) {
   .share-access-page {
     max-width: 100%;
+    padding: 20px 12px;
   }
 
   .extract-code-card {
@@ -186,14 +209,6 @@ async function handleDownload() {
 
   .share-resource-title {
     font-size: 18px;
-  }
-
-  .share-meta {
-    span + span {
-      display: block;
-      margin-left: 0;
-      margin-top: 4px;
-    }
   }
 }
 </style>

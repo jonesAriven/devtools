@@ -36,4 +36,7 @@ public interface WebPageMapper extends BaseMapper<WebPage> {
      */
     @Delete("DELETE FROM web_page WHERE id = #{id}")
     int physicalDeleteById(@Param("id") Long id);
+
+    @Delete("DELETE FROM web_page WHERE user_id = #{userId} AND deleted = 1")
+    int physicalDeleteAllByUserId(@Param("userId") Long userId);
 }

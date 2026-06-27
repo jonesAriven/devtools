@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("file")
+@TableName("`file`")
 public class KbFile {
 
     @TableId(type = IdType.AUTO)

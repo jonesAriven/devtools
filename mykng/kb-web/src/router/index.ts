@@ -73,6 +73,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/trash/TrashView.vue'),
       },
       {
+        path: 'tag',
+        name: 'TagManage',
+        component: () => import('@/views/tag/TagManageView.vue'),
+      },
+      {
+        path: 'share',
+        name: 'ShareList',
+        component: () => import('@/views/share/ShareListView.vue'),
+      },
+      {
+        path: 'file',
+        name: 'FileList',
+        component: () => import('@/views/file/FileListView.vue'),
+      },
+      {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/settings/SettingsView.vue'),
@@ -101,6 +116,11 @@ const routes: RouteRecordRaw[] = [
         path: 'ops/knowledge',
         name: 'OpsKnowledge',
         component: () => import('@/views/ops/OpsKnowledgeView.vue'),
+      },
+      {
+        path: 'ops/log',
+        name: 'OpsLog',
+        component: () => import('@/views/ops/OpsLogView.vue'),
       },
     ],
   },

@@ -6,19 +6,19 @@ export function createShare(data: CreateShareRequest) {
   return request.post<R<Share>>('/share', data)
 }
 
-/** 获取分享详情（通过分享码） */
+/** 获取分享详情（通过分享码，公开访问） */
 export function getShareByCode(code: string) {
-  return request.get<R<Share>>(`/share/${code}`)
+  return request.get<R<Share>>(`/share/verify/${code}`)
 }
 
 /** 验证提取码 */
 export function verifyExtractCode(code: string, extractCode: string) {
-  return request.post<R<boolean>>('/share/verify', { code, extractCode })
+  return request.get<R<boolean>>(`/share/verify/${code}`, { params: { extractCode } })
 }
 
-/** 获取分享内容 */
+/** 获取分享内容（公开访问） */
 export function getShareContent(code: string, extractCode?: string) {
-  return request.get<R<any>>('/share/content', { params: { code, extractCode } })
+  return request.get<R<any>>(`/share/detail/${code}`, { params: { extractCode } })
 }
 
 /** 获取我创建的分享列表 */

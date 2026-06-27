@@ -4,8 +4,13 @@ import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens } fro
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
-/** 统一上下文路径（从 .env VITE_CONTEXT_PATH 读取） */
 const ctx = import.meta.env.VITE_CONTEXT_PATH || '/kb'
+
+const WHITE_LIST_PATHS = ['/auth/login', '/auth/refresh', '/share/verify/', '/share/detail/']
+
+function isWhiteList(url: string): boolean {
+  return WHITE_LIST_PATHS.some(p => url.includes(p))
+}
 
 const request = axios.create({
   baseURL: `${ctx}/api`,
@@ -34,7 +39,6 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const data = response.data as R<any>
-    // 存储 traceId 到 headers 供调试
     if (data.traceId) {
       response.headers['x-trace-id'] = data.traceId
     }
@@ -46,12 +50,19 @@ request.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config
+    const url = originalRequest?.url || ''
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isWhiteList(url)) {
+        return Promise.reject(error)
+      }
+
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
         clearTokens()
-        router.push(`${ctx}/login`)
+        if (!isWhiteList(url)) {
+          router.push('/login')
+        }
         return Promise.reject(error)
       }
 
@@ -79,12 +90,12 @@ request.interceptors.response.use(
           return request(originalRequest)
         } else {
           clearTokens()
-          router.push(`${ctx}/login`)
+          router.push('/login')
           return Promise.reject(error)
         }
       } catch {
         clearTokens()
-        router.push(`${ctx}/login`)
+        router.push('/login')
         return Promise.reject(error)
       } finally {
         isRefreshing = false
@@ -92,7 +103,9 @@ request.interceptors.response.use(
     }
 
     const message = error.response?.data?.message || error.message || '网络错误'
-    ElMessage.error(message)
+    if (!isWhiteList(url)) {
+      ElMessage.error(message)
+    }
     return Promise.reject(error)
   }
 )

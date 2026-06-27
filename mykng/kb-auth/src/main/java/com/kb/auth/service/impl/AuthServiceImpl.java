@@ -68,7 +68,8 @@ public class AuthServiceImpl implements AuthService {
         publishEvent("user.login", user.getId(), Map.of("username", user.getUsername()));
 
         log.info("用户登录成功 userId={}, username={}", user.getId(), user.getUsername());
-        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiration());
+        user.setPassword(null);
+        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiration(), user);
     }
 
     @Override
@@ -131,7 +132,8 @@ public class AuthServiceImpl implements AuthService {
         rt.setExpireAt(LocalDateTime.now().plusDays(7));
         refreshTokenMapper.insert(rt);
 
-        return new LoginResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiration());
+        user.setPassword(null);
+        return new LoginResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiration(), user);
     }
 
     /**

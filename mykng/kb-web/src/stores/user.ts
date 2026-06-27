@@ -2,9 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User } from '@/types'
 import { login as loginApi, logout as logoutApi } from '@/api/auth'
+import { getUserProfile } from '@/api/user'
 import { setToken, setRefreshToken, clearTokens, getToken } from '@/utils/token'
 import router from '@/router'
-import { CONTEXT_PATH } from '@/config'
 
 export const useUserStore = defineStore('user', () => {
   const accessToken = ref<string | null>(getToken())
@@ -23,6 +23,17 @@ export const useUserStore = defineStore('user', () => {
     setRefreshToken(data.refreshToken)
   }
 
+  async function fetchProfile() {
+    try {
+      const res = await getUserProfile()
+      profile.value = res.data.data
+      isLoggedIn.value = true
+    } catch {
+      profile.value = null
+      isLoggedIn.value = false
+    }
+  }
+
   async function logout() {
     try {
       await logoutApi()
@@ -34,7 +45,7 @@ export const useUserStore = defineStore('user', () => {
     profile.value = null
     isLoggedIn.value = false
     clearTokens()
-    router.push(`${CONTEXT_PATH}/login`)
+    router.push('/login')
   }
 
   function setProfile(user: User) {
@@ -48,6 +59,7 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     login,
     logout,
+    fetchProfile,
     setProfile,
   }
 })

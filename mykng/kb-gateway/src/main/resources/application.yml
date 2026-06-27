@@ -73,6 +73,7 @@ kb:
       - ${KB_CONTEXT:/kb}/api/auth/login
       - ${KB_CONTEXT:/kb}/api/auth/refresh
       - ${KB_CONTEXT:/kb}/api/share/verify/**
+      - ${KB_CONTEXT:/kb}/api/share/detail/**
     # 下游服务地址（dev=本地端口，docker/prod 用服务名）
     services:
       auth: localhost:8081

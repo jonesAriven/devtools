@@ -2,7 +2,7 @@
   <div class="file-detail-page">
     <div class="page-header">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item :to="{ path: `${CONTEXT_PATH}/dashboard` }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/dashboard' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>文件详情</el-breadcrumb-item>
       </el-breadcrumb>
       <div class="page-actions">
@@ -86,7 +86,6 @@ import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
 import ShareDialog from '@/components/ShareDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CONTEXT_PATH } from '@/config'
 
 const props = defineProps<{
   id: string
@@ -138,14 +137,7 @@ async function handleToggleStar() {
 }
 
 async function handleDownload() {
-  const res = await downloadFile(Number(props.id))
-  const blob = new Blob([res.data])
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.value?.name || 'download'
-  link.click()
-  window.URL.revokeObjectURL(url)
+  await downloadFile(Number(props.id), file.value?.name)
 }
 
 async function handleDelete() {

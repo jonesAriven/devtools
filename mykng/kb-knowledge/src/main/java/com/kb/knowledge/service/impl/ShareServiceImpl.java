@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -74,6 +75,14 @@ public class ShareServiceImpl implements ShareService {
                         .eq(Share::getUserId, userId)
                         .orderByDesc(Share::getCreatedAt));
         return new PageResult<>(result.getRecords(), result.getTotal(), page, size);
+    }
+
+    @Override
+    public List<Share> listMyShares(Long userId) {
+        return shareMapper.selectList(
+                new LambdaQueryWrapper<Share>()
+                        .eq(Share::getUserId, userId)
+                        .orderByDesc(Share::getCreatedAt));
     }
 
     @Override

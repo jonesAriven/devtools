@@ -1,64 +1,104 @@
 <template>
   <el-container class="main-layout">
     <!-- 桌面端侧边栏 -->
-    <el-aside v-if="!isMobile" :width="appStore.sidebarCollapsed ? '64px' : '240px'" class="sidebar">
-      <div class="sidebar-header">
-        <span v-if="!appStore.sidebarCollapsed">知识库</span>
-        <span v-else>KB</span>
+    <el-aside v-if="!isMobile" :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="sidebar">
+      <div class="sidebar-header" @click="router.push('/dashboard')">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="2" y="6" width="10" height="20" rx="2" fill="#e6a23c"/>
+            <rect x="9" y="3" width="10" height="23" rx="2" fill="#67c23a"/>
+            <rect x="16" y="8" width="10" height="18" rx="2" fill="#409eff"/>
+          </svg>
+        </div>
+        <span v-if="!appStore.sidebarCollapsed" class="logo-text">mykng</span>
       </div>
       <div class="sidebar-body">
         <el-menu
           :default-active="currentRoute"
           :collapse="appStore.sidebarCollapsed"
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409eff"
+          background-color="#ffffff"
+          text-color="#606266"
+          active-text-color="#c9a96e"
           router
+          class="sidebar-menu"
         >
-          <el-menu-item :index="`${CONTEXT_PATH}/dashboard`">
-            <el-icon><DataBoard /></el-icon>
-            <template #title>仪表盘</template>
+          <el-menu-item :index="'/dashboard'">
+            <el-icon><Grid /></el-icon>
+            <template #title>工作台</template>
           </el-menu-item>
-          <el-menu-item :index="`${CONTEXT_PATH}/trash`">
+          <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+            <el-icon><FolderOpened /></el-icon>
+            <template #title>知识空间</template>
+          </el-menu-item>
+          <el-menu-item :index="'/search'">
+            <el-icon><Search /></el-icon>
+            <template #title>搜索</template>
+          </el-menu-item>
+          <el-menu-item :index="'/tag'">
+            <el-icon><PriceTag /></el-icon>
+            <template #title>标签</template>
+          </el-menu-item>
+          <el-menu-item :index="'/share'">
+            <el-icon><Share /></el-icon>
+            <template #title>分享</template>
+          </el-menu-item>
+          <el-menu-item :index="'/trash'">
             <el-icon><Delete /></el-icon>
             <template #title>回收站</template>
           </el-menu-item>
-          <el-menu-item :index="`${CONTEXT_PATH}/settings`">
-            <el-icon><Setting /></el-icon>
-            <template #title>系统设置</template>
+          <el-menu-item :index="'/file'">
+            <el-icon><Document /></el-icon>
+            <template #title>文件</template>
           </el-menu-item>
-          <el-sub-menu :index="`${CONTEXT_PATH}/ops`">
-            <template #title>
-              <el-icon><Monitor /></el-icon>
-              <span>运维管理</span>
-            </template>
-            <el-menu-item :index="`${CONTEXT_PATH}/ops`">运维看板</el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/ops/hosts`">主机管理</el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/ops/services`">服务管理</el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/ops/conflicts`">矛盾检测</el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/ops/knowledge`">运维知识</el-menu-item>
-          </el-sub-menu>
         </el-menu>
 
         <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
-          <div class="sidebar-section-title">空间列表</div>
-          <el-menu
-            :default-active="currentSpaceRoute"
-            background-color="#304156"
-            text-color="#bfcbd9"
-            active-text-color="#409eff"
-            router
-          >
-            <el-menu-item
-              v-for="space in spaceStore.spaceList"
-              :key="space.id"
-              :index="`${CONTEXT_PATH}/space/${space.id}`"
-            >
-              <el-icon><Folder /></el-icon>
-              <template #title>{{ space.name }}</template>
-            </el-menu-item>
-          </el-menu>
+          <div class="sidebar-section-title">运维中心</div>
         </div>
+        <el-menu
+          v-if="!appStore.sidebarCollapsed"
+          :default-active="currentRoute"
+          background-color="#ffffff"
+          text-color="#606266"
+          active-text-color="#c9a96e"
+          router
+          class="sidebar-menu"
+        >
+          <el-menu-item :index="'/ops'">
+            <el-icon><Monitor /></el-icon>
+            <template #title>运维看板</template>
+          </el-menu-item>
+          <el-menu-item :index="'/ops/hosts'">
+            <el-icon><Cpu /></el-icon>
+            <template #title>主机管理</template>
+          </el-menu-item>
+          <el-menu-item :index="'/ops/services'">
+            <el-icon><Connection /></el-icon>
+            <template #title>服务管理</template>
+          </el-menu-item>
+          <el-menu-item :index="'/ops/log'">
+            <el-icon><Tickets /></el-icon>
+            <template #title>操作日志</template>
+          </el-menu-item>
+        </el-menu>
+
+        <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
+          <div class="sidebar-section-title">系统</div>
+        </div>
+        <el-menu
+          :default-active="currentRoute"
+          :collapse="appStore.sidebarCollapsed"
+          background-color="#ffffff"
+          text-color="#606266"
+          active-text-color="#c9a96e"
+          router
+          class="sidebar-menu"
+        >
+          <el-menu-item :index="'/settings'">
+            <el-icon><Setting /></el-icon>
+            <template #title>设置</template>
+          </el-menu-item>
+        </el-menu>
       </div>
     </el-aside>
 
@@ -67,67 +107,105 @@
       v-if="isMobile"
       v-model="drawerVisible"
       direction="ltr"
-      :size="240"
+      :size="220"
       :with-header="false"
     >
       <div class="sidebar sidebar-drawer">
         <div class="sidebar-header">
-          <span>知识库</span>
+          <div class="logo-icon">
+            <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+              <rect x="2" y="6" width="10" height="20" rx="2" fill="#e6a23c"/>
+              <rect x="9" y="3" width="10" height="23" rx="2" fill="#67c23a"/>
+              <rect x="16" y="8" width="10" height="18" rx="2" fill="#409eff"/>
+            </svg>
+          </div>
+          <span class="logo-text">mykng</span>
         </div>
         <div class="sidebar-body">
           <el-menu
             :default-active="currentRoute"
-            background-color="#304156"
-            text-color="#bfcbd9"
-            active-text-color="#409eff"
+            background-color="#ffffff"
+            text-color="#606266"
+            active-text-color="#c9a96e"
             router
+            class="sidebar-menu"
             @select="drawerVisible = false"
           >
-            <el-menu-item :index="`${CONTEXT_PATH}/dashboard`">
-              <el-icon><DataBoard /></el-icon>
-              <template #title>仪表盘</template>
+            <el-menu-item :index="'/dashboard'">
+              <el-icon><Grid /></el-icon>
+              <template #title>工作台</template>
             </el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/trash`">
+            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+              <el-icon><FolderOpened /></el-icon>
+              <template #title>知识空间</template>
+            </el-menu-item>
+            <el-menu-item :index="'/search'">
+              <el-icon><Search /></el-icon>
+              <template #title>搜索</template>
+            </el-menu-item>
+            <el-menu-item :index="'/tag'">
+              <el-icon><PriceTag /></el-icon>
+              <template #title>标签</template>
+            </el-menu-item>
+            <el-menu-item :index="'/share'">
+              <el-icon><Share /></el-icon>
+              <template #title>分享</template>
+            </el-menu-item>
+            <el-menu-item :index="'/trash'">
               <el-icon><Delete /></el-icon>
               <template #title>回收站</template>
             </el-menu-item>
-            <el-menu-item :index="`${CONTEXT_PATH}/settings`">
-              <el-icon><Setting /></el-icon>
-              <template #title>系统设置</template>
+            <el-menu-item :index="'/file'">
+              <el-icon><Document /></el-icon>
+              <template #title>文件</template>
             </el-menu-item>
-            <el-sub-menu :index="`${CONTEXT_PATH}/ops`">
-              <template #title>
-                <el-icon><Monitor /></el-icon>
-                <span>运维管理</span>
-              </template>
-              <el-menu-item :index="`${CONTEXT_PATH}/ops`">运维看板</el-menu-item>
-              <el-menu-item :index="`${CONTEXT_PATH}/ops/hosts`">主机管理</el-menu-item>
-              <el-menu-item :index="`${CONTEXT_PATH}/ops/services`">服务管理</el-menu-item>
-              <el-menu-item :index="`${CONTEXT_PATH}/ops/conflicts`">矛盾检测</el-menu-item>
-              <el-menu-item :index="`${CONTEXT_PATH}/ops/knowledge`">运维知识</el-menu-item>
-            </el-sub-menu>
           </el-menu>
-
           <div class="sidebar-section">
-            <div class="sidebar-section-title">空间列表</div>
-            <el-menu
-              :default-active="currentSpaceRoute"
-              background-color="#304156"
-              text-color="#bfcbd9"
-              active-text-color="#409eff"
-              router
-              @select="drawerVisible = false"
-            >
-              <el-menu-item
-                v-for="space in spaceStore.spaceList"
-                :key="space.id"
-                :index="`${CONTEXT_PATH}/space/${space.id}`"
-              >
-                <el-icon><Folder /></el-icon>
-                <template #title>{{ space.name }}</template>
-              </el-menu-item>
-            </el-menu>
+            <div class="sidebar-section-title">运维中心</div>
           </div>
+          <el-menu
+            :default-active="currentRoute"
+            background-color="#ffffff"
+            text-color="#606266"
+            active-text-color="#c9a96e"
+            router
+            class="sidebar-menu"
+            @select="drawerVisible = false"
+          >
+            <el-menu-item :index="'/ops'">
+              <el-icon><Monitor /></el-icon>
+              <template #title>运维看板</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/hosts'">
+              <el-icon><Cpu /></el-icon>
+              <template #title>主机管理</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/services'">
+              <el-icon><Connection /></el-icon>
+              <template #title>服务管理</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/log'">
+              <el-icon><Tickets /></el-icon>
+              <template #title>操作日志</template>
+            </el-menu-item>
+          </el-menu>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">系统</div>
+          </div>
+          <el-menu
+            :default-active="currentRoute"
+            background-color="#ffffff"
+            text-color="#606266"
+            active-text-color="#c9a96e"
+            router
+            class="sidebar-menu"
+            @select="drawerVisible = false"
+          >
+            <el-menu-item :index="'/settings'">
+              <el-icon><Setting /></el-icon>
+              <template #title>设置</template>
+            </el-menu-item>
+          </el-menu>
         </div>
       </div>
     </el-drawer>
@@ -135,26 +213,30 @@
     <el-container>
       <el-header class="header-bar" height="50px">
         <div class="header-left">
-          <!-- 移动端汉堡菜单 -->
-          <el-icon v-if="isMobile" class="collapse-btn" @click="drawerVisible = true">
+          <el-icon v-if="isMobile" class="header-btn" @click="drawerVisible = true">
             <Expand />
           </el-icon>
-          <!-- 桌面端折叠按钮 -->
-          <el-icon v-else class="collapse-btn" @click="appStore.toggleSidebar()">
+          <el-icon v-else class="header-btn" @click="appStore.toggleSidebar()">
             <Fold v-if="!appStore.sidebarCollapsed" />
             <Expand v-else />
           </el-icon>
-          <SearchBar />
+          <el-icon v-if="canGoBack" class="header-btn back-btn" @click="goBack">
+            <ArrowLeft />
+          </el-icon>
+          <span class="header-title">{{ pageTitle }}</span>
         </div>
         <div class="header-right">
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="user-info">
-              <el-avatar :size="28" :src="userStore.profile?.avatar" icon="UserFilled" />
-              <span class="username">{{ userStore.profile?.nickname || userStore.profile?.username || '用户' }}</span>
-              <el-icon><ArrowDown /></el-icon>
+              <el-avatar :size="30" :src="userStore.profile?.avatar" class="user-avatar">
+                <span class="avatar-letter">{{ (userStore.profile?.nickname || userStore.profile?.username || 'U')[0].toUpperCase() }}</span>
+              </el-avatar>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>个人信息
+                </el-dropdown-item>
                 <el-dropdown-item command="settings">
                   <el-icon><Setting /></el-icon>系统设置
                 </el-dropdown-item>
@@ -181,8 +263,6 @@ import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useAuth } from '@/composables/useAuth'
-import SearchBar from '@/components/SearchBar.vue'
-import { CONTEXT_PATH } from '@/config'
 
 const route = useRoute()
 const router = useRouter()
@@ -195,10 +275,48 @@ const isMobile = ref(false)
 const drawerVisible = ref(false)
 
 const currentRoute = computed(() => route.path)
-const currentSpaceRoute = computed(() => {
-  if (route.name === 'Space') return route.path
-  return ''
+
+const pageTitleMap: Record<string, string> = {
+  dashboard: '工作台',
+  search: '搜索',
+  tag: '标签',
+  share: '分享中心',
+  trash: '回收站',
+  file: '文件',
+  settings: '设置',
+  'doc-create': '新建文档',
+  'doc-edit': '编辑文档',
+  'file-detail': '文件详情',
+  space: '知识空间',
+  ops: '运维看板',
+  'ops-hosts': '主机管理',
+  'ops-services': '服务管理',
+  'ops-conflicts': '矛盾检测',
+  'ops-knowledge': '运维知识',
+  'ops-log': '操作日志',
+  web: '网页详情',
+}
+
+const pageTitle = computed(() => {
+  const name = route.name as string
+  if (name === 'Space' && route.params.spaceId) return '知识空间'
+  if (name === 'DocEdit') return '编辑文档'
+  if (name === 'FileDetail') return '文件详情'
+  if (name === 'WebDetail') return '网页详情'
+  return pageTitleMap[name] || '工作台'
 })
+
+const canGoBack = computed(() => {
+  return route.name !== 'Dashboard' && window.history.length > 1
+})
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/dashboard')
+  }
+}
 
 function checkMobile() {
   isMobile.value = window.innerWidth < 768
@@ -208,6 +326,9 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   spaceStore.fetchSpaceList()
+  if (!userStore.profile) {
+    userStore.fetchProfile()
+  }
 })
 
 onUnmounted(() => {
@@ -218,7 +339,9 @@ async function handleCommand(command: string) {
   if (command === 'logout') {
     await logout()
   } else if (command === 'settings') {
-    router.push(`${CONTEXT_PATH}/settings`)
+    router.push('/settings')
+  } else if (command === 'profile') {
+    router.push('/settings')
   }
 }
 </script>
@@ -229,34 +352,85 @@ async function handleCommand(command: string) {
 }
 
 .sidebar {
-  background-color: #304156;
+  background-color: #fff;
+  border-right: 1px solid #e8e8e8;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
   .sidebar-header {
     height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    border-bottom: 1px solid #3a4a5d;
+    gap: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #e8e8e8;
+    flex-shrink: 0;
+
+    .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 1px;
+    }
   }
 
   .sidebar-body {
-    height: calc(100% - 50px);
+    flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar-menu {
+    border-right: none;
+    background-color: #fff;
+
+    :deep(.el-menu-item) {
+      color: #606266;
+      &:hover {
+        background-color: #f5f5f5;
+        color: #c9a96e;
+      }
+      &.is-active {
+        color: #c9a96e;
+        background-color: #fdf6ec;
+        font-weight: 600;
+      }
+    }
+
+    :deep(.el-sub-menu__title) {
+      color: #606266;
+      &:hover {
+        background-color: #f5f5f5;
+        color: #c9a96e;
+      }
+    }
+
+    &:not(.el-menu--collapse) {
+      width: 100%;
+    }
   }
 
   .sidebar-section {
-    border-top: 1px solid #3a4a5d;
+    padding: 12px 0 4px;
+    border-top: 1px solid #e8e8e8;
+    margin-top: 4px;
   }
 
   .sidebar-section-title {
-    padding: 12px 20px 4px;
+    padding: 0 20px 4px;
     font-size: 12px;
-    color: #7a8b9a;
+    color: #909399;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 }
 
@@ -268,29 +442,45 @@ async function handleCommand(command: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 20px;
   background-color: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  border-bottom: 1px solid #e8e8e8;
+  box-shadow: none;
+  flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
 
-.collapse-btn {
-  font-size: 20px;
+.header-btn {
+  font-size: 18px;
   cursor: pointer;
   color: #606266;
   flex-shrink: 0;
+  padding: 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
 
   &:hover {
-    color: #409eff;
+    color: #c9a96e;
+    background-color: #f5f5f5;
   }
+}
+
+.back-btn {
+  font-size: 16px;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-left: 4px;
 }
 
 .header-right {
@@ -306,39 +496,39 @@ async function handleCommand(command: string) {
   cursor: pointer;
   color: #606266;
 
-  .username {
-    font-size: 14px;
-  }
-
   &:hover {
-    color: #409eff;
+    color: #c9a96e;
+  }
+}
+
+.user-avatar {
+  background-color: #c9a96e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+
+  .avatar-letter {
+    line-height: 30px;
   }
 }
 
 .content-area {
-  padding: 16px;
-  background-color: #f5f7fa;
+  padding: 0;
+  background-color: #faf8f5;
   overflow-y: auto;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
   .header-bar {
     padding: 0 12px;
   }
 
   .header-left {
-    gap: 8px;
-  }
-
-  .user-info {
-    .username {
-      display: none;
-    }
+    gap: 4px;
   }
 
   .content-area {
-    padding: 8px;
+    padding: 0;
   }
 }
 </style>

@@ -37,7 +37,7 @@
         <el-card shadow="hover">
           <template #header>
             <span>最近部署</span>
-            <el-button text @click="$router.push(`${CONTEXT_PATH}/ops/services`)">查看全部</el-button>
+            <el-button text @click="$router.push('/ops/services')">查看全部</el-button>
           </template>
           <el-table :data="data?.recentDeploys || []" size="small" stripe>
             <el-table-column prop="serviceName" label="服务" width="120" />
@@ -52,7 +52,7 @@
         <el-card shadow="hover">
           <template #header>
             <span>矛盾检测</span>
-            <el-button text @click="$router.push(`${CONTEXT_PATH}/ops/conflicts`)">查看全部</el-button>
+            <el-button text @click="$router.push('/ops/conflicts')">查看全部</el-button>
           </template>
           <el-table :data="data?.recentConflicts || []" size="small" stripe>
             <el-table-column prop="type" label="类型" width="150" />
@@ -74,7 +74,6 @@ import { ref, onMounted } from 'vue'
 import { getDashboard } from '@/api/ops'
 import type { DashboardVO } from '@/types'
 import { ElMessage } from 'element-plus'
-import { CONTEXT_PATH } from '@/config'
 
 const loading = ref(false)
 const data = ref<DashboardVO | null>(null)

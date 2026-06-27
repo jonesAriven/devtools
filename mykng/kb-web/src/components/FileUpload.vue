@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { uploadFile, initChunkUpload, uploadChunk, completeChunkUpload } from '@/api/file'
+import { uploadFile } from '@/api/file'
 import { formatFileSize } from '@/utils/format'
 import { ElMessage } from 'element-plus'
 
@@ -123,24 +123,14 @@ function removeFile(index: number) {
 }
 
 async function handleUpload() {
-  if (!props.spaceId) {
-    ElMessage.warning('请先选择空间')
-    return
-  }
-
   uploading.value = true
-  const CHUNK_SIZE = 5 * 1024 * 1024
 
   for (const item of fileList.value) {
     if (item.status === 'success') continue
     item.status = 'uploading'
 
     try {
-      if (item.file.size > CHUNK_SIZE) {
-        await uploadLargeFile(item, CHUNK_SIZE)
-      } else {
-        await uploadSmallFile(item)
-      }
+      await uploadSmallFile(item)
       item.status = 'success'
       item.progress = 100
     } catch {
@@ -159,39 +149,9 @@ async function handleUpload() {
 async function uploadSmallFile(item: FileItem) {
   const formData = new FormData()
   formData.append('file', item.file)
-  formData.append('folderId', String(props.folderId))
-  formData.append('spaceId', String(props.spaceId))
   await uploadFile(formData, (progress) => {
     item.progress = progress
   })
-}
-
-async function uploadLargeFile(item: FileItem, chunkSize: number) {
-  const totalChunks = Math.ceil(item.file.size / chunkSize)
-  const initRes = await initChunkUpload({
-    name: item.file.name,
-    fileSize: item.file.size,
-    folderId: props.folderId,
-    spaceId: props.spaceId,
-    mimeType: item.file.type,
-    totalChunks,
-  })
-  const { uploadId, storageKey } = initRes.data.data
-
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * chunkSize
-    const end = Math.min(start + chunkSize, item.file.size)
-    const chunk = item.file.slice(start, end)
-    const formData = new FormData()
-    formData.append('file', chunk)
-    formData.append('uploadId', uploadId)
-    formData.append('storageKey', storageKey)
-    formData.append('chunkIndex', String(i))
-    await uploadChunk(formData)
-    item.progress = Math.round(((i + 1) / totalChunks) * 100)
-  }
-
-  await completeChunkUpload({ uploadId, storageKey })
 }
 
 function handleClose() {

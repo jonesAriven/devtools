@@ -1,9 +1,9 @@
 import request from './index'
 import type { R, KbFile, PageResult, PageParams } from '@/types'
 
-/** 上传文件 */
+/** 简单上传文件（小文件），返回文件ID字符串 */
 export function uploadFile(formData: FormData, onProgress?: (progress: number) => void) {
-  return request.post<R<KbFile>>('/file/upload', formData, {
+  return request.post<R<string>>('/file/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress(event) {
       if (event.total && onProgress) {
@@ -57,9 +57,24 @@ export function deleteFile(id: number) {
   return request.delete<R<void>>(`/file/${id}`)
 }
 
-/** 下载文件 */
-export function downloadFile(id: number) {
-  return request.get<Blob>(`/file/${id}/download`, { responseType: 'blob' })
+/** 获取文件下载链接 */
+export function getFileDownloadUrl(id: number) {
+  return request.get<R<string>>(`/file/${id}/download`)
+}
+
+/** 下载文件（通过下载URL直接打开） */
+export async function downloadFile(id: number, fileName?: string) {
+  const res = await getFileDownloadUrl(id)
+  const url = res.data.data
+  if (url) {
+    const link = document.createElement('a')
+    link.href = url
+    if (fileName) link.download = fileName
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 }
 
 /** 获取文件内容（文本类文件预览） */
