@@ -1,0 +1,43 @@
+{
+  "total": 71,
+  "passed": 71,
+  "failed": 0,
+  "duration_sec": 12.27,
+  "pass_rate": "100%",
+  "module_stats": {
+    "容器健康": {
+      "pass": 10,
+      "fail": 0
+    },
+    "网关健康": {
+      "pass": 1,
+      "fail": 0
+    },
+    "kb-auth": {
+      "pass": 12,
+      "fail": 0
+    },
+    "kb-gateway": {
+      "pass": 7,
+      "fail": 0
+    },
+    "kb-knowledge": {
+      "pass": 23,
+      "fail": 0
+    },
+    "kb-ops": {
+      "pass": 11,
+      "fail": 0
+    },
+    "kb-intelligence": {
+      "pass": 3,
+      "fail": 0
+    },
+    "kb-file": {
+      "pass": 4,
+      "fail": 0
+    }
+  },
+  "failures": [],
+  "timestamp": "2026-06-29 07:04:03"
+}

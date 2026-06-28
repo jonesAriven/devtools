@@ -12,20 +12,31 @@
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Env secrets (keep .env.example)
 .env
+.env.local
+.env.*.local
 
 # Logs
 *.log
 /data/logs/
-!.testrc
+
+# 备份文件
+*.bak
+
+# 临时文件
+*.tmp
+*.pid
+*.swp
+*~
 
 # 自动生成的测试报告（每次运行覆盖，不入库）
 tests/*-test-report.json
 tests/screenshots/
 
-# 测试产物（附录B：大部分不入库，仅 reports/ 提交；保留 .gitkeep 占位以维持目录结构）
+# 测试产物（附录B：忽略内容；reports/ 下的 .md/.json 报告入库）
 test-output/unit/**
 test-output/integration/**
 test-output/e2e/playwright-report/**
@@ -35,6 +46,18 @@ test-output/e2e/traces/**
 test-output/performance/**
 test-output/security/**
 test-output/logs/**
-# 重新包含目录与 .gitkeep 占位文件，使空目录可被 Git 跟踪
-!**/
+test-output/bdd/cucumber/**
+test-output/evidence/**
+
+# 重新包含 .gitkeep 占位文件
+# 注意：不能用 !**/ 否则会重新包含 target/ 等编译产物目录
 !**/.gitkeep
+
+# Maven shade 产物
+dependency-reduced-pom.xml
+
+# Maven effective-pom（help:effective-pom 生成，可能含仓库凭据）
+**/effective-pom
+
+# 保留 .testrc 测试配置
+!.testrc

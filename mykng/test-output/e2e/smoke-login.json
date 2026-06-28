@@ -1,0 +1,24 @@
+﻿{
+    "code":  200,
+    "message":  "success",
+    "data":  {
+                 "accessToken":  "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODI2NzYzMzIsImV4cCI6MTc4MjY3OTkzMn0.isHV8m6sp0Y9dbC3gamd11wntN-dl3KG9P7uPZXBqpsH7hx3uPY5UcXQGy6xEkSLByiu8JeUJ5crisjruTWDTg",
+                 "refreshToken":  "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2NzYzMzIsImV4cCI6MTc4MzI4MTEzMn0.rBIDxqVELoQQoT3xA5tH6FWqrK8jJhZYrLx-rHnXMBrk5geMqNugBKRdn7HZRpgheG4I4wUjt5Kg50I0F68uSw",
+                 "expiresIn":  3600000,
+                 "user":  {
+                              "id":  1,
+                              "username":  "admin",
+                              "password":  null,
+                              "email":  "admin@test.local",
+                              "phone":  "13800000000",
+                              "wechatOpenid":  null,
+                              "avatar":  "",
+                              "nickname":  "admin-1782576955",
+                              "status":  1,
+                              "deleted":  0,
+                              "createdAt":  "2026-06-25T22:00:01",
+                              "updatedAt":  "2026-06-25T22:04:11"
+                          }
+             },
+    "traceId":  null
+}

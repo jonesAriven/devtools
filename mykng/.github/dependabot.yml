@@ -1,0 +1,250 @@
+# ============================================================
+# mykng 知识库微服务 - Dependabot 依赖更新配置
+# ============================================================
+# 通过 Nexus 私服拉取依赖更新
+# ============================================================
+
+version: 2
+
+updates:
+  # ------------------------------------------------------------
+  # Maven 依赖检查
+  # ------------------------------------------------------------
+  - package-ecosystem: "maven"
+    directory: "/kb-parent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    # 走 Nexus 私服（在 mvn settings.xml 中已配置 mirror）
+    registries:
+      - nexus-maven
+    groups:
+      # Spring Boot 相关依赖统一升级
+      spring-boot:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework:*"
+      # Spring Security 相关
+      spring-security:
+        patterns:
+          - "org.springframework.security:*"
+      # MyBatis-Plus 相关
+      mybatis:
+        patterns:
+          - "com.baomidou:*"
+      # Hutool 工具集
+      hutool:
+        patterns:
+          - "cn.hutool:*"
+      # 测试相关依赖
+      test-deps:
+        patterns:
+          - "org.junit.jupiter:*"
+          - "org.mockito:*"
+          - "org.assertj:*"
+      # JWT 相关
+      jwt:
+        patterns:
+          - "io.jsonwebtoken:*"
+    ignore:
+      # 忽略 SNAPSHOT 版本
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # 不自动升级 mysql-connector（由 Spring Boot BOM 管理）
+      - dependency-name: "com.mysql:mysql-connector-j"
+    labels:
+      - "dependencies"
+      - "maven"
+      - "java"
+    commit-message:
+      prefix: "deps(maven)"
+      include-scope: true
+    reviewers:
+      - "huliang"
+    assignees:
+      - "huliang"
+
+  # 各微服务子模块的依赖检查（继承 kb-parent 配置）
+  - package-ecosystem: "maven"
+    directory: "/kb-auth"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-auth"]
+    commit-message:
+      prefix: "deps(kb-auth)"
+
+  - package-ecosystem: "maven"
+    directory: "/kb-file"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-file"]
+    commit-message:
+      prefix: "deps(kb-file)"
+
+  - package-ecosystem: "maven"
+    directory: "/kb-knowledge"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-knowledge"]
+    commit-message:
+      prefix: "deps(kb-knowledge)"
+
+  - package-ecosystem: "maven"
+    directory: "/kb-ops"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-ops"]
+    commit-message:
+      prefix: "deps(kb-ops)"
+
+  - package-ecosystem: "maven"
+    directory: "/kb-gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-gateway"]
+    commit-message:
+      prefix: "deps(kb-gateway)"
+
+  - package-ecosystem: "maven"
+    directory: "/kb-intelligence"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "maven", "kb-intelligence"]
+    commit-message:
+      prefix: "deps(kb-intelligence)"
+
+  # ------------------------------------------------------------
+  # Docker 基础镜像检查
+  # ------------------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/kb-auth"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+      - "kb-auth"
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/kb-file"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker", "kb-file"]
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/kb-knowledge"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker", "kb-knowledge"]
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/kb-ops"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker", "kb-ops"]
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/kb-gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker", "kb-gateway"]
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/kb-intelligence"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker", "kb-intelligence"]
+    commit-message:
+      prefix: "deps(docker)"
+
+  # ------------------------------------------------------------
+  # docker-compose.yml 基础设施镜像检查
+  # ------------------------------------------------------------
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker-compose"
+      - "infrastructure"
+    commit-message:
+      prefix: "deps(infra)"
+
+  # ------------------------------------------------------------
+  # GitHub Actions 版本检查
+  # ------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "deps(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "docker/*"
+
+# ============================================================
+# Nexus 私服注册信息（Dependabot 通过此配置访问私服）
+# ============================================================
+registries:
+  nexus-maven:
+    type: "maven-repository"
+    url: "https://nexus.marschat.online/repository/maven-public/"
+    username: "huliang"
+    # password 通过 GitHub Secrets 引用（在仓库 Settings -> Secrets 中配置）
+    # 实际使用时需要将 ${NEXUS_PASSWORD} 替换为 GitHub Secret：
+    # 在 dependabot.yml 中无法直接引用 secrets，需要通过其他方式注入
+    # 简化做法：直接使用公共的 maven-central 镜像（Nexus 公开仓库）

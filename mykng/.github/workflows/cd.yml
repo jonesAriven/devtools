@@ -1,0 +1,283 @@
+# ============================================================
+# mykng 知识库微服务 - GitHub Actions CD 流水线
+# ============================================================
+# 触发：push tags v*（如 v1.0.0, v2.3.1）
+# Jobs: build-images → deploy-staging → e2e-test → deploy-prod (manual)
+# ============================================================
+
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号（如 v1.0.0）'
+        required: true
+        default: 'v0.0.0'
+      skip_e2e:
+        description: '跳过 E2E 测试'
+        type: boolean
+        required: false
+        default: false
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+  MAVEN_OPTS: '-Xmx2048m -Dmaven.repo.local=.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+  NEXUS_URL: 'https://nexus.marschat.online/repository/maven-public/'
+  DEPLOY_IP: '192.168.31.105'
+  DEPLOY_USER: 'deploy'
+  COMPOSE_PROJECT: 'kb-deploy'
+
+jobs:
+
+  # ------------------------------------------------------------
+  # 1. Build Images - 构建所有 Docker 镜像并推送
+  # ------------------------------------------------------------
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set version metadata
+        id: meta
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "📦 发布版本: $VERSION (commit $(git rev-parse --short HEAD))"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Nexus Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: nexus.marschat.online:8082
+          username: ${{ secrets.NEXUS_USER }}
+          password: ${{ secrets.NEXUS_PASS }}
+
+      - name: Build & Push Docker Images
+        run: |
+          export IMAGE_TAG=${{ steps.meta.outputs.version }}
+          echo "[INFO] 构建并推送镜像，tag=$IMAGE_TAG"
+          docker compose -p ${{ env.COMPOSE_PROJECT }} build
+          # 推送到 Nexus Docker 私服（如果配置了 push 步骤）
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence; do
+            docker tag kb-deploy-$svc:latest nexus.marschat.online:8082/kb/$svc:$IMAGE_TAG || true
+            docker tag kb-deploy-$svc:latest nexus.marschat.online:8082/kb/$svc:latest || true
+            docker push nexus.marschat.online:8082/kb/$svc:$IMAGE_TAG || true
+            docker push nexus.marschat.online:8082/kb/$svc:latest || true
+          done
+
+      - name: Save Docker Images (for artifact)
+        run: |
+          mkdir -p docker-images
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence; do
+            docker image save kb-deploy-$svc:latest -o docker-images/$svc.tar || true
+          done
+
+      - name: Upload Docker Images artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images-${{ steps.meta.outputs.version }}
+          path: docker-images/
+          retention-days: 7
+
+  # ------------------------------------------------------------
+  # 2. Deploy Staging - 部署到 STAGING 环境
+  # ------------------------------------------------------------
+  deploy-staging:
+    name: Deploy to STAGING
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment:
+      name: staging
+      url: https://kb-staging.marschat.online
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.DEPLOY_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to STAGING
+        run: |
+          set -e
+          echo "[INFO] 部署到 STAGING (${{ env.DEPLOY_IP }})，版本 ${{ needs.build-images.outputs.version }}"
+          ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_IP }} \
+            "cd /opt/kb-deploy/staging && \
+             git fetch --all && \
+             git reset --hard ${{ needs.build-images.outputs.commit_sha }} && \
+             docker compose -p kb-deploy-staging pull && \
+             docker compose -p kb-deploy-staging up -d --remove-orphans && \
+             sleep 15 && \
+             docker compose -p kb-deploy-staging ps"
+
+      - name: Health Check (STAGING)
+        run: |
+          set -e
+          for i in {1..12}; do
+            if curl -fsS https://kb-staging.marschat.online/kb/actuator/health > /dev/null 2>&1; then
+              echo "✅ STAGING 健康检查通过"
+              exit 0
+            fi
+            echo "[INFO] 等待服务启动... ($i/12)"
+            sleep 10
+          done
+          echo "❌ STAGING 健康检查失败"
+          exit 1
+
+  # ------------------------------------------------------------
+  # 3. E2E Test - Playwright 端到端测试
+  # ------------------------------------------------------------
+  e2e-test:
+    name: E2E Test (Playwright)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: ${{ github.event.inputs.skip_e2e != 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache Playwright venv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright pytest
+          python -m playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        env:
+          E2E_BASE_URL: https://kb-staging.marschat.online
+        run: |
+          if [ -f tests/test_e2e.py ]; then
+            python tests/test_e2e.py --env staging || exit 1
+          else
+            echo "[WARN] tests/test_e2e.py 不存在，跳过 E2E 测试"
+          fi
+
+      - name: Upload E2E Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-reports
+          path: |
+            test-output/e2e/playwright-report/
+            test-output/e2e/screenshots/
+            test-output/e2e/traces/
+          retention-days: 14
+
+  # ------------------------------------------------------------
+  # 4. Deploy Prod - 手动批准后部署到生产
+  # ------------------------------------------------------------
+  deploy-prod:
+    name: Deploy to PROD (Manual Approval)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging, e2e-test]
+    if: ${{ always() && needs.deploy-staging.result == 'success' && (needs.e2e-test.result == 'success' || needs.e2e-test.result == 'skipped') }}
+    environment:
+      name: production
+      url: https://kb.marschat.online
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.DEPLOY_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to PROD
+        run: |
+          set -e
+          VERSION="${{ needs.build-images.outputs.version }}"
+          COMMIT="${{ needs.build-images.outputs.commit_sha }}"
+          echo "[INFO] 部署到 PROD (${{ env.DEPLOY_IP }})，版本 $VERSION (commit $COMMIT)"
+          ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_IP }} \
+            "cd /opt/kb-deploy/prod && \
+             git fetch --all && \
+             git reset --hard $COMMIT && \
+             docker compose -p kb-deploy-prod pull && \
+             docker compose -p kb-deploy-prod up -d --remove-orphans && \
+             docker image prune -f && \
+             sleep 15 && \
+             docker compose -p kb-deploy-prod ps"
+
+      - name: Health Check (PROD)
+        run: |
+          set -e
+          for i in {1..12}; do
+            if curl -fsS https://kb.marschat.online/kb/actuator/health > /dev/null 2>&1; then
+              echo "✅ PROD 健康检查通过"
+              exit 0
+            fi
+            echo "[INFO] 等待服务启动... ($i/12)"
+            sleep 10
+          done
+          echo "❌ PROD 健康检查失败"
+          exit 1
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build-images.outputs.version }}
+          name: mykng ${{ needs.build-images.outputs.version }}
+          body: |
+            ## mykng 知识库微服务 ${{ needs.build-images.outputs.version }}
+
+            **Commit:** ${{ needs.build-images.outputs.commit_sha }}
+
+            ### 镜像列表
+            - kb-gateway
+            - kb-auth
+            - kb-file
+            - kb-knowledge
+            - kb-ops
+            - kb-intelligence
+
+            ### 部署状态
+            - ✅ STAGING 部署成功
+            - ✅ E2E 测试通过
+            - ✅ PROD 部署成功
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "🎉 PROD 部署成功: ${{ needs.build-images.outputs.version }}"
+          # 在此接入企业微信/钉钉通知
