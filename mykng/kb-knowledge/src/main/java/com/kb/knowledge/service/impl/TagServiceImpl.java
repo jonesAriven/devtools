@@ -54,6 +54,33 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    public Tag update(Long id, Long userId, String name, String color) {
+        Tag tag = tagMapper.selectById(id);
+        if (tag == null || !tag.getUserId().equals(userId)) {
+            throw new BusinessException("标签不存在");
+        }
+        if (name != null && !name.equals(tag.getName())) {
+            Tag exist = tagMapper.selectOne(
+                    new LambdaQueryWrapper<Tag>()
+                            .eq(Tag::getUserId, userId)
+                            .eq(Tag::getName, name)
+                            .ne(Tag::getId, id));
+            if (exist != null) {
+                throw new BusinessException("标签名称已存在");
+            }
+            tag.setName(name);
+        }
+        if (color != null) {
+            tag.setColor(color);
+        }
+        tagMapper.updateById(tag);
+
+        eventPublisher.publishKnowledgeEvent(userId, "UPDATE", "tag", tag.getId(),
+                "更新标签: " + tag.getName());
+        return tag;
+    }
+
+    @Override
     public void delete(Long id, Long userId) {
         Tag tag = tagMapper.selectById(id);
         if (tag == null || !tag.getUserId().equals(userId)) {

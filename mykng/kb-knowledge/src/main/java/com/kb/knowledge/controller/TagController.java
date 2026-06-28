@@ -30,6 +30,11 @@ public class TagController {
         return Result.ok(tagService.create(getCurrentUserId(), request.getName(), request.getColor()));
     }
 
+    @PutMapping("/{id}")
+    public Result<Tag> update(@PathVariable Long id, @RequestBody TagCreateRequest request) {
+        return Result.ok(tagService.update(id, getCurrentUserId(), request.getName(), request.getColor()));
+    }
+
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         tagService.delete(id, getCurrentUserId());

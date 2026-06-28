@@ -11,6 +11,8 @@ public interface TagService {
 
     Tag create(Long userId, String name, String color);
 
+    Tag update(Long id, Long userId, String name, String color);
+
     void delete(Long id, Long userId);
 
     void bind(Long userId, TagBindRequest request);
