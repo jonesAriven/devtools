@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: com.kb.auth.CucumberIT
 -------------------------------------------------------------------------------
-Tests run: 12, Failures: 0, Errors: 12, Skipped: 0, Time elapsed: 0.376 s <<< FAILURE! -- in com.kb.auth.CucumberIT
-用户认证.正确账号密码登录成功 -- Time elapsed: 0.033 s <<< ERROR!
+Tests run: 12, Failures: 0, Errors: 12, Skipped: 0, Time elapsed: 0.422 s <<< FAILURE! -- in com.kb.auth.CucumberIT
+用户认证.正确账号密码登录成功 -- Time elapsed: 0.066 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -29,7 +29,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.刷新令牌成功 -- Time elapsed: 0.004 s <<< ERROR!
+用户认证.刷新令牌成功 -- Time elapsed: 0.006 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -56,7 +56,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.登出加入黑名单 -- Time elapsed: 0.002 s <<< ERROR!
+用户认证.登出加入黑名单 -- Time elapsed: 0.003 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -83,7 +83,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.错误密码登录失败 -- Time elapsed: 0.001 s <<< ERROR!
+用户认证.错误密码登录失败 -- Time elapsed: 0.007 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -137,7 +137,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.被禁用用户登录失败 -- Time elapsed: 0.004 s <<< ERROR!
+用户认证.被禁用用户登录失败 -- Time elapsed: 0.006 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -191,7 +191,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.无效 token 登出不报错 -- Time elapsed: 0.001 s <<< ERROR!
+用户认证.无效 token 登出不报错 -- Time elapsed: 0.008 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -245,7 +245,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.密码为空登录失败 -- Time elapsed: 0.001 s <<< ERROR!
+用户认证.密码为空登录失败 -- Time elapsed: 0.009 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -272,7 +272,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.过期 refresh token 刷新失败 -- Time elapsed: 0.001 s <<< ERROR!
+用户认证.过期 refresh token 刷新失败 -- Time elapsed: 0.007 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
@@ -299,7 +299,7 @@ Or:
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-用户认证.篡改 refresh token 刷新失败 -- Time elapsed: 0.001 s <<< ERROR!
+用户认证.篡改 refresh token 刷新失败 -- Time elapsed: 0.005 s <<< ERROR!
 io.cucumber.core.backend.CucumberBackendException: 
 Please annotate a glue class with some context configuration.
 
