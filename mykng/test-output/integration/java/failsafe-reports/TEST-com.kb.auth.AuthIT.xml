@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-failsafe-plugin/xsd/failsafe-test-report-3.0.xsd" version="3.0" name="com.kb.auth.AuthIT" time="21.5" tests="7" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-failsafe-plugin/xsd/failsafe-test-report-3.0.xsd" version="3.0" name="com.kb.auth.AuthIT" time="21.659" tests="7" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -15,7 +15,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="CN"/>
     <property name="sun.boot.library.path" value="/usr/lib/jvm/java-21-openjdk-amd64/lib"/>
-    <property name="sun.java.command" value="/root/devtools/mykng/kb-auth/target/surefire/surefirebooter-20260629070631939_3.jar /root/devtools/mykng/kb-auth/target/surefire 2026-06-29T07-06-31_704-jvmRun1 surefire-20260629070631939_1tmp surefire_0-20260629070631939_2tmp"/>
+    <property name="sun.java.command" value="/root/devtools/mykng/kb-auth/target/surefire/surefirebooter-20260629071122660_3.jar /root/devtools/mykng/kb-auth/target/surefire 2026-06-29T07-11-22_575-jvmRun1 surefire-20260629071122660_1tmp surefire_0-20260629071122660_2tmp"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="/root/devtools/mykng/kb-auth/target/test-classes:/root/devtools/mykng/kb-auth/target/classes:/root/.m2/repository/com/kb/kb-common/1.0.0/kb-common-1.0.0.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.2.5/spring-boot-starter-web-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter/3.2.5/spring-boot-starter-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot/3.2.5/spring-boot-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.2.5/spring-boot-starter-logging-3.2.5.jar:/root/.m2/repository/ch/qos/logback/logback-classic/1.4.14/logback-classic-1.4.14.jar:/root/.m2/repository/ch/qos/logback/logback-core/1.4.14/logback-core-1.4.14.jar:/root/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.21.1/log4j-to-slf4j-2.21.1.jar:/root/.m2/repository/org/apache/logging/log4j/log4j-api/2.21.1/log4j-api-2.21.1.jar:/root/.m2/repository/org/slf4j/jul-to-slf4j/2.0.13/jul-to-slf4j-2.0.13.jar:/root/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/root/.m2/repository/org/yaml/snakeyaml/2.2/snakeyaml-2.2.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.2.5/spring-boot-starter-json-3.2.5.jar:/root/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.15.4/jackson-datatype-jdk8-2.15.4.jar:/root/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.15.4/jackson-datatype-jsr310-2.15.4.jar:/root/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.15.4/jackson-module-parameter-names-2.15.4.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.2.5/spring-boot-starter-tomcat-3.2.5.jar:/root/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.20/tomcat-embed-core-10.1.20.jar:/root/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.20/tomcat-embed-websocket-10.1.20.jar:/root/.m2/repository/org/springframework/spring-web/6.1.6/spring-web-6.1.6.jar:/root/.m2/repository/org/springframework/spring-beans/6.1.6/spring-beans-6.1.6.jar:/root/.m2/repository/org/springframework/spring-webmvc/6.1.6/spring-webmvc-6.1.6.jar:/root/.m2/repository/org/springframework/spring-context/6.1.6/spring-context-6.1.6.jar:/root/.m2/repository/org/springframework/spring-expression/6.1.6/spring-expression-6.1.6.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.2.5/spring-boot-starter-security-3.2.5.jar:/root/.m2/repository/org/springframework/spring-aop/6.1.6/spring-aop-6.1.6.jar:/root/.m2/repository/org/springframework/security/spring-security-config/6.2.4/spring-security-config-6.2.4.jar:/root/.m2/repository/org/springframework/security/spring-security-web/6.2.4/spring-security-web-6.2.4.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-validation/3.2.5/spring-boot-starter-validation-3.2.5.jar:/root/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.20/tomcat-embed-el-10.1.20.jar:/root/.m2/repository/org/hibernate/validator/hibernate-validator/8.0.1.Final/hibernate-validator-8.0.1.Final.jar:/root/.m2/repository/jakarta/validation/jakarta.validation-api/3.0.2/jakarta.validation-api-3.0.2.jar:/root/.m2/repository/org/jboss/logging/jboss-logging/3.5.3.Final/jboss-logging-3.5.3.Final.jar:/root/.m2/repository/com/fasterxml/classmate/1.6.0/classmate-1.6.0.jar:/root/.m2/repository/com/baomidou/mybatis-plus-spring-boot3-starter/3.5.6/mybatis-plus-spring-boot3-starter-3.5.6.jar:/root/.m2/repository/com/baomidou/mybatis-plus/3.5.6/mybatis-plus-3.5.6.jar:/root/.m2/repository/com/baomidou/mybatis-plus-core/3.5.6/mybatis-plus-core-3.5.6.jar:/root/.m2/repository/com/baomidou/mybatis-plus-annotation/3.5.6/mybatis-plus-annotation-3.5.6.jar:/root/.m2/repository/com/baomidou/mybatis-plus-extension/3.5.6/mybatis-plus-extension-3.5.6.jar:/root/.m2/repository/org/mybatis/mybatis/3.5.16/mybatis-3.5.16.jar:/root/.m2/repository/com/github/jsqlparser/jsqlparser/4.9/jsqlparser-4.9.jar:/root/.m2/repository/org/mybatis/mybatis-spring/3.0.3/mybatis-spring-3.0.3.jar:/root/.m2/repository/com/baomidou/mybatis-plus-spring-boot-autoconfigure/3.5.6/mybatis-plus-spring-boot-autoconfigure-3.5.6.jar:/root/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.2.5/spring-boot-autoconfigure-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.2.5/spring-boot-starter-jdbc-3.2.5.jar:/root/.m2/repository/com/zaxxer/HikariCP/5.0.1/HikariCP-5.0.1.jar:/root/.m2/repository/org/springframework/spring-jdbc/6.1.6/spring-jdbc-6.1.6.jar:/root/.m2/repository/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar:/root/.m2/repository/com/h2database/h2/2.2.224/h2-2.2.224.jar:/root/.m2/repository/io/jsonwebtoken/jjwt-api/0.12.6/jjwt-api-0.12.6.jar:/root/.m2/repository/io/jsonwebtoken/jjwt-impl/0.12.6/jjwt-impl-0.12.6.jar:/root/.m2/repository/io/jsonwebtoken/jjwt-jackson/0.12.6/jjwt-jackson-0.12.6.jar:/root/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.15.4/jackson-databind-2.15.4.jar:/root/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.15.4/jackson-annotations-2.15.4.jar:/root/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.15.4/jackson-core-2.15.4.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-data-redis/3.2.5/spring-boot-starter-data-redis-3.2.5.jar:/root/.m2/repository/io/lettuce/lettuce-core/6.3.2.RELEASE/lettuce-core-6.3.2.RELEASE.jar:/root/.m2/repository/io/netty/netty-common/4.1.109.Final/netty-common-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-handler/4.1.109.Final/netty-handler-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-resolver/4.1.109.Final/netty-resolver-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-buffer/4.1.109.Final/netty-buffer-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-transport-native-unix-common/4.1.109.Final/netty-transport-native-unix-common-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-codec/4.1.109.Final/netty-codec-4.1.109.Final.jar:/root/.m2/repository/io/netty/netty-transport/4.1.109.Final/netty-transport-4.1.109.Final.jar:/root/.m2/repository/io/projectreactor/reactor-core/3.6.5/reactor-core-3.6.5.jar:/root/.m2/repository/org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.jar:/root/.m2/repository/org/springframework/data/spring-data-redis/3.2.5/spring-data-redis-3.2.5.jar:/root/.m2/repository/org/springframework/data/spring-data-keyvalue/3.2.5/spring-data-keyvalue-3.2.5.jar:/root/.m2/repository/org/springframework/data/spring-data-commons/3.2.5/spring-data-commons-3.2.5.jar:/root/.m2/repository/org/springframework/spring-tx/6.1.6/spring-tx-6.1.6.jar:/root/.m2/repository/org/springframework/spring-oxm/6.1.6/spring-oxm-6.1.6.jar:/root/.m2/repository/org/springframework/spring-context-support/6.1.6/spring-context-support-6.1.6.jar:/root/.m2/repository/org/slf4j/slf4j-api/2.0.13/slf4j-api-2.0.13.jar:/root/.m2/repository/cn/hutool/hutool-all/5.8.27/hutool-all-5.8.27.jar:/root/.m2/repository/org/projectlombok/lombok/1.18.32/lombok-1.18.32.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-actuator/3.2.5/spring-boot-starter-actuator-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-actuator-autoconfigure/3.2.5/spring-boot-actuator-autoconfigure-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-actuator/3.2.5/spring-boot-actuator-3.2.5.jar:/root/.m2/repository/io/micrometer/micrometer-observation/1.12.5/micrometer-observation-1.12.5.jar:/root/.m2/repository/io/micrometer/micrometer-commons/1.12.5/micrometer-commons-1.12.5.jar:/root/.m2/repository/io/micrometer/micrometer-jakarta9/1.12.5/micrometer-jakarta9-1.12.5.jar:/root/.m2/repository/io/micrometer/micrometer-core/1.12.5/micrometer-core-1.12.5.jar:/root/.m2/repository/org/hdrhistogram/HdrHistogram/2.1.12/HdrHistogram-2.1.12.jar:/root/.m2/repository/org/latencyutils/LatencyUtils/2.0.3/LatencyUtils-2.0.3.jar:/root/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.2.5/spring-boot-starter-test-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-test/3.2.5/spring-boot-test-3.2.5.jar:/root/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.2.5/spring-boot-test-autoconfigure-3.2.5.jar:/root/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/root/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.2/jakarta.xml.bind-api-4.0.2.jar:/root/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.3/jakarta.activation-api-2.1.3.jar:/root/.m2/repository/net/minidev/json-smart/2.5.1/json-smart-2.5.1.jar:/root/.m2/repository/net/minidev/accessors-smart/2.5.1/accessors-smart-2.5.1.jar:/root/.m2/repository/org/ow2/asm/asm/9.6/asm-9.6.jar:/root/.m2/repository/org/assertj/assertj-core/3.24.2/assertj-core-3.24.2.jar:/root/.m2/repository/net/bytebuddy/byte-buddy/1.14.13/byte-buddy-1.14.13.jar:/root/.m2/repository/org/awaitility/awaitility/4.2.1/awaitility-4.2.1.jar:/root/.m2/repository/org/hamcrest/hamcrest/2.2/hamcrest-2.2.jar:/root/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.2/junit-jupiter-5.10.2.jar:/root/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/root/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.2/junit-jupiter-params-5.10.2.jar:/root/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.2/junit-jupiter-engine-5.10.2.jar:/root/.m2/repository/org/mockito/mockito-core/5.7.0/mockito-core-5.7.0.jar:/root/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.13/byte-buddy-agent-1.14.13.jar:/root/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/root/.m2/repository/org/mockito/mockito-junit-jupiter/5.7.0/mockito-junit-jupiter-5.7.0.jar:/root/.m2/repository/org/skyscreamer/jsonassert/1.5.1/jsonassert-1.5.1.jar:/root/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/root/.m2/repository/org/springframework/spring-core/6.1.6/spring-core-6.1.6.jar:/root/.m2/repository/org/springframework/spring-jcl/6.1.6/spring-jcl-6.1.6.jar:/root/.m2/repository/org/springframework/spring-test/6.1.6/spring-test-6.1.6.jar:/root/.m2/repository/org/xmlunit/xmlunit-core/2.9.1/xmlunit-core-2.9.1.jar:/root/.m2/repository/org/springframework/security/spring-security-test/6.2.4/spring-security-test-6.2.4.jar:/root/.m2/repository/org/springframework/security/spring-security-core/6.2.4/spring-security-core-6.2.4.jar:/root/.m2/repository/org/springframework/security/spring-security-crypto/6.2.4/spring-security-crypto-6.2.4.jar:/root/.m2/repository/io/cucumber/cucumber-java/7.18.1/cucumber-java-7.18.1.jar:/root/.m2/repository/io/cucumber/cucumber-core/7.18.1/cucumber-core-7.18.1.jar:/root/.m2/repository/io/cucumber/cucumber-gherkin/7.18.1/cucumber-gherkin-7.18.1.jar:/root/.m2/repository/io/cucumber/cucumber-gherkin-messages/7.18.1/cucumber-gherkin-messages-7.18.1.jar:/root/.m2/repository/io/cucumber/gherkin/28.0.0/gherkin-28.0.0.jar:/root/.m2/repository/io/cucumber/messages/24.1.0/messages-24.1.0.jar:/root/.m2/repository/io/cucumber/testng-xml-formatter/0.2.0/testng-xml-formatter-0.2.0.jar:/root/.m2/repository/io/cucumber/query/12.2.0/query-12.2.0.jar:/root/.m2/repository/io/cucumber/tag-expressions/6.1.0/tag-expressions-6.1.0.jar:/root/.m2/repository/io/cucumber/cucumber-expressions/17.1.0/cucumber-expressions-17.1.0.jar:/root/.m2/repository/io/cucumber/datatable/7.18.1/datatable-7.18.1.jar:/root/.m2/repository/io/cucumber/cucumber-plugin/7.18.1/cucumber-plugin-7.18.1.jar:/root/.m2/repository/io/cucumber/docstring/7.18.1/docstring-7.18.1.jar:/root/.m2/repository/io/cucumber/html-formatter/21.4.1/html-formatter-21.4.1.jar:/root/.m2/repository/io/cucumber/junit-xml-formatter/0.5.0/junit-xml-formatter-0.5.0.jar:/root/.m2/repository/io/cucumber/ci-environment/10.0.1/ci-environment-10.0.1.jar:/root/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/root/.m2/repository/io/cucumber/cucumber-junit-platform-engine/7.18.1/cucumber-junit-platform-engine-7.18.1.jar:/root/.m2/repository/org/junit/platform/junit-platform-engine/1.10.2/junit-platform-engine-1.10.2.jar:/root/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/root/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/root/.m2/repository/io/cucumber/cucumber-spring/7.18.1/cucumber-spring-7.18.1.jar:/root/.m2/repository/org/junit/platform/junit-platform-suite/1.10.2/junit-platform-suite-1.10.2.jar:/root/.m2/repository/org/junit/platform/junit-platform-suite-api/1.10.2/junit-platform-suite-api-1.10.2.jar:/root/.m2/repository/org/junit/platform/junit-platform-suite-engine/1.10.2/junit-platform-suite-engine-1.10.2.jar:/root/.m2/repository/org/junit/platform/junit-platform-suite-commons/1.10.2/junit-platform-suite-commons-1.10.2.jar:/root/.m2/repository/org/junit/platform/junit-platform-launcher/1.10.2/junit-platform-launcher-1.10.2.jar:"/>
     <property name="sun.cpu.endian" value="little"/>
@@ -32,7 +32,7 @@
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="FILE_LOG_CHARSET" value="UTF-8"/>
     <property name="java.awt.headless" value="true"/>
-    <property name="surefire.real.class.path" value="/root/devtools/mykng/kb-auth/target/surefire/surefirebooter-20260629070631939_3.jar"/>
+    <property name="surefire.real.class.path" value="/root/devtools/mykng/kb-auth/target/surefire/surefirebooter-20260629071122660_3.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="21.0.11+10-1-deb13u2-Debian"/>
     <property name="user.name" value="root"/>
@@ -45,15 +45,15 @@
     <property name="localRepository" value="/root/.m2/repository"/>
     <property name="java.vendor.url.bug" value="https://bugs.debian.org/openjdk-21"/>
     <property name="java.io.tmpdir" value="/tmp"/>
-    <property name="catalina.home" value="/tmp/tomcat.0.13901555275016612405"/>
+    <property name="catalina.home" value="/tmp/tomcat.0.2300141800663648673"/>
     <property name="com.zaxxer.hikari.pool_number" value="1"/>
     <property name="java.version" value="21.0.11"/>
     <property name="user.dir" value="/root/devtools/mykng/kb-auth"/>
     <property name="os.arch" value="amd64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="PID" value="631880"/>
+    <property name="PID" value="637749"/>
     <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
-    <property name="catalina.base" value="/tmp/tomcat.0.13901555275016612405"/>
+    <property name="catalina.base" value="/tmp/tomcat.0.2300141800663648673"/>
     <property name="native.encoding" value="UTF-8"/>
     <property name="java.library.path" value="/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib"/>
     <property name="java.vm.info" value="mixed mode, sharing"/>
@@ -64,9 +64,9 @@
     <property name="java.class.version" value="65.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[kb-auth] "/>
   </properties>
-  <testcase name="scenario6_duplicateSubmit_idempotentLogin" classname="com.kb.auth.AuthIT" time="2.42">
-    <system-out><![CDATA[07:06:34.326 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.kb.auth.AuthIT]: AuthIT does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-07:06:34.784 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.kb.auth.KbAuthApplication for test class com.kb.auth.AuthIT
+  <testcase name="scenario6_duplicateSubmit_idempotentLogin" classname="com.kb.auth.AuthIT" time="2.5">
+    <system-out><![CDATA[07:11:25.922 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.kb.auth.AuthIT]: AuthIT does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:11:26.147 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.kb.auth.KbAuthApplication for test class com.kb.auth.AuthIT
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -76,76 +76,76 @@
  =========|_|==============|___/=/_/_/_/
  :: Spring Boot ::                (v3.2.5)
 
-2026-06-29 07:06:36.088 [background-preinit] [] INFO  kb-auth - o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
-2026-06-29 07:06:36.167 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - Starting AuthIT using Java 21.0.11 with PID 631880 (started by root in /root/devtools/mykng/kb-auth)
-2026-06-29 07:06:36.167 [main] [] DEBUG kb-auth - com.kb.auth.AuthIT - Running with Spring Boot v3.2.5, Spring v6.1.6
-2026-06-29 07:06:36.168 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - The following 1 profile is active: "test"
-2026-06-29 07:06:45.251 [main] [] INFO  kb-auth - o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 0 (http)
-2026-06-29 07:06:45.302 [main] [] INFO  kb-auth - o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-auto-1"]
-2026-06-29 07:06:45.309 [main] [] INFO  kb-auth - o.a.catalina.core.StandardService - Starting service [Tomcat]
-2026-06-29 07:06:45.310 [main] [] INFO  kb-auth - o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.20]
-2026-06-29 07:06:45.534 [main] [] INFO  kb-auth - o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
-2026-06-29 07:06:45.537 [main] [] INFO  kb-auth - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 9323 ms
+2026-06-29 07:11:26.986 [background-preinit] [] INFO  kb-auth - o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2026-06-29 07:11:27.181 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - Starting AuthIT using Java 21.0.11 with PID 637749 (started by root in /root/devtools/mykng/kb-auth)
+2026-06-29 07:11:27.183 [main] [] DEBUG kb-auth - com.kb.auth.AuthIT - Running with Spring Boot v3.2.5, Spring v6.1.6
+2026-06-29 07:11:27.184 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - The following 1 profile is active: "test"
+2026-06-29 07:11:36.922 [main] [] INFO  kb-auth - o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 0 (http)
+2026-06-29 07:11:36.965 [main] [] INFO  kb-auth - o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-auto-1"]
+2026-06-29 07:11:36.969 [main] [] INFO  kb-auth - o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-06-29 07:11:36.975 [main] [] INFO  kb-auth - o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-06-29 07:11:37.195 [main] [] INFO  kb-auth - o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-06-29 07:11:37.196 [main] [] INFO  kb-auth - o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 9753 ms
 Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
 Use localhost address 
 Get mykng-debain/127.0.1.1 network interface 
 Get network interface info: null
 Unable to get network interface for mykng-debain/127.0.1.1
-Initialization Sequence datacenterId:1 workerId:13
+Initialization Sequence datacenterId:1 workerId:19
  _ _   |_  _ _|_. ___ _ |    _ 
 | | |\/|_)(_| | |_\  |_)||_|_\ 
      /               |         
                         3.5.6 
-2026-06-29 07:06:46.641 [main] [] INFO  kb-auth - com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
-2026-06-29 07:06:47.525 [main] [] INFO  kb-auth - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
-2026-06-29 07:06:47.537 [main] [] INFO  kb-auth - com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
-2026-06-29 07:06:48.243 [main] [] DEBUG kb-auth - c.k.a.s.JwtAuthenticationFilter - Filter 'jwtAuthenticationFilter' configured for use
-2026-06-29 07:06:50.093 [main] [] INFO  kb-auth - o.s.b.a.e.web.EndpointLinksResolver - Exposing 2 endpoint(s) beneath base path '/actuator'
-2026-06-29 07:06:50.441 [main] [] INFO  kb-auth - o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@5a0b550a, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3390621a, org.springframework.security.web.context.SecurityContextHolderFilter@5bb90b89, org.springframework.security.web.header.HeaderWriterFilter@1ed0128b, org.springframework.web.filter.CorsFilter@69d9d322, org.springframework.security.web.authentication.logout.LogoutFilter@701c413, com.kb.auth.security.JwtAuthenticationFilter@30a4a111, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@4c231f62, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6888746c, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@4e23ddf0, org.springframework.security.web.session.SessionManagementFilter@978475b, org.springframework.security.web.access.ExceptionTranslationFilter@5bb661e0, org.springframework.security.web.access.intercept.AuthorizationFilter@7cb4d4ee]
-2026-06-29 07:06:51.324 [main] [] INFO  kb-auth - o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-auto-1"]
-2026-06-29 07:06:51.348 [main] [] INFO  kb-auth - o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 46413 (http) with context path ''
-2026-06-29 07:06:51.367 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - Started AuthIT in 16.057 seconds (process running for 19.329)
-2026-06-29 07:06:51.977 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-06-29 07:06:51.978 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
-2026-06-29 07:06:51.980 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.s.web.servlet.DispatcherServlet - Completed initialization in 2 ms
+2026-06-29 07:11:38.567 [main] [] INFO  kb-auth - com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-06-29 07:11:38.994 [main] [] INFO  kb-auth - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2026-06-29 07:11:39.000 [main] [] INFO  kb-auth - com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-06-29 07:11:39.537 [main] [] DEBUG kb-auth - c.k.a.s.JwtAuthenticationFilter - Filter 'jwtAuthenticationFilter' configured for use
+2026-06-29 07:11:41.744 [main] [] INFO  kb-auth - o.s.b.a.e.web.EndpointLinksResolver - Exposing 2 endpoint(s) beneath base path '/actuator'
+2026-06-29 07:11:41.886 [main] [] INFO  kb-auth - o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@48543f11, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@cda988, org.springframework.security.web.context.SecurityContextHolderFilter@25814d3c, org.springframework.security.web.header.HeaderWriterFilter@7d466ef9, org.springframework.web.filter.CorsFilter@7e92e9a2, org.springframework.security.web.authentication.logout.LogoutFilter@5f0a5848, com.kb.auth.security.JwtAuthenticationFilter@5857d723, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@427128a6, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@701c413, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@c0a8787, org.springframework.security.web.session.SessionManagementFilter@6821d4e1, org.springframework.security.web.access.ExceptionTranslationFilter@539f2fec, org.springframework.security.web.access.intercept.AuthorizationFilter@55e3b64d]
+2026-06-29 07:11:42.720 [main] [] INFO  kb-auth - o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-auto-1"]
+2026-06-29 07:11:42.744 [main] [] INFO  kb-auth - o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 40015 (http) with context path ''
+2026-06-29 07:11:42.771 [main] [] INFO  kb-auth - com.kb.auth.AuthIT - Started AuthIT in 16.442 seconds (process running for 20.004)
+2026-06-29 07:11:43.277 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-06-29 07:11:43.278 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-06-29 07:11:43.280 [http-nio-auto-1-exec-1] [] INFO  kb-auth - o.s.web.servlet.DispatcherServlet - Completed initialization in 2 ms
 Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
-JDBC Connection [HikariProxyConnection@64604054 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
+JDBC Connection [HikariProxyConnection@924857456 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: admin(String)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
-Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e] from current transaction
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
+Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c] from current transaction
 ==>  Preparing: INSERT INTO refresh_token ( user_id, token, expire_at, created_at ) VALUES ( ?, ?, ?, ? )
-==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgwMTMsImV4cCI6MTc4MzI5MjgxM30.uxbc5uSVhp1txwWa5rhuhwsgE5lq9HlYrorc85xZfJ6f32EYEzi4RLucnap-gZkl(String), 2026-07-06T07:06:53.220497055(LocalDateTime), 2026-06-29T07:06:53.242241627(LocalDateTime)
+==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgzMDQsImV4cCI6MTc4MzI5MzEwNH0.6AUCzgn_8jmwP67el8p6IlzF7OErgf5Shb_MmwI4_yvgbLDEVQGkPq4yx3HzmGZ4(String), 2026-07-06T07:11:44.795068031(LocalDateTime), 2026-06-29T07:11:44.817715670(LocalDateTime)
 <==    Updates: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
-2026-06-29 07:06:53.394 [http-nio-auto-1-exec-1] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
-2026-06-29 07:06:53.395 [http-nio-auto-1-exec-1] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
-Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@31ae284e]
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
+2026-06-29 07:11:45.115 [http-nio-auto-1-exec-1] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
+2026-06-29 07:11:45.128 [http-nio-auto-1-exec-1] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6bdf280c]
 Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
-JDBC Connection [HikariProxyConnection@1154172392 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
+JDBC Connection [HikariProxyConnection@932390394 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: admin(String)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
-Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc] from current transaction
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
+Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0] from current transaction
 ==>  Preparing: INSERT INTO refresh_token ( user_id, token, expire_at, created_at ) VALUES ( ?, ?, ?, ? )
-==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgwMTMsImV4cCI6MTc4MzI5MjgxM30.uxbc5uSVhp1txwWa5rhuhwsgE5lq9HlYrorc85xZfJ6f32EYEzi4RLucnap-gZkl(String), 2026-07-06T07:06:53.839316634(LocalDateTime), 2026-06-29T07:06:53.842181425(LocalDateTime)
+==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgzMDUsImV4cCI6MTc4MzI5MzEwNX0.fjNnUM6snB_ZHt2OJmpwiCEHXYslZjpDyP3mO4RT8FoxYouEoDLnXfvMCknRSQRi(String), 2026-07-06T07:11:45.416082536(LocalDateTime), 2026-06-29T07:11:45.417766227(LocalDateTime)
 <==    Updates: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
-2026-06-29 07:06:53.849 [http-nio-auto-1-exec-2] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
-2026-06-29 07:06:53.850 [http-nio-auto-1-exec-2] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
-Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@158a1dfc]
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
+2026-06-29 07:11:45.421 [http-nio-auto-1-exec-2] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
+2026-06-29 07:11:45.423 [http-nio-auto-1-exec-2] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@66a14ec0]
 ]]></system-out>
     <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/root/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.13/byte-buddy-agent-1.14.13.jar)
 WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
@@ -153,145 +153,145 @@ WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
 WARNING: Dynamic loading of agents will be disallowed by default in a future release
 ]]></system-err>
   </testcase>
-  <testcase name="scenario3_invalidFormat_no500Error" classname="com.kb.auth.AuthIT" time="0.098">
+  <testcase name="scenario3_invalidFormat_no500Error" classname="com.kb.auth.AuthIT" time="0.044">
     <system-out><![CDATA[Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@442a3860]
-JDBC Connection [HikariProxyConnection@364564634 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@485c9d20]
+JDBC Connection [HikariProxyConnection@423631842 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(String)
 <==      Total: 0
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@442a3860]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@442a3860]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@442a3860]
-2026-06-29 07:06:54.090 [http-nio-auto-1-exec-3] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 业务异常 [/auth/login]: 用户名或密码错误
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@485c9d20]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@485c9d20]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@485c9d20]
+2026-06-29 07:11:45.512 [http-nio-auto-1-exec-4] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 业务异常 [/auth/login]: 用户名或密码错误
 ]]></system-out>
   </testcase>
-  <testcase name="scenario7_largeData_paginationNotTimeout" classname="com.kb.auth.AuthIT" time="0.486">
+  <testcase name="scenario7_largeData_paginationNotTimeout" classname="com.kb.auth.AuthIT" time="0.489">
     <system-out><![CDATA[Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
-JDBC Connection [HikariProxyConnection@905064666 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
+JDBC Connection [HikariProxyConnection@78745121 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: admin(String)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
-Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884] from current transaction
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
+Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845] from current transaction
 ==>  Preparing: INSERT INTO refresh_token ( user_id, token, expire_at, created_at ) VALUES ( ?, ?, ?, ? )
-==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgwMTQsImV4cCI6MTc4MzI5MjgxNH0.Tici0jdkb8vbKA04dYp7JdkzCTo2Ngbm9VAVc34rUw0_Q0oqnos2DWXopQTceruj(String), 2026-07-06T07:06:54.212165046(LocalDateTime), 2026-06-29T07:06:54.212754523(LocalDateTime)
+==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgzMDUsImV4cCI6MTc4MzI5MzEwNX0.fjNnUM6snB_ZHt2OJmpwiCEHXYslZjpDyP3mO4RT8FoxYouEoDLnXfvMCknRSQRi(String), 2026-07-06T07:11:45.677525356(LocalDateTime), 2026-06-29T07:11:45.678872446(LocalDateTime)
 <==    Updates: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
-2026-06-29 07:06:54.214 [http-nio-auto-1-exec-4] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
-2026-06-29 07:06:54.214 [http-nio-auto-1-exec-4] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
-Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6442b884]
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
+2026-06-29 07:11:45.681 [http-nio-auto-1-exec-5] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
+2026-06-29 07:11:45.683 [http-nio-auto-1-exec-5] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@54e90845]
 Creating a new SqlSession
-SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@fc9021e] was not registered for synchronization because synchronization is not active
-JDBC Connection [HikariProxyConnection@1522730040 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@76e5842e] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1317563759 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
 ==>  Preparing: SELECT COUNT( * ) AS total FROM jwt_blacklist WHERE (token = ? AND expire_at > ?)
-==> Parameters: eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODI2ODgwMTQsImV4cCI6MTc4MjY4ODkxNH0.mjxXslU-_RlQET5JQU_SFA2sVELhEcVXD0GuEARU994WmfDzn5StLyBC6OYNoz0X(String), 2026-06-29T07:06:54.258951117(LocalDateTime)
+==> Parameters: eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODI2ODgzMDUsImV4cCI6MTc4MjY4OTIwNX0.k2TJf4Tl6qPRvZUhYccOFzxTGRKA6AaTFmydPGuA4qJF9BIHADw9MsAEr6b-3eJz(String), 2026-06-29T07:11:45.701406734(LocalDateTime)
 <==    Columns: TOTAL
 <==        Row: 0
 <==      Total: 1
-Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@fc9021e]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@76e5842e]
 Creating a new SqlSession
-SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@24ead43a] was not registered for synchronization because synchronization is not active
-JDBC Connection [HikariProxyConnection@1285733360 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@25b5905c] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1357158729 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE id=? AND deleted=0
 ==> Parameters: 1(Long)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@24ead43a]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@25b5905c]
 Creating a new SqlSession
-SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1213c84f] was not registered for synchronization because synchronization is not active
-JDBC Connection [HikariProxyConnection@582453699 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e94c1d] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1765963117 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
 ==>  Preparing: SELECT COUNT(*) AS total FROM ops_api_token WHERE deleted = 0 AND (user_id = ?)
 ==> Parameters: 1(Long)
 <==    Columns: TOTAL
 <==        Row: 0
 <==      Total: 1
-Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1213c84f]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1e94c1d]
 ]]></system-out>
   </testcase>
-  <testcase name="scenario1_normalParameter_loginSuccess" classname="com.kb.auth.AuthIT" time="0.194">
+  <testcase name="scenario1_normalParameter_loginSuccess" classname="com.kb.auth.AuthIT" time="0.21">
     <system-out><![CDATA[Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
-JDBC Connection [HikariProxyConnection@1292580686 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
+JDBC Connection [HikariProxyConnection@553004562 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: admin(String)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
-Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9] from current transaction
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
+Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744] from current transaction
 ==>  Preparing: INSERT INTO refresh_token ( user_id, token, expire_at, created_at ) VALUES ( ?, ?, ?, ? )
-==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgwMTQsImV4cCI6MTc4MzI5MjgxNH0.Tici0jdkb8vbKA04dYp7JdkzCTo2Ngbm9VAVc34rUw0_Q0oqnos2DWXopQTceruj(String), 2026-07-06T07:06:54.771525171(LocalDateTime), 2026-06-29T07:06:54.774974070(LocalDateTime)
+==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgzMDYsImV4cCI6MTc4MzI5MzEwNn0.LYffhh-bMShgCkOql-zci0N1eo-poJu6xH4i7r3AttmwLW3LotfYJ2ehPcrKgzsL(String), 2026-07-06T07:11:46.213714177(LocalDateTime), 2026-06-29T07:11:46.217180199(LocalDateTime)
 <==    Updates: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
-2026-06-29 07:06:54.782 [http-nio-auto-1-exec-6] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
-2026-06-29 07:06:54.785 [http-nio-auto-1-exec-6] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
-Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1cc326f9]
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
+2026-06-29 07:11:46.224 [http-nio-auto-1-exec-7] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
+2026-06-29 07:11:46.225 [http-nio-auto-1-exec-7] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@71d33744]
 ]]></system-out>
   </testcase>
-  <testcase name="scenario2_missingParameter_returnValidationError" classname="com.kb.auth.AuthIT" time="0.067">
-    <system-out><![CDATA[2026-06-29 07:06:54.877 [http-nio-auto-1-exec-7] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 参数校验失败: password: 密码不能为空; username: 用户名不能为空
+  <testcase name="scenario2_missingParameter_returnValidationError" classname="com.kb.auth.AuthIT" time="0.093">
+    <system-out><![CDATA[2026-06-29 07:11:46.321 [http-nio-auto-1-exec-8] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 参数校验失败: password: 密码不能为空; username: 用户名不能为空
 ]]></system-out>
   </testcase>
-  <testcase name="scenario5_unauthenticated_return4xx" classname="com.kb.auth.AuthIT" time="0.056"/>
-  <testcase name="scenario4_unauthorizedAccess_deleteOtherUserToken" classname="com.kb.auth.AuthIT" time="0.238">
+  <testcase name="scenario5_unauthenticated_return4xx" classname="com.kb.auth.AuthIT" time="0.079"/>
+  <testcase name="scenario4_unauthorizedAccess_deleteOtherUserToken" classname="com.kb.auth.AuthIT" time="0.326">
     <system-out><![CDATA[Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
-JDBC Connection [HikariProxyConnection@1475603417 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
+JDBC Connection [HikariProxyConnection@1606078506 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE deleted=0 AND (username = ?)
 ==> Parameters: admin(String)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
-Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051] from current transaction
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
+Fetched SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9] from current transaction
 ==>  Preparing: INSERT INTO refresh_token ( user_id, token, expire_at, created_at ) VALUES ( ?, ?, ?, ? )
-==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgwMTUsImV4cCI6MTc4MzI5MjgxNX0.cGpjEVZQKSxfY_HndIxSwL7CrV_5LI1y4sUkDa0N00woJslo8EerRxIoT-OtixjD(String), 2026-07-06T07:06:55.109685289(LocalDateTime), 2026-06-29T07:06:55.112134795(LocalDateTime)
+==> Parameters: 1(Long), eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3ODI2ODgzMDYsImV4cCI6MTc4MzI5MzEwNn0.LYffhh-bMShgCkOql-zci0N1eo-poJu6xH4i7r3AttmwLW3LotfYJ2ehPcrKgzsL(String), 2026-07-06T07:11:46.604833692(LocalDateTime), 2026-06-29T07:11:46.606577016(LocalDateTime)
 <==    Updates: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
-2026-06-29 07:06:55.116 [http-nio-auto-1-exec-9] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
-2026-06-29 07:06:55.116 [http-nio-auto-1-exec-9] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
-Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6210051]
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
+2026-06-29 07:11:46.612 [http-nio-auto-1-exec-10] [] WARN  kb-auth - c.k.a.service.impl.AuthServiceImpl - 发布事件失败 event=user.login, userId=1: Java 8 date/time type `java.time.Instant` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling (through reference chain: com.kb.common.event.KbEvent["timestamp"])
+2026-06-29 07:11:46.617 [http-nio-auto-1-exec-10] [] INFO  kb-auth - c.k.a.service.impl.AuthServiceImpl - 用户登录成功 userId=1, username=admin
+Transaction synchronization committing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@ee0f2c9]
 Creating a new SqlSession
-SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5aeba98d] was not registered for synchronization because synchronization is not active
-JDBC Connection [HikariProxyConnection@1590965768 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6fea1540] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@1809157221 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
 ==>  Preparing: SELECT COUNT( * ) AS total FROM jwt_blacklist WHERE (token = ? AND expire_at > ?)
-==> Parameters: eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODI2ODgwMTUsImV4cCI6MTc4MjY4ODkxNX0.RwkunfkX9xCOjuz-fwxMIkin2ZumJgPtV4tz-xLD2f9CEOwcRx0Rr3E3kURJHjxy(String), 2026-06-29T07:06:55.138004095(LocalDateTime)
+==> Parameters: eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3ODI2ODgzMDYsImV4cCI6MTc4MjY4OTIwNn0.6Knb6fWXb6DLNQnHzsI6_aXGUl0J7rMmzLhdbYVpxgtKSZd0jb7eRwfDDmVK-dT-(String), 2026-06-29T07:11:46.641750782(LocalDateTime)
 <==    Columns: TOTAL
 <==        Row: 0
 <==      Total: 1
-Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@5aeba98d]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@6fea1540]
 Creating a new SqlSession
-SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1bd6a3b6] was not registered for synchronization because synchronization is not active
-JDBC Connection [HikariProxyConnection@757590569 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
+SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2ed71f7b] was not registered for synchronization because synchronization is not active
+JDBC Connection [HikariProxyConnection@550260987 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will not be managed by Spring
 ==>  Preparing: SELECT id,username,password,email,phone,wechat_openid,avatar,nickname,status,deleted,created_at,updated_at FROM user WHERE id=? AND deleted=0
 ==> Parameters: 1(Long)
 <==    Columns: ID, USERNAME, PASSWORD, EMAIL, PHONE, WECHAT_OPENID, AVATAR, NICKNAME, STATUS, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:06:47.663494, 2026-06-29 07:06:47.663494
+<==        Row: 1, admin, $2a$10$YfuxV6cAdrN0l1JENSprI.ykW1KD7Ggnul8Ex0V6EbriF92wc/mRK, null, null, null, null, 管理员, 1, 0, 2026-06-29 07:11:39.080076, 2026-06-29 07:11:39.080076
 <==      Total: 1
-Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@1bd6a3b6]
+Closing non transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@2ed71f7b]
 Creating a new SqlSession
-Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59ddfa88]
-JDBC Connection [HikariProxyConnection@1070761290 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
+Registering transaction synchronization for SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7af09978]
+JDBC Connection [HikariProxyConnection@318515349 wrapping conn0: url=jdbc:h2:mem:testdb user=SA] will be managed by Spring
 ==>  Preparing: SELECT id,user_id,name,token_encrypted,token_prefix,scope,status,expire_at,last_used_at,deleted,created_at,updated_at FROM ops_api_token WHERE id=? AND deleted=0
 ==> Parameters: 9999(Long)
 <==    Columns: ID, USER_ID, NAME, TOKEN_ENCRYPTED, TOKEN_PREFIX, SCOPE, STATUS, EXPIRE_AT, LAST_USED_AT, DELETED, CREATED_AT, UPDATED_AT
-<==        Row: 9999, 2, other-user-token, dummy-encrypted, dummy-prefix, null, 0, null, null, 0, 2026-06-29 07:06:54.984429, 2026-06-29 07:06:54.984429
+<==        Row: 9999, 2, other-user-token, dummy-encrypted, dummy-prefix, null, 0, null, null, 0, 2026-06-29 07:11:46.442537, 2026-06-29 07:11:46.442537
 <==      Total: 1
-Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59ddfa88]
-Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59ddfa88]
-Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@59ddfa88]
-2026-06-29 07:06:55.167 [http-nio-auto-1-exec-10] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 业务异常 [/token/9999]: 无权操作此 Token
+Releasing transactional SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7af09978]
+Transaction synchronization deregistering SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7af09978]
+Transaction synchronization closing SqlSession [org.apache.ibatis.session.defaults.DefaultSqlSession@7af09978]
+2026-06-29 07:11:46.697 [http-nio-auto-1-exec-3] [] WARN  kb-auth - c.k.c.e.GlobalExceptionHandler - 业务异常 [/token/9999]: 无权操作此 Token
 ]]></system-out>
   </testcase>
 </testsuite>

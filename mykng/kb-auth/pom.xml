@@ -149,6 +149,11 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <!-- PITest 变异测试：继承 kb-parent/pluginManagement 配置，绑定 verify 阶段 -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+            </plugin>
         </plugins>
     </build>
 </project>
