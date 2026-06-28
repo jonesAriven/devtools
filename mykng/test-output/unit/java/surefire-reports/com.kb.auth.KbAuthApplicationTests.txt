@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.kb.auth.KbAuthApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.41 s -- in com.kb.auth.KbAuthApplicationTests
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.45 s -- in com.kb.auth.KbAuthApplicationTests
