@@ -335,7 +335,7 @@
             </plugins>
         </pluginManagement>
 
-        <!-- 全局插件声明：所有子模块自动激活 JaCoCo + Surefire，避免子模块逐一声明 -->
+        <!-- 全局插件声明：所有子模块自动激活 JaCoCo + Surefire + Failsafe，避免子模块逐一声明 -->
         <plugins>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -344,6 +344,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

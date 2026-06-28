@@ -56,17 +56,17 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     public Folder getById(Long id, Long userId) {
-<span class="nc" id="L59">        Folder folder = folderMapper.selectById(id);</span>
-<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (folder == null) {</span>
-<span class="nc" id="L61">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
+<span class="fc" id="L59">        Folder folder = folderMapper.selectById(id);</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (folder == null) {</span>
+<span class="fc" id="L61">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
         }
-<span class="nc" id="L63">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
-<span class="nc" id="L64">        return folder;</span>
+<span class="fc" id="L63">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
+<span class="fc" id="L64">        return folder;</span>
     }
 
     private List&lt;Folder&gt; buildTree(List&lt;Folder&gt; allFolders) {
 <span class="fc" id="L68">        Map&lt;Long, List&lt;Folder&gt;&gt; parentMap = allFolders.stream()</span>
-<span class="pc bpc" id="L69" title="1 of 2 branches missed.">                .collect(Collectors.groupingBy(f -&gt; f.getParentId() == null ? 0L : f.getParentId()));</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">                .collect(Collectors.groupingBy(f -&gt; f.getParentId() == null ? 0L : f.getParentId()));</span>
 
 <span class="fc" id="L71">        List&lt;Folder&gt; roots = parentMap.getOrDefault(0L, new ArrayList&lt;&gt;());</span>
 <span class="fc" id="L72">        setChildren(roots, parentMap);</span>
@@ -83,122 +83,122 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     public Folder create(Long userId, FolderCreateRequest request) {
-<span class="nc" id="L86">        checkSpaceOwner(request.getSpaceId(), userId);</span>
-<span class="nc" id="L87">        Folder folder = new Folder();</span>
-<span class="nc" id="L88">        folder.setSpaceId(request.getSpaceId());</span>
-<span class="nc bnc" id="L89" title="All 2 branches missed.">        folder.setParentId(request.getParentId() != null ? request.getParentId() : 0L);</span>
-<span class="nc" id="L90">        folder.setName(request.getName());</span>
-<span class="nc bnc" id="L91" title="All 2 branches missed.">        folder.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);</span>
-<span class="nc" id="L92">        folderMapper.insert(folder);</span>
+<span class="fc" id="L86">        checkSpaceOwner(request.getSpaceId(), userId);</span>
+<span class="fc" id="L87">        Folder folder = new Folder();</span>
+<span class="fc" id="L88">        folder.setSpaceId(request.getSpaceId());</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        folder.setParentId(request.getParentId() != null ? request.getParentId() : 0L);</span>
+<span class="fc" id="L90">        folder.setName(request.getName());</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        folder.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);</span>
+<span class="fc" id="L92">        folderMapper.insert(folder);</span>
 
         // 写入 MeiliSearch 索引
-<span class="nc" id="L95">        searchIndexService.indexFolder(folder);</span>
+<span class="fc" id="L95">        searchIndexService.indexFolder(folder);</span>
 
         // 发布操作事件
-<span class="nc" id="L98">        eventPublisher.publishKnowledgeEvent(userId, &quot;CREATE&quot;, &quot;folder&quot;, folder.getId(),</span>
-<span class="nc" id="L99">                &quot;创建文件夹: &quot; + request.getName());</span>
-<span class="nc" id="L100">        return folder;</span>
+<span class="fc" id="L98">        eventPublisher.publishKnowledgeEvent(userId, &quot;CREATE&quot;, &quot;folder&quot;, folder.getId(),</span>
+<span class="fc" id="L99">                &quot;创建文件夹: &quot; + request.getName());</span>
+<span class="fc" id="L100">        return folder;</span>
     }
 
     @Override
     public Folder update(Long id, Long userId, String name) {
-<span class="nc" id="L105">        Folder folder = folderMapper.selectById(id);</span>
-<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (folder == null) {</span>
-<span class="nc" id="L107">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
+<span class="fc" id="L105">        Folder folder = folderMapper.selectById(id);</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (folder == null) {</span>
+<span class="fc" id="L107">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
         }
-<span class="nc" id="L109">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
-<span class="nc" id="L110">        folder.setName(name);</span>
-<span class="nc" id="L111">        folderMapper.updateById(folder);</span>
+<span class="fc" id="L109">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
+<span class="fc" id="L110">        folder.setName(name);</span>
+<span class="fc" id="L111">        folderMapper.updateById(folder);</span>
 
         // 更新 MeiliSearch 索引
-<span class="nc" id="L114">        searchIndexService.indexFolder(folder);</span>
-<span class="nc" id="L115">        return folder;</span>
+<span class="fc" id="L114">        searchIndexService.indexFolder(folder);</span>
+<span class="fc" id="L115">        return folder;</span>
     }
 
     @Override
     public void delete(Long id, Long userId) {
-<span class="nc" id="L120">        Folder folder = folderMapper.selectById(id);</span>
-<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (folder == null) {</span>
-<span class="nc" id="L122">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
+<span class="fc" id="L120">        Folder folder = folderMapper.selectById(id);</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">        if (folder == null) {</span>
+<span class="fc" id="L122">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
         }
-<span class="nc" id="L124">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
+<span class="fc" id="L124">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
 
-<span class="nc" id="L126">        List&lt;Folder&gt; children = folderMapper.selectList(</span>
-<span class="nc" id="L127">                new LambdaQueryWrapper&lt;Folder&gt;().eq(Folder::getParentId, id));</span>
-<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (!children.isEmpty()) {</span>
-<span class="nc" id="L129">            throw new BusinessException(&quot;文件夹下存在子文件夹，无法删除&quot;);</span>
-        }
-
-<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (docMapper.selectCount(new LambdaQueryWrapper&lt;Doc&gt;().eq(Doc::getFolderId, id)) &gt; 0) {</span>
-<span class="nc" id="L133">            throw new BusinessException(&quot;目录下存在文档，请先迁移或删除&quot;);</span>
-        }
-<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (webPageMapper.selectCount(new LambdaQueryWrapper&lt;WebPage&gt;().eq(WebPage::getFolderId, id)) &gt; 0) {</span>
-<span class="nc" id="L136">            throw new BusinessException(&quot;目录下存在网页收藏，请先迁移或删除&quot;);</span>
+<span class="fc" id="L126">        List&lt;Folder&gt; children = folderMapper.selectList(</span>
+<span class="fc" id="L127">                new LambdaQueryWrapper&lt;Folder&gt;().eq(Folder::getParentId, id));</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">        if (!children.isEmpty()) {</span>
+<span class="fc" id="L129">            throw new BusinessException(&quot;文件夹下存在子文件夹，无法删除&quot;);</span>
         }
 
-<span class="nc" id="L139">        folderMapper.deleteById(id);</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (docMapper.selectCount(new LambdaQueryWrapper&lt;Doc&gt;().eq(Doc::getFolderId, id)) &gt; 0) {</span>
+<span class="fc" id="L133">            throw new BusinessException(&quot;目录下存在文档，请先迁移或删除&quot;);</span>
+        }
+<span class="fc bfc" id="L135" title="All 2 branches covered.">        if (webPageMapper.selectCount(new LambdaQueryWrapper&lt;WebPage&gt;().eq(WebPage::getFolderId, id)) &gt; 0) {</span>
+<span class="fc" id="L136">            throw new BusinessException(&quot;目录下存在网页收藏，请先迁移或删除&quot;);</span>
+        }
+
+<span class="fc" id="L139">        folderMapper.deleteById(id);</span>
 
         // 删除 MeiliSearch 索引
-<span class="nc" id="L142">        searchIndexService.removeFolderIndex(id);</span>
+<span class="fc" id="L142">        searchIndexService.removeFolderIndex(id);</span>
 
         // 发布操作事件
-<span class="nc" id="L145">        eventPublisher.publishKnowledgeEvent(userId, &quot;DELETE&quot;, &quot;folder&quot;, id,</span>
-<span class="nc" id="L146">                &quot;删除文件夹: &quot; + folder.getName());</span>
-<span class="nc" id="L147">    }</span>
+<span class="fc" id="L145">        eventPublisher.publishKnowledgeEvent(userId, &quot;DELETE&quot;, &quot;folder&quot;, id,</span>
+<span class="fc" id="L146">                &quot;删除文件夹: &quot; + folder.getName());</span>
+<span class="fc" id="L147">    }</span>
 
     @Override
     public void move(Long id, Long userId, FolderMoveRequest request) {
-<span class="nc" id="L151">        Folder folder = folderMapper.selectById(id);</span>
-<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (folder == null) {</span>
-<span class="nc" id="L153">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
+<span class="fc" id="L151">        Folder folder = folderMapper.selectById(id);</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        if (folder == null) {</span>
+<span class="fc" id="L153">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
         }
-<span class="nc" id="L155">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
+<span class="fc" id="L155">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
 
-<span class="nc" id="L157">        Long targetParentId = request.getParentId();</span>
-<span class="nc bnc" id="L158" title="All 4 branches missed.">        if (targetParentId != null &amp;&amp; targetParentId != 0L) {</span>
-<span class="nc" id="L159">            Folder target = folderMapper.selectById(targetParentId);</span>
-<span class="nc bnc" id="L160" title="All 2 branches missed.">            if (target == null) {</span>
-<span class="nc" id="L161">                throw new BusinessException(&quot;目标目录不存在&quot;);</span>
+<span class="fc" id="L157">        Long targetParentId = request.getParentId();</span>
+<span class="fc bfc" id="L158" title="All 4 branches covered.">        if (targetParentId != null &amp;&amp; targetParentId != 0L) {</span>
+<span class="fc" id="L159">            Folder target = folderMapper.selectById(targetParentId);</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">            if (target == null) {</span>
+<span class="fc" id="L161">                throw new BusinessException(&quot;目标目录不存在&quot;);</span>
             }
-<span class="nc" id="L163">            Long ancestorId = targetParentId;</span>
-<span class="nc bnc" id="L164" title="All 4 branches missed.">            while (ancestorId != null &amp;&amp; ancestorId != 0L) {</span>
-<span class="nc bnc" id="L165" title="All 2 branches missed.">                if (ancestorId.equals(id)) {</span>
-<span class="nc" id="L166">                    throw new BusinessException(&quot;不能将目录移动到其子目录下&quot;);</span>
+<span class="fc" id="L163">            Long ancestorId = targetParentId;</span>
+<span class="pc bpc" id="L164" title="2 of 4 branches missed.">            while (ancestorId != null &amp;&amp; ancestorId != 0L) {</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">                if (ancestorId.equals(id)) {</span>
+<span class="fc" id="L166">                    throw new BusinessException(&quot;不能将目录移动到其子目录下&quot;);</span>
                 }
-<span class="nc" id="L168">                Folder ancestor = folderMapper.selectById(ancestorId);</span>
-<span class="nc bnc" id="L169" title="All 2 branches missed.">                if (ancestor == null) {</span>
+<span class="fc" id="L168">                Folder ancestor = folderMapper.selectById(ancestorId);</span>
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">                if (ancestor == null) {</span>
 <span class="nc" id="L170">                    break;</span>
                 }
-<span class="nc" id="L172">                ancestorId = ancestor.getParentId();</span>
-<span class="nc" id="L173">            }</span>
+<span class="fc" id="L172">                ancestorId = ancestor.getParentId();</span>
+<span class="fc" id="L173">            }</span>
         }
 
-<span class="nc" id="L176">        folder.setParentId(request.getParentId());</span>
-<span class="nc" id="L177">        folderMapper.updateById(folder);</span>
+<span class="fc" id="L176">        folder.setParentId(request.getParentId());</span>
+<span class="fc" id="L177">        folderMapper.updateById(folder);</span>
 
         // 更新 MeiliSearch 索引
-<span class="nc" id="L180">        searchIndexService.indexFolder(folder);</span>
-<span class="nc" id="L181">    }</span>
+<span class="fc" id="L180">        searchIndexService.indexFolder(folder);</span>
+<span class="fc" id="L181">    }</span>
 
     @Override
     public void sort(Long id, Long userId, FolderSortRequest request) {
-<span class="nc" id="L185">        Folder folder = folderMapper.selectById(id);</span>
-<span class="nc bnc" id="L186" title="All 2 branches missed.">        if (folder == null) {</span>
-<span class="nc" id="L187">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
+<span class="fc" id="L185">        Folder folder = folderMapper.selectById(id);</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">        if (folder == null) {</span>
+<span class="fc" id="L187">            throw new BusinessException(&quot;文件夹不存在&quot;);</span>
         }
-<span class="nc" id="L189">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
-<span class="nc" id="L190">        folder.setSortOrder(request.getSortOrder());</span>
-<span class="nc" id="L191">        folderMapper.updateById(folder);</span>
+<span class="fc" id="L189">        checkSpaceOwner(folder.getSpaceId(), userId);</span>
+<span class="fc" id="L190">        folder.setSortOrder(request.getSortOrder());</span>
+<span class="fc" id="L191">        folderMapper.updateById(folder);</span>
 
         // 更新 MeiliSearch 索引
-<span class="nc" id="L194">        searchIndexService.indexFolder(folder);</span>
-<span class="nc" id="L195">    }</span>
+<span class="fc" id="L194">        searchIndexService.indexFolder(folder);</span>
+<span class="fc" id="L195">    }</span>
 
     private void checkSpaceOwner(Long spaceId, Long userId) {
 <span class="fc" id="L198">        Space space = spaceMapper.selectById(spaceId);</span>
-<span class="pc bpc" id="L199" title="3 of 4 branches missed.">        if (space == null || !space.getUserId().equals(userId)) {</span>
+<span class="fc bfc" id="L199" title="All 4 branches covered.">        if (space == null || !space.getUserId().equals(userId)) {</span>
 <span class="fc" id="L200">            throw new BusinessException(&quot;无权限操作&quot;);</span>
         }
-<span class="nc" id="L202">    }</span>
+<span class="fc" id="L202">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

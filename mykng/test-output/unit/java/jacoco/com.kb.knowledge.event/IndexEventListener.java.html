@@ -22,9 +22,9 @@ import jakarta.annotation.PostConstruct;
  * 订阅 Redis Pub/Sub 通道 kb:events，处理来自其他服务的事件通知。
  * 主要处理 kb-file 发布的文件解析完成/删除事件（用于一致性维护等）。
  */
-<span class="fc" id="L25">@Slf4j</span>
+<span class="nc" id="L25">@Slf4j</span>
 @Component
-<span class="fc" id="L27">@RequiredArgsConstructor</span>
+<span class="nc" id="L27">@RequiredArgsConstructor</span>
 public class IndexEventListener implements MessageListener {
 
     private final RedisMessageListenerContainer redisMessageListenerContainer;
@@ -33,9 +33,9 @@ public class IndexEventListener implements MessageListener {
 
     @PostConstruct
     public void init() {
-<span class="fc" id="L36">        redisMessageListenerContainer.addMessageListener(this, new PatternTopic(&quot;kb:events&quot;));</span>
-<span class="fc" id="L37">        log.info(&quot;IndexEventListener 已订阅 kb:events 通道&quot;);</span>
-<span class="fc" id="L38">    }</span>
+<span class="nc" id="L36">        redisMessageListenerContainer.addMessageListener(this, new PatternTopic(&quot;kb:events&quot;));</span>
+<span class="nc" id="L37">        log.info(&quot;IndexEventListener 已订阅 kb:events 通道&quot;);</span>
+<span class="nc" id="L38">    }</span>
 
     @Override
     public void onMessage(Message message, byte[] pattern) {

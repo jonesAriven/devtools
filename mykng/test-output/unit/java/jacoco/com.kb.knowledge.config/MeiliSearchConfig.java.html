@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-<span class="pc bnc" id="L10" title="All 22 branches missed.">@Data</span>
+<span class="nc bnc" id="L10" title="All 22 branches missed.">@Data</span>
 @Configuration
 @ConfigurationProperties(prefix = &quot;meilisearch&quot;)
 public class MeiliSearchConfig {
@@ -17,7 +17,7 @@ public class MeiliSearchConfig {
 
     @Bean
     public Client meiliSearchClient() {
-<span class="fc" id="L20">        return new Client(new Config(host, apiKey));</span>
+<span class="nc" id="L20">        return new Client(new Config(host, apiKey));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

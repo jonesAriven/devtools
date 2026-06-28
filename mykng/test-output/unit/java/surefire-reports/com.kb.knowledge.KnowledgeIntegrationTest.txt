@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.kb.knowledge.KnowledgeIntegrationTest
 -------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.891 s -- in com.kb.knowledge.KnowledgeIntegrationTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.260 s -- in com.kb.knowledge.KnowledgeIntegrationTest

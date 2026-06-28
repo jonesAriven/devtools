@@ -1,13 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.kb.knowledge.FolderServiceImplTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.199 s <<< FAILURE! -- in com.kb.knowledge.FolderServiceImplTest
-com.kb.knowledge.FolderServiceImplTest.createFolder -- Time elapsed: 0.004 s <<< ERROR!
-com.kb.common.exception.BusinessException: 无权限操作
-	at com.kb.knowledge.service.impl.FolderServiceImpl.checkSpaceOwner(FolderServiceImpl.java:200)
-	at com.kb.knowledge.service.impl.FolderServiceImpl.create(FolderServiceImpl.java:86)
-	at com.kb.knowledge.FolderServiceImplTest.createFolder(FolderServiceImplTest.java:97)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
-
+Tests run: 31, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.941 s -- in com.kb.knowledge.FolderServiceImplTest

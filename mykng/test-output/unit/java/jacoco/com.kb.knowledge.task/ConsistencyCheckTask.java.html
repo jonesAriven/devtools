@@ -36,9 +36,9 @@ import java.util.List;
  * 与 Redis Pub/Sub 事件通知形成双重保障：
  * 事件通知负责实时同步，本任务负责兜底补偿（防止事件丢失）。
  */
-<span class="fc" id="L39">@Slf4j</span>
+<span class="nc" id="L39">@Slf4j</span>
 @Service
-<span class="fc" id="L41">@RequiredArgsConstructor</span>
+<span class="nc" id="L41">@RequiredArgsConstructor</span>
 public class ConsistencyCheckTask {
 
     private final DocMapper docMapper;

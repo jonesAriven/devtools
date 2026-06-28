@@ -7,18 +7,23 @@ import com.kb.knowledge.dto.doc.DocUpdateRequest;
 import com.kb.knowledge.entity.Doc;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.mapper.DocMapper;
+import com.kb.knowledge.mapper.ResourceTagMapper;
 import com.kb.knowledge.mapper.VersionMapper;
 import com.kb.knowledge.mongo.doc.DocContent;
 import com.kb.knowledge.mongo.repository.DocContentRepository;
 import com.kb.knowledge.service.EventPublisher;
 import com.kb.knowledge.service.SearchIndexService;
 import com.kb.knowledge.service.impl.DocServiceImpl;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,12 +39,38 @@ class DocServiceImplTest {
 
     @Mock private DocMapper docMapper;
     @Mock private VersionMapper versionMapper;
+    @Mock private ResourceTagMapper resourceTagMapper;
     @Mock private DocContentRepository docContentRepository;
     @Mock private EventPublisher eventPublisher;
     @Mock private SearchIndexService searchIndexService;
 
     @InjectMocks
     private DocServiceImpl docService;
+
+    @BeforeEach
+    void setUpTransaction() {
+        // 模拟事务同步上下文，使 TransactionSynchronizationManager.registerSynchronization 可用
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void clearTransaction() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    /**
+     * 手动触发所有已注册事务同步的 afterCommit 回调。
+     * 单元测试没有真实事务，需要手动调用以验证事务提交后的行为。
+     */
+    private void triggerAfterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+        }
+    }
 
     @Test
     @DisplayName("创建文档 - 同时创建内容+版本+索引")
@@ -61,6 +92,9 @@ class DocServiceImplTest {
         assertEquals("测试文档", result.getTitle());
         verify(docContentRepository).save(any(DocContent.class));
         verify(versionMapper).insert(any(Version.class));
+
+        // 手动触发事务提交回调，验证索引写入
+        triggerAfterCommit();
         verify(searchIndexService).indexDoc(any(Doc.class), eq("内容"));
     }
 
@@ -75,7 +109,7 @@ class DocServiceImplTest {
         doc.setId(1L);
         doc.setUserId(1L);
         when(docMapper.selectById(1L)).thenReturn(doc);
-        
+
         DocContent content = new DocContent();
         content.setDocId(1L);
         content.setVersion(1);
@@ -98,6 +132,9 @@ class DocServiceImplTest {
 
         assertDoesNotThrow(() -> docService.delete(1L, 1L));
         verify(docMapper).deleteById(1L);
+
+        // 手动触发事务提交回调，验证索引删除
+        triggerAfterCommit();
         verify(searchIndexService).removeDocIndex(1L);
     }
 

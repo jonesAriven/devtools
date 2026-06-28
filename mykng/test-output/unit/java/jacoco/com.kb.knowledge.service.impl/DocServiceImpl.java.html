@@ -151,7 +151,7 @@ public class DocServiceImpl implements DocService {
         // 更新 MeiliSearch 索引（事务提交后执行，避免事务回滚但索引已写入的不一致）
 <span class="fc" id="L152">        final String indexContent = docContentRepository.findByDocIdAndIsCurrentTrue(id)</span>
 <span class="fc" id="L153">                .map(DocContent::getContent).orElse(&quot;&quot;);</span>
-<span class="pc" id="L154">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
+<span class="fc" id="L154">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
             @Override
             public void afterCommit() {
 <span class="nc" id="L157">                searchIndexService.indexDoc(doc, indexContent);</span>
@@ -159,8 +159,8 @@ public class DocServiceImpl implements DocService {
         });
 
         // 发布操作事件
-<span class="nc" id="L162">        eventPublisher.publishKnowledgeEvent(userId, &quot;MODIFY&quot;, &quot;doc&quot;, id, &quot;更新文档&quot;);</span>
-<span class="nc" id="L163">        return doc;</span>
+<span class="fc" id="L162">        eventPublisher.publishKnowledgeEvent(userId, &quot;MODIFY&quot;, &quot;doc&quot;, id, &quot;更新文档&quot;);</span>
+<span class="fc" id="L163">        return doc;</span>
     }
 
     @Override
@@ -180,22 +180,22 @@ public class DocServiceImpl implements DocService {
 <span class="fc" id="L180">                .eq(Version::getResourceId, id)</span>
 <span class="fc" id="L181">                .eq(Version::getResourceType, &quot;doc&quot;));</span>
         // 3. MySQL ResourceTag
-<span class="pc" id="L183">        resourceTagMapper.delete(new LambdaQueryWrapper&lt;ResourceTag&gt;()</span>
+<span class="fc" id="L183">        resourceTagMapper.delete(new LambdaQueryWrapper&lt;ResourceTag&gt;()</span>
 <span class="fc" id="L184">                .eq(ResourceTag::getResourceId, id));</span>
 
         // 删除 MeiliSearch 索引（事务提交后执行，避免索引先删而数据回滚）
-<span class="nc" id="L187">        final Long docId = id;</span>
-<span class="nc" id="L188">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
+<span class="fc" id="L187">        final Long docId = id;</span>
+<span class="fc" id="L188">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
             @Override
             public void afterCommit() {
-<span class="nc" id="L191">                searchIndexService.removeDocIndex(docId);</span>
-<span class="nc" id="L192">            }</span>
+<span class="fc" id="L191">                searchIndexService.removeDocIndex(docId);</span>
+<span class="fc" id="L192">            }</span>
         });
 
         // 发布操作事件
-<span class="nc" id="L196">        eventPublisher.publishKnowledgeEvent(userId, &quot;DELETE&quot;, &quot;doc&quot;, id,</span>
-<span class="nc" id="L197">                &quot;删除文档: &quot; + doc.getTitle());</span>
-<span class="nc" id="L198">    }</span>
+<span class="fc" id="L196">        eventPublisher.publishKnowledgeEvent(userId, &quot;DELETE&quot;, &quot;doc&quot;, id,</span>
+<span class="fc" id="L197">                &quot;删除文档: &quot; + doc.getTitle());</span>
+<span class="fc" id="L198">    }</span>
 
     @Override
     public void star(Long id, Long userId) {

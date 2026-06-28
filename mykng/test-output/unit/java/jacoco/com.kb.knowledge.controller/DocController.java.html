@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(&quot;/doc&quot;)
-<span class="fc" id="L18">@RequiredArgsConstructor</span>
+<span class="nc" id="L18">@RequiredArgsConstructor</span>
 public class DocController {
 
     private final DocService docService;
@@ -30,7 +30,7 @@ public class DocController {
 
     @PostMapping
     public Result&lt;Doc&gt; create(@Valid @RequestBody DocCreateRequest request) {
-<span class="fc" id="L33">        return Result.ok(docService.create(getCurrentUserId(), request));</span>
+<span class="nc" id="L33">        return Result.ok(docService.create(getCurrentUserId(), request));</span>
     }
 
     @GetMapping(&quot;/{id}&quot;)
@@ -62,8 +62,8 @@ public class DocController {
     }
 
     private Long getCurrentUserId() {
-<span class="fc" id="L65">        Authentication auth = SecurityContextHolder.getContext().getAuthentication();</span>
-<span class="fc" id="L66">        return Long.parseLong(auth.getName());</span>
+<span class="nc" id="L65">        Authentication auth = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="nc" id="L66">        return Long.parseLong(auth.getName());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

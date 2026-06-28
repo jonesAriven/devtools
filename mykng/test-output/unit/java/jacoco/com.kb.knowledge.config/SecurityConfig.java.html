@@ -23,25 +23,25 @@ public class SecurityConfig {
 
     private final GatewayAuthFilter gatewayAuthFilter;
 
-<span class="fc" id="L26">    public SecurityConfig(GatewayAuthFilter gatewayAuthFilter) {</span>
-<span class="fc" id="L27">        this.gatewayAuthFilter = gatewayAuthFilter;</span>
-<span class="fc" id="L28">    }</span>
+<span class="nc" id="L26">    public SecurityConfig(GatewayAuthFilter gatewayAuthFilter) {</span>
+<span class="nc" id="L27">        this.gatewayAuthFilter = gatewayAuthFilter;</span>
+<span class="nc" id="L28">    }</span>
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-<span class="fc" id="L32">        http</span>
-<span class="fc" id="L33">            .csrf(AbstractHttpConfigurer::disable)</span>
-<span class="fc" id="L34">            .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
-<span class="fc" id="L35">            .authorizeHttpRequests(auth -&gt; auth</span>
-<span class="fc" id="L36">                .requestMatchers(&quot;/actuator/**&quot;).permitAll()</span>
-<span class="fc" id="L37">                .requestMatchers(HttpMethod.GET, &quot;/share/verify/**&quot;).permitAll()</span>
-<span class="fc" id="L38">                .requestMatchers(HttpMethod.GET, &quot;/share/detail/**&quot;).permitAll()</span>
-<span class="fc" id="L39">                .requestMatchers(HttpMethod.OPTIONS, &quot;/**&quot;).permitAll()</span>
-<span class="fc" id="L40">                .anyRequest().authenticated()</span>
+<span class="nc" id="L32">        http</span>
+<span class="nc" id="L33">            .csrf(AbstractHttpConfigurer::disable)</span>
+<span class="nc" id="L34">            .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
+<span class="nc" id="L35">            .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="nc" id="L36">                .requestMatchers(&quot;/actuator/**&quot;).permitAll()</span>
+<span class="nc" id="L37">                .requestMatchers(HttpMethod.GET, &quot;/share/verify/**&quot;).permitAll()</span>
+<span class="nc" id="L38">                .requestMatchers(HttpMethod.GET, &quot;/share/detail/**&quot;).permitAll()</span>
+<span class="nc" id="L39">                .requestMatchers(HttpMethod.OPTIONS, &quot;/**&quot;).permitAll()</span>
+<span class="nc" id="L40">                .anyRequest().authenticated()</span>
             )
-<span class="fc" id="L42">            .addFilterBefore(gatewayAuthFilter, UsernamePasswordAuthenticationFilter.class);</span>
+<span class="nc" id="L42">            .addFilterBefore(gatewayAuthFilter, UsernamePasswordAuthenticationFilter.class);</span>
 
-<span class="fc" id="L44">        return http.build();</span>
+<span class="nc" id="L44">        return http.build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -11,23 +11,23 @@ import org.springframework.context.annotation.Configuration;
 import java.time.LocalDateTime;
 
 @Configuration
-<span class="fc" id="L14">public class MybatisPlusConfig {</span>
+<span class="nc" id="L14">public class MybatisPlusConfig {</span>
 
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
-<span class="fc" id="L18">        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();</span>
-<span class="fc" id="L19">        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));</span>
-<span class="fc" id="L20">        return interceptor;</span>
+<span class="nc" id="L18">        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();</span>
+<span class="nc" id="L19">        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));</span>
+<span class="nc" id="L20">        return interceptor;</span>
     }
 
     @Bean
     public MetaObjectHandler metaObjectHandler() {
-<span class="fc" id="L25">        return new MetaObjectHandler() {</span>
+<span class="nc" id="L25">        return new MetaObjectHandler() {</span>
             @Override
             public void insertFill(MetaObject metaObject) {
-<span class="fc" id="L28">                this.strictInsertFill(metaObject, &quot;createdAt&quot;, LocalDateTime.class, LocalDateTime.now());</span>
-<span class="fc" id="L29">                this.strictInsertFill(metaObject, &quot;updatedAt&quot;, LocalDateTime.class, LocalDateTime.now());</span>
-<span class="fc" id="L30">            }</span>
+<span class="nc" id="L28">                this.strictInsertFill(metaObject, &quot;createdAt&quot;, LocalDateTime.class, LocalDateTime.now());</span>
+<span class="nc" id="L29">                this.strictInsertFill(metaObject, &quot;updatedAt&quot;, LocalDateTime.class, LocalDateTime.now());</span>
+<span class="nc" id="L30">            }</span>
 
             @Override
             public void updateFill(MetaObject metaObject) {
