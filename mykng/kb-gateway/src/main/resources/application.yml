@@ -49,6 +49,13 @@ spring:
           filters:
             - StripPrefix=2
 
+        - id: kb-intelligence
+          uri: http://${kb.gateway.services.intelligence:localhost:8086}
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/intelligence/**
+          filters:
+            - StripPrefix=2
+
       # CORS 跨域
       globalcors:
         cors-configurations:
@@ -80,6 +87,7 @@ kb:
       file: localhost:8082
       knowledge: localhost:8083
       ops: localhost:8084
+      intelligence: localhost:8086
 
 management:
   endpoints:

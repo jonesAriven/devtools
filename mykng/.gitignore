@@ -14,7 +14,7 @@
 Thumbs.db
 
 # Env secrets (keep .env.example)
-# .env
+.env
 
 # Logs
 *.log
@@ -24,3 +24,17 @@ Thumbs.db
 # 自动生成的测试报告（每次运行覆盖，不入库）
 tests/*-test-report.json
 tests/screenshots/
+
+# 测试产物（附录B：大部分不入库，仅 reports/ 提交；保留 .gitkeep 占位以维持目录结构）
+test-output/unit/**
+test-output/integration/**
+test-output/e2e/playwright-report/**
+test-output/e2e/screenshots/**
+test-output/e2e/videos/**
+test-output/e2e/traces/**
+test-output/performance/**
+test-output/security/**
+test-output/logs/**
+# 重新包含目录与 .gitkeep 占位文件，使空目录可被 Git 跟踪
+!**/
+!**/.gitkeep

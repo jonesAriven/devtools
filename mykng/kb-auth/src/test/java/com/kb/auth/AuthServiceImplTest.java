@@ -3,6 +3,8 @@ package com.kb.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kb.auth.dto.LoginRequest;
 import com.kb.auth.dto.LoginResponse;
+import com.kb.auth.dto.RefreshRequest;
+import com.kb.auth.entity.RefreshToken;
 import com.kb.auth.entity.User;
 import com.kb.auth.mapper.JwtBlacklistMapper;
 import com.kb.auth.mapper.RefreshTokenMapper;
@@ -20,6 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -108,5 +114,134 @@ class AuthServiceImplTest {
         when(userMapper.selectOne(any())).thenReturn(testUser);
 
         assertThrows(BusinessException.class, () -> authService.login(request));
+    }
+
+    @Test
+    @DisplayName("登出 - accessToken 为空，直接返回")
+    void logoutNullToken() {
+        assertDoesNotThrow(() -> authService.logout(null));
+        verify(jwtBlacklistMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("登出 - 无效 token，不写入黑名单")
+    void logoutInvalidToken() {
+        when(jwtTokenProvider.validateToken("invalid")).thenReturn(false);
+
+        assertDoesNotThrow(() -> authService.logout("invalid"));
+        verify(jwtBlacklistMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("登出 - 有效 token，写入黑名单并发布事件")
+    void logoutValidToken() {
+        when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getExpirationFromToken("access-token")).thenReturn(new Date());
+        when(jwtTokenProvider.getUserIdFromToken("access-token")).thenReturn(1L);
+
+        assertDoesNotThrow(() -> authService.logout("access-token"));
+        verify(jwtBlacklistMapper).insert(any());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - RefreshToken 无效或已过期")
+    void refreshInvalidToken() {
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("invalid-token");
+        when(jwtTokenProvider.validateToken("invalid-token")).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.refresh(request));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - Token 类型不是 refresh")
+    void refreshWrongTokenType() {
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("access-token");
+        when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenType("access-token")).thenReturn("access");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.refresh(request));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - RefreshToken 不存在于数据库")
+    void refreshTokenNotFound() {
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("refresh-token");
+        when(jwtTokenProvider.validateToken("refresh-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenType("refresh-token")).thenReturn("refresh");
+        when(jwtTokenProvider.getUserIdFromToken("refresh-token")).thenReturn(1L);
+        when(refreshTokenMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.refresh(request));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - 用户不存在")
+    void refreshUserNotFound() {
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("refresh-token");
+        RefreshToken stored = new RefreshToken();
+        stored.setUserId(1L);
+        stored.setToken("refresh-token");
+        when(jwtTokenProvider.validateToken("refresh-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenType("refresh-token")).thenReturn("refresh");
+        when(jwtTokenProvider.getUserIdFromToken("refresh-token")).thenReturn(1L);
+        when(refreshTokenMapper.selectList(any())).thenReturn(Arrays.asList(stored));
+        when(userMapper.selectById(1L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.refresh(request));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - 用户已被禁用")
+    void refreshUserDisabled() {
+        testUser.setStatus(0);
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("refresh-token");
+        RefreshToken stored = new RefreshToken();
+        stored.setUserId(1L);
+        stored.setToken("refresh-token");
+        when(jwtTokenProvider.validateToken("refresh-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenType("refresh-token")).thenReturn("refresh");
+        when(jwtTokenProvider.getUserIdFromToken("refresh-token")).thenReturn(1L);
+        when(refreshTokenMapper.selectList(any())).thenReturn(Arrays.asList(stored));
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> authService.refresh(request));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("刷新令牌 - 成功返回新的 accessToken 和 refreshToken")
+    void refreshSuccess() {
+        RefreshRequest request = new RefreshRequest();
+        request.setRefreshToken("refresh-token");
+        RefreshToken stored = new RefreshToken();
+        stored.setUserId(1L);
+        stored.setToken("refresh-token");
+        when(jwtTokenProvider.validateToken("refresh-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenType("refresh-token")).thenReturn("refresh");
+        when(jwtTokenProvider.getUserIdFromToken("refresh-token")).thenReturn(1L);
+        when(refreshTokenMapper.selectList(any())).thenReturn(Arrays.asList(stored));
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(jwtTokenProvider.generateAccessToken(1L, "admin")).thenReturn("new-access");
+        when(jwtTokenProvider.generateRefreshToken(1L)).thenReturn("new-refresh");
+        when(jwtTokenProvider.getAccessTokenExpiration()).thenReturn(900000L);
+
+        LoginResponse response = authService.refresh(request);
+
+        assertNotNull(response);
+        assertEquals("new-access", response.getAccessToken());
+        assertEquals("new-refresh", response.getRefreshToken());
+        assertEquals(900000L, response.getExpiresIn());
+        assertNull(response.getUser().getPassword());
+        verify(refreshTokenMapper).delete(any());
+        verify(refreshTokenMapper).insert(any());
     }
 }

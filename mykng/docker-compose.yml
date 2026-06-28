@@ -135,6 +135,7 @@ services:
       - KB_FILE_HOST=kb-file:8082
       - KB_KNOWLEDGE_HOST=kb-knowledge:8083
       - KB_OPS_HOST=kb-ops:8084
+      - KB_INTELLIGENCE_HOST=kb-intelligence:8086
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
       interval: 30s
@@ -310,6 +311,53 @@ services:
     networks:
       - kb-net
     mem_limit: 512m
+
+  kb-intelligence:
+    build:
+      context: ./kb-intelligence
+      dockerfile: Dockerfile
+    container_name: kb-intelligence
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_intelligence
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=kb
+      - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
+      - MONGO_DB=kb_intelligence
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
+      - LLM_ENABLED=${LLM_ENABLED:-false}
+      - LLM_ENDPOINT=${LLM_ENDPOINT:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-qwen-turbo}
+    volumes:
+      - ${IMPORT_SOURCE_DIR:-/data/import}:/data/import:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - kb-net
+    mem_limit: 768m
 
 # ========== 数据卷 ==========
 volumes:

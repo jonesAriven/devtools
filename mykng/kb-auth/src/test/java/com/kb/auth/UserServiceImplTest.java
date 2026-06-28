@@ -77,4 +77,86 @@ class UserServiceImplTest {
 
         assertThrows(BusinessException.class, () -> userService.updatePassword(1L, "wrongold", "newpass"));
     }
+
+    @Test
+    @DisplayName("修改密码 - 用户不存在")
+    void updatePasswordUserNotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+        assertThrows(BusinessException.class, () -> userService.updatePassword(999L, "old", "new"));
+    }
+
+    @Test
+    @DisplayName("更新资料 - 昵称邮箱头像全部更新成功")
+    void updateProfile_allFieldsSuccess() {
+        testUser.setPhone("13800000000");
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+
+        User result = userService.updateProfile(1L, "新昵称", "new@email.com", "13800000000", "avatar.png");
+
+        assertNotNull(result);
+        assertEquals("新昵称", result.getNickname());
+        assertEquals("new@email.com", result.getEmail());
+        assertEquals("avatar.png", result.getAvatar());
+        assertNull(result.getPassword());
+        verify(userMapper).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("更新资料 - 手机号变更且与他人冲突")
+    void updateProfile_phoneConflict() {
+        testUser.setPhone("13800000000");
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.selectOne(any())).thenReturn(new User());
+
+        assertThrows(BusinessException.class,
+                () -> userService.updateProfile(1L, null, null, "13900000000", null));
+    }
+
+    @Test
+    @DisplayName("更新资料 - 手机号变更且无冲突，更新成功")
+    void updateProfile_phoneChangeSuccess() {
+        testUser.setPhone("13800000000");
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(userMapper.selectOne(any())).thenReturn(null);
+
+        User result = userService.updateProfile(1L, null, null, "13900000000", null);
+
+        assertNotNull(result);
+        assertEquals("13900000000", result.getPhone());
+        verify(userMapper).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("更新资料 - 手机号未变更，不触发冲突检查")
+    void updateProfile_phoneUnchanged() {
+        testUser.setPhone("13800000000");
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+
+        User result = userService.updateProfile(1L, "昵称", null, "13800000000", null);
+
+        assertNotNull(result);
+        assertEquals("13800000000", result.getPhone());
+        verify(userMapper, never()).selectOne(any());
+    }
+
+    @Test
+    @DisplayName("更新资料 - 手机号为 null，跳过手机号逻辑")
+    void updateProfile_phoneNull() {
+        when(userMapper.selectById(1L)).thenReturn(testUser);
+
+        User result = userService.updateProfile(1L, "昵称", "email@test.com", null, "avatar.png");
+
+        assertNotNull(result);
+        assertEquals("昵称", result.getNickname());
+        assertEquals("email@test.com", result.getEmail());
+        verify(userMapper, never()).selectOne(any());
+    }
+
+    @Test
+    @DisplayName("更新资料 - 用户不存在")
+    void updateProfileUserNotFound() {
+        when(userMapper.selectById(999L)).thenReturn(null);
+        assertThrows(BusinessException.class,
+                () -> userService.updateProfile(999L, "昵称", null, null, null));
+    }
 }
