@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-auth</a> &gt; <a href="index.source.html" class="el_package">com.kb.auth.service.impl</a> &gt; <span class="el_source">AuthServiceImpl.java</span></div><h1>AuthServiceImpl.java</h1><pre class="source lang-java linenums">package com.kb.auth.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kb.auth.dto.LoginRequest;
+import com.kb.auth.dto.LoginResponse;
+import com.kb.auth.dto.RefreshRequest;
+import com.kb.auth.entity.JwtBlacklist;
+import com.kb.auth.entity.RefreshToken;
+import com.kb.auth.entity.User;
+import com.kb.auth.mapper.JwtBlacklistMapper;
+import com.kb.auth.mapper.RefreshTokenMapper;
+import com.kb.auth.mapper.UserMapper;
+import com.kb.auth.security.JwtTokenProvider;
+import com.kb.auth.service.AuthService;
+import com.kb.common.event.KbEvent;
+import com.kb.common.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+<span class="fc" id="L29">@Slf4j</span>
+@Service
+<span class="fc" id="L31">@RequiredArgsConstructor</span>
+public class AuthServiceImpl implements AuthService {
+
+    private final UserMapper userMapper;
+    private final RefreshTokenMapper refreshTokenMapper;
+    private final JwtBlacklistMapper jwtBlacklistMapper;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final PasswordEncoder passwordEncoder;
+    private final RedisTemplate&lt;String, Object&gt; redisTemplate;
+
+    private static final String EVENT_CHANNEL = &quot;kb:events&quot;;
+<span class="fc" id="L42">    private static final ObjectMapper objectMapper = new ObjectMapper();</span>
+
+    @Override
+    @Transactional
+    public LoginResponse login(LoginRequest request) {
+<span class="fc" id="L47">        User user = userMapper.selectOne(</span>
+<span class="fc" id="L48">                new LambdaQueryWrapper&lt;User&gt;().eq(User::getUsername, request.getUsername()));</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (user == null) {</span>
+<span class="fc" id="L50">            throw new BusinessException(&quot;用户名或密码错误&quot;);</span>
+        }
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (user.getStatus() == 0) {</span>
+<span class="fc" id="L53">            throw new BusinessException(&quot;用户已被禁用&quot;);</span>
+        }
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {</span>
+<span class="fc" id="L56">            throw new BusinessException(&quot;用户名或密码错误&quot;);</span>
+        }
+
+<span class="fc" id="L59">        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());</span>
+<span class="fc" id="L60">        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());</span>
+
+<span class="fc" id="L62">        RefreshToken rt = new RefreshToken();</span>
+<span class="fc" id="L63">        rt.setUserId(user.getId());</span>
+<span class="fc" id="L64">        rt.setToken(refreshToken);</span>
+<span class="fc" id="L65">        rt.setExpireAt(LocalDateTime.now().plusDays(7));</span>
+<span class="fc" id="L66">        refreshTokenMapper.insert(rt);</span>
+
+        // 通过 Redis Pub/Sub 发布登录事件（替代跨服务的 OperationLogService）
+<span class="fc" id="L69">        publishEvent(&quot;user.login&quot;, user.getId(), Map.of(&quot;username&quot;, user.getUsername()));</span>
+
+<span class="fc" id="L71">        log.info(&quot;用户登录成功 userId={}, username={}&quot;, user.getId(), user.getUsername());</span>
+<span class="fc" id="L72">        user.setPassword(null);</span>
+<span class="fc" id="L73">        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiration(), user);</span>
+    }
+
+    @Override
+    @Transactional
+    public void logout(String accessToken) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (accessToken == null) {</span>
+<span class="nc" id="L80">            return;</span>
+        }
+
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (jwtTokenProvider.validateToken(accessToken)) {</span>
+<span class="nc" id="L84">            JwtBlacklist blacklist = new JwtBlacklist();</span>
+<span class="nc" id="L85">            blacklist.setToken(accessToken);</span>
+<span class="nc" id="L86">            blacklist.setExpireAt(jwtTokenProvider.getExpirationFromToken(accessToken)</span>
+<span class="nc" id="L87">                    .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());</span>
+<span class="nc" id="L88">            jwtBlacklistMapper.insert(blacklist);</span>
+
+<span class="nc" id="L90">            Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);</span>
+<span class="nc" id="L91">            publishEvent(&quot;user.logout&quot;, userId, Map.of());</span>
+<span class="nc" id="L92">            log.info(&quot;用户登出成功 userId={}&quot;, userId);</span>
+        }
+<span class="nc" id="L94">    }</span>
+
+    @Override
+    @Transactional
+    public LoginResponse refresh(RefreshRequest request) {
+<span class="nc" id="L99">        String refreshToken = request.getRefreshToken();</span>
+
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (!jwtTokenProvider.validateToken(refreshToken)) {</span>
+<span class="nc" id="L102">            throw new BusinessException(401, &quot;RefreshToken无效或已过期&quot;);</span>
+        }
+
+<span class="nc" id="L105">        String type = jwtTokenProvider.getTokenType(refreshToken);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (!&quot;refresh&quot;.equals(type)) {</span>
+<span class="nc" id="L107">            throw new BusinessException(401, &quot;无效的Token类型&quot;);</span>
+        }
+
+<span class="nc" id="L110">        Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);</span>
+
+<span class="nc" id="L112">        List&lt;RefreshToken&gt; tokens = refreshTokenMapper.selectList(</span>
+                new LambdaQueryWrapper&lt;RefreshToken&gt;()
+<span class="nc" id="L114">                        .eq(RefreshToken::getUserId, userId)</span>
+<span class="nc" id="L115">                        .eq(RefreshToken::getToken, refreshToken));</span>
+<span class="nc" id="L116">        RefreshToken storedToken = tokens.stream().findFirst().orElse(null);</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (storedToken == null) {</span>
+<span class="nc" id="L118">            throw new BusinessException(401, &quot;RefreshToken不存在&quot;);</span>
+        }
+
+<span class="nc" id="L121">        User user = userMapper.selectById(userId);</span>
+<span class="nc bnc" id="L122" title="All 4 branches missed.">        if (user == null || user.getStatus() == 0) {</span>
+<span class="nc" id="L123">            throw new BusinessException(401, &quot;用户不存在或已被禁用&quot;);</span>
+        }
+
+        // 删除该 refresh token 对应的所有记录（防止重复 token 残留导致下次 selectOne 抛 TooManyResultsException）
+<span class="nc" id="L127">        refreshTokenMapper.delete(</span>
+                new LambdaQueryWrapper&lt;RefreshToken&gt;()
+<span class="nc" id="L129">                        .eq(RefreshToken::getUserId, userId)</span>
+<span class="nc" id="L130">                        .eq(RefreshToken::getToken, refreshToken));</span>
+
+<span class="nc" id="L132">        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());</span>
+<span class="nc" id="L133">        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());</span>
+
+<span class="nc" id="L135">        RefreshToken rt = new RefreshToken();</span>
+<span class="nc" id="L136">        rt.setUserId(user.getId());</span>
+<span class="nc" id="L137">        rt.setToken(newRefreshToken);</span>
+<span class="nc" id="L138">        rt.setExpireAt(LocalDateTime.now().plusDays(7));</span>
+<span class="nc" id="L139">        refreshTokenMapper.insert(rt);</span>
+
+<span class="nc" id="L141">        user.setPassword(null);</span>
+<span class="nc" id="L142">        return new LoginResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiration(), user);</span>
+    }
+
+    /**
+     * 通过 Redis Pub/Sub 发布事件，替代原单体中的 OperationLogService.log()
+     */
+    private void publishEvent(String event, Long userId, Map&lt;String, Object&gt; payload) {
+        try {
+<span class="fc" id="L150">            KbEvent kbEvent = new KbEvent(event, userId, payload);</span>
+<span class="fc" id="L151">            kbEvent.setSource(&quot;kb-auth&quot;);</span>
+<span class="nc" id="L152">            redisTemplate.convertAndSend(EVENT_CHANNEL, objectMapper.writeValueAsString(kbEvent));</span>
+<span class="fc" id="L153">        } catch (Exception e) {</span>
+<span class="fc" id="L154">            log.warn(&quot;发布事件失败 event={}, userId={}: {}&quot;, event, userId, e.getMessage());</span>
+<span class="nc" id="L155">        }</span>
+<span class="fc" id="L156">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

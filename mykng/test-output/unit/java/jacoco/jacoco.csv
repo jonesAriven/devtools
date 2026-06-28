@@ -1,0 +1,27 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+kb-file,com.kb.file.security,GatewayAuthFilter,0,33,1,1,0,9,1,3,0,3
+kb-file,com.kb.file.dto.file,FileUploadRequest,195,0,38,0,5,0,32,0,13,0
+kb-file,com.kb.file.dto.file,FileMoveRequest,75,0,14,0,2,0,14,0,7,0
+kb-file,com.kb.file.dto.file,FileMergeRequest,235,0,46,0,6,0,38,0,15,0
+kb-file,com.kb.file.service.impl,BucketServiceImpl,55,9,2,0,11,1,3,1,2,1
+kb-file,com.kb.file.service.impl,FileParseServiceImpl,204,22,8,0,42,2,7,2,3,2
+kb-file,com.kb.file.service.impl,KbFileServiceImpl.new Enumeration() {...},43,0,2,0,6,0,4,0,3,0
+kb-file,com.kb.file.service.impl,MinioServiceImpl,217,0,2,0,67,0,10,0,9,0
+kb-file,com.kb.file.service.impl,KbFileServiceImpl,303,257,19,11,55,50,21,11,9,8
+kb-file,com.kb.file.mongo.doc,FileContent,356,0,70,0,9,0,56,0,21,0
+kb-file,com.kb.file.entity,Bucket,277,0,54,0,7,0,44,0,17,0
+kb-file,com.kb.file.entity,FileChunk,221,15,46,0,5,1,34,4,11,4
+kb-file,com.kb.file.entity,KbFile,503,54,110,0,8,6,71,15,16,15
+kb-file,com.kb.file,KbFileApplication,5,3,0,0,2,1,1,1,1,1
+kb-file,com.kb.file.service,FileParseTrigger,12,10,0,0,3,2,1,2,1,2
+kb-file,com.kb.file.service,SearchIndexService,112,4,2,0,24,1,4,1,3,1
+kb-file,com.kb.file.service,EventPublisher,135,10,0,0,30,2,4,2,4,2
+kb-file,com.kb.file.controller,KbFileController,83,24,0,0,14,4,10,3,10,3
+kb-file,com.kb.file.controller,BucketController,11,6,0,0,2,1,2,1,2,1
+kb-file,com.kb.file.config,MybatisPlusConfig.new MetaObjectHandler() {...},23,3,0,0,5,1,2,1,2,1
+kb-file,com.kb.file.config,AsyncConfig,0,31,0,0,0,10,0,2,0,2
+kb-file,com.kb.file.config,SecurityConfig,0,52,0,0,0,12,0,4,0,4
+kb-file,com.kb.file.config,MeiliSearchConfig,104,22,22,0,2,2,17,4,6,4
+kb-file,com.kb.file.config,MybatisPlusConfig,0,20,0,0,0,5,0,3,0,3
+kb-file,com.kb.file.config,RedisConfig,53,3,0,0,14,1,1,1,1,1
+kb-file,com.kb.file.config,MinioConfig,176,30,38,0,4,5,27,6,8,6

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtTokenProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-auth</a> &gt; <a href="index.source.html" class="el_package">com.kb.auth.security</a> &gt; <span class="el_source">JwtTokenProvider.java</span></div><h1>JwtTokenProvider.java</h1><pre class="source lang-java linenums">package com.kb.auth.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+
+@Component
+public class JwtTokenProvider {
+
+    private final SecretKey key;
+    private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
+
+    public JwtTokenProvider(
+            @Value(&quot;${jwt.secret}&quot;) String secret,
+            @Value(&quot;${jwt.access-token-expiration}&quot;) long accessTokenExpiration,
+<span class="fc" id="L25">            @Value(&quot;${jwt.refresh-token-expiration}&quot;) long refreshTokenExpiration) {</span>
+<span class="fc" id="L26">        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L27">        this.accessTokenExpiration = accessTokenExpiration;</span>
+<span class="fc" id="L28">        this.refreshTokenExpiration = refreshTokenExpiration;</span>
+<span class="fc" id="L29">    }</span>
+
+    public String generateAccessToken(Long userId, String username) {
+<span class="fc" id="L32">        Date now = new Date();</span>
+<span class="fc" id="L33">        Date expiryDate = new Date(now.getTime() + accessTokenExpiration);</span>
+<span class="fc" id="L34">        return Jwts.builder()</span>
+<span class="fc" id="L35">                .subject(String.valueOf(userId))</span>
+<span class="fc" id="L36">                .claim(&quot;username&quot;, username)</span>
+<span class="fc" id="L37">                .claim(&quot;type&quot;, &quot;access&quot;)</span>
+<span class="fc" id="L38">                .issuedAt(now)</span>
+<span class="fc" id="L39">                .expiration(expiryDate)</span>
+<span class="fc" id="L40">                .signWith(key)</span>
+<span class="fc" id="L41">                .compact();</span>
+    }
+
+    public String generateRefreshToken(Long userId) {
+<span class="fc" id="L45">        Date now = new Date();</span>
+<span class="fc" id="L46">        Date expiryDate = new Date(now.getTime() + refreshTokenExpiration);</span>
+<span class="fc" id="L47">        return Jwts.builder()</span>
+<span class="fc" id="L48">                .subject(String.valueOf(userId))</span>
+<span class="fc" id="L49">                .claim(&quot;type&quot;, &quot;refresh&quot;)</span>
+<span class="fc" id="L50">                .issuedAt(now)</span>
+<span class="fc" id="L51">                .expiration(expiryDate)</span>
+<span class="fc" id="L52">                .signWith(key)</span>
+<span class="fc" id="L53">                .compact();</span>
+    }
+
+    public Claims parseToken(String token) {
+<span class="nc" id="L57">        return Jwts.parser()</span>
+<span class="nc" id="L58">                .verifyWith(key)</span>
+<span class="nc" id="L59">                .build()</span>
+<span class="nc" id="L60">                .parseSignedClaims(token)</span>
+<span class="nc" id="L61">                .getPayload();</span>
+    }
+
+    public boolean validateToken(String token) {
+        try {
+<span class="nc" id="L66">            parseToken(token);</span>
+<span class="nc" id="L67">            return true;</span>
+<span class="nc" id="L68">        } catch (JwtException | IllegalArgumentException e) {</span>
+<span class="nc" id="L69">            return false;</span>
+        }
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+<span class="nc" id="L75">            parseToken(token);</span>
+<span class="nc" id="L76">            return false;</span>
+<span class="nc" id="L77">        } catch (ExpiredJwtException e) {</span>
+<span class="nc" id="L78">            return true;</span>
+<span class="nc" id="L79">        } catch (JwtException e) {</span>
+<span class="nc" id="L80">            return false;</span>
+        }
+    }
+
+    public Long getUserIdFromToken(String token) {
+<span class="nc" id="L85">        Claims claims = parseToken(token);</span>
+<span class="nc" id="L86">        return Long.parseLong(claims.getSubject());</span>
+    }
+
+    public String getUsernameFromToken(String token) {
+<span class="nc" id="L90">        Claims claims = parseToken(token);</span>
+<span class="nc" id="L91">        return claims.get(&quot;username&quot;, String.class);</span>
+    }
+
+    public String getTokenType(String token) {
+<span class="nc" id="L95">        Claims claims = parseToken(token);</span>
+<span class="nc" id="L96">        return claims.get(&quot;type&quot;, String.class);</span>
+    }
+
+    public Date getExpirationFromToken(String token) {
+<span class="nc" id="L100">        Claims claims = parseToken(token);</span>
+<span class="nc" id="L101">        return claims.getExpiration();</span>
+    }
+
+    public long getAccessTokenExpiration() {
+<span class="fc" id="L105">        return accessTokenExpiration;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CryptoUtil.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-auth</a> &gt; <a href="index.source.html" class="el_package">com.kb.auth.util</a> &gt; <span class="el_source">CryptoUtil.java</span></div><h1>CryptoUtil.java</h1><pre class="source lang-java linenums">package com.kb.auth.util;
+
+import com.kb.common.exception.BusinessException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
+
+/**
+ * AES-256-GCM 加密工具
+ * &lt;p&gt;
+ * 用于 API Token 的加密存储。每次加密使用随机 IV（12 字节），
+ * 输出格式为 Base64(IV || ciphertext+tag)。
+ */
+@Component
+public class CryptoUtil {
+
+    private static final String ALGORITHM = &quot;AES&quot;;
+    private static final String TRANSFORMATION = &quot;AES/GCM/NoPadding&quot;;
+    private static final int IV_LENGTH = 12;
+    private static final int TAG_LENGTH_BITS = 128;
+
+    private final SecretKeySpec secretKey;
+<span class="fc" id="L31">    private final SecureRandom secureRandom = new SecureRandom();</span>
+
+<span class="fc" id="L33">    public CryptoUtil(@Value(&quot;${crypto.aes-key}&quot;) String aesKeyBase64) {</span>
+        try {
+<span class="fc" id="L35">            byte[] keyBytes = Base64.getDecoder().decode(aesKeyBase64);</span>
+            // 确保密钥为 32 字节（AES-256）
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">            if (keyBytes.length != 32) {</span>
+                // 如果不是 32 字节，做一次 SHA-256 摘要确保长度正确
+<span class="fc" id="L39">                MessageDigest digest = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L40">                keyBytes = digest.digest(keyBytes);</span>
+            }
+<span class="fc" id="L42">            this.secretKey = new SecretKeySpec(keyBytes, ALGORITHM);</span>
+<span class="nc" id="L43">        } catch (Exception e) {</span>
+<span class="nc" id="L44">            throw new BusinessException(&quot;初始化加密工具失败: &quot; + e.getMessage());</span>
+<span class="fc" id="L45">        }</span>
+<span class="fc" id="L46">    }</span>
+
+    /**
+     * 加密明文
+     *
+     * @param plaintext 明文
+     * @return Base64(IV || ciphertext+tag)
+     */
+    public String encrypt(String plaintext) {
+        try {
+<span class="fc" id="L56">            byte[] iv = new byte[IV_LENGTH];</span>
+<span class="fc" id="L57">            secureRandom.nextBytes(iv);</span>
+
+<span class="fc" id="L59">            Cipher cipher = Cipher.getInstance(TRANSFORMATION);</span>
+<span class="fc" id="L60">            cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(TAG_LENGTH_BITS, iv));</span>
+
+<span class="fc" id="L62">            byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));</span>
+
+            // 拼接 IV + ciphertext
+<span class="fc" id="L65">            ByteBuffer buffer = ByteBuffer.allocate(iv.length + ciphertext.length);</span>
+<span class="fc" id="L66">            buffer.put(iv);</span>
+<span class="fc" id="L67">            buffer.put(ciphertext);</span>
+
+<span class="fc" id="L69">            return Base64.getEncoder().encodeToString(buffer.array());</span>
+<span class="nc" id="L70">        } catch (Exception e) {</span>
+<span class="nc" id="L71">            throw new BusinessException(&quot;加密失败: &quot; + e.getMessage());</span>
+        }
+    }
+
+    /**
+     * 解密
+     *
+     * @param encrypted Base64(IV || ciphertext+tag)
+     * @return 明文
+     */
+    public String decrypt(String encrypted) {
+        try {
+<span class="fc" id="L83">            byte[] decoded = Base64.getDecoder().decode(encrypted);</span>
+
+<span class="fc" id="L85">            byte[] iv = new byte[IV_LENGTH];</span>
+<span class="fc" id="L86">            byte[] ciphertext = new byte[decoded.length - IV_LENGTH];</span>
+<span class="fc" id="L87">            System.arraycopy(decoded, 0, iv, 0, IV_LENGTH);</span>
+<span class="fc" id="L88">            System.arraycopy(decoded, IV_LENGTH, ciphertext, 0, ciphertext.length);</span>
+
+<span class="fc" id="L90">            Cipher cipher = Cipher.getInstance(TRANSFORMATION);</span>
+<span class="fc" id="L91">            cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(TAG_LENGTH_BITS, iv));</span>
+
+<span class="fc" id="L93">            byte[] plaintext = cipher.doFinal(ciphertext);</span>
+<span class="fc" id="L94">            return new String(plaintext, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L95">        } catch (Exception e) {</span>
+<span class="fc" id="L96">            throw new BusinessException(&quot;解密失败: &quot; + e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

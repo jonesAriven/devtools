@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BucketServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-file</a> &gt; <a href="index.source.html" class="el_package">com.kb.file.service.impl</a> &gt; <span class="el_source">BucketServiceImpl.java</span></div><h1>BucketServiceImpl.java</h1><pre class="source lang-java linenums">package com.kb.file.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kb.common.exception.BusinessException;
+import com.kb.file.entity.Bucket;
+import com.kb.file.entity.KbFile;
+import com.kb.file.mapper.BucketMapper;
+import com.kb.file.mapper.KbFileMapper;
+import com.kb.file.service.BucketService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+<span class="fc" id="L18">@RequiredArgsConstructor</span>
+public class BucketServiceImpl implements BucketService {
+
+    private final BucketMapper bucketMapper;
+    private final KbFileMapper kbFileMapper;
+
+    @Override
+    public List&lt;Bucket&gt; list() {
+<span class="nc" id="L26">        return bucketMapper.selectList(</span>
+<span class="nc" id="L27">                new LambdaQueryWrapper&lt;Bucket&gt;().orderByAsc(Bucket::getId));</span>
+    }
+
+    @Override
+    public Map&lt;String, Object&gt; getStats(Long id) {
+<span class="nc" id="L32">        Bucket bucket = bucketMapper.selectById(id);</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        if (bucket == null) {</span>
+<span class="nc" id="L34">            throw new BusinessException(404, &quot;Bucket不存在&quot;);</span>
+        }
+
+<span class="nc" id="L37">        long fileCount = kbFileMapper.selectCount(</span>
+<span class="nc" id="L38">                new LambdaQueryWrapper&lt;KbFile&gt;().likeRight(KbFile::getMinioPath, bucket.getName() + &quot;/&quot;));</span>
+
+<span class="nc" id="L40">        Map&lt;String, Object&gt; stats = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L41">        stats.put(&quot;bucket&quot;, bucket);</span>
+<span class="nc" id="L42">        stats.put(&quot;fileCount&quot;, fileCount);</span>
+<span class="nc" id="L43">        return stats;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

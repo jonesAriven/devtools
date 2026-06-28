@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileParseTrigger.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-file</a> &gt; <a href="index.source.html" class="el_package">com.kb.file.service</a> &gt; <span class="el_source">FileParseTrigger.java</span></div><h1>FileParseTrigger.java</h1><pre class="source lang-java linenums">package com.kb.file.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+
+/**
+ * 文件解析异步触发器（独立 Bean，修复 @Async 自调用问题）
+ * &lt;p&gt;
+ * 原单体代码中 KbFileServiceImpl.triggerAsyncParse() 被 this 调用，
+ * 导致 Spring AOP 代理不生效，@Async 注解被忽略。
+ * &lt;p&gt;
+ * 修复方案：将异步触发逻辑拆分到独立的 Bean 中，通过依赖注入调用，
+ * 确保 @Async 代理正常生效。
+ */
+<span class="fc" id="L17">@Slf4j</span>
+@Component
+<span class="fc" id="L19">@RequiredArgsConstructor</span>
+public class FileParseTrigger {
+
+    private final FileParseService fileParseService;
+
+    /**
+     * 异步触发文件解析
+     * &lt;p&gt;
+     * 通过独立 Bean 调用，Spring 代理正常拦截 @Async 注解。
+     */
+    @Async(&quot;kbAsyncExecutor&quot;)
+    public void trigger(Long fileId, String minioPath, String fileType) {
+<span class="nc" id="L31">        log.info(&quot;异步触发文件解析 fileId={} type={}&quot;, fileId, fileType);</span>
+<span class="nc" id="L32">        fileParseService.parseFile(fileId, minioPath, fileType);</span>
+<span class="nc" id="L33">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

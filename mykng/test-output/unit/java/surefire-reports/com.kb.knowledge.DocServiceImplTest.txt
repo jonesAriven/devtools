@@ -1,0 +1,48 @@
+-------------------------------------------------------------------------------
+Test set: com.kb.knowledge.DocServiceImplTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 2, Errors: 1, Skipped: 0, Time elapsed: 0.237 s <<< FAILURE! -- in com.kb.knowledge.DocServiceImplTest
+com.kb.knowledge.DocServiceImplTest.updateDoc -- Time elapsed: 0.189 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: Unexpected exception thrown: java.lang.IllegalStateException: Transaction synchronization is not active
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:152)
+	at org.junit.jupiter.api.AssertDoesNotThrow.createAssertionFailedError(AssertDoesNotThrow.java:84)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:75)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:58)
+	at org.junit.jupiter.api.Assertions.assertDoesNotThrow(Assertions.java:3228)
+	at com.kb.knowledge.DocServiceImplTest.updateDoc(DocServiceImplTest.java:86)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.IllegalStateException: Transaction synchronization is not active
+	at org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(TransactionSynchronizationManager.java:277)
+	at com.kb.knowledge.service.impl.DocServiceImpl.update(DocServiceImpl.java:154)
+	at com.kb.knowledge.DocServiceImplTest.lambda$updateDoc$1(DocServiceImplTest.java:86)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:71)
+	... 6 more
+
+com.kb.knowledge.DocServiceImplTest.deleteDoc -- Time elapsed: 0.006 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: Unexpected exception thrown: java.lang.NullPointerException: Cannot invoke "com.kb.knowledge.mapper.ResourceTagMapper.delete(com.baomidou.mybatisplus.core.conditions.Wrapper)" because "this.resourceTagMapper" is null
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:152)
+	at org.junit.jupiter.api.AssertDoesNotThrow.createAssertionFailedError(AssertDoesNotThrow.java:84)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:53)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:36)
+	at org.junit.jupiter.api.Assertions.assertDoesNotThrow(Assertions.java:3168)
+	at com.kb.knowledge.DocServiceImplTest.deleteDoc(DocServiceImplTest.java:99)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.NullPointerException: Cannot invoke "com.kb.knowledge.mapper.ResourceTagMapper.delete(com.baomidou.mybatisplus.core.conditions.Wrapper)" because "this.resourceTagMapper" is null
+	at com.kb.knowledge.service.impl.DocServiceImpl.delete(DocServiceImpl.java:183)
+	at com.kb.knowledge.DocServiceImplTest.lambda$deleteDoc$2(DocServiceImplTest.java:99)
+	at org.junit.jupiter.api.AssertDoesNotThrow.assertDoesNotThrow(AssertDoesNotThrow.java:49)
+	... 6 more
+
+com.kb.knowledge.DocServiceImplTest.createDoc -- Time elapsed: 0.008 s <<< ERROR!
+java.lang.IllegalStateException: Transaction synchronization is not active
+	at org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(TransactionSynchronizationManager.java:277)
+	at com.kb.knowledge.service.impl.DocServiceImpl.create(DocServiceImpl.java:80)
+	at com.kb.knowledge.DocServiceImplTest.createDoc(DocServiceImplTest.java:58)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+

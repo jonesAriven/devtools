@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>KbFileServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-file</a> &gt; <a href="index.source.html" class="el_package">com.kb.file.service.impl</a> &gt; <span class="el_source">KbFileServiceImpl.java</span></div><h1>KbFileServiceImpl.java</h1><pre class="source lang-java linenums">package com.kb.file.service.impl;
+
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.IdUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kb.common.exception.BusinessException;
+import com.kb.common.page.PageResult;
+import com.kb.file.dto.file.FileMergeRequest;
+import com.kb.file.dto.file.FileMoveRequest;
+import com.kb.file.entity.FileChunk;
+import com.kb.file.entity.KbFile;
+import com.kb.file.mapper.FileChunkMapper;
+import com.kb.file.mapper.KbFileMapper;
+import com.kb.file.mongo.repository.FileContentRepository;
+import com.kb.file.service.EventPublisher;
+import com.kb.file.service.FileParseTrigger;
+import com.kb.file.service.KbFileService;
+import com.kb.file.service.MinioService;
+import com.kb.file.service.SearchIndexService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.InputStream;
+import java.util.Collections;
+import java.util.Enumeration;
+
+<span class="fc" id="L31">@Slf4j</span>
+@Service
+<span class="fc" id="L33">@RequiredArgsConstructor</span>
+public class KbFileServiceImpl implements KbFileService {
+
+    private static final String BUCKET = &quot;kb-file&quot;;
+    private static final long PART_SIZE = 10 * 1024 * 1024L; // 10MB 分片大小
+
+    private final KbFileMapper kbFileMapper;
+    private final FileChunkMapper fileChunkMapper;
+    private final MinioService minioService;
+    private final FileParseTrigger fileParseTrigger;
+    private final EventPublisher eventPublisher;
+    private final SearchIndexService searchIndexService;
+    private final FileContentRepository fileContentRepository;
+
+    @Override
+    public String uploadChunk(Long userId, String fileId, Integer chunkNumber, MultipartFile file) {
+        // 简单上传模式（无 fileId/chunkNumber）
+<span class="pc bpc" id="L50" title="1 of 4 branches missed.">        if (fileId == null || fileId.isBlank()) {</span>
+<span class="fc" id="L51">            return simpleUpload(userId, file);</span>
+        }
+        try {
+<span class="fc" id="L54">            String objectName = &quot;chunks/&quot; + fileId + &quot;/&quot; + chunkNumber;</span>
+<span class="fc" id="L55">            minioService.upload(BUCKET, objectName, file);</span>
+
+            // 记录分片信息
+<span class="fc" id="L58">            FileChunk chunk = new FileChunk();</span>
+<span class="fc" id="L59">            chunk.setFileId(fileId);</span>
+<span class="fc" id="L60">            chunk.setChunkNumber(chunkNumber);</span>
+<span class="fc" id="L61">            chunk.setChunkPath(objectName);</span>
+<span class="fc" id="L62">            fileChunkMapper.insert(chunk);</span>
+
+<span class="fc" id="L64">            return &quot;chunk &quot; + chunkNumber + &quot; uploaded&quot;;</span>
+<span class="nc" id="L65">        } catch (Exception e) {</span>
+<span class="nc" id="L66">            throw new BusinessException(&quot;分片上传失败: &quot; + e.getMessage());</span>
+        }
+    }
+
+    /**
+     * 简单上传模式：直接上传整个文件到 MinIO，不经过分片流程
+     */
+    private String simpleUpload(Long userId, MultipartFile file) {
+        try {
+<span class="fc" id="L75">            String ext = FileUtil.extName(file.getOriginalFilename());</span>
+<span class="fc" id="L76">            String objectName = &quot;files/&quot; + IdUtil.fastSimpleUUID() + &quot;.&quot; + ext;</span>
+<span class="fc" id="L77">            minioService.upload(BUCKET, objectName, file);</span>
+
+<span class="fc" id="L79">            KbFile kbFile = new KbFile();</span>
+<span class="fc" id="L80">            kbFile.setFolderId(0L);</span>
+<span class="fc" id="L81">            kbFile.setUserId(userId);</span>
+<span class="fc" id="L82">            kbFile.setName(file.getOriginalFilename());</span>
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">            kbFile.setType(ext != null ? ext : &quot;&quot;);</span>
+<span class="fc" id="L84">            kbFile.setSize(file.getSize());</span>
+<span class="fc" id="L85">            kbFile.setMinioPath(objectName);</span>
+<span class="fc" id="L86">            kbFile.setParseStatus(&quot;PENDING&quot;);</span>
+<span class="fc" id="L87">            kbFile.setStarred(0);</span>
+<span class="fc" id="L88">            kbFileMapper.insert(kbFile);</span>
+
+<span class="fc" id="L90">            fileParseTrigger.trigger(kbFile.getId(), kbFile.getMinioPath(), kbFile.getType());</span>
+<span class="fc" id="L91">            return String.valueOf(kbFile.getId());</span>
+<span class="nc" id="L92">        } catch (Exception e) {</span>
+<span class="nc" id="L93">            throw new BusinessException(&quot;文件上传失败: &quot; + e.getMessage());</span>
+        }
+    }
+
+    /**
+     * 合并分片（修复 OOM 问题）
+     * &lt;p&gt;
+     * 原代码使用 ByteArrayOutputStream 将所有分片加载到内存后再上传，
+     * 大文件会导致 OOM。
+     * &lt;p&gt;
+     * 修复方案：使用 SequenceInputStream 惰性拼接各分片流，
+     * 通过 MinIO multipart upload 流式上传，内存中仅保留一个分片的缓冲。
+     */
+    @Override
+    @Transactional
+    public KbFile mergeChunks(Long userId, FileMergeRequest request) {
+<span class="nc" id="L109">        String ext = FileUtil.extName(request.getName());</span>
+<span class="nc" id="L110">        String objectName = &quot;files/&quot; + IdUtil.fastSimpleUUID() + &quot;.&quot; + ext;</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        int totalChunks = request.getTotalChunks() != null ? request.getTotalChunks() : 0;</span>
+
+        try {
+            // 流式合并：惰性打开每个分片的下载流，通过 SequenceInputStream 顺序拼接
+            // MinIO putObject 使用 multipart upload，按 PART_SIZE 分片上传，不会全量加载到内存
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            long totalSize = request.getSize() != null ? request.getSize() : -1L;</span>
+<span class="nc" id="L117">            InputStream mergedStream = createChunkSequenceStream(request.getFileId(), totalChunks);</span>
+<span class="nc" id="L118">            minioService.uploadStream(BUCKET, objectName, mergedStream, totalSize, PART_SIZE, &quot;application/octet-stream&quot;);</span>
+
+            // 合并成功后清理分片
+<span class="nc" id="L121">            cleanupChunks(request.getFileId(), totalChunks);</span>
+<span class="nc" id="L122">            fileChunkMapper.delete(</span>
+<span class="nc" id="L123">                    new LambdaQueryWrapper&lt;FileChunk&gt;().eq(FileChunk::getFileId, request.getFileId()));</span>
+<span class="nc" id="L124">        } catch (Exception e) {</span>
+<span class="nc" id="L125">            log.error(&quot;文件合并失败 fileId={}: {}&quot;, request.getFileId(), e.getMessage(), e);</span>
+<span class="nc" id="L126">            throw new BusinessException(&quot;文件合并失败: &quot; + e.getMessage());</span>
+<span class="nc" id="L127">        }</span>
+
+<span class="nc" id="L129">        KbFile kbFile = new KbFile();</span>
+<span class="nc" id="L130">        kbFile.setFolderId(request.getFolderId());</span>
+<span class="nc" id="L131">        kbFile.setUserId(userId);</span>
+<span class="nc" id="L132">        kbFile.setName(request.getName());</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        kbFile.setType(ext != null ? ext : &quot;&quot;);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        kbFile.setSize(request.getSize() != null ? request.getSize() : 0L);</span>
+<span class="nc" id="L135">        kbFile.setMinioPath(objectName);</span>
+<span class="nc" id="L136">        kbFile.setParseStatus(&quot;PENDING&quot;);</span>
+<span class="nc" id="L137">        kbFile.setStarred(0);</span>
+<span class="nc" id="L138">        kbFileMapper.insert(kbFile);</span>
+
+<span class="nc" id="L140">        log.info(&quot;文件合并成功 fileId={} name={} userId={}&quot;, kbFile.getId(), request.getName(), userId);</span>
+
+        // 通过独立 Bean 触发异步解析（修复 @Async 自调用问题）
+<span class="nc" id="L143">        fileParseTrigger.trigger(kbFile.getId(), kbFile.getMinioPath(), kbFile.getType());</span>
+
+<span class="nc" id="L145">        return kbFile;</span>
+    }
+
+    @Override
+    public PageResult&lt;KbFile&gt; list(Long userId, Long folderId, int page, int size) {
+<span class="fc" id="L150">        Page&lt;KbFile&gt; pageParam = new Page&lt;&gt;(page, size);</span>
+<span class="fc" id="L151">        LambdaQueryWrapper&lt;KbFile&gt; wrapper = new LambdaQueryWrapper&lt;KbFile&gt;()</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">                .eq(KbFile::getUserId, userId)</span>
+<span class="fc" id="L153">                .eq(folderId != null, KbFile::getFolderId, folderId)</span>
+<span class="fc" id="L154">                .orderByDesc(KbFile::getCreatedAt);</span>
+<span class="fc" id="L155">        Page&lt;KbFile&gt; result = kbFileMapper.selectPage(pageParam, wrapper);</span>
+<span class="fc" id="L156">        return PageResult.of(result.getRecords(), result.getTotal(), page, size);</span>
+    }
+
+    @Override
+    public KbFile getById(Long id, Long userId) {
+<span class="fc" id="L161">        KbFile file = kbFileMapper.selectById(id);</span>
+<span class="pc bpc" id="L162" title="1 of 4 branches missed.">        if (file == null || !file.getUserId().equals(userId)) {</span>
+<span class="fc" id="L163">            throw new BusinessException(404, &quot;文件不存在&quot;);</span>
+        }
+<span class="fc" id="L165">        return file;</span>
+    }
+
+    @Override
+    public String getParseStatus(Long id, Long userId) {
+<span class="nc" id="L170">        KbFile file = getById(id, userId);</span>
+<span class="nc" id="L171">        return file.getParseStatus();</span>
+    }
+
+    @Override
+    public String getDownloadUrl(Long id, Long userId) {
+<span class="nc" id="L176">        KbFile file = getById(id, userId);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (file.getMinioPath() == null) {</span>
+<span class="nc" id="L178">            throw new BusinessException(&quot;文件路径不存在&quot;);</span>
+        }
+<span class="nc" id="L180">        return minioService.getPresignedUrl(BUCKET, file.getMinioPath(), 3600);</span>
+    }
+
+    @Override
+    public void reparse(Long id, Long userId) {
+<span class="nc" id="L185">        KbFile file = getById(id, userId);</span>
+<span class="nc" id="L186">        file.setParseStatus(&quot;PENDING&quot;);</span>
+<span class="nc" id="L187">        file.setParseError(null);</span>
+<span class="nc" id="L188">        kbFileMapper.updateById(file);</span>
+
+        // 通过独立 Bean 触发异步解析（修复 @Async 自调用问题）
+<span class="nc" id="L191">        fileParseTrigger.trigger(file.getId(), file.getMinioPath(), file.getType());</span>
+<span class="nc" id="L192">    }</span>
+
+    @Override
+    public void delete(Long id, Long userId) {
+<span class="fc" id="L196">        KbFile file = getById(id, userId);</span>
+
+        // 删除 MinIO 中的文件
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        if (file.getMinioPath() != null) {</span>
+<span class="fc" id="L200">            minioService.remove(BUCKET, file.getMinioPath());</span>
+        }
+
+        // 删除 MeiliSearch 索引
+<span class="fc" id="L204">        searchIndexService.removeIndex(id);</span>
+
+<span class="fc" id="L206">        kbFileMapper.deleteById(id);</span>
+
+        // 发布文件删除事件（通知下游服务清理关联数据）
+<span class="fc" id="L209">        eventPublisher.publishFileDeleted(id, userId);</span>
+
+<span class="fc" id="L211">        log.info(&quot;文件删除成功 fileId={} userId={}&quot;, id, userId);</span>
+<span class="fc" id="L212">    }</span>
+
+    @Override
+    public void star(Long id, Long userId) {
+<span class="fc" id="L216">        KbFile file = getById(id, userId);</span>
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">        file.setStarred(file.getStarred() == 1 ? 0 : 1);</span>
+<span class="fc" id="L218">        kbFileMapper.updateById(file);</span>
+<span class="fc" id="L219">    }</span>
+
+    @Override
+    public void move(Long id, Long userId, FileMoveRequest request) {
+<span class="nc" id="L223">        KbFile file = getById(id, userId);</span>
+<span class="nc" id="L224">        file.setFolderId(request.getFolderId());</span>
+<span class="nc" id="L225">        kbFileMapper.updateById(file);</span>
+<span class="nc" id="L226">    }</span>
+
+    @Override
+    public String getContent(Long id, Long userId) {
+<span class="nc" id="L230">        KbFile file = getById(id, userId);</span>
+<span class="nc" id="L231">        return fileContentRepository.findByFileIdAndIsCurrentTrue(id)</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                .map(c -&gt; c.getContent() != null ? c.getContent() : &quot;&quot;)</span>
+<span class="nc" id="L233">                .orElse(&quot;&quot;);</span>
+    }
+
+    // ======================== 私有方法 ========================
+
+    /**
+     * 创建分片顺序拼接流
+     * &lt;p&gt;
+     * 使用 SequenceInputStream 惰性打开每个分片的 MinIO 下载流，
+     * 当前分片读完后自动关闭并打开下一个，内存中仅保留一个分片的数据。
+     */
+    private InputStream createChunkSequenceStream(String fileId, int totalChunks) {
+<span class="nc" id="L245">        Enumeration&lt;InputStream&gt; enumeration = new Enumeration&lt;&gt;() {</span>
+<span class="nc" id="L246">            private int current = 1;</span>
+
+            @Override
+            public boolean hasMoreElements() {
+<span class="nc bnc" id="L250" title="All 2 branches missed.">                return current &lt;= totalChunks;</span>
+            }
+
+            @Override
+            public InputStream nextElement() {
+<span class="nc" id="L255">                String chunkPath = &quot;chunks/&quot; + fileId + &quot;/&quot; + current;</span>
+<span class="nc" id="L256">                current++;</span>
+<span class="nc" id="L257">                return minioService.download(BUCKET, chunkPath);</span>
+            }
+        };
+<span class="nc" id="L260">        return new java.io.SequenceInputStream(enumeration);</span>
+    }
+
+    /**
+     * 清理 MinIO 中的分片文件
+     */
+    private void cleanupChunks(String fileId, int totalChunks) {
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        for (int i = 1; i &lt;= totalChunks; i++) {</span>
+<span class="nc" id="L268">            minioService.remove(BUCKET, &quot;chunks/&quot; + fileId + &quot;/&quot; + i);</span>
+        }
+<span class="nc" id="L270">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

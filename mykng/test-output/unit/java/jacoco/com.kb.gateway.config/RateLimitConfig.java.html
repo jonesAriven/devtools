@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RateLimitConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-gateway</a> &gt; <a href="index.source.html" class="el_package">com.kb.gateway.config</a> &gt; <span class="el_source">RateLimitConfig.java</span></div><h1>RateLimitConfig.java</h1><pre class="source lang-java linenums">package com.kb.gateway.config;
+
+import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import reactor.core.publisher.Mono;
+
+/**
+ * 限流配置（可选）。
+ * &lt;p&gt;
+ * KeyResolver 属于 spring-cloud-gateway 核心包，无需额外依赖即可编译。&lt;br&gt;
+ * 实际启用 RequestRateLimiter 需引入 {@code spring-boot-starter-data-redis-reactive}，
+ * 并在路由 filters 中添加：
+ * &lt;pre&gt;
+ * - name: RequestRateLimiter
+ *   args:
+ *     redis-rate-limiter.replenishRate: 50   # 每秒令牌生成速率
+ *     redis-rate-limiter.burstCapacity: 100  # 令牌桶容量
+ *     key-resolver: &quot;#{@userKeyResolver}&quot;
+ * &lt;/pre&gt;
+ */
+@Configuration
+<span class="fc" id="L23">public class RateLimitConfig {</span>
+
+    /**
+     * 已登录按用户 ID 限流，未登录按客户端 IP 限流。
+     */
+    @Bean
+    public KeyResolver userKeyResolver() {
+<span class="fc" id="L30">        return exchange -&gt; {</span>
+<span class="nc" id="L31">            String userId = exchange.getRequest().getHeaders().getFirst(&quot;X-User-Id&quot;);</span>
+<span class="nc bnc" id="L32" title="All 4 branches missed.">            if (userId != null &amp;&amp; !userId.isBlank()) {</span>
+<span class="nc" id="L33">                return Mono.just(&quot;user:&quot; + userId);</span>
+            }
+<span class="nc" id="L35">            String ip = &quot;anonymous&quot;;</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">            if (exchange.getRequest().getRemoteAddress() != null) {</span>
+<span class="nc" id="L37">                ip = exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();</span>
+            }
+<span class="nc" id="L39">            return Mono.just(&quot;ip:&quot; + ip);</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
