@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SearchIndexService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-knowledge</a> &gt; <a href="index.source.html" class="el_package">com.kb.knowledge.service</a> &gt; <span class="el_source">SearchIndexService.java</span></div><h1>SearchIndexService.java</h1><pre class="source lang-java linenums">package com.kb.knowledge.service;
+
+import cn.hutool.json.JSONUtil;
+import com.kb.knowledge.entity.Doc;
+import com.kb.knowledge.entity.Folder;
+import com.kb.knowledge.entity.WebPage;
+import com.kb.knowledge.mongo.doc.DocContent;
+import com.kb.knowledge.mongo.doc.WebContent;
+import com.meilisearch.sdk.Client;
+import com.meilisearch.sdk.Index;
+import com.meilisearch.sdk.model.Settings;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * MeiliSearch 索引服务
+ * &lt;p&gt;
+ * 管理 kb-knowledge 拥有的三个索引：
+ * - kb_docs: 笔记索引
+ * - kb_webpages: 网页索引
+ * - kb_folders: 目录索引
+ */
+<span class="fc" id="L28">@Slf4j</span>
+@Service
+<span class="nc" id="L30">@RequiredArgsConstructor</span>
+public class SearchIndexService {
+
+    public static final String INDEX_DOCS = &quot;kb_docs&quot;;
+    public static final String INDEX_WEBPAGES = &quot;kb_webpages&quot;;
+    public static final String INDEX_FOLDERS = &quot;kb_folders&quot;;
+
+    private final Client meiliSearchClient;
+
+    /**
+     * 启动时初始化索引和 filterable attributes
+     */
+    @PostConstruct
+    public void initIndexes() {
+<span class="nc" id="L44">        configureIndex(INDEX_DOCS, new String[]{&quot;userId&quot;, &quot;folderId&quot;, &quot;starred&quot;});</span>
+<span class="nc" id="L45">        configureIndex(INDEX_WEBPAGES, new String[]{&quot;userId&quot;, &quot;folderId&quot;, &quot;starred&quot;});</span>
+<span class="nc" id="L46">        configureIndex(INDEX_FOLDERS, new String[]{&quot;spaceId&quot;, &quot;parentId&quot;});</span>
+<span class="nc" id="L47">        log.info(&quot;MeiliSearch 索引初始化完成&quot;);</span>
+<span class="nc" id="L48">    }</span>
+
+    private void configureIndex(String uid, String[] filterableAttributes) {
+        try {
+<span class="nc" id="L52">            Index index = meiliSearchClient.index(uid);</span>
+            // 显式创建索引并指定主键为 &quot;id&quot;，
+            // 避免文档含多个以 id 结尾的字段时主键推断失败
+            // （参考错误：index_primary_key_multiple_candidates_found）
+            try {
+<span class="nc" id="L57">                meiliSearchClient.createIndex(uid, &quot;id&quot;);</span>
+<span class="nc" id="L58">                log.info(&quot;MeiliSearch 索引 {} 创建任务已提交（primaryKey=id）&quot;, uid);</span>
+<span class="nc" id="L59">            } catch (Exception ce) {</span>
+                // 索引已存在或主键已固定，忽略创建异常
+<span class="nc" id="L61">                log.debug(&quot;MeiliSearch 索引 {} 创建任务结果: {}&quot;, uid, ce.getMessage());</span>
+<span class="nc" id="L62">            }</span>
+<span class="nc" id="L63">            Settings settings = new Settings();</span>
+<span class="nc" id="L64">            settings.setFilterableAttributes(filterableAttributes);</span>
+<span class="nc" id="L65">            index.updateSettings(settings);</span>
+<span class="nc" id="L66">            log.info(&quot;MeiliSearch 索引 {} filterableAttributes 已设置: {}&quot;, uid, String.join(&quot;, &quot;, filterableAttributes));</span>
+<span class="nc" id="L67">        } catch (Exception e) {</span>
+<span class="nc" id="L68">            log.warn(&quot;MeiliSearch 索引 {} 配置失败（可能索引尚不存在，将在首次写入时自动创建）: {}&quot;, uid, e.getMessage());</span>
+<span class="nc" id="L69">        }</span>
+<span class="nc" id="L70">    }</span>
+
+    /**
+     * 写入/更新笔记索引
+     */
+    public void indexDoc(Doc doc, String content) {
+        try {
+<span class="nc" id="L77">            Index index = meiliSearchClient.index(INDEX_DOCS);</span>
+<span class="nc" id="L78">            Map&lt;String, Object&gt; document = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L79">            document.put(&quot;id&quot;, String.valueOf(doc.getId()));</span>
+<span class="nc" id="L80">            document.put(&quot;docId&quot;, doc.getId());</span>
+<span class="nc" id="L81">            document.put(&quot;userId&quot;, doc.getUserId());</span>
+<span class="nc" id="L82">            document.put(&quot;folderId&quot;, doc.getFolderId());</span>
+<span class="nc" id="L83">            document.put(&quot;title&quot;, doc.getTitle());</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            document.put(&quot;content&quot;, content != null ? content : &quot;&quot;);</span>
+<span class="nc" id="L85">            document.put(&quot;starred&quot;, doc.getStarred());</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            document.put(&quot;createdAt&quot;, doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null);</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            document.put(&quot;updatedAt&quot;, doc.getUpdatedAt() != null ? doc.getUpdatedAt().toString() : null);</span>
+<span class="nc" id="L88">            index.addDocuments(JSONUtil.toJsonStr(document));</span>
+<span class="nc" id="L89">            log.info(&quot;已提交 MeiliSearch 笔记索引任务 docId={}&quot;, doc.getId());</span>
+<span class="nc" id="L90">        } catch (Exception e) {</span>
+<span class="nc" id="L91">            log.error(&quot;已提交 MeiliSearch 笔记索引失败 docId={}: {}&quot;, doc.getId(), e.getMessage());</span>
+<span class="nc" id="L92">        }</span>
+<span class="nc" id="L93">    }</span>
+
+    /**
+     * 删除笔记索引
+     */
+    public void removeDocIndex(Long docId) {
+        try {
+<span class="nc" id="L100">            Index index = meiliSearchClient.index(INDEX_DOCS);</span>
+<span class="nc" id="L101">            index.deleteDocument(String.valueOf(docId));</span>
+<span class="nc" id="L102">            log.info(&quot;删除 MeiliSearch 笔记索引任务 docId={}&quot;, docId);</span>
+<span class="nc" id="L103">        } catch (Exception e) {</span>
+<span class="nc" id="L104">            log.error(&quot;删除 MeiliSearch 笔记索引失败 docId={}: {}&quot;, docId, e.getMessage());</span>
+<span class="nc" id="L105">        }</span>
+<span class="nc" id="L106">    }</span>
+
+    /**
+     * 写入/更新网页索引
+     */
+    public void indexWebPage(WebPage webPage, String content) {
+        try {
+<span class="nc" id="L113">            Index index = meiliSearchClient.index(INDEX_WEBPAGES);</span>
+<span class="nc" id="L114">            Map&lt;String, Object&gt; document = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L115">            document.put(&quot;id&quot;, String.valueOf(webPage.getId()));</span>
+<span class="nc" id="L116">            document.put(&quot;webId&quot;, webPage.getId());</span>
+<span class="nc" id="L117">            document.put(&quot;userId&quot;, webPage.getUserId());</span>
+<span class="nc" id="L118">            document.put(&quot;folderId&quot;, webPage.getFolderId());</span>
+<span class="nc" id="L119">            document.put(&quot;url&quot;, webPage.getUrl());</span>
+<span class="nc" id="L120">            document.put(&quot;title&quot;, webPage.getTitle());</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            document.put(&quot;content&quot;, content != null ? content : &quot;&quot;);</span>
+<span class="nc" id="L122">            document.put(&quot;starred&quot;, webPage.getStarred());</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            document.put(&quot;createdAt&quot;, webPage.getCreatedAt() != null ? webPage.getCreatedAt().toString() : null);</span>
+<span class="nc" id="L124">            index.addDocuments(JSONUtil.toJsonStr(document));</span>
+<span class="nc" id="L125">            log.info(&quot;已提交 MeiliSearch 网页索引任务 webId={}&quot;, webPage.getId());</span>
+<span class="nc" id="L126">        } catch (Exception e) {</span>
+<span class="nc" id="L127">            log.error(&quot;已提交 MeiliSearch 网页索引失败 webId={}: {}&quot;, webPage.getId(), e.getMessage());</span>
+<span class="nc" id="L128">        }</span>
+<span class="nc" id="L129">    }</span>
+
+    /**
+     * 删除网页索引
+     */
+    public void removeWebPageIndex(Long webId) {
+        try {
+<span class="nc" id="L136">            Index index = meiliSearchClient.index(INDEX_WEBPAGES);</span>
+<span class="nc" id="L137">            index.deleteDocument(String.valueOf(webId));</span>
+<span class="nc" id="L138">            log.info(&quot;删除 MeiliSearch 网页索引任务 webId={}&quot;, webId);</span>
+<span class="nc" id="L139">        } catch (Exception e) {</span>
+<span class="nc" id="L140">            log.error(&quot;删除 MeiliSearch 网页索引失败 webId={}: {}&quot;, webId, e.getMessage());</span>
+<span class="nc" id="L141">        }</span>
+<span class="nc" id="L142">    }</span>
+
+    /**
+     * 写入/更新目录索引
+     */
+    public void indexFolder(Folder folder) {
+        try {
+<span class="nc" id="L149">            Index index = meiliSearchClient.index(INDEX_FOLDERS);</span>
+<span class="nc" id="L150">            Map&lt;String, Object&gt; document = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L151">            document.put(&quot;id&quot;, String.valueOf(folder.getId()));</span>
+<span class="nc" id="L152">            document.put(&quot;folderId&quot;, folder.getId());</span>
+<span class="nc" id="L153">            document.put(&quot;spaceId&quot;, folder.getSpaceId());</span>
+<span class="nc" id="L154">            document.put(&quot;parentId&quot;, folder.getParentId());</span>
+<span class="nc" id="L155">            document.put(&quot;name&quot;, folder.getName());</span>
+<span class="nc" id="L156">            document.put(&quot;sortOrder&quot;, folder.getSortOrder());</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            document.put(&quot;createdAt&quot;, folder.getCreatedAt() != null ? folder.getCreatedAt().toString() : null);</span>
+<span class="nc" id="L158">            index.addDocuments(JSONUtil.toJsonStr(document));</span>
+<span class="nc" id="L159">            log.info(&quot;已提交 MeiliSearch 目录索引任务 folderId={}&quot;, folder.getId());</span>
+<span class="nc" id="L160">        } catch (Exception e) {</span>
+<span class="nc" id="L161">            log.error(&quot;已提交 MeiliSearch 目录索引失败 folderId={}: {}&quot;, folder.getId(), e.getMessage());</span>
+<span class="nc" id="L162">        }</span>
+<span class="nc" id="L163">    }</span>
+
+    /**
+     * 删除目录索引
+     */
+    public void removeFolderIndex(Long folderId) {
+        try {
+<span class="nc" id="L170">            Index index = meiliSearchClient.index(INDEX_FOLDERS);</span>
+<span class="nc" id="L171">            index.deleteDocument(String.valueOf(folderId));</span>
+<span class="nc" id="L172">            log.info(&quot;删除 MeiliSearch 目录索引任务 folderId={}&quot;, folderId);</span>
+<span class="nc" id="L173">        } catch (Exception e) {</span>
+<span class="nc" id="L174">            log.error(&quot;删除 MeiliSearch 目录索引失败 folderId={}: {}&quot;, folderId, e.getMessage());</span>
+<span class="nc" id="L175">        }</span>
+<span class="nc" id="L176">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

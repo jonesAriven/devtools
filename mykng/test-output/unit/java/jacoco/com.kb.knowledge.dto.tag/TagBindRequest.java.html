@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TagBindRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-knowledge</a> &gt; <a href="index.source.html" class="el_package">com.kb.knowledge.dto.tag</a> &gt; <span class="el_source">TagBindRequest.java</span></div><h1>TagBindRequest.java</h1><pre class="source lang-java linenums">package com.kb.knowledge.dto.tag;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+<span class="pc bnc" id="L7" title="All 30 branches missed.">@Data</span>
+public class TagBindRequest {
+
+    @NotNull(message = &quot;标签ID不能为空&quot;)
+<span class="fc" id="L11">    private Long tagId;</span>
+
+    @NotBlank(message = &quot;资源类型不能为空&quot;)
+<span class="fc" id="L14">    private String resourceType;</span>
+
+    @NotNull(message = &quot;资源ID不能为空&quot;)
+<span class="fc" id="L17">    private Long resourceId;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

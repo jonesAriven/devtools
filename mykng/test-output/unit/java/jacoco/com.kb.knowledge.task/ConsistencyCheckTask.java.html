@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConsistencyCheckTask.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-knowledge</a> &gt; <a href="index.source.html" class="el_package">com.kb.knowledge.task</a> &gt; <span class="el_source">ConsistencyCheckTask.java</span></div><h1>ConsistencyCheckTask.java</h1><pre class="source lang-java linenums">package com.kb.knowledge.task;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.kb.knowledge.entity.Doc;
+import com.kb.knowledge.entity.Share;
+import com.kb.knowledge.entity.WebPage;
+import com.kb.knowledge.mapper.DocMapper;
+import com.kb.knowledge.mapper.ShareMapper;
+import com.kb.knowledge.mapper.WebPageMapper;
+import com.kb.knowledge.mongo.doc.DocContent;
+import com.kb.knowledge.mongo.doc.WebContent;
+import com.kb.knowledge.mongo.repository.DocContentRepository;
+import com.kb.knowledge.mongo.repository.WebContentRepository;
+import com.kb.knowledge.service.SearchIndexService;
+import com.meilisearch.sdk.Client;
+import com.meilisearch.sdk.Index;
+import com.meilisearch.sdk.exceptions.MeilisearchException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * 数据一致性补偿任务（P1 新增）
+ * &lt;p&gt;
+ * 每天凌晨 03:00 执行，自动修复以下不一致：
+ * &lt;ol&gt;
+ *   &lt;li&gt;MySQL ↔ MeiliSearch 索引一致性：MySQL 有但索引缺少的 → 补建；索引有但 MySQL 已删的 → 清理&lt;/li&gt;
+ *   &lt;li&gt;分享链接有效性：资源已删但分享仍有效的 → 标记失效（deleted=1）&lt;/li&gt;
+ *   &lt;li&gt;孤儿文档检查：folderId 指向已删目录的 → 移至根目录（folderId=0）&lt;/li&gt;
+ * &lt;/ol&gt;
+ * &lt;p&gt;
+ * 与 Redis Pub/Sub 事件通知形成双重保障：
+ * 事件通知负责实时同步，本任务负责兜底补偿（防止事件丢失）。
+ */
+<span class="fc" id="L39">@Slf4j</span>
+@Service
+<span class="fc" id="L41">@RequiredArgsConstructor</span>
+public class ConsistencyCheckTask {
+
+    private final DocMapper docMapper;
+    private final WebPageMapper webPageMapper;
+    private final ShareMapper shareMapper;
+    private final SearchIndexService searchIndexService;
+    private final Client meiliSearchClient;
+    private final DocContentRepository docContentRepository;
+    private final WebContentRepository webContentRepository;
+
+    /**
+     * 每天 03:00 执行一致性校验
+     */
+    @Scheduled(cron = &quot;0 0 3 * * ?&quot;)
+    public void consistencyCheck() {
+<span class="nc" id="L57">        log.info(&quot;[一致性检查] 开始执行&quot;);</span>
+<span class="nc" id="L58">        int idxFixed = 0, idxCleaned = 0, shareInvalidated = 0, orphanFixed = 0;</span>
+
+        try {
+            // === 1. 索引一致性：MySQL 有但 MeiliSearch 缺少的 → 补建 ===
+<span class="nc" id="L62">            idxFixed += rebuildMissingDocIndex();</span>
+<span class="nc" id="L63">            idxFixed += rebuildMissingWebPageIndex();</span>
+
+            // === 2. 索引清理：MySQL 已删但 MeiliSearch 还有的 → 删索引 ===
+<span class="nc" id="L66">            idxCleaned += cleanOrphanDocIndex();</span>
+<span class="nc" id="L67">            idxCleaned += cleanOrphanWebPageIndex();</span>
+
+            // === 3. 分享有效性：资源已删但分享仍有效 → 标记失效 ===
+<span class="nc" id="L70">            shareInvalidated += invalidateOrphanShares();</span>
+
+            // === 4. 孤儿文档：folderId 指向已删目录 → 移至根目录 ===
+<span class="nc" id="L73">            orphanFixed += fixOrphanDocs();</span>
+<span class="nc" id="L74">            orphanFixed += fixOrphanWebPages();</span>
+
+<span class="nc" id="L76">        } catch (Exception e) {</span>
+<span class="nc" id="L77">            log.error(&quot;[一致性检查] 执行失败&quot;, e);</span>
+<span class="nc" id="L78">        }</span>
+
+<span class="nc" id="L80">        log.info(&quot;[一致性检查] 完成 — 补建索引 {}，清理索引 {}，标记失效分享 {}，修复孤儿文档 {}&quot;,</span>
+<span class="nc" id="L81">                idxFixed, idxCleaned, shareInvalidated, orphanFixed);</span>
+<span class="nc" id="L82">    }</span>
+
+    // ================================================================
+    // 1. 索引补建：MySQL 有但 MeiliSearch 没有
+    // ================================================================
+
+    /**
+     * 检查未删除的笔记是否在 MeiliSearch 中有索引，缺少的补建
+     */
+    private int rebuildMissingDocIndex() {
+<span class="nc" id="L92">        int count = 0;</span>
+<span class="nc" id="L93">        List&lt;Doc&gt; docs = docMapper.selectList(</span>
+<span class="nc" id="L94">                new LambdaQueryWrapper&lt;Doc&gt;().eq(Doc::getDeleted, 0));</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        for (Doc doc : docs) {</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (!docExistsInIndex(SearchIndexService.INDEX_DOCS, doc.getId())) {</span>
+<span class="nc" id="L98">                log.warn(&quot;[补偿] 笔记索引缺失，补建 docId={}&quot;, doc.getId());</span>
+<span class="nc" id="L99">                String content = docContentRepository.findByDocIdAndIsCurrentTrue(doc.getId())</span>
+<span class="nc" id="L100">                        .map(DocContent::getContent).orElse(&quot;&quot;);</span>
+<span class="nc" id="L101">                searchIndexService.indexDoc(doc, content);</span>
+<span class="nc" id="L102">                count++;</span>
+            }
+<span class="nc" id="L104">        }</span>
+<span class="nc" id="L105">        return count;</span>
+    }
+
+    /**
+     * 检查未删除的网页是否在 MeiliSearch 中有索引，缺少的补建
+     */
+    private int rebuildMissingWebPageIndex() {
+<span class="nc" id="L112">        int count = 0;</span>
+<span class="nc" id="L113">        List&lt;WebPage&gt; pages = webPageMapper.selectList(</span>
+<span class="nc" id="L114">                new LambdaQueryWrapper&lt;WebPage&gt;().eq(WebPage::getDeleted, 0));</span>
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        for (WebPage page : pages) {</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">            if (!docExistsInIndex(SearchIndexService.INDEX_WEBPAGES, page.getId())) {</span>
+<span class="nc" id="L118">                log.warn(&quot;[补偿] 网页索引缺失，补建 webId={}&quot;, page.getId());</span>
+<span class="nc" id="L119">                String content = webContentRepository.findByWebIdAndIsCurrentTrue(page.getId())</span>
+<span class="nc" id="L120">                        .map(WebContent::getContent).orElse(&quot;&quot;);</span>
+<span class="nc" id="L121">                searchIndexService.indexWebPage(page, content);</span>
+<span class="nc" id="L122">                count++;</span>
+            }
+<span class="nc" id="L124">        }</span>
+<span class="nc" id="L125">        return count;</span>
+    }
+
+    // ================================================================
+    // 2. 索引清理：MySQL 已删但 MeiliSearch 还有
+    // ================================================================
+
+    /**
+     * 检查 MeiliSearch 中有但 MySQL 已标记删除的笔记，清理孤儿索引
+     */
+    private int cleanOrphanDocIndex() {
+<span class="nc" id="L136">        int count = 0;</span>
+<span class="nc" id="L137">        List&lt;Doc&gt; deletedDocs = docMapper.selectList(</span>
+<span class="nc" id="L138">                new LambdaQueryWrapper&lt;Doc&gt;().eq(Doc::getDeleted, 1));</span>
+
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        for (Doc doc : deletedDocs) {</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            if (docExistsInIndex(SearchIndexService.INDEX_DOCS, doc.getId())) {</span>
+<span class="nc" id="L142">                log.warn(&quot;[补偿] 清理孤儿笔记索引 docId={}&quot;, doc.getId());</span>
+<span class="nc" id="L143">                searchIndexService.removeDocIndex(doc.getId());</span>
+<span class="nc" id="L144">                count++;</span>
+            }
+<span class="nc" id="L146">        }</span>
+<span class="nc" id="L147">        return count;</span>
+    }
+
+    /**
+     * 检查 MeiliSearch 中有但 MySQL 已标记删除的网页，清理孤儿索引
+     */
+    private int cleanOrphanWebPageIndex() {
+<span class="nc" id="L154">        int count = 0;</span>
+<span class="nc" id="L155">        List&lt;WebPage&gt; deletedPages = webPageMapper.selectList(</span>
+<span class="nc" id="L156">                new LambdaQueryWrapper&lt;WebPage&gt;().eq(WebPage::getDeleted, 1));</span>
+
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        for (WebPage page : deletedPages) {</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">            if (docExistsInIndex(SearchIndexService.INDEX_WEBPAGES, page.getId())) {</span>
+<span class="nc" id="L160">                log.warn(&quot;[补偿] 清理孤儿网页索引 webId={}&quot;, page.getId());</span>
+<span class="nc" id="L161">                searchIndexService.removeWebPageIndex(page.getId());</span>
+<span class="nc" id="L162">                count++;</span>
+            }
+<span class="nc" id="L164">        }</span>
+<span class="nc" id="L165">        return count;</span>
+    }
+
+    // ================================================================
+    // 3. 分享有效性：资源已删但分享仍有效
+    // ================================================================
+
+    /**
+     * 标记资源已删除的分享为失效（deleted=1）
+     */
+    private int invalidateOrphanShares() {
+        // 查找所有有效分享（deleted=0）
+<span class="nc" id="L177">        List&lt;Share&gt; activeShares = shareMapper.selectList(</span>
+<span class="nc" id="L178">                new LambdaQueryWrapper&lt;Share&gt;().eq(Share::getDeleted, 0));</span>
+
+<span class="nc" id="L180">        int count = 0;</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        for (Share share : activeShares) {</span>
+<span class="nc" id="L182">            boolean resourceGone = false;</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">            if (&quot;doc&quot;.equals(share.getResourceType())) {</span>
+<span class="nc" id="L185">                Doc doc = docMapper.selectById(share.getResourceId());</span>
+<span class="nc bnc" id="L186" title="All 4 branches missed.">                resourceGone = (doc == null || doc.getDeleted() == 1);</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">            } else if (&quot;web&quot;.equals(share.getResourceType())) {</span>
+<span class="nc" id="L188">                WebPage page = webPageMapper.selectById(share.getResourceId());</span>
+<span class="nc bnc" id="L189" title="All 4 branches missed.">                resourceGone = (page == null || page.getDeleted() == 1);</span>
+            }
+            // file 类型分享的失效由 IndexEventListener.handleFileDeleted 处理，此处跳过
+
+<span class="nc bnc" id="L193" title="All 2 branches missed.">            if (resourceGone) {</span>
+<span class="nc" id="L194">                log.warn(&quot;[补偿] 分享资源已删，标记失效 shareId={} resourceType={} resourceId={}&quot;,</span>
+<span class="nc" id="L195">                        share.getId(), share.getResourceType(), share.getResourceId());</span>
+<span class="nc" id="L196">                shareMapper.update(null,</span>
+                        new LambdaUpdateWrapper&lt;Share&gt;()
+<span class="nc" id="L198">                                .eq(Share::getId, share.getId())</span>
+<span class="nc" id="L199">                                .set(Share::getDeleted, 1));</span>
+<span class="nc" id="L200">                count++;</span>
+            }
+<span class="nc" id="L202">        }</span>
+<span class="nc" id="L203">        return count;</span>
+    }
+
+    // ================================================================
+    // 4. 孤儿文档：folderId 指向已删目录 → 移至根目录
+    // ================================================================
+
+    /**
+     * 笔记的 folderId 指向已删目录的，移至根目录（folderId=0）
+     */
+    private int fixOrphanDocs() {
+<span class="nc" id="L214">        int count = docMapper.update(null,</span>
+                new LambdaUpdateWrapper&lt;Doc&gt;()
+<span class="nc" id="L216">                        .notInSql(Doc::getFolderId, &quot;SELECT id FROM folder WHERE deleted=0&quot;)</span>
+<span class="nc" id="L217">                        .set(Doc::getFolderId, 0));</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        if (count &gt; 0) {</span>
+<span class="nc" id="L219">            log.info(&quot;[孤儿文档] 已将 {} 篇笔记移至根目录&quot;, count);</span>
+        }
+<span class="nc" id="L221">        return count;</span>
+    }
+
+    /**
+     * 网页的 folderId 指向已删目录的，移至根目录
+     */
+    private int fixOrphanWebPages() {
+<span class="nc" id="L228">        int count = webPageMapper.update(null,</span>
+                new LambdaUpdateWrapper&lt;WebPage&gt;()
+<span class="nc" id="L230">                        .notInSql(WebPage::getFolderId, &quot;SELECT id FROM folder WHERE deleted=0&quot;)</span>
+<span class="nc" id="L231">                        .set(WebPage::getFolderId, 0));</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        if (count &gt; 0) {</span>
+<span class="nc" id="L233">            log.info(&quot;[孤儿文档] 已将 {} 个网页移至根目录&quot;, count);</span>
+        }
+<span class="nc" id="L235">        return count;</span>
+    }
+
+    // ================================================================
+    // 工具方法
+    // ================================================================
+
+    /**
+     * 检查指定文档 ID 是否存在于 MeiliSearch 索引中
+     */
+    private boolean docExistsInIndex(String indexName, Long id) {
+        try {
+<span class="nc" id="L247">            Index index = meiliSearchClient.index(indexName);</span>
+<span class="nc" id="L248">            String doc = index.getDocument(String.valueOf(id), String.class);</span>
+<span class="nc bnc" id="L249" title="All 6 branches missed.">            return doc != null &amp;&amp; !doc.isEmpty() &amp;&amp; !doc.equals(&quot;null&quot;);</span>
+<span class="nc" id="L250">        } catch (MeilisearchException e) {</span>
+            // 文档不存在会抛异常
+<span class="nc" id="L252">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

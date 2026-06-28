@@ -1,0 +1,48 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: kb-intelligence
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+meilisearch:
+  host: http://192.168.31.182:7700
+  api-key: masterKey
+
+kb:
+  intelligence:
+    llm:
+      enabled: false
+      endpoint: ""
+      api-key: ""
+      model: qwen-turbo
+
+logging:
+  level:
+    com.kb.intelligence: debug
+    org.springframework.data.mongodb: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

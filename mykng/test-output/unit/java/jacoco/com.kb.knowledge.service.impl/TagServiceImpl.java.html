@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TagServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kb-knowledge</a> &gt; <a href="index.source.html" class="el_package">com.kb.knowledge.service.impl</a> &gt; <span class="el_source">TagServiceImpl.java</span></div><h1>TagServiceImpl.java</h1><pre class="source lang-java linenums">package com.kb.knowledge.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kb.common.exception.BusinessException;
+import com.kb.knowledge.dto.tag.TagBindRequest;
+import com.kb.knowledge.entity.ResourceTag;
+import com.kb.knowledge.entity.Tag;
+import com.kb.knowledge.mapper.ResourceTagMapper;
+import com.kb.knowledge.mapper.TagMapper;
+import com.kb.knowledge.service.EventPublisher;
+import com.kb.knowledge.service.TagService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+<span class="fc" id="L19">@RequiredArgsConstructor</span>
+public class TagServiceImpl implements TagService {
+
+    private final TagMapper tagMapper;
+    private final ResourceTagMapper resourceTagMapper;
+    private final EventPublisher eventPublisher;
+
+    @Override
+    public List&lt;Tag&gt; listByUserId(Long userId) {
+<span class="fc" id="L28">        return tagMapper.selectList(</span>
+                new LambdaQueryWrapper&lt;Tag&gt;()
+<span class="fc" id="L30">                        .eq(Tag::getUserId, userId)</span>
+<span class="fc" id="L31">                        .orderByDesc(Tag::getCreatedAt));</span>
+    }
+
+    @Override
+    public Tag create(Long userId, String name, String color) {
+<span class="fc" id="L36">        Tag exist = tagMapper.selectOne(</span>
+                new LambdaQueryWrapper&lt;Tag&gt;()
+<span class="fc" id="L38">                        .eq(Tag::getUserId, userId)</span>
+<span class="fc" id="L39">                        .eq(Tag::getName, name));</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (exist != null) {</span>
+<span class="fc" id="L41">            throw new BusinessException(&quot;标签已存在&quot;);</span>
+        }
+
+<span class="fc" id="L44">        Tag tag = new Tag();</span>
+<span class="fc" id="L45">        tag.setUserId(userId);</span>
+<span class="fc" id="L46">        tag.setName(name);</span>
+<span class="fc" id="L47">        tag.setColor(color);</span>
+<span class="fc" id="L48">        tagMapper.insert(tag);</span>
+
+        // 发布操作事件
+<span class="fc" id="L51">        eventPublisher.publishKnowledgeEvent(userId, &quot;CREATE&quot;, &quot;tag&quot;, tag.getId(),</span>
+                &quot;创建标签: &quot; + name);
+<span class="fc" id="L53">        return tag;</span>
+    }
+
+    @Override
+    public Tag update(Long id, Long userId, String name, String color) {
+<span class="nc" id="L58">        Tag tag = tagMapper.selectById(id);</span>
+<span class="nc bnc" id="L59" title="All 4 branches missed.">        if (tag == null || !tag.getUserId().equals(userId)) {</span>
+<span class="nc" id="L60">            throw new BusinessException(&quot;标签不存在&quot;);</span>
+        }
+<span class="nc bnc" id="L62" title="All 4 branches missed.">        if (name != null &amp;&amp; !name.equals(tag.getName())) {</span>
+<span class="nc" id="L63">            Tag exist = tagMapper.selectOne(</span>
+                    new LambdaQueryWrapper&lt;Tag&gt;()
+<span class="nc" id="L65">                            .eq(Tag::getUserId, userId)</span>
+<span class="nc" id="L66">                            .eq(Tag::getName, name)</span>
+<span class="nc" id="L67">                            .ne(Tag::getId, id));</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">            if (exist != null) {</span>
+<span class="nc" id="L69">                throw new BusinessException(&quot;标签名称已存在&quot;);</span>
+            }
+<span class="nc" id="L71">            tag.setName(name);</span>
+        }
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (color != null) {</span>
+<span class="nc" id="L74">            tag.setColor(color);</span>
+        }
+<span class="nc" id="L76">        tagMapper.updateById(tag);</span>
+
+<span class="nc" id="L78">        eventPublisher.publishKnowledgeEvent(userId, &quot;UPDATE&quot;, &quot;tag&quot;, tag.getId(),</span>
+<span class="nc" id="L79">                &quot;更新标签: &quot; + tag.getName());</span>
+<span class="nc" id="L80">        return tag;</span>
+    }
+
+    @Override
+    public void delete(Long id, Long userId) {
+<span class="fc" id="L85">        Tag tag = tagMapper.selectById(id);</span>
+<span class="pc bpc" id="L86" title="1 of 4 branches missed.">        if (tag == null || !tag.getUserId().equals(userId)) {</span>
+<span class="fc" id="L87">            throw new BusinessException(&quot;标签不存在&quot;);</span>
+        }
+<span class="fc" id="L89">        tagMapper.deleteById(id);</span>
+<span class="fc" id="L90">        resourceTagMapper.delete(</span>
+<span class="fc" id="L91">                new LambdaQueryWrapper&lt;ResourceTag&gt;().eq(ResourceTag::getTagId, id));</span>
+
+        // 发布操作事件
+<span class="fc" id="L94">        eventPublisher.publishKnowledgeEvent(userId, &quot;DELETE&quot;, &quot;tag&quot;, id,</span>
+<span class="fc" id="L95">                &quot;删除标签: &quot; + tag.getName());</span>
+<span class="fc" id="L96">    }</span>
+
+    @Override
+    @Transactional
+    public void bind(Long userId, TagBindRequest request) {
+<span class="fc" id="L101">        Tag tag = tagMapper.selectById(request.getTagId());</span>
+<span class="pc bpc" id="L102" title="1 of 4 branches missed.">        if (tag == null || !tag.getUserId().equals(userId)) {</span>
+<span class="fc" id="L103">            throw new BusinessException(&quot;标签不存在&quot;);</span>
+        }
+
+<span class="fc" id="L106">        ResourceTag exist = resourceTagMapper.selectOne(</span>
+                new LambdaQueryWrapper&lt;ResourceTag&gt;()
+<span class="fc" id="L108">                        .eq(ResourceTag::getTagId, request.getTagId())</span>
+<span class="fc" id="L109">                        .eq(ResourceTag::getResourceType, request.getResourceType())</span>
+<span class="fc" id="L110">                        .eq(ResourceTag::getResourceId, request.getResourceId()));</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (exist != null) {</span>
+<span class="fc" id="L112">            return;</span>
+        }
+
+<span class="fc" id="L115">        ResourceTag resourceTag = new ResourceTag();</span>
+<span class="fc" id="L116">        resourceTag.setTagId(request.getTagId());</span>
+<span class="fc" id="L117">        resourceTag.setResourceType(request.getResourceType());</span>
+<span class="fc" id="L118">        resourceTag.setResourceId(request.getResourceId());</span>
+<span class="fc" id="L119">        resourceTagMapper.insert(resourceTag);</span>
+<span class="fc" id="L120">    }</span>
+
+    @Override
+    public void unbind(Long userId, Long tagId, String resourceType, Long resourceId) {
+<span class="nc" id="L124">        resourceTagMapper.delete(</span>
+                new LambdaQueryWrapper&lt;ResourceTag&gt;()
+<span class="nc" id="L126">                        .eq(ResourceTag::getTagId, tagId)</span>
+<span class="nc" id="L127">                        .eq(ResourceTag::getResourceType, resourceType)</span>
+<span class="nc" id="L128">                        .eq(ResourceTag::getResourceId, resourceId));</span>
+<span class="nc" id="L129">    }</span>
+
+    @Override
+    public List&lt;Tag&gt; getTagsByResource(Long userId, Long resourceId, String resourceType) {
+<span class="nc" id="L133">        List&lt;ResourceTag&gt; rts = resourceTagMapper.selectList(</span>
+                new LambdaQueryWrapper&lt;ResourceTag&gt;()
+<span class="nc" id="L135">                        .eq(ResourceTag::getResourceId, resourceId)</span>
+<span class="nc" id="L136">                        .eq(ResourceTag::getResourceType, resourceType));</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (rts.isEmpty()) {</span>
+<span class="nc" id="L138">            return java.util.Collections.emptyList();</span>
+        }
+<span class="nc" id="L140">        List&lt;Long&gt; tagIds = rts.stream().map(ResourceTag::getTagId).toList();</span>
+<span class="nc" id="L141">        return tagMapper.selectList(</span>
+                new LambdaQueryWrapper&lt;Tag&gt;()
+<span class="nc" id="L143">                        .in(Tag::getId, tagIds)</span>
+<span class="nc" id="L144">                        .eq(Tag::getUserId, userId));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

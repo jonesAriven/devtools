@@ -1,0 +1,50 @@
+server:
+  port: 8086
+  servlet:
+    context-path: ${KB_CONTEXT:/kb}
+
+spring:
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:kb_intelligence_staging}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:kb123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      keepalive-time: 60000
+      connection-timeout: 5000
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_USER:kb}:${MONGO_PASSWORD:kb123456}@${MONGO_HOST:mongodb}:${MONGO_PORT:27017}/${MONGO_DB:kb_intelligence_staging}?authSource=admin
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      timeout: 5000ms
+
+meilisearch:
+  host: ${MEILI_HOST:http://meilisearch:7700}
+  api-key: ${MEILI_KEY:kbMeiliKey2026!!Secure}
+
+kb:
+  intelligence:
+    llm:
+      enabled: ${LLM_ENABLED:false}
+      endpoint: ${LLM_ENDPOINT:}
+      api-key: ${LLM_API_KEY:}
+      model: ${LLM_MODEL:qwen-turbo}
+
+logging:
+  level:
+    com.kb: INFO
+    org.springframework: WARN
+    org.springframework.data.mongodb: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
