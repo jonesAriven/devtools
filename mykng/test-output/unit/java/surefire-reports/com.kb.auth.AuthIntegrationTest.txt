@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.kb.auth.AuthIntegrationTest
 -------------------------------------------------------------------------------
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.868 s -- in com.kb.auth.AuthIntegrationTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.995 s -- in com.kb.auth.AuthIntegrationTest
