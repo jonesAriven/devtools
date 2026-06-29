@@ -20,6 +20,9 @@ public class TableParser implements DocParser {
     private static final Pattern PUBLIC_IP_PATTERN = Pattern.compile(
             "\\b((?:[0-9]{1,3}\\.){3}[0-9]{1,3})\\b"
     );
+    private static final Pattern STRICT_IP_PATTERN = Pattern.compile(
+            "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"
+    );
     private static final Pattern PORT_PATTERN = Pattern.compile("(?:port|端口|:)(\\d{2,5})", Pattern.CASE_INSENSITIVE);
     private static final Pattern USER_PASS_PATTERN = Pattern.compile(
             "(?:用户名|账号|user|username|账号)[：: ]+([^\\s|]+)[\\s|/]+(?:密码|password|pwd)[：: ]+([^\\s|]+)",
@@ -112,31 +115,37 @@ public class TableParser implements DocParser {
             if (val.isEmpty()) continue;
 
             if (key.contains("ip") && !key.contains("tailscale") && !key.contains("公网") && !key.contains("public")) {
-                ip = val;
+                // 修复：对 ip 字段做格式校验，避免非 IP 字符串（如带删除线的长文本）直接赋值
+                String extracted = extractValidIp(val);
+                if (extracted != null) ip = extracted;
             } else if (key.contains("tailscale") || key.contains("私网") || key.contains("内网")) {
-                tailscaleIp = val;
+                String extracted = extractValidIp(val);
+                if (extracted != null) tailscaleIp = extracted;
             } else if (key.contains("公网") || key.contains("public") || key.contains("外网")) {
-                remark = (remark == null ? "" : remark + " ") + "公网IP:" + val;
+                String extracted = extractValidIp(val);
+                if (extracted != null) {
+                    remark = (remark == null ? "" : remark + " ") + "公网IP:" + extracted;
+                }
             } else if (key.contains("名称") || key.contains("主机") || key.contains("hostname") || key.contains("name") || key.contains("别名")) {
-                name = val;
+                name = truncate(val, 200);
             } else if (key.contains("用户名") || key.contains("user") || key.contains("账号")) {
-                username = val;
+                username = truncate(val, 100);
             } else if (key.contains("密码") || key.contains("pass") || key.contains("pwd")) {
-                password = val;
+                password = truncate(val, 500);
             } else if (key.contains("角色") || key.contains("role") || key.contains("用途")) {
-                role = val;
+                role = truncate(val, 100);
             } else if (key.contains("系统") || key.contains("os") || key.contains("版本")) {
-                osType = val;
+                osType = truncate(val, 50);
             } else if (key.contains("备注") || key.contains("remark") || key.contains("说明")) {
-                remark = val;
+                remark = truncate(val, 1000);
             }
         }
 
         if (ip == null) {
             for (String val : row.values()) {
-                Matcher m = IP_PATTERN.matcher(val);
-                if (m.find()) {
-                    ip = m.group();
+                String extracted = extractValidIp(val);
+                if (extracted != null) {
+                    ip = extracted;
                     break;
                 }
             }
@@ -156,6 +165,42 @@ public class TableParser implements DocParser {
         host.setRemark(remark);
         host.setStatus("running");
         return host;
+    }
+
+    /**
+     * 提取有效 IP：先严格校验整段是否为合法 IP，再从字符串中提取（私有 IP 优先，公网 IP 兜底）
+     * 修复场景：账密汇总表中 IP 列可能是 "~~115.190.161.88（说明）~~" 等带格式标记的长字符串
+     */
+    private String extractValidIp(String val) {
+        if (val == null || val.isEmpty()) return null;
+        String trimmed = val.trim();
+        // 严格 IP 格式校验
+        if (STRICT_IP_PATTERN.matcher(trimmed).matches()) {
+            String[] parts = trimmed.split("\\.");
+            boolean valid = true;
+            for (String p : parts) {
+                try {
+                    int n = Integer.parseInt(p);
+                    if (n < 0 || n > 255) { valid = false; break; }
+                } catch (NumberFormatException e) { valid = false; break; }
+            }
+            if (valid) return trimmed;
+        }
+        // 从字符串中提取私有/Tailscale IP（优先）
+        Matcher m = IP_PATTERN.matcher(val);
+        if (m.find()) return m.group();
+        // 从字符串中提取公网 IP（兜底）
+        Matcher pm = PUBLIC_IP_PATTERN.matcher(val);
+        if (pm.find()) return pm.group();
+        return null;
+    }
+
+    /**
+     * 截断字符串到指定长度，防止 MySQL Data Truncation
+     */
+    private String truncate(String val, int maxLen) {
+        if (val == null) return null;
+        return val.length() > maxLen ? val.substring(0, maxLen) : val;
     }
 
     private KnService extractService(Map<String, String> row, Long hostIdx) {

@@ -340,7 +340,6 @@ services:
       - LLM_MODEL=${LLM_MODEL:-qwen-turbo}
     volumes:
       - ${IMPORT_SOURCE_DIR:-/data/import}:/data/import:ro
-      - /root/openclaw-work-space:/root/openclaw-work-space:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8086/actuator/health"]
       interval: 30s
