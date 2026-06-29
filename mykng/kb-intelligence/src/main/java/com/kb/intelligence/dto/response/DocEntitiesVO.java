@@ -1,20 +1,21 @@
 package com.kb.intelligence.dto.response;
 
 import lombok.Data;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
 public class DocEntitiesVO {
     private Long docId;
     private String title;
-    private List<HostVO> hosts;
-    private List<ServiceVO> services;
-    private List<PortVO> ports;
-    private List<CredentialVO> credentials;
-    private List<DomainVO> domains;
-    private List<CommandVO> commands;
-    private List<TimelineVO> timelines;
-    private Integer totalEntities;
+    private List<HostVO> hosts = new ArrayList<>();
+    private List<ServiceVO> services = new ArrayList<>();
+    private List<PortVO> ports = new ArrayList<>();
+    private List<CredentialVO> credentials = new ArrayList<>();
+    private List<DomainVO> domains = new ArrayList<>();
+    private List<CommandVO> commands = new ArrayList<>();
+    private List<TimelineVO> timelines = new ArrayList<>();
+    private Integer totalEntities = 0;
 
     @Data
     public static class HostVO {

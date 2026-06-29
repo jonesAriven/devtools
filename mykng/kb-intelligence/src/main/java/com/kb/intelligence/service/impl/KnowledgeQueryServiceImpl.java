@@ -26,6 +26,7 @@ public class KnowledgeQueryServiceImpl implements KnowledgeQueryService {
     private final KnPortMapper portMapper;
     private final KnCredentialMapper credentialMapper;
     private final KnDomainMapper domainMapper;
+    private final KnDependencyMapper dependencyMapper;
     private final KnCommandMapper commandMapper;
     private final KnTimelineMapper timelineMapper;
     private final KnDocEntityRefMapper docEntityRefMapper;
@@ -147,6 +148,59 @@ public class KnowledgeQueryServiceImpl implements KnowledgeQueryService {
         if (eventType != null && !eventType.isBlank()) wrapper.eq(KnTimeline::getEventType, eventType);
         wrapper.orderByDesc(KnTimeline::getEventTime);
         return timelineMapper.selectList(wrapper).stream().map(this::toTimelineVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DocEntitiesVO.PortVO> listPorts(Long hostId, Integer exposed) {
+        LambdaQueryWrapper<KnPort> wrapper = new LambdaQueryWrapper<>();
+        if (hostId != null) wrapper.eq(KnPort::getHostId, hostId);
+        if (exposed != null) wrapper.eq(KnPort::getExposed, exposed);
+        return portMapper.selectList(wrapper).stream().map(this::toPortVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DocEntitiesVO.CredentialVO> listCredentials(Long hostId, String credType) {
+        LambdaQueryWrapper<KnCredential> wrapper = new LambdaQueryWrapper<>();
+        if (hostId != null) wrapper.eq(KnCredential::getHostId, hostId);
+        if (credType != null && !credType.isBlank()) wrapper.eq(KnCredential::getCredType, credType);
+        return credentialMapper.selectList(wrapper).stream().map(this::toCredentialVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DocEntitiesVO.DomainVO> listDomains(String status) {
+        LambdaQueryWrapper<KnDomain> wrapper = new LambdaQueryWrapper<>();
+        if (status != null && !status.isBlank()) wrapper.eq(KnDomain::getStatus, status);
+        return domainMapper.selectList(wrapper).stream().map(this::toDomainVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<KnHost> listAllHosts() {
+        return hostMapper.selectList(null);
+    }
+
+    @Override
+    public List<KnService> listAllServices() {
+        return serviceMapper.selectList(null);
+    }
+
+    @Override
+    public List<KnPort> listAllPorts() {
+        return portMapper.selectList(null);
+    }
+
+    @Override
+    public List<KnCredential> listAllCredentials() {
+        return credentialMapper.selectList(null);
+    }
+
+    @Override
+    public List<KnDomain> listAllDomains() {
+        return domainMapper.selectList(null);
+    }
+
+    @Override
+    public List<KnDependency> listAllDependencies() {
+        return dependencyMapper.selectList(null);
     }
 
     @Override

@@ -9,6 +9,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import com.kb.intelligence.entity.KnCredential;
+import com.kb.intelligence.entity.KnDependency;
+import com.kb.intelligence.entity.KnDomain;
+import com.kb.intelligence.entity.KnHost;
+import com.kb.intelligence.entity.KnPort;
+import com.kb.intelligence.entity.KnService;
+
 import java.util.List;
 import java.util.Map;
 
@@ -78,6 +85,26 @@ public class KnowledgeMachineController {
         return Result.ok(queryService.listTimelines(docId, severity, eventType));
     }
 
+    @GetMapping("/entities/ports")
+    public Result<List<DocEntitiesVO.PortVO>> listPorts(
+            @RequestParam(required = false) Long hostId,
+            @RequestParam(required = false) Integer exposed) {
+        return Result.ok(queryService.listPorts(hostId, exposed));
+    }
+
+    @GetMapping("/entities/credentials")
+    public Result<List<DocEntitiesVO.CredentialVO>> listCredentials(
+            @RequestParam(required = false) Long hostId,
+            @RequestParam(required = false) String credType) {
+        return Result.ok(queryService.listCredentials(hostId, credType));
+    }
+
+    @GetMapping("/entities/domains")
+    public Result<List<DocEntitiesVO.DomainVO>> listDomains(
+            @RequestParam(required = false) String status) {
+        return Result.ok(queryService.listDomains(status));
+    }
+
     @PostMapping("/search")
     public Result<List<SearchResultVO>> search(@RequestBody KnowledgeSearchRequest request) {
         return Result.ok(queryService.search(
@@ -92,5 +119,37 @@ public class KnowledgeMachineController {
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
         return Result.ok(queryService.getStats());
+    }
+
+    // ============ 内部同步接口（供 kb-ops 同步用，返回完整实体含敏感字段） ============
+
+    @GetMapping("/internal/hosts")
+    public Result<List<KnHost>> listAllHostsInternal() {
+        return Result.ok(queryService.listAllHosts());
+    }
+
+    @GetMapping("/internal/services")
+    public Result<List<KnService>> listAllServicesInternal() {
+        return Result.ok(queryService.listAllServices());
+    }
+
+    @GetMapping("/internal/ports")
+    public Result<List<KnPort>> listAllPortsInternal() {
+        return Result.ok(queryService.listAllPorts());
+    }
+
+    @GetMapping("/internal/credentials")
+    public Result<List<KnCredential>> listAllCredentialsInternal() {
+        return Result.ok(queryService.listAllCredentials());
+    }
+
+    @GetMapping("/internal/domains")
+    public Result<List<KnDomain>> listAllDomainsInternal() {
+        return Result.ok(queryService.listAllDomains());
+    }
+
+    @GetMapping("/internal/dependencies")
+    public Result<List<KnDependency>> listAllDependenciesInternal() {
+        return Result.ok(queryService.listAllDependencies());
     }
 }
