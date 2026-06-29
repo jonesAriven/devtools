@@ -36,10 +36,23 @@ public class EntityPersisterImpl implements EntityPersister {
         KnDoc doc = result.getDocMeta();
         Long docId;
 
-        KnDoc existing = docMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnDoc>()
-                        .eq(KnDoc::getFilePath, doc.getFilePath())
-        );
+        // 优先按 source_id 去重（source_id 与挂载点无关，更稳定）
+        // fallback 到 file_path（兼容旧数据）
+        KnDoc existing = null;
+        if (doc.getSourceId() != null && !doc.getSourceId().isEmpty()) {
+            existing = docMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnDoc>()
+                            .eq(KnDoc::getSourceId, doc.getSourceId())
+                            .last("LIMIT 1")
+            );
+        }
+        if (existing == null) {
+            existing = docMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnDoc>()
+                            .eq(KnDoc::getFilePath, doc.getFilePath())
+                            .last("LIMIT 1")
+            );
+        }
 
         if (existing != null) {
             docId = existing.getId();
