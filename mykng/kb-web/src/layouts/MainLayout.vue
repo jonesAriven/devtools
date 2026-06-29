@@ -53,6 +53,32 @@
         </el-menu>
 
         <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
+          <div class="sidebar-section-title">知识引擎</div>
+        </div>
+        <el-menu
+          v-if="!appStore.sidebarCollapsed"
+          :default-active="currentRoute"
+          background-color="#ffffff"
+          text-color="#606266"
+          active-text-color="#c9a96e"
+          router
+          class="sidebar-menu"
+        >
+          <el-menu-item :index="'/intelligence'">
+            <el-icon><MagicStick /></el-icon>
+            <template #title>知识看板</template>
+          </el-menu-item>
+          <el-menu-item :index="'/intelligence/docs'">
+            <el-icon><Notebook /></el-icon>
+            <template #title>记忆文档</template>
+          </el-menu-item>
+          <el-menu-item :index="'/intelligence/entities'">
+            <el-icon><Connection /></el-icon>
+            <template #title>实体视图</template>
+          </el-menu-item>
+        </el-menu>
+
+        <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
           <div class="sidebar-section-title">运维中心</div>
         </div>
         <el-menu
@@ -158,6 +184,31 @@
             <el-menu-item :index="'/file'">
               <el-icon><Document /></el-icon>
               <template #title>文件</template>
+            </el-menu-item>
+          </el-menu>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">知识引擎</div>
+          </div>
+          <el-menu
+            :default-active="currentRoute"
+            background-color="#ffffff"
+            text-color="#606266"
+            active-text-color="#c9a96e"
+            router
+            class="sidebar-menu"
+            @select="drawerVisible = false"
+          >
+            <el-menu-item :index="'/intelligence'">
+              <el-icon><MagicStick /></el-icon>
+              <template #title>知识看板</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intelligence/docs'">
+              <el-icon><Notebook /></el-icon>
+              <template #title>记忆文档</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intelligence/entities'">
+              <el-icon><Connection /></el-icon>
+              <template #title>实体视图</template>
             </el-menu-item>
           </el-menu>
           <div class="sidebar-section">
@@ -295,6 +346,11 @@ const pageTitleMap: Record<string, string> = {
   'ops-knowledge': '运维知识',
   'ops-log': '操作日志',
   web: '网页详情',
+  // 知识引擎
+  IntelligenceDashboard: '知识看板',
+  IntelligenceDocs: '记忆文档',
+  IntelligenceDocDetail: '文档详情',
+  IntelligenceEntities: '实体视图',
 }
 
 const pageTitle = computed(() => {

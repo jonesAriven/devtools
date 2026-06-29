@@ -122,6 +122,28 @@ const routes: RouteRecordRaw[] = [
         name: 'OpsLog',
         component: () => import('@/views/ops/OpsLogView.vue'),
       },
+      // ===== 知识引擎（kb-intelligence）=====
+      {
+        path: 'intelligence',
+        name: 'IntelligenceDashboard',
+        component: () => import('@/views/intelligence/IntelligenceDashboardView.vue'),
+      },
+      {
+        path: 'intelligence/docs',
+        name: 'IntelligenceDocs',
+        component: () => import('@/views/intelligence/IntelligenceDocsView.vue'),
+      },
+      {
+        path: 'intelligence/docs/:id',
+        name: 'IntelligenceDocDetail',
+        component: () => import('@/views/intelligence/IntelligenceDocDetailView.vue'),
+        props: true,
+      },
+      {
+        path: 'intelligence/entities',
+        name: 'IntelligenceEntities',
+        component: () => import('@/views/intelligence/IntelligenceEntitiesView.vue'),
+      },
     ],
   },
 ]
