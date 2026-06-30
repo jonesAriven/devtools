@@ -3,7 +3,7 @@
     <el-alert
       type="warning"
       :closable="false"
-      title="凭据来源于知识引擎解析，密码已脱敏展示，请注意信息安全"
+      title="凭据来源于知识引擎解析，密码为明文展示（私有知识库，仅管理员可访问），请注意信息安全"
       show-icon
       class="top-alert"
     />
@@ -44,9 +44,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="username" label="用户名" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="passwordHint" label="密码提示" min-width="160" show-overflow-tooltip>
+        <el-table-column prop="password" label="密码" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="password-hint">{{ row.passwordHint }}</span>
+            <span class="password-text">{{ row.password || row.passwordHint || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="hostId" label="主机ID" width="100" />
@@ -123,7 +123,7 @@ onMounted(loadData)
   gap: 8px;
   align-items: center;
 }
-.intel-credentials .password-hint {
+.intel-credentials .password-text {
   font-family: 'Courier New', Courier, monospace;
   color: #606266;
 }

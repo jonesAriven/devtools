@@ -521,6 +521,7 @@ export interface IntelCredential {
   hostId: number
   credType: string
   username: string
+  password: string
   passwordHint: string
 }
 

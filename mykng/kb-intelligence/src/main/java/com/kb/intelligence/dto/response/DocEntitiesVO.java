@@ -57,6 +57,7 @@ public class DocEntitiesVO {
         private Long hostId;
         private String credType;
         private String username;
+        private String password;
         private String passwordHint;
     }
 

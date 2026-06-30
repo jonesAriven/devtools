@@ -355,6 +355,7 @@ public class KnowledgeQueryServiceImpl implements KnowledgeQueryService {
         vo.setCredType(c.getCredType());
         vo.setUsername(c.getUsername());
         String pwd = c.getPasswordEncrypted();
+        vo.setPassword(pwd);
         vo.setPasswordHint(pwd != null && pwd.length() > 2 ? pwd.substring(0, 1) + "***" + pwd.substring(pwd.length() - 1) : null);
         return vo;
     }
