@@ -331,18 +331,28 @@ public class GeneralParser implements DocParser {
 
             // 如果有域名→IP 映射，关联主机
             String targetIp = domainIpMap.get(domain);
-            // L2 升级：通过 domain-host-hints + host-aliases 解析（如 nexus.marschat.online → 腾讯云2号 → 1.117.70.30）
-            if (targetIp == null) {
-                targetIp = resolveDomainToIp(domain);
-            }
-            if (targetIp != null) {
-                for (int i = 0; i < result.getHosts().size(); i++) {
-                    KnHost h = result.getHosts().get(i);
-                    if (targetIp.equals(h.getIp())) {
-                        d.setTargetHostId((long) (i + 1));
-                        break;
+            Long resolvedHostId = findHostIdByIp(result, targetIp);
+            // L2 升级：domainIpMap 的 IP 没匹配到主机时，通过 domain-host-hints + host-aliases 解析
+            // （如 frp.marschat.online 文档里写的是 frp.marschat.online:3381 → 旧Win，但实际想关联到阿里云 FRPS）
+            if (resolvedHostId == null) {
+                String hintIp = resolveDomainToIp(domain);
+                if (hintIp != null && !hintIp.equals(targetIp)) {
+                    resolvedHostId = findHostIdByIp(result, hintIp);
+                    // 如果当前文档的主机列表里没有这个 IP，主动创建一个（EntityPersister 会按 IP 全局去重）
+                    // 这样即使文档没明确提到 IP，域名也能关联到正确主机
+                    if (resolvedHostId == null) {
+                        KnHost newHost = new KnHost();
+                        newHost.setIp(hintIp);
+                        newHost.setName(hintIp);
+                        newHost.setSshPort(22);
+                        newHost.setStatus("running");
+                        result.getHosts().add(newHost);
+                        resolvedHostId = (long) result.getHosts().size();
                     }
                 }
+            }
+            if (resolvedHostId != null) {
+                d.setTargetHostId(resolvedHostId);
             }
 
             // 推断端口：从 URL 中提取（如 https://nexus.marschat.online:8081）
@@ -584,7 +594,8 @@ public class GeneralParser implements DocParser {
     private Pattern buildServiceNamePattern() {
         List<String> names = ExtractionRuleLoader.getServiceNames();
         if (names.isEmpty()) return FALLBACK_SERVICE_NAME_PATTERN;
-        StringBuilder sb = new StringBuilder("\\b(?:");
+        // 注意：必须用捕获组 (...)
+        StringBuilder sb = new StringBuilder("\\b(");
         for (int i = 0; i < names.size(); i++) {
             if (i > 0) sb.append("|");
             sb.append(Pattern.quote(names.get(i)));
@@ -596,6 +607,17 @@ public class GeneralParser implements DocParser {
             log.warn("服务名 Pattern 构建失败，使用硬编码兜底: {}", e.getMessage());
             return FALLBACK_SERVICE_NAME_PATTERN;
         }
+    }
+
+    /** 通过 IP 在 result.getHosts() 中查找主机 ID（1-based） */
+    private Long findHostIdByIp(ParseResult result, String ip) {
+        if (ip == null) return null;
+        for (int i = 0; i < result.getHosts().size(); i++) {
+            if (ip.equals(result.getHosts().get(i).getIp())) {
+                return (long) (i + 1);
+            }
+        }
+        return null;
     }
 
     /**

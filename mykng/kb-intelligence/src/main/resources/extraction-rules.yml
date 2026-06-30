@@ -156,6 +156,7 @@ domain-host-hints:
   "tools-test.marschat.online": "新Windows"
   "frp.marschat.online": "阿里云"
   "hsyun.marschat.online": "阿里云"
+  "aliyun.marschat.online": "阿里云"
   "kb.marschat.online": "mykng-debain"
 
 # ------------------------------------------------------------
@@ -238,7 +239,11 @@ noise-filter:
     - tailscale.com
     - npmjs.org
     - www.npmjs.com
+    - registry.npmjs.org
+    - registry.npmmirror.com
     - pypi.org
+    - pypi.tuna.tsinghua.edu.cn
+    - mirrors.tuna.tsinghua.edu.cn
     - nuget.org
     - 163.com
     - www.163.com
@@ -255,8 +260,16 @@ noise-filter:
     - maven.org
     - central.maven.org
     - repo1.maven.org
+    - maven.aliyun.com
     - mirrors.aliyun.com
-    - mirrors.tuna.tsinghua.edu.cn
+    - aliyun.com
+    - www.aliyun.com
+    - registry.cn-hangzhou.aliyuncs.com
+    - tencent.com
+    - cloud.tencent.com
+    - huaweicloud.com
+    - repo.huaweicloud.com
+    - www.huaweicloud.com
     - zoho.com
     - www.zoho.com
     - zohomail.com
@@ -264,13 +277,6 @@ noise-filter:
     - smtp.zoho.com.cn
     - zohomail.cn
     - www.zohomail.cn
-    - aliyun.com
-    - www.aliyun.com
-    - registry.cn-hangzhou.aliyuncs.com
-    - tencent.com
-    - cloud.tencent.com
-    - huaweicloud.com
-    - www.huaweicloud.com
     - wikipedia.org
     - www.wikipedia.org
     - stackoverflow.com
@@ -280,6 +286,7 @@ noise-filter:
     - www.python.org
     - java.com
     - www.java.com
+    - java.net
     - oracle.com
     - www.oracle.com
     - youtube.com
@@ -303,6 +310,16 @@ noise-filter:
     - docker.m.daocloud.io
     - hub-mirror.c.163.com
     - dockerproxy.com
+    - docker-compose.dev
+    - lcov.info
+    - pitest.org
+    - your-api-endpoint.com
+    - shturl.com
+    # 第三方 API 域名
+    - api.deepseek.com
+    - open.bigmodel.cn
+    - ark.cn-beijing.volces.com
+    - token-plan-cn.xiaomimimo.com
 
   # 外部域名模式（正则匹配，如 .*xxx.* / .*example.*）
   external-domain-patterns:
