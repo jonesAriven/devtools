@@ -301,6 +301,23 @@ public class GeneralParser implements DocParser {
         try { return Integer.parseInt(s); } catch (Exception e) { return -1; }
     }
 
+    // ===== 噪音过滤（委托给 EntityCleaner，统一清理逻辑） =====
+
+    /** 清理 markdown 标记和噪音字符（委托 EntityCleaner） */
+    private String cleanValue(String val) {
+        return EntityCleaner.clean(val);
+    }
+
+    /** 判断是否为无效值（委托 EntityCleaner） */
+    private boolean isValidValue(String val) {
+        return EntityCleaner.isValid(val);
+    }
+
+    /** 清理并校验值，无效返回 null（委托 EntityCleaner） */
+    private String cleanAndValidate(String val) {
+        return EntityCleaner.normalize(val);
+    }
+
     /**
      * 域名智能提取（不依赖 LLM）
      * 匹配 xxx.online / xxx.com / xxx.cn 等常见域名格式
@@ -323,7 +340,7 @@ public class GeneralParser implements DocParser {
         while (mIp.find()) {
             String domain = mIp.group(1).toLowerCase();
             String ip = mIp.group(2);
-            if (!EXCLUDED_DOMAINS.contains(domain)) {
+            if (!EXCLUDED_DOMAINS.contains(domain) && !EntityCleaner.isExternalDomain(domain)) {
                 domainIpMap.put(domain, ip);
             }
         }
@@ -333,6 +350,7 @@ public class GeneralParser implements DocParser {
         while (m.find()) {
             String domain = m.group(1).toLowerCase();
             if (EXCLUDED_DOMAINS.contains(domain)) continue;
+            if (EntityCleaner.isExternalDomain(domain)) continue;
             if (existingDomains.contains(domain)) continue;
 
             existingDomains.add(domain);
@@ -429,19 +447,22 @@ public class GeneralParser implements DocParser {
             Matcher mKv = KEY_VALUE_PATTERN.matcher(trimmed);
             while (mKv.find()) {
                 String key = mKv.group(1).toLowerCase();
-                String val = mKv.group(2);
+                String rawVal = mKv.group(2);
+                String val = cleanAndValidate(rawVal);
 
                 if (key.contains("用户名") || key.contains("账号") || key.equals("user") || key.equals("username")) {
+                    if (val == null) continue;
                     if (currentHost.getUsername() == null) {
                         currentHost.setUsername(val);
                     }
                     // 同时创建凭据
                     addCredentialIfNotExists(result, hostIdx, val, null, currentSection);
                 } else if (key.contains("密码") || key.equals("password") || key.equals("pwd")) {
+                    if (val == null) continue;
                     // 更新已有凭据的密码，或创建新凭据
                     updateOrCreateCredentialPassword(result, hostIdx, val);
                 } else if (key.contains("端口") || key.equals("port") || key.equals("ssh")) {
-                    int port = parseIntSafe(val.replaceAll("\\D", ""));
+                    int port = parseIntSafe(val == null ? "" : val.replaceAll("\\D", ""));
                     if (port > 0 && port <= 65535) {
                         if (key.equals("ssh") || key.contains("SSH")) {
                             currentHost.setSshPort(port);
@@ -450,11 +471,11 @@ public class GeneralParser implements DocParser {
                         }
                     }
                 } else if (key.contains("角色") || key.equals("role") || key.contains("用途")) {
-                    if (currentHost.getRole() == null) {
+                    if (val != null && currentHost.getRole() == null) {
                         currentHost.setRole(val);
                     }
                 } else if (key.contains("系统") || key.equals("os")) {
-                    if (currentHost.getOsType() == null) {
+                    if (val != null && currentHost.getOsType() == null) {
                         currentHost.setOsType(val);
                     }
                 }
@@ -467,8 +488,9 @@ public class GeneralParser implements DocParser {
                     Pattern.CASE_INSENSITIVE
             ).matcher(contextStr);
             while (mUserPass.find()) {
-                String username = mUserPass.group(1);
-                String password = mUserPass.group(2);
+                String username = cleanAndValidate(mUserPass.group(1));
+                String password = cleanAndValidate(mUserPass.group(2));
+                if (username == null && password == null) continue;
                 addCredentialIfNotExists(result, hostIdx, username, password, currentSection);
             }
         }

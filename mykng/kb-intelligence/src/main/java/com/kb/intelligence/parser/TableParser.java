@@ -127,17 +127,21 @@ public class TableParser implements DocParser {
                     remark = (remark == null ? "" : remark + " ") + "公网IP:" + extracted;
                 }
             } else if (key.contains("名称") || key.contains("主机") || key.contains("hostname") || key.contains("name") || key.contains("别名")) {
-                name = truncate(val, 200);
+                name = truncate(EntityCleaner.clean(val), 200);
             } else if (key.contains("用户名") || key.contains("user") || key.contains("账号")) {
-                username = truncate(val, 100);
+                String cleaned = EntityCleaner.normalize(val);
+                if (cleaned != null) username = truncate(cleaned, 100);
             } else if (key.contains("密码") || key.contains("pass") || key.contains("pwd")) {
-                password = truncate(val, 500);
+                String cleaned = EntityCleaner.clean(val);
+                if (cleaned != null) password = truncate(cleaned, 500);
             } else if (key.contains("角色") || key.contains("role") || key.contains("用途")) {
-                role = truncate(val, 100);
+                String cleaned = EntityCleaner.normalize(val);
+                if (cleaned != null) role = truncate(cleaned, 100);
             } else if (key.contains("系统") || key.contains("os") || key.contains("版本")) {
-                osType = truncate(val, 50);
+                String cleaned = EntityCleaner.clean(val);
+                if (cleaned != null) osType = truncate(cleaned, 50);
             } else if (key.contains("备注") || key.contains("remark") || key.contains("说明")) {
-                remark = truncate(val, 1000);
+                remark = truncate(EntityCleaner.clean(val), 1000);
             }
         }
 
@@ -260,8 +264,14 @@ public class TableParser implements DocParser {
             String key = entry.getKey();
             String val = entry.getValue();
             if (val.isEmpty()) continue;
-            if (key.contains("用户") || key.contains("user") || key.contains("账号")) username = val;
-            if (key.contains("密码") || key.contains("pass")) password = val;
+            if (key.contains("用户") || key.contains("user") || key.contains("账号")) {
+                String cleaned = EntityCleaner.normalize(val);
+                if (cleaned != null) username = truncate(cleaned, 100);
+            }
+            if (key.contains("密码") || key.contains("pass")) {
+                String cleaned = EntityCleaner.normalize(val);
+                if (cleaned != null) password = truncate(cleaned, 500);
+            }
         }
         if (username == null && password == null) return null;
 
@@ -289,9 +299,15 @@ public class TableParser implements DocParser {
                     host.setStatus("running");
 
                     Matcher um = USER_LINE_PATTERN.matcher(line);
-                    if (um.find()) host.setUsername(um.group(1));
+                    if (um.find()) {
+                        String u = EntityCleaner.normalize(um.group(1));
+                        if (u != null) host.setUsername(u);
+                    }
                     Matcher pm = PASSWORD_LINE_PATTERN.matcher(line);
-                    if (pm.find()) host.setPasswordEncrypted(pm.group(1));
+                    if (pm.find()) {
+                        String p = EntityCleaner.clean(pm.group(1));
+                        if (p != null) host.setPasswordEncrypted(p);
+                    }
 
                     result.getHosts().add(host);
                 }
