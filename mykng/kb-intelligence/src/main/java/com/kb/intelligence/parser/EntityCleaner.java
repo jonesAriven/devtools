@@ -2,6 +2,7 @@ package com.kb.intelligence.parser;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -17,28 +18,30 @@ import java.util.regex.Pattern;
  * </ul>
  * <p>被 TableParser / GeneralParser / PlanDocParser 等所有解析器共用，
  * 避免清理逻辑散落各处，便于统一维护与扩展。
+ * <p>L2 升级：占位符 / 键名 / 外部域名 / 外部域名模式 优先从 {@link ExtractionRuleLoader}
+ * 读取（YAML 配置），保留硬编码集合作为兜底（Spring 未启动或 YAML 加载失败时仍可用）。
  */
 public final class EntityCleaner {
 
     private EntityCleaner() {}
 
-    /** 已知占位符（不应当作真实值） */
-    private static final Set<String> PLACEHOLDER_VALUES = new HashSet<>(Arrays.asList(
+    /** 已知占位符（不应当作真实值）— 兜底常量，YAML 不可用时使用 */
+    private static final Set<String> FALLBACK_PLACEHOLDERS = new HashSet<>(Arrays.asList(
             "待确认", "待补充", "待定", "未知", "tbd", "TBD", "xxx", "XXX", "yyy", "YYY",
             "占位", "placeholder", "n/a", "N/A", "null", "NULL", "无", "暂无", "暂未", "未设置",
             "待提供", "待录入", "见上文", "见上", "同上", "略", "..."
     ));
 
-    /** 键名集合（提取出来的"值"如果等于这些词，说明是键名误当值） */
-    private static final Set<String> KEY_NAME_VALUES = new HashSet<>(Arrays.asList(
+    /** 键名集合（提取出来的"值"如果等于这些词，说明是键名误当值）— 兜底常量 */
+    private static final Set<String> FALLBACK_KEY_NAMES = new HashSet<>(Arrays.asList(
             "用户", "用户名", "账号", "账户", "密码", "口令", "端口", "域名", "服务", "版本",
             "角色", "用途", "系统", "路径", "地址", "备注", "说明",
             "user", "username", "account", "password", "pwd", "pass", "port", "domain",
             "service", "version", "role", "os", "path", "address", "remark", "desc"
     ));
 
-    /** 外部公共域名（非用户私有运维域名，通常不应作为运维实体记录） */
-    private static final Set<String> EXTERNAL_DOMAINS = new HashSet<>(Arrays.asList(
+    /** 外部公共域名（非用户私有运维域名，通常不应作为运维实体记录）— 兜底常量 */
+    private static final Set<String> FALLBACK_EXTERNAL_DOMAINS = new HashSet<>(Arrays.asList(
             "www.google.com", "google.com", "gitee.com", "github.com", "gitlab.com",
             "tailscale.com", "npmjs.org", "www.npmjs.com", "pypi.org",
             "nuget.org", "163.com", "www.163.com", "qq.com", "www.qq.com",
@@ -53,6 +56,35 @@ public final class EntityCleaner {
             "nodejs.org", "www.nodejs.org", "python.org", "www.python.org",
             "java.com", "www.java.com", "oracle.com", "www.oracle.com"
     ));
+
+    /** 兜底外部域名模式（正则） */
+    private static final List<String> FALLBACK_EXTERNAL_DOMAIN_PATTERNS = Arrays.asList(
+            ".*xxx.*", ".*example.*", ".*placeholder.*"
+    );
+
+    /** 兜底公共图床/工具站（YAML 不可用时使用） */
+    private static final Set<String> FALLBACK_TOOL_DOMAINS = new HashSet<>(Arrays.asList(
+            "draw.io", "youtube.com", "cloudflare.com", "medium.com", "reddit.com",
+            "twitter.com", "x.com", "linkedin.com", "facebook.com", "instagram.com",
+            "whatsapp.com", "telegram.org", "slack.com", "discord.com", "notion.so",
+            "figma.com", "canva.com", "miro.com"
+    ));
+
+    // ===== 合并查询方法（YAML 优先 + 硬编码兜底） =====
+
+    /** 判断值是否为占位符（YAML 配置优先，硬编码兜底） */
+    private static boolean isPlaceholder(String s) {
+        Set<String> yaml = ExtractionRuleLoader.getPlaceholders();
+        if (!yaml.isEmpty() && yaml.contains(s)) return true;
+        return FALLBACK_PLACEHOLDERS.contains(s);
+    }
+
+    /** 判断值是否为键名（YAML 配置优先，硬编码兜底） */
+    private static boolean isKeyName(String sLower) {
+        Set<String> yaml = ExtractionRuleLoader.getKeyNames();
+        if (!yaml.isEmpty() && yaml.contains(sLower)) return true;
+        return FALLBACK_KEY_NAMES.contains(sLower);
+    }
 
     /**
      * 清理 markdown 标记和噪音字符
@@ -122,8 +154,8 @@ public final class EntityCleaner {
     public static boolean isValid(String val) {
         if (val == null || val.trim().isEmpty()) return false;
         String s = val.trim();
-        if (PLACEHOLDER_VALUES.contains(s)) return false;
-        if (KEY_NAME_VALUES.contains(s.toLowerCase())) return false;
+        if (isPlaceholder(s)) return false;
+        if (isKeyName(s.toLowerCase())) return false;
         // 纯符号或过短（少于2个字符且非数字）
         if (s.length() < 2 && !s.matches("\\d")) return false;
         // 纯 markdown 标记
@@ -137,23 +169,37 @@ public final class EntityCleaner {
         return isValid(cleaned) ? cleaned : null;
     }
 
-    /** 判断域名是否为外部公共域名（不应记录为运维实体） */
+    /**
+     * 判断域名是否为外部公共域名（不应记录为运维实体）
+     * <p>L2 升级：优先从 YAML 读取 external-domains + external-domain-patterns，
+     * 硬编码兜底。
+     */
     public static boolean isExternalDomain(String domain) {
         if (domain == null) return false;
         String lower = domain.toLowerCase();
-        // 精确匹配外部域名清单
-        if (EXTERNAL_DOMAINS.contains(lower)) return true;
-        // 模式匹配示例域名：xxx.com / example.com / test.com / sit.xxx.com 等
-        if (lower.contains("xxx") || lower.contains("example") || lower.contains("placeholder")) return true;
-        // 常见公共图床/工具站（非用户私有运维域名）
-        if (lower.equals("draw.io") || lower.equals("youtube.com") || lower.equals("cloudflare.com")
-                || lower.equals("medium.com") || lower.equals("reddit.com") || lower.equals("twitter.com")
-                || lower.equals("x.com") || lower.equals("linkedin.com") || lower.equals("facebook.com")
-                || lower.equals("instagram.com") || lower.equals("whatsapp.com") || lower.equals("telegram.org")
-                || lower.equals("slack.com") || lower.equals("discord.com") || lower.equals("notion.so")
-                || lower.equals("figma.com") || lower.equals("canva.com") || lower.equals("miro.com")) {
+
+        // 1. 精确匹配外部域名清单（YAML 优先）
+        Set<String> yamlExternal = ExtractionRuleLoader.getExternalDomains();
+        if (!yamlExternal.isEmpty()) {
+            if (yamlExternal.contains(lower)) return true;
+        } else if (FALLBACK_EXTERNAL_DOMAINS.contains(lower)) {
             return true;
         }
+
+        // 2. 模式匹配（YAML 优先）
+        List<String> patterns = ExtractionRuleLoader.getExternalDomainPatterns();
+        if (patterns.isEmpty()) patterns = FALLBACK_EXTERNAL_DOMAIN_PATTERNS;
+        for (String p : patterns) {
+            try {
+                if (Pattern.matches(p, lower)) return true;
+            } catch (Exception ignored) {
+                // 忽略无效正则
+            }
+        }
+
+        // 3. 兜底公共工具站
+        if (FALLBACK_TOOL_DOMAINS.contains(lower)) return true;
+
         return false;
     }
 

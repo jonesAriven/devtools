@@ -51,8 +51,8 @@ public class GeneralParser implements DocParser {
             Pattern.CASE_INSENSITIVE | Pattern.MULTILINE
     );
 
-    /** 服务名识别（常见运维服务） */
-    private static final Pattern SERVICE_NAME_PATTERN = Pattern.compile(
+    /** 服务名识别（兜底清单，YAML 不可用时使用） */
+    private static final Pattern FALLBACK_SERVICE_NAME_PATTERN = Pattern.compile(
             "\\b(Nginx|MySQL|Redis|MongoDB|MinIO|MeiliSearch|Docker|FRP|Tailscale|Clash|Nexus|Jenkins|GitLab|Gitea|Elasticsearch|Kibana|Logstash|Kafka|RabbitMQ|Nacos|Consul|Etcd|Prometheus|Grafana|InfluxDB|PostgreSQL|MariaDB|SQLite|Tomcat|Apache|Node\\.js|Python|Java)\\b",
             Pattern.CASE_INSENSITIVE
     );
@@ -66,39 +66,11 @@ public class GeneralParser implements DocParser {
     /** markdown 段落分隔（## 标题） */
     private static final Pattern SECTION_HEADER = Pattern.compile("^#{1,6}\\s+.+$", Pattern.MULTILINE);
 
-    /** 已知排除的域名（非真实域名） */
+    /** 已知排除的域名（非真实域名，已被 EntityCleaner.isExternalDomain 统一管理，保留为兼容引用） */
     private static final Set<String> EXCLUDED_DOMAINS = new HashSet<>(Arrays.asList(
             "example.com", "example.cn", "example.org", "example.net",
             "domain.com", "localhost.com", "test.com", "test.cn"
     ));
-
-    /** 服务-默认端口映射（用于推断服务） */
-    private static final Map<String, Integer> SERVICE_DEFAULT_PORTS = new HashMap<>();
-    static {
-        SERVICE_DEFAULT_PORTS.put("nginx", 80);
-        SERVICE_DEFAULT_PORTS.put("mysql", 3306);
-        SERVICE_DEFAULT_PORTS.put("redis", 6379);
-        SERVICE_DEFAULT_PORTS.put("mongodb", 27017);
-        SERVICE_DEFAULT_PORTS.put("mongo", 27017);
-        SERVICE_DEFAULT_PORTS.put("minio", 9000);
-        SERVICE_DEFAULT_PORTS.put("meilisearch", 7700);
-        SERVICE_DEFAULT_PORTS.put("docker", 2375);
-        SERVICE_DEFAULT_PORTS.put("frp", 7000);
-        SERVICE_DEFAULT_PORTS.put("tailscale", 41641);
-        SERVICE_DEFAULT_PORTS.put("clash", 7890);
-        SERVICE_DEFAULT_PORTS.put("nexus", 8081);
-        SERVICE_DEFAULT_PORTS.put("jenkins", 8080);
-        SERVICE_DEFAULT_PORTS.put("gitea", 3000);
-        SERVICE_DEFAULT_PORTS.put("gitlab", 80);
-        SERVICE_DEFAULT_PORTS.put("elasticsearch", 9200);
-        SERVICE_DEFAULT_PORTS.put("kibana", 5601);
-        SERVICE_DEFAULT_PORTS.put("grafana", 3000);
-        SERVICE_DEFAULT_PORTS.put("prometheus", 9090);
-        SERVICE_DEFAULT_PORTS.put("postgresql", 5432);
-        SERVICE_DEFAULT_PORTS.put("mariadb", 3306);
-        SERVICE_DEFAULT_PORTS.put("tomcat", 8080);
-        SERVICE_DEFAULT_PORTS.put("apache", 80);
-    }
 
     @Override
     public boolean supports(DocType docType) {
@@ -340,7 +312,7 @@ public class GeneralParser implements DocParser {
         while (mIp.find()) {
             String domain = mIp.group(1).toLowerCase();
             String ip = mIp.group(2);
-            if (!EXCLUDED_DOMAINS.contains(domain) && !EntityCleaner.isExternalDomain(domain)) {
+            if (!EntityCleaner.isExternalDomain(domain)) {
                 domainIpMap.put(domain, ip);
             }
         }
@@ -349,7 +321,6 @@ public class GeneralParser implements DocParser {
         Matcher m = DOMAIN_PATTERN.matcher(content);
         while (m.find()) {
             String domain = m.group(1).toLowerCase();
-            if (EXCLUDED_DOMAINS.contains(domain)) continue;
             if (EntityCleaner.isExternalDomain(domain)) continue;
             if (existingDomains.contains(domain)) continue;
 
@@ -360,6 +331,10 @@ public class GeneralParser implements DocParser {
 
             // 如果有域名→IP 映射，关联主机
             String targetIp = domainIpMap.get(domain);
+            // L2 升级：通过 domain-host-hints + host-aliases 解析（如 nexus.marschat.online → 腾讯云2号 → 1.117.70.30）
+            if (targetIp == null) {
+                targetIp = resolveDomainToIp(domain);
+            }
             if (targetIp != null) {
                 for (int i = 0; i < result.getHosts().size(); i++) {
                     KnHost h = result.getHosts().get(i);
@@ -553,7 +528,7 @@ public class GeneralParser implements DocParser {
         Set<String> existingServiceNames = new HashSet<>();
         for (KnService s : result.getServices()) existingServiceNames.add(s.getName());
 
-        Matcher m = SERVICE_NAME_PATTERN.matcher(content);
+        Matcher m = buildServiceNamePattern().matcher(content);
         while (m.find()) {
             String serviceName = m.group(1);
             String lowerName = serviceName.toLowerCase();
@@ -598,5 +573,67 @@ public class GeneralParser implements DocParser {
         if (lower.contains("prometheus") || lower.contains("grafana") || lower.contains("kibana")) return "monitor";
         if (lower.contains("kafka") || lower.contains("rabbit")) return "mq";
         return "other";
+    }
+
+    // ===== L2 YAML 规则引擎辅助方法 =====
+
+    /**
+     * 动态构建服务名匹配 Pattern（YAML 优先，硬编码兜底）
+     * <p>从 {@link ExtractionRuleLoader} 读取服务名清单，用 {@link Pattern#quote} 安全构建正则。
+     */
+    private Pattern buildServiceNamePattern() {
+        List<String> names = ExtractionRuleLoader.getServiceNames();
+        if (names.isEmpty()) return FALLBACK_SERVICE_NAME_PATTERN;
+        StringBuilder sb = new StringBuilder("\\b(?:");
+        for (int i = 0; i < names.size(); i++) {
+            if (i > 0) sb.append("|");
+            sb.append(Pattern.quote(names.get(i)));
+        }
+        sb.append(")\\b");
+        try {
+            return Pattern.compile(sb.toString(), Pattern.CASE_INSENSITIVE);
+        } catch (Exception e) {
+            log.warn("服务名 Pattern 构建失败，使用硬编码兜底: {}", e.getMessage());
+            return FALLBACK_SERVICE_NAME_PATTERN;
+        }
+    }
+
+    /**
+     * 通过 domain-host-hints + host-aliases 解析域名对应的主机 IP
+     * <p>解析链路：domain → domainHostHints.get(domain) → hostName → hostAliases.get(hostName) → IP
+     * <p>例如：nexus.marschat.online → 腾讯云2号 → 1.117.70.30
+     * <p>支持前缀/后缀匹配（如 hint 配 marschat.online，domain 是 kb.marschat.online 也能命中）
+     */
+    private String resolveDomainToIp(String domain) {
+        Map<String, String> hints = ExtractionRuleLoader.getDomainHostHints();
+        Map<String, String> aliases = ExtractionRuleLoader.getHostAliases();
+        if (hints.isEmpty() || aliases.isEmpty()) return null;
+
+        // 1. 精确匹配域名提示
+        String hostName = hints.get(domain);
+
+        // 2. 前缀/后缀匹配（如 hint 配了 marschat.online，domain 是 kb.marschat.online）
+        if (hostName == null) {
+            for (Map.Entry<String, String> e : hints.entrySet()) {
+                String hintKey = e.getKey();
+                if (domain.equals(hintKey) || domain.endsWith("." + hintKey)) {
+                    hostName = e.getValue();
+                    break;
+                }
+            }
+        }
+        if (hostName == null) return null;
+
+        // 3. 通过 host-aliases 解析为 IP（先精确匹配，再大小写不敏感）
+        String ip = aliases.get(hostName);
+        if (ip == null) {
+            for (Map.Entry<String, String> e : aliases.entrySet()) {
+                if (hostName.equalsIgnoreCase(e.getKey())) {
+                    ip = e.getValue();
+                    break;
+                }
+            }
+        }
+        return ip;
     }
 }
