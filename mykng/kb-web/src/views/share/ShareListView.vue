@@ -27,7 +27,7 @@
         </el-table-column>
         <el-table-column label="分享码" width="180">
           <template #default="{ row }">
-            <el-link type="primary" :underline="false" @click="copyCode(row.code)">
+            <el-link type="primary" underline="never" @click="copyCode(row.code)">
               <span class="mono-text">{{ row.code }}</span>
             </el-link>
           </template>

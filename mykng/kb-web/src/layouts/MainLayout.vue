@@ -16,6 +16,8 @@
         <el-menu
           :default-active="currentRoute"
           :collapse="appStore.sidebarCollapsed"
+          :unique-opened="true"
+          :default-openeds="defaultOpeneds"
           background-color="#ffffff"
           text-color="#606266"
           active-text-color="#c9a96e"
@@ -26,104 +28,110 @@
             <el-icon><Grid /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
-          <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
-            <el-icon><FolderOpened /></el-icon>
-            <template #title>知识空间</template>
-          </el-menu-item>
-          <el-menu-item :index="'/search'">
-            <el-icon><Search /></el-icon>
-            <template #title>搜索</template>
-          </el-menu-item>
-          <el-menu-item :index="'/tag'">
-            <el-icon><PriceTag /></el-icon>
-            <template #title>标签</template>
-          </el-menu-item>
-          <el-menu-item :index="'/share'">
-            <el-icon><Share /></el-icon>
-            <template #title>分享</template>
-          </el-menu-item>
-          <el-menu-item :index="'/trash'">
-            <el-icon><Delete /></el-icon>
-            <template #title>回收站</template>
-          </el-menu-item>
-          <el-menu-item :index="'/file'">
-            <el-icon><Document /></el-icon>
-            <template #title>文件</template>
-          </el-menu-item>
-        </el-menu>
-
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
-          <div class="sidebar-section-title">知识引擎</div>
-        </div>
-        <el-menu
-          v-if="!appStore.sidebarCollapsed"
-          :default-active="currentRoute"
-          background-color="#ffffff"
-          text-color="#606266"
-          active-text-color="#c9a96e"
-          router
-          class="sidebar-menu"
-        >
-          <el-menu-item :index="'/intelligence'">
-            <el-icon><MagicStick /></el-icon>
-            <template #title>知识看板</template>
-          </el-menu-item>
-          <el-menu-item :index="'/intelligence/docs'">
-            <el-icon><Notebook /></el-icon>
-            <template #title>记忆文档</template>
-          </el-menu-item>
-          <el-menu-item :index="'/intelligence/entities'">
-            <el-icon><Connection /></el-icon>
-            <template #title>实体视图</template>
-          </el-menu-item>
-        </el-menu>
-
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
-          <div class="sidebar-section-title">运维中心</div>
-        </div>
-        <el-menu
-          v-if="!appStore.sidebarCollapsed"
-          :default-active="currentRoute"
-          background-color="#ffffff"
-          text-color="#606266"
-          active-text-color="#c9a96e"
-          router
-          class="sidebar-menu"
-        >
-          <el-menu-item :index="'/ops'">
-            <el-icon><Monitor /></el-icon>
-            <template #title>运维看板</template>
-          </el-menu-item>
-          <el-menu-item :index="'/ops/hosts'">
-            <el-icon><Cpu /></el-icon>
-            <template #title>主机管理</template>
-          </el-menu-item>
-          <el-menu-item :index="'/ops/services'">
-            <el-icon><Connection /></el-icon>
-            <template #title>服务管理</template>
-          </el-menu-item>
-          <el-menu-item :index="'/ops/log'">
-            <el-icon><Tickets /></el-icon>
-            <template #title>操作日志</template>
-          </el-menu-item>
-        </el-menu>
-
-        <div v-if="!appStore.sidebarCollapsed" class="sidebar-section">
-          <div class="sidebar-section-title">系统</div>
-        </div>
-        <el-menu
-          :default-active="currentRoute"
-          :collapse="appStore.sidebarCollapsed"
-          background-color="#ffffff"
-          text-color="#606266"
-          active-text-color="#c9a96e"
-          router
-          class="sidebar-menu"
-        >
-          <el-menu-item :index="'/settings'">
-            <el-icon><Setting /></el-icon>
-            <template #title>设置</template>
-          </el-menu-item>
+          <el-sub-menu index="kb-group">
+            <template #title>
+              <el-icon><FolderOpened /></el-icon>
+              <span>知识库</span>
+            </template>
+            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+              <el-icon><FolderOpened /></el-icon>
+              <template #title>知识空间</template>
+            </el-menu-item>
+            <el-menu-item :index="'/search'">
+              <el-icon><Search /></el-icon>
+              <template #title>搜索</template>
+            </el-menu-item>
+            <el-menu-item :index="'/tag'">
+              <el-icon><PriceTag /></el-icon>
+              <template #title>标签</template>
+            </el-menu-item>
+            <el-menu-item :index="'/share'">
+              <el-icon><Share /></el-icon>
+              <template #title>分享</template>
+            </el-menu-item>
+            <el-menu-item :index="'/trash'">
+              <el-icon><Delete /></el-icon>
+              <template #title>回收站</template>
+            </el-menu-item>
+            <el-menu-item :index="'/file'">
+              <el-icon><Document /></el-icon>
+              <template #title>文件</template>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="ops-group">
+            <template #title>
+              <el-icon><Monitor /></el-icon>
+              <span>运维中心</span>
+            </template>
+            <el-menu-item :index="'/ops'">
+              <el-icon><Monitor /></el-icon>
+              <template #title>运维看板</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/hosts'">
+              <el-icon><Cpu /></el-icon>
+              <template #title>主机管理</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/services'">
+              <el-icon><Connection /></el-icon>
+              <template #title>服务管理</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/log'">
+              <el-icon><Tickets /></el-icon>
+              <template #title>操作日志</template>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="intel-group">
+            <template #title>
+              <el-icon><MagicStick /></el-icon>
+              <span>知识引擎</span>
+            </template>
+            <el-menu-item :index="'/intel'">
+              <el-icon><MagicStick /></el-icon>
+              <template #title>引擎看板</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/docs'">
+              <el-icon><Reading /></el-icon>
+              <template #title>文档库</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/hosts'">
+              <el-icon><Cpu /></el-icon>
+              <template #title>主机总览</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/services'">
+              <el-icon><Connection /></el-icon>
+              <template #title>服务总览</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/ports'">
+              <el-icon><Position /></el-icon>
+              <template #title>端口总览</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/credentials'">
+              <el-icon><Key /></el-icon>
+              <template #title>凭据总览</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/domains'">
+              <el-icon><Link /></el-icon>
+              <template #title>域名总览</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/commands'">
+              <el-icon><Promotion /></el-icon>
+              <template #title>命令库</template>
+            </el-menu-item>
+            <el-menu-item :index="'/intel/timelines'">
+              <el-icon><Clock /></el-icon>
+              <template #title>时间线</template>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="system-group">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>系统</span>
+            </template>
+            <el-menu-item :index="'/settings'">
+              <el-icon><Setting /></el-icon>
+              <template #title>设置</template>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </div>
     </el-aside>
@@ -150,6 +158,8 @@
         <div class="sidebar-body">
           <el-menu
             :default-active="currentRoute"
+            :unique-opened="true"
+            :default-openeds="defaultOpeneds"
             background-color="#ffffff"
             text-color="#606266"
             active-text-color="#c9a96e"
@@ -161,101 +171,110 @@
               <el-icon><Grid /></el-icon>
               <template #title>工作台</template>
             </el-menu-item>
-            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
-              <el-icon><FolderOpened /></el-icon>
-              <template #title>知识空间</template>
-            </el-menu-item>
-            <el-menu-item :index="'/search'">
-              <el-icon><Search /></el-icon>
-              <template #title>搜索</template>
-            </el-menu-item>
-            <el-menu-item :index="'/tag'">
-              <el-icon><PriceTag /></el-icon>
-              <template #title>标签</template>
-            </el-menu-item>
-            <el-menu-item :index="'/share'">
-              <el-icon><Share /></el-icon>
-              <template #title>分享</template>
-            </el-menu-item>
-            <el-menu-item :index="'/trash'">
-              <el-icon><Delete /></el-icon>
-              <template #title>回收站</template>
-            </el-menu-item>
-            <el-menu-item :index="'/file'">
-              <el-icon><Document /></el-icon>
-              <template #title>文件</template>
-            </el-menu-item>
-          </el-menu>
-          <div class="sidebar-section">
-            <div class="sidebar-section-title">知识引擎</div>
-          </div>
-          <el-menu
-            :default-active="currentRoute"
-            background-color="#ffffff"
-            text-color="#606266"
-            active-text-color="#c9a96e"
-            router
-            class="sidebar-menu"
-            @select="drawerVisible = false"
-          >
-            <el-menu-item :index="'/intelligence'">
-              <el-icon><MagicStick /></el-icon>
-              <template #title>知识看板</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intelligence/docs'">
-              <el-icon><Notebook /></el-icon>
-              <template #title>记忆文档</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intelligence/entities'">
-              <el-icon><Connection /></el-icon>
-              <template #title>实体视图</template>
-            </el-menu-item>
-          </el-menu>
-          <div class="sidebar-section">
-            <div class="sidebar-section-title">运维中心</div>
-          </div>
-          <el-menu
-            :default-active="currentRoute"
-            background-color="#ffffff"
-            text-color="#606266"
-            active-text-color="#c9a96e"
-            router
-            class="sidebar-menu"
-            @select="drawerVisible = false"
-          >
-            <el-menu-item :index="'/ops'">
-              <el-icon><Monitor /></el-icon>
-              <template #title>运维看板</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/hosts'">
-              <el-icon><Cpu /></el-icon>
-              <template #title>主机管理</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/services'">
-              <el-icon><Connection /></el-icon>
-              <template #title>服务管理</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/log'">
-              <el-icon><Tickets /></el-icon>
-              <template #title>操作日志</template>
-            </el-menu-item>
-          </el-menu>
-          <div class="sidebar-section">
-            <div class="sidebar-section-title">系统</div>
-          </div>
-          <el-menu
-            :default-active="currentRoute"
-            background-color="#ffffff"
-            text-color="#606266"
-            active-text-color="#c9a96e"
-            router
-            class="sidebar-menu"
-            @select="drawerVisible = false"
-          >
-            <el-menu-item :index="'/settings'">
-              <el-icon><Setting /></el-icon>
-              <template #title>设置</template>
-            </el-menu-item>
+            <el-sub-menu index="kb-group">
+              <template #title>
+                <el-icon><FolderOpened /></el-icon>
+                <span>知识库</span>
+              </template>
+              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+                <el-icon><FolderOpened /></el-icon>
+                <template #title>知识空间</template>
+              </el-menu-item>
+              <el-menu-item :index="'/search'">
+                <el-icon><Search /></el-icon>
+                <template #title>搜索</template>
+              </el-menu-item>
+              <el-menu-item :index="'/tag'">
+                <el-icon><PriceTag /></el-icon>
+                <template #title>标签</template>
+              </el-menu-item>
+              <el-menu-item :index="'/share'">
+                <el-icon><Share /></el-icon>
+                <template #title>分享</template>
+              </el-menu-item>
+              <el-menu-item :index="'/trash'">
+                <el-icon><Delete /></el-icon>
+                <template #title>回收站</template>
+              </el-menu-item>
+              <el-menu-item :index="'/file'">
+                <el-icon><Document /></el-icon>
+                <template #title>文件</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="ops-group">
+              <template #title>
+                <el-icon><Monitor /></el-icon>
+                <span>运维中心</span>
+              </template>
+              <el-menu-item :index="'/ops'">
+                <el-icon><Monitor /></el-icon>
+                <template #title>运维看板</template>
+              </el-menu-item>
+              <el-menu-item :index="'/ops/hosts'">
+                <el-icon><Cpu /></el-icon>
+                <template #title>主机管理</template>
+              </el-menu-item>
+              <el-menu-item :index="'/ops/services'">
+                <el-icon><Connection /></el-icon>
+                <template #title>服务管理</template>
+              </el-menu-item>
+              <el-menu-item :index="'/ops/log'">
+                <el-icon><Tickets /></el-icon>
+                <template #title>操作日志</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="intel-group">
+              <template #title>
+                <el-icon><MagicStick /></el-icon>
+                <span>知识引擎</span>
+              </template>
+              <el-menu-item :index="'/intel'">
+                <el-icon><MagicStick /></el-icon>
+                <template #title>引擎看板</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/docs'">
+                <el-icon><Reading /></el-icon>
+                <template #title>文档库</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/hosts'">
+                <el-icon><Cpu /></el-icon>
+                <template #title>主机总览</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/services'">
+                <el-icon><Connection /></el-icon>
+                <template #title>服务总览</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/ports'">
+                <el-icon><Position /></el-icon>
+                <template #title>端口总览</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/credentials'">
+                <el-icon><Key /></el-icon>
+                <template #title>凭据总览</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/domains'">
+                <el-icon><Link /></el-icon>
+                <template #title>域名总览</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/commands'">
+                <el-icon><Promotion /></el-icon>
+                <template #title>命令库</template>
+              </el-menu-item>
+              <el-menu-item :index="'/intel/timelines'">
+                <el-icon><Clock /></el-icon>
+                <template #title>时间线</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-sub-menu index="system-group">
+              <template #title>
+                <el-icon><Setting /></el-icon>
+                <span>系统</span>
+              </template>
+              <el-menu-item :index="'/settings'">
+                <el-icon><Setting /></el-icon>
+                <template #title>设置</template>
+              </el-menu-item>
+            </el-sub-menu>
           </el-menu>
         </div>
       </div>
@@ -327,6 +346,27 @@ const drawerVisible = ref(false)
 
 const currentRoute = computed(() => route.path)
 
+// 根据当前路由自动展开对应的菜单分组
+const defaultOpeneds = computed<string[]>(() => {
+  const path = route.path
+  const groups: string[] = []
+  if (path.startsWith('/space') || path.startsWith('/search') || path.startsWith('/tag') ||
+      path.startsWith('/share') || path.startsWith('/trash') || path.startsWith('/file') ||
+      path.startsWith('/doc') || path.startsWith('/web')) {
+    groups.push('kb-group')
+  }
+  if (path.startsWith('/ops')) {
+    groups.push('ops-group')
+  }
+  if (path.startsWith('/intel')) {
+    groups.push('intel-group')
+  }
+  if (path.startsWith('/settings')) {
+    groups.push('system-group')
+  }
+  return groups
+})
+
 const pageTitleMap: Record<string, string> = {
   dashboard: '工作台',
   search: '搜索',
@@ -345,6 +385,16 @@ const pageTitleMap: Record<string, string> = {
   'ops-conflicts': '矛盾检测',
   'ops-knowledge': '运维知识',
   'ops-log': '操作日志',
+  'intel': '知识引擎',
+  'IntelDashboard': '引擎看板',
+  'IntelDocs': '文档库',
+  'IntelHosts': '主机总览',
+  'IntelServices': '服务总览',
+  'IntelPorts': '端口总览',
+  'IntelCredentials': '凭据总览',
+  'IntelDomains': '域名总览',
+  'IntelCommands': '命令库',
+  'IntelTimelines': '时间线',
   web: '网页详情',
   // 知识引擎
   IntelligenceDashboard: '知识看板',
@@ -473,20 +523,6 @@ async function handleCommand(command: string) {
     &:not(.el-menu--collapse) {
       width: 100%;
     }
-  }
-
-  .sidebar-section {
-    padding: 12px 0 4px;
-    border-top: 1px solid #e8e8e8;
-    margin-top: 4px;
-  }
-
-  .sidebar-section-title {
-    padding: 0 20px 4px;
-    font-size: 12px;
-    color: #909399;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 }
 

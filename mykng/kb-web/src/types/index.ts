@@ -435,3 +435,157 @@ export interface OpsKnowledge {
   createdAt: string
   updatedAt: string
 }
+
+// ============================================================
+// 知识引擎类型 (kb-intelligence)
+// ============================================================
+
+/** 知识引擎 - 文档索引 */
+export interface IntelDoc {
+  id: number
+  title: string
+  sourceId: string
+  filePath: string
+  docType: string
+  category: string
+  tags: string
+  summary: string
+  entityCount: number
+  commandCount: number
+  sectionCount: number
+  wordCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** 知识引擎 - 文档内容 */
+export interface IntelDocContent {
+  docId: number
+  title: string
+  plainText: string
+  wordCount: number
+  sections: { title: string; level: number; content: string; wordCount: number }[]
+}
+
+/** 知识引擎 - 文档关联实体 */
+export interface IntelDocEntities {
+  docId: number
+  title: string
+  hosts: IntelHost[]
+  services: IntelService[]
+  ports: IntelPort[]
+  credentials: IntelCredential[]
+  domains: IntelDomain[]
+  commands: IntelCommand[]
+  timelines: IntelTimeline[]
+  totalEntities: number
+}
+
+/** 知识引擎 - 主机 */
+export interface IntelHost {
+  id: number
+  name: string
+  ip: string
+  tailscaleIp: string
+  sshPort: number
+  username: string
+  role: string
+  osType: string
+  status: string
+}
+
+/** 知识引擎 - 服务 */
+export interface IntelService {
+  id: number
+  hostId: number
+  name: string
+  serviceType: string
+  version: string
+  status: string
+}
+
+/** 知识引擎 - 端口 */
+export interface IntelPort {
+  id: number
+  hostId: number
+  serviceId: number
+  port: number
+  protocol: string
+  accessUrl: string
+  exposed: number
+}
+
+/** 知识引擎 - 凭据 */
+export interface IntelCredential {
+  id: number
+  hostId: number
+  credType: string
+  username: string
+  passwordHint: string
+}
+
+/** 知识引擎 - 域名 */
+export interface IntelDomain {
+  id: number
+  domain: string
+  subDomain: string
+  targetHostId: number
+  targetPort: number
+  status: string
+}
+
+/** 知识引擎 - 命令 */
+export interface IntelCommand {
+  id: number
+  docId: number
+  command: string
+  description: string
+  category: string
+  riskLevel: string
+  osType: string
+}
+
+/** 知识引擎 - 时间线 */
+export interface IntelTimeline {
+  id: number
+  docId: number
+  eventTime: string
+  eventType: string
+  title: string
+  description: string
+  severity: string
+  status: string
+  solution: string
+}
+
+/** 知识引擎 - 分页结果（MyBatis-Plus Page 格式） */
+export interface IntelPageResult<T> {
+  records: T[]
+  total: number
+  current: number
+  size: number
+}
+
+/** 知识引擎 - 统计 */
+export interface IntelStats {
+  docCount: number
+  hostCount: number
+  serviceCount: number
+  portCount: number
+  credentialCount: number
+  commandCount: number
+  domainCount: number
+  timelineCount: number
+  byType: { docType: string; count: number }[]
+}
+
+/** 知识引擎 - 搜索结果 */
+export interface IntelSearchResult {
+  docId: number
+  docTitle: string
+  docType: string
+  category: string
+  highlight: string
+  score: number
+  matchedSections: string[]
+}

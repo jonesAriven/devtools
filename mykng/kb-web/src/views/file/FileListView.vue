@@ -52,7 +52,7 @@
       <el-table v-if="viewMode === 'list'" :data="filteredList" v-loading="loading" stripe>
         <el-table-column label="文件名" min-width="220">
           <template #default="{ row }">
-            <el-link type="primary" :underline="false" @click="goDetail(row.id)">
+            <el-link type="primary" underline="never" @click="goDetail(row.id)">
               <el-icon class="file-icon"><Document /></el-icon>
               <span class="file-name-text">{{ row.name }}</span>
             </el-link>

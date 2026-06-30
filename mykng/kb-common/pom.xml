@@ -23,6 +23,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Spring AOP (for WebLogAspect, 非 optional 让 aspectjweaver 传递给下游服务) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

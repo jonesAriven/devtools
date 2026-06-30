@@ -1,81 +1,96 @@
 import request from './index'
 import type { R } from '@/types'
 import type {
-  KnDoc, KnDocPage, KnStats, KnHost, KnService, KnCommand, KnTimeline,
-  KnDocEntities, KnDocContent, KnSearchHit, KnImportResult, KnImportStatus,
-  KnImportRequest, KnSearchRequest, KnDocQuery,
-} from '@/types/intelligence'
+  IntelDoc,
+  IntelDocContent,
+  IntelDocEntities,
+  IntelHost,
+  IntelService,
+  IntelPort,
+  IntelCredential,
+  IntelDomain,
+  IntelCommand,
+  IntelTimeline,
+  IntelStats,
+  IntelSearchResult,
+  IntelPageResult,
+} from '@/types'
 
-// ============================================================
-// 导入
-// ============================================================
+const BASE = '/intelligence/machine'
 
-/** 按路径全量/增量导入 */
-export function importByPath(data: KnImportRequest) {
-  return request.post<R<KnImportResult>>('/intelligence/import/path', data, {
-    timeout: 300000, // 5 分钟，导入耗时长
-  })
-}
-
-/** 获取导入状态（实际是服务运行状态） */
-export function getImportStatus() {
-  return request.get<R<KnImportStatus>>('/intelligence/import/status')
-}
-
-// ============================================================
-// 机器可读 - 统计与索引
-// ============================================================
-
-/** 统计信息 */
-export function getStats() {
-  return request.get<R<KnStats>>('/intelligence/machine/stats')
-}
-
-/** 文档索引列表（分页字段是 records） */
-export function getDocList(params: KnDocQuery) {
-  return request.get<R<KnDocPage>>('/intelligence/machine/docs', { params })
+/** 文档列表 */
+export function getDocList(params: {
+  docType?: string
+  category?: string
+  tag?: string
+  page?: number
+  size?: number
+}) {
+  return request.get<R<IntelPageResult<IntelDoc>>>(`${BASE}/docs`, { params })
 }
 
 /** 文档元数据 */
-export function getDocMeta(id: number) {
-  return request.get<R<KnDoc>>(`/intelligence/machine/docs/${id}/meta`)
+export function getDocMeta(docId: number) {
+  return request.get<R<IntelDoc>>(`${BASE}/docs/${docId}/meta`)
 }
 
-/** 文档实体（含主机/服务/端口/凭据） */
-export function getDocEntities(id: number) {
-  return request.get<R<KnDocEntities>>(`/intelligence/machine/docs/${id}/entities`)
+/** 文档关联实体 */
+export function getDocEntities(docId: number) {
+  return request.get<R<IntelDocEntities>>(`${BASE}/docs/${docId}/entities`)
 }
 
-/** 文档内容（markdown 原文，字段是 plainText） */
-export function getDocContent(id: number) {
-  return request.get<R<KnDocContent>>(`/intelligence/machine/docs/${id}/content`)
+/** 文档内容 */
+export function getDocContent(docId: number) {
+  return request.get<R<IntelDocContent>>(`${BASE}/docs/${docId}/content`)
 }
 
-// ============================================================
-// 跨文档实体查询
-// ============================================================
-
-/** 跨文档查主机 */
-export function getHostList() {
-  return request.get<R<KnHost[]>>('/intelligence/machine/entities/hosts')
+/** 主机列表 */
+export function getHostList(params?: { ip?: string; name?: string; role?: string }) {
+  return request.get<R<IntelHost[]>>(`${BASE}/entities/hosts`, { params })
 }
 
-/** 跨文档查服务 */
-export function getServiceList() {
-  return request.get<R<KnService[]>>('/intelligence/machine/entities/services')
+/** 服务列表 */
+export function getServiceList(params?: { hostId?: number; name?: string }) {
+  return request.get<R<IntelService[]>>(`${BASE}/entities/services`, { params })
 }
 
-/** 跨文档查命令 */
-export function getCommandList() {
-  return request.get<R<KnCommand[]>>('/intelligence/machine/entities/commands')
+/** 命令列表 */
+export function getCommandList(params?: { docId?: number; category?: string; riskLevel?: string }) {
+  return request.get<R<IntelCommand[]>>(`${BASE}/entities/commands`, { params })
 }
 
-/** 跨文档查时间线 */
-export function getTimelineList() {
-  return request.get<R<KnTimeline[]>>('/intelligence/machine/entities/timelines')
+/** 时间线列表 */
+export function getTimelineList(params?: { docId?: number; severity?: string; eventType?: string }) {
+  return request.get<R<IntelTimeline[]>>(`${BASE}/entities/timelines`, { params })
 }
 
-/** 关键词搜索（返回数组，命中项含 highlight） */
-export function searchDocs(data: KnSearchRequest) {
-  return request.post<R<KnSearchHit[]>>('/intelligence/machine/search', data)
+/** 搜索 */
+export function searchKnowledge(data: {
+  query: string
+  docTypes?: string[]
+  tags?: string[]
+  page?: number
+  size?: number
+}) {
+  return request.post<R<IntelSearchResult[]>>(`${BASE}/search`, data)
+}
+
+/** 端口列表 */
+export function getPortList(params?: { hostId?: number; exposed?: number }) {
+  return request.get<R<IntelPort[]>>(`${BASE}/entities/ports`, { params })
+}
+
+/** 凭据列表 */
+export function getCredentialList(params?: { hostId?: number; credType?: string }) {
+  return request.get<R<IntelCredential[]>>(`${BASE}/entities/credentials`, { params })
+}
+
+/** 域名列表 */
+export function getDomainList(params?: { status?: string }) {
+  return request.get<R<IntelDomain[]>>(`${BASE}/entities/domains`, { params })
+}
+
+/** 统计 */
+export function getStats() {
+  return request.get<R<IntelStats>>(`${BASE}/stats`)
 }

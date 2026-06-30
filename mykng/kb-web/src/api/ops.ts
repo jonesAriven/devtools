@@ -149,3 +149,38 @@ export function importData(formData: FormData) {
     timeout: 120000,
   })
 }
+
+// ============================================================
+// 知识引擎同步
+// ============================================================
+
+export interface SyncFromIntelRequest {
+  override?: boolean
+  entityTypes?: string[]
+}
+
+export interface SyncStats {
+  total: number
+  created: number
+  updated: number
+  skipped: number
+  failed: number
+}
+
+export interface SyncFromIntelResult {
+  host: SyncStats
+  service: SyncStats
+  port: SyncStats
+  credential: SyncStats
+  domain: SyncStats
+  dependency: SyncStats
+  durationMs: number
+  error?: string
+}
+
+/** 从知识引擎同步数据 */
+export function syncFromIntelligence(data?: SyncFromIntelRequest) {
+  return request.post<R<SyncFromIntelResult>>('/ops/sync/from-intelligence', data, {
+    timeout: 120000,
+  })
+}

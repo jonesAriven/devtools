@@ -29,6 +29,7 @@ crypto:
 kb:
   feign:
     auth-url: ${AUTH_URL:http://kb-auth:8081}
+    intelligence-url: ${INTELLIGENCE_URL:http://kb-intelligence:8086}
 
 logging:
   level:

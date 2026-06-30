@@ -1,5 +1,32 @@
 <template>
   <div class="ops-dashboard">
+    <div class="dashboard-header">
+      <h2 class="dashboard-title">运维看板</h2>
+      <div class="header-actions">
+        <el-button type="primary" :icon="Refresh" @click="loadData">刷新</el-button>
+        <el-popconfirm
+          title="确认从知识引擎同步数据？"
+          confirm-button-text="同步"
+          cancel-button-text="取消"
+          @confirm="handleSync(false)"
+        >
+          <template #reference>
+            <el-button type="success" :icon="Download" :loading="syncing">
+              {{ syncing ? '同步中...' : '从知识引擎同步' }}
+            </el-button>
+          </template>
+        </el-popconfirm>
+        <el-dropdown @command="handleSyncCommand" v-if="!syncing">
+          <el-button :icon="MoreFilled">更多</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="override">强制覆盖同步</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </div>
+
     <el-row :gutter="20" v-loading="loading">
       <el-col :span="6">
         <el-card shadow="hover">
@@ -66,17 +93,66 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="syncResultVisible" title="同步结果" width="600px">
+      <div v-if="syncResult" class="sync-result">
+        <el-alert v-if="syncResult.error" :title="'同步出错: ' + syncResult.error" type="error" show-icon class="mb-3" />
+        <p class="sync-duration">
+          总耗时: <b>{{ syncResult.durationMs }}ms</b>
+        </p>
+        <el-table :data="syncResultRows" size="small" border>
+          <el-table-column prop="label" label="实体类型" width="120" />
+          <el-table-column prop="total" label="总数" width="70" align="right" />
+          <el-table-column prop="created" label="新增" width="70" align="right">
+            <template #default="{ row }">
+              <span class="text-success">{{ row.created }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="updated" label="更新" width="70" align="right">
+            <template #default="{ row }">
+              <span class="text-warning">{{ row.updated }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="skipped" label="跳过" width="70" align="right" />
+          <el-table-column prop="failed" label="失败" width="70" align="right">
+            <template #default="{ row }">
+              <span class="text-danger">{{ row.failed }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="syncResultVisible = false">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getDashboard } from '@/api/ops'
+import { ref, computed, onMounted } from 'vue'
+import { getDashboard, syncFromIntelligence, type SyncFromIntelResult } from '@/api/ops'
 import type { DashboardVO } from '@/types'
 import { ElMessage } from 'element-plus'
+import { Refresh, Download, MoreFilled } from '@element-plus/icons-vue'
 
 const loading = ref(false)
+const syncing = ref(false)
 const data = ref<DashboardVO | null>(null)
+const syncResult = ref<SyncFromIntelResult | null>(null)
+const syncResultVisible = ref(false)
+
+const syncResultRows = computed(() => {
+  if (!syncResult.value) return []
+  const r = syncResult.value
+  return [
+    { label: '主机', ...r.host },
+    { label: '服务', ...r.service },
+    { label: '端口', ...r.port },
+    { label: '凭据', ...r.credential },
+    { label: '域名', ...r.domain },
+    { label: '依赖', ...r.dependency },
+  ]
+})
 
 async function loadData() {
   loading.value = true
@@ -90,20 +166,69 @@ async function loadData() {
   }
 }
 
+async function handleSync(override: boolean) {
+  syncing.value = true
+  try {
+    const res = await syncFromIntelligence({ override })
+    syncResult.value = res.data.data
+    syncResultVisible.value = true
+    ElMessage.success('同步完成')
+    loadData()
+  } catch (e: any) {
+    ElMessage.error('同步失败: ' + (e?.message || e))
+  } finally {
+    syncing.value = false
+  }
+}
+
+function handleSyncCommand(cmd: string) {
+  if (cmd === 'override') {
+    handleSync(true)
+  }
+}
+
 onMounted(loadData)
 </script>
 
 <style scoped>
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.dashboard-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
 .deploy-trend { display: flex; flex-direction: column; gap: 8px; }
 .trend-bar { display: flex; align-items: center; gap: 8px; }
 .trend-bar .date { width: 40px; font-size: 12px; color: #909399; }
 .trend-bar .count { width: 20px; font-size: 12px; text-align: right; }
 .mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
 .mt-4 { margin-top: 16px; }
+.mb-3 { margin-bottom: 12px; }
+.ml-2 { margin-left: 8px; }
+.text-success { color: #67c23a; }
+.text-warning { color: #e6a23c; }
+.text-danger { color: #f56c6c; }
+.sync-duration {
+  margin: 0 0 12px 0;
+  color: #606266;
+  font-size: 14px;
+}
 
 @media (max-width: 768px) {
   .deploy-trend { gap: 4px; }
   .trend-bar { font-size: 11px; }
   .trend-bar .date { width: 36px; }
+  .dashboard-header { flex-direction: column; align-items: flex-start; gap: 12px; }
 }
 </style>

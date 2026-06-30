@@ -54,3 +54,8 @@ build/
 # 外部仓库和配置备份
 openclaw-work-space
 openclaw/
+
+# Trae AI 临时文件（测试脚本、截图、诊断脚本等开发产物）
+.trae/tmp/
+.trae/rules/
+.trae/memory/
