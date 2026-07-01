@@ -132,11 +132,15 @@ export interface FileUploadRequest {
   spaceId: number
 }
 
+/** 笔记格式 */
+export type DocFormat = 'html' | 'markdown'
+
 /** 笔记 */
 export interface Doc {
   id: number
   title: string
   content: string
+  format: DocFormat
   folderId: number
   spaceId: number
   starred: boolean
@@ -149,6 +153,7 @@ export interface Doc {
 export interface CreateDocRequest {
   title: string
   content?: string
+  format?: DocFormat
   folderId: number
   spaceId: number
 }
@@ -157,7 +162,25 @@ export interface CreateDocRequest {
 export interface UpdateDocRequest {
   title?: string
   content?: string
+  format?: DocFormat
   folderId?: number
+}
+
+/** 资源树节点 */
+export interface ResourceTreeNode {
+  id: number
+  name: string
+  type: 'folder' | 'doc' | 'file' | 'web'
+  format?: DocFormat
+  url?: string
+  children?: ResourceTreeNode[]
+}
+
+/** 文档大纲项 */
+export interface OutlineItem {
+  id: string
+  text: string
+  level: number // 1-6
 }
 
 /** 网页收藏 */

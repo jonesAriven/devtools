@@ -12,6 +12,7 @@ import com.kb.file.entity.FileChunk;
 import com.kb.file.entity.KbFile;
 import com.kb.file.mapper.FileChunkMapper;
 import com.kb.file.mapper.KbFileMapper;
+import com.kb.file.mongo.doc.FileContent;
 import com.kb.file.mongo.repository.FileContentRepository;
 import com.kb.file.service.EventPublisher;
 import com.kb.file.service.FileParseTrigger;
@@ -24,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
@@ -244,6 +248,72 @@ public class KbFileServiceImpl implements KbFileService {
     }
 
     @Override
+    @Transactional
+    public void updateContent(Long id, Long userId, String content) {
+        KbFile file = getById(id, userId);
+
+        // 校验必须是文本类文件
+        String ext = file.getType() != null ? file.getType().toLowerCase() : "";
+        if (!isTextFile(ext)) {
+            throw new BusinessException("仅支持编辑文本类文件");
+        }
+
+        if (file.getMinioPath() == null) {
+            throw new BusinessException("文件路径不存在");
+        }
+
+        String contentStr = content != null ? content : "";
+        byte[] bytes = contentStr.getBytes(StandardCharsets.UTF_8);
+
+        // 覆盖上传到 MinIO（使用相同 objectName）
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+            minioService.uploadStream(BUCKET, file.getMinioPath(), inputStream,
+                    bytes.length, PART_SIZE, "text/plain");
+        } catch (Exception e) {
+            throw new BusinessException("更新文件内容失败: " + e.getMessage());
+        }
+
+        // 更新文件元数据（大小、解析状态）
+        file.setSize((long) bytes.length);
+        file.setParseStatus("READY");
+        file.setParseError(null);
+        kbFileMapper.updateById(file);
+
+        // 归档旧版本 FileContent
+        fileContentRepository.findByFileIdAndIsCurrentTrue(id).ifPresent(current -> {
+            current.setIsCurrent(false);
+            fileContentRepository.save(current);
+        });
+
+        // 新建版本 FileContent（version+1）
+        List<FileContent> versions = fileContentRepository.findByFileIdOrderByVersionDesc(id);
+        int nextVersion = versions.isEmpty() ? 1 : versions.get(0).getVersion() + 1;
+
+        FileContent fileContent = new FileContent();
+        fileContent.setFileId(id);
+        fileContent.setUserId(userId);
+        fileContent.setTitle(file.getName());
+        fileContent.setContent(contentStr);
+        fileContent.setVersion(nextVersion);
+        fileContent.setIsCurrent(true);
+        fileContent.setCreatedAt(LocalDateTime.now());
+        fileContentRepository.save(fileContent);
+
+        // 更新 MeiliSearch 索引（参考现有索引更新方式）
+        searchIndexService.indexFile(file, contentStr);
+
+        log.info("文件内容更新成功 fileId={} version={} userId={}", id, nextVersion, userId);
+    }
+
+    @Override
+    public List<KbFile> listAll(Long userId) {
+        return kbFileMapper.selectList(
+                new LambdaQueryWrapper<KbFile>()
+                        .eq(KbFile::getUserId, userId)
+                        .orderByDesc(KbFile::getCreatedAt));
+    }
+
+    @Override
     public List<KbFile> searchByName(String keyword, Long userId, Long folderId) {
         LambdaQueryWrapper<KbFile> wrapper = new LambdaQueryWrapper<KbFile>()
                 .eq(KbFile::getUserId, userId)
@@ -255,6 +325,21 @@ public class KbFileServiceImpl implements KbFileService {
     }
 
     // ======================== 私有方法 ========================
+
+    /**
+     * 判断文件扩展名是否为文本类（可在线编辑）
+     * <p>
+     * 参考 FileParseServiceImpl 中的文本类判断逻辑。
+     */
+    private boolean isTextFile(String type) {
+        return switch (type) {
+            case "txt", "md", "markdown", "csv", "log", "json", "xml", "yaml", "yml",
+                 "properties", "conf", "ini", "sh", "bat", "sql",
+                 "java", "py", "js", "ts", "html", "css",
+                 "go", "rs", "c", "cpp", "h" -> true;
+            default -> false;
+        };
+    }
 
     /**
      * 创建分片顺序拼接流

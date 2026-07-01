@@ -2,6 +2,7 @@ package com.kb.file.controller;
 
 import com.kb.common.page.PageResult;
 import com.kb.common.result.Result;
+import com.kb.file.dto.file.FileContentUpdateRequest;
 import com.kb.file.dto.file.FileMergeRequest;
 import com.kb.file.dto.file.FileMoveRequest;
 import com.kb.file.entity.KbFile;
@@ -99,6 +100,27 @@ public class KbFileController {
     @GetMapping("/{id}/content")
     public Result<String> getContent(@PathVariable Long id) {
         return Result.ok(kbFileService.getContent(id, getCurrentUserId()));
+    }
+
+    /**
+     * 在线编辑文本类文件内容
+     * <p>
+     * 仅支持文本类文件（txt/md/json/csv/xml/html/log/js/ts/java/py/go/sql/yml/yaml 等），
+     * 新内容覆盖原 MinIO 文件并创建新的内容版本。
+     */
+    @PutMapping("/{id}/content")
+    public Result<Void> updateContent(@PathVariable Long id,
+                                      @Valid @RequestBody FileContentUpdateRequest request) {
+        kbFileService.updateContent(id, getCurrentUserId(), request.getContent());
+        return Result.ok();
+    }
+
+    /**
+     * 查询当前用户所有文件（供跨服务资源树聚合使用）
+     */
+    @GetMapping("/list-all")
+    public Result<List<KbFile>> listAll() {
+        return Result.ok(kbFileService.listAll(getCurrentUserId()));
     }
 
     @PostMapping("/{id}/reparse")

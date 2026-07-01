@@ -82,6 +82,7 @@ public class SearchIndexService {
             document.put("folderId", doc.getFolderId());
             document.put("title", doc.getTitle());
             document.put("content", content != null ? content : "");
+            document.put("format", doc.getFormat() != null ? doc.getFormat() : "html");
             document.put("starred", doc.getStarred());
             document.put("createdAt", doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null);
             document.put("updatedAt", doc.getUpdatedAt() != null ? doc.getUpdatedAt().toString() : null);

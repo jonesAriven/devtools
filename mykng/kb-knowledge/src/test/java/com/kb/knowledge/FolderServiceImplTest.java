@@ -8,6 +8,7 @@ import com.kb.knowledge.entity.Doc;
 import com.kb.knowledge.entity.Folder;
 import com.kb.knowledge.entity.Space;
 import com.kb.knowledge.entity.WebPage;
+import com.kb.knowledge.feign.FileClient;
 import com.kb.knowledge.mapper.DocMapper;
 import com.kb.knowledge.mapper.FolderMapper;
 import com.kb.knowledge.mapper.SpaceMapper;
@@ -40,6 +41,7 @@ class FolderServiceImplTest {
     @Mock private WebPageMapper webPageMapper;
     @Mock private EventPublisher eventPublisher;
     @Mock private SearchIndexService searchIndexService;
+    @Mock private FileClient fileClient;
 
     @InjectMocks
     private FolderServiceImpl folderService;

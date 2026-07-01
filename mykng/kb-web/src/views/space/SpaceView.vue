@@ -6,6 +6,10 @@
         <el-breadcrumb-item>{{ spaceStore.currentSpace?.name || '空间' }}</el-breadcrumb-item>
       </el-breadcrumb>
       <div class="space-actions">
+        <el-radio-group v-model="viewMode" size="small" class="view-toggle">
+          <el-radio-button value="list">列表视图</el-radio-button>
+          <el-radio-button value="tree">资源树视图</el-radio-button>
+        </el-radio-group>
         <el-button type="primary" :icon="Upload" size="small" @click="showUpload = true">上传文件</el-button>
         <el-button type="success" :icon="EditPen" size="small" @click="goCreateDoc">新建笔记</el-button>
         <el-button type="warning" :icon="Link" size="small" @click="showWebDialog = true">收藏网页</el-button>
@@ -13,19 +17,32 @@
     </div>
 
     <div class="space-body">
-      <div class="space-sidebar">
-        <FolderTree
-          :space-id="Number(spaceId)"
-          :current-folder-id="currentFolderId"
-          @select="handleFolderSelect"
-        />
-      </div>
-      <div class="space-content">
-        <ResourceList
-          :space-id="Number(spaceId)"
-          :folder-id="currentFolderId"
-        />
-      </div>
+      <!-- 列表视图：原左侧目录树 + 右侧资源列表 -->
+      <template v-if="viewMode === 'list'">
+        <div class="space-sidebar">
+          <FolderTree
+            :space-id="Number(spaceId)"
+            :current-folder-id="currentFolderId"
+            @select="handleFolderSelect"
+          />
+        </div>
+        <div class="space-content">
+          <ResourceList
+            :space-id="Number(spaceId)"
+            :folder-id="currentFolderId"
+          />
+        </div>
+      </template>
+
+      <!-- 树形视图：统一资源树（目录+笔记+文件+网页） -->
+      <template v-else>
+        <div class="space-content tree-view">
+          <ResourceTree
+            :space-id="Number(spaceId)"
+            :current-folder-id="currentFolderId"
+          />
+        </div>
+      </template>
     </div>
 
     <FileUpload v-model:visible="showUpload" :folder-id="currentFolderId ?? undefined" :space-id="Number(spaceId)" />
@@ -52,6 +69,7 @@ import { useSpaceStore } from '@/stores/space'
 import { createWebPage } from '@/api/web'
 import FolderTree from '@/components/FolderTree.vue'
 import ResourceList from '@/components/ResourceList.vue'
+import ResourceTree from '@/components/ResourceTree.vue'
 import FileUpload from '@/components/FileUpload.vue'
 import { ElMessage } from 'element-plus'
 
@@ -65,6 +83,8 @@ const spaceStore = useSpaceStore()
 const currentFolderId = ref<number | null>(null)
 const showUpload = ref(false)
 const showWebDialog = ref(false)
+// 视图模式：list = 列表视图（原状），tree = 资源树视图（统一展示）
+const viewMode = ref<'list' | 'tree'>('list')
 
 const webForm = reactive({
   url: '',
@@ -138,6 +158,12 @@ async function handleAddWeb() {
 .space-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.view-toggle {
+  margin-right: 8px;
 }
 
 .space-body {
@@ -165,6 +191,11 @@ async function handleAddWeb() {
   padding: 12px;
   overflow-y: auto;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+
+  &.tree-view {
+    flex: 1;
+    max-height: 100%;
+  }
 }
 
 @media (max-width: 768px) {

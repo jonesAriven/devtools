@@ -30,7 +30,18 @@
         </div>
 
         <div class="info-card">
-          <div class="card-title">文件内容预览</div>
+          <div class="card-title">
+            <span>文件内容预览</span>
+            <el-button
+              v-if="isTextFile && file"
+              type="primary"
+              size="small"
+              :icon="Edit"
+              @click="showEditDialog = true"
+            >
+              在线编辑
+            </el-button>
+          </div>
           <div class="file-content-preview">
             <FilePreview
               v-if="file"
@@ -80,14 +91,40 @@
       :resource-id="Number(id)"
       resource-type="file"
     />
+
+    <el-dialog
+      v-model="showEditDialog"
+      :title="`在线编辑 - ${file?.name || ''}`"
+      width="80%"
+      top="5vh"
+      :close-on-click-modal="false"
+      @open="loadFileContent"
+    >
+      <div v-loading="editLoading" class="edit-content-wrapper">
+        <el-input
+          v-model="editContent"
+          type="textarea"
+          :rows="20"
+          placeholder="文件内容..."
+          :input-style="{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '13px' }"
+          :disabled="editLoading"
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showEditDialog = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="handleSaveContent">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Share, Download, Delete, Document } from '@element-plus/icons-vue'
-import { getFileDetail, deleteFile, downloadFile, toggleFileStar } from '@/api/file'
+import { Share, Download, Delete, Document, Edit } from '@element-plus/icons-vue'
+import { getFileDetail, deleteFile, downloadFile, toggleFileStar, getFileContent, updateFileContent } from '@/api/file'
 import { getVersionList, rollbackVersion } from '@/api/version'
 import { formatFileSize, formatDate } from '@/utils/format'
 import type { KbFile, Version } from '@/types'
@@ -105,6 +142,29 @@ const router = useRouter()
 const file = ref<KbFile | null>(null)
 const versions = ref<Version[]>([])
 const showShareDialog = ref(false)
+
+// 在线编辑相关状态
+const showEditDialog = ref(false)
+const editContent = ref('')
+const editLoading = ref(false)
+const saving = ref(false)
+
+// 文本类文件扩展名集合（与后端 KbFileServiceImpl#isTextFile 保持一致）
+const TEXT_EXTENSIONS = new Set([
+  'txt', 'md', 'markdown', 'json', 'csv', 'xml', 'html', 'htm',
+  'log', 'js', 'ts', 'java', 'py', 'go', 'sql', 'yml', 'yaml',
+  'ini', 'conf', 'properties', 'sh', 'bat', 'ps1', 'css', 'scss',
+  'vue', 'jsx', 'tsx', 'rs', 'c', 'cpp', 'h', 'hpp', 'cs', 'php',
+  'rb', 'swift', 'kt', 'gradle', 'toml',
+])
+
+const isTextFile = computed(() => {
+  if (!file.value?.name) return false
+  const dot = file.value.name.lastIndexOf('.')
+  if (dot < 0) return false
+  const ext = file.value.name.substring(dot + 1).toLowerCase()
+  return TEXT_EXTENSIONS.has(ext)
+})
 
 const parseStatusType = computed(() => {
   const status = file.value?.parseStatus
@@ -173,6 +233,35 @@ async function handleRollback(versionId: number) {
   ElMessage.success('已回滚')
   loadFile()
 }
+
+async function loadFileContent() {
+  editLoading.value = true
+  try {
+    const res = await getFileContent(Number(props.id))
+    editContent.value = res.data.data || ''
+  } catch (e: any) {
+    ElMessage.error('加载文件内容失败：' + (e?.message || ''))
+  } finally {
+    editLoading.value = false
+  }
+}
+
+async function handleSaveContent() {
+  await ElMessageBox.confirm('保存将覆盖原文件内容，且会创建新版本。是否继续？', '提示', { type: 'warning' })
+  saving.value = true
+  try {
+    await updateFileContent(Number(props.id), editContent.value)
+    ElMessage.success('保存成功')
+    showEditDialog.value = false
+    // 重新加载文件信息和版本
+    loadFile()
+    loadVersions()
+  } catch (e: any) {
+    ElMessage.error('保存失败：' + (e?.message || ''))
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -188,6 +277,16 @@ async function handleRollback(versionId: number) {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
   }
 
   .file-content-preview {
@@ -206,6 +305,10 @@ async function handleRollback(versionId: number) {
       color: #c0c4cc;
       justify-content: center;
     }
+  }
+
+  .edit-content-wrapper {
+    min-height: 400px;
   }
 }
 

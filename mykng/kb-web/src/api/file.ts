@@ -98,6 +98,16 @@ export function getFileContent(id: number) {
   return request.get<R<string>>(`/file/${id}/content`)
 }
 
+/** 更新文本类文件内容（在线编辑） */
+export function updateFileContent(id: number, content: string) {
+  return request.put<R<void>>(`/file/${id}/content`, { content })
+}
+
+/** 获取当前用户全部文件（资源树聚合用） */
+export function listAllFiles() {
+  return request.get<R<KbFile[]>>(`/file/list-all`)
+}
+
 /** 切换文件星标 */
 export function toggleFileStar(id: number) {
   return request.put<R<void>>(`/file/${id}/star`)

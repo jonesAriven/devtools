@@ -39,5 +39,19 @@ public interface KbFileService {
 
     String getContent(Long id, Long userId);
 
+    /**
+     * 更新文本类文件内容（在线编辑）
+     *
+     * @param id      文件 ID
+     * @param userId  当前用户 ID（仅文件所有者可编辑）
+     * @param content 新内容字符串
+     */
+    void updateContent(Long id, Long userId, String content);
+
+    /**
+     * 查询用户所有文件（供跨服务资源树聚合使用）
+     */
+    List<KbFile> listAll(Long userId);
+
     List<KbFile> searchByName(String keyword, Long userId, Long folderId);
 }

@@ -64,4 +64,10 @@ public interface FileClient {
     @GetMapping("/file/search")
     Result<java.util.List<FileDTO>> searchByName(@RequestParam("keyword") String keyword,
                                                   @RequestParam(value = "folderId", required = false) Long folderId);
+
+    /**
+     * 查询当前用户所有文件（供资源树聚合使用）
+     */
+    @GetMapping("/file/list-all")
+    Result<java.util.List<FileDTO>> listAll();
 }

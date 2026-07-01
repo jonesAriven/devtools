@@ -4,6 +4,7 @@ import com.kb.common.result.Result;
 import com.kb.knowledge.dto.folder.FolderCreateRequest;
 import com.kb.knowledge.dto.folder.FolderMoveRequest;
 import com.kb.knowledge.dto.folder.FolderSortRequest;
+import com.kb.knowledge.dto.folder.ResourceTreeNode;
 import com.kb.knowledge.entity.Folder;
 import com.kb.knowledge.service.FolderService;
 import jakarta.validation.Valid;
@@ -30,6 +31,16 @@ public class FolderController {
     @GetMapping("/tree/{spaceId}")
     public Result<List<Folder>> getTree(@PathVariable Long spaceId) {
         return Result.ok(folderService.getTree(spaceId, getCurrentUserId()));
+    }
+
+    /**
+     * 获取文件夹 + 资源统一树
+     * <p>
+     * 在文件夹树的基础上，将每个文件夹下的 doc / file / web 资源作为 children 填入。
+     */
+    @GetMapping("/tree-with-resources/{spaceId}")
+    public Result<List<ResourceTreeNode>> getTreeWithResources(@PathVariable Long spaceId) {
+        return Result.ok(folderService.getTreeWithResources(spaceId, getCurrentUserId()));
     }
 
     @GetMapping("/{id}")

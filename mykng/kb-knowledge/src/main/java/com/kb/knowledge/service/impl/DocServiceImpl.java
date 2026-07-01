@@ -57,6 +57,9 @@ public class DocServiceImpl implements DocService {
         doc.setFolderId(request.getFolderId());
         doc.setUserId(userId);
         doc.setTitle(request.getTitle());
+        // 文档格式：默认 html，支持 markdown
+        String format = request.getFormat();
+        doc.setFormat(format != null && !format.isBlank() ? format : "html");
         doc.setStarred(0);
         docMapper.insert(doc);
 
@@ -120,6 +123,12 @@ public class DocServiceImpl implements DocService {
 
         if (request.getTitle() != null) {
             doc.setTitle(request.getTitle());
+            docMapper.updateById(doc);
+        }
+
+        // 支持切换文档格式（html ↔ markdown）
+        if (request.getFormat() != null && !request.getFormat().isBlank()) {
+            doc.setFormat(request.getFormat());
             docMapper.updateById(doc);
         }
 

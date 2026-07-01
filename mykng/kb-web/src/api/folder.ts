@@ -1,9 +1,14 @@
 import request from './index'
-import type { R, Folder, CreateFolderRequest, UpdateFolderRequest } from '@/types'
+import type { R, Folder, CreateFolderRequest, UpdateFolderRequest, ResourceTreeNode } from '@/types'
 
 /** 获取空间下的目录树 */
 export function getFolderTree(spaceId: number) {
   return request.get<R<Folder[]>>('/folder/tree', { params: { spaceId } })
+}
+
+/** 获取空间下的资源树（含目录+笔记+文件+网页，用于树形展示） */
+export function getResourceTree(spaceId: number) {
+  return request.get<R<ResourceTreeNode[]>>(`/folder/tree-with-resources/${spaceId}`)
 }
 
 /** 获取目录详情 */

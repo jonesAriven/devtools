@@ -18,6 +18,9 @@ public class Doc {
 
     private String title;
 
+    /** 文档格式：html / markdown */
+    private String format;
+
     private Integer starred;
 
     @TableLogic

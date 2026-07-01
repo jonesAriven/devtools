@@ -14,4 +14,7 @@ public class DocCreateRequest {
     private String title;
 
     private String content;
+
+    /** 文档格式：html / markdown，默认 html */
+    private String format = "html";
 }
