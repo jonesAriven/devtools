@@ -8,6 +8,7 @@
         clearable
         class="search-input"
         @keyup.enter="handleNewSearch"
+        @input="debouncedSearch"
         @clear="handleClear"
       >
         <template #prefix>
@@ -92,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Loading } from '@element-plus/icons-vue'
 import DOMPurify from 'dompurify'
@@ -118,11 +119,30 @@ const filters = reactive({
   type: 'all' as string,
 })
 
+// 本地缓存：相同查询 5 分钟内不重复请求
+const searchCache = new Map<string, { data: SearchResult[]; total: number; ts: number }>()
+const CACHE_TTL = 5 * 60 * 1000
+
+// 请求取消：新请求发出时取消上一个未完成的请求
+let abortController: AbortController | null = null
+
+// 防抖
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function cacheKey(q: string, type: string, p: number): string {
+  return `${q.trim().toLowerCase()}|${type}|${p}`
+}
+
 onMounted(() => {
   if (route.query.q) {
     keyword.value = route.query.q as string
     handleNewSearch()
   }
+})
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  if (abortController) abortController.abort()
 })
 
 async function handleNewSearch() {
@@ -142,25 +162,58 @@ function handleClear() {
   searched.value = false
 }
 
+/**
+ * 带防抖的搜索（用于输入框实时触发）
+ */
+function debouncedSearch() {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    handleNewSearch()
+  }, 350)
+}
+
 async function doSearch() {
-  if (!keyword.value.trim()) return
-  // 关键：loading 期间不显示"未找到"，避免闪烁
+  const q = keyword.value.trim()
+  if (!q) return
+
+  // 检查本地缓存
+  const typeVal = filters.type && filters.type !== 'all' ? filters.type : ''
+  const key = cacheKey(q, typeVal, page.value)
+  const cached = searchCache.get(key)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    results.value = cached.data
+    total.value = cached.total
+    searched.value = true
+    return
+  }
+
+  // 取消上一个未完成请求
+  if (abortController) abortController.abort()
+  abortController = new AbortController()
+
   loading.value = true
   searched.value = true
   try {
-    const typeVal = filters.type && filters.type !== 'all' ? filters.type : undefined
     const res = await search({
-      keyword: keyword.value,
-      type: typeVal,
+      keyword: q,
+      type: typeVal || undefined,
       page: page.value,
       size: pageSize,
-    })
+    }, abortController.signal)
     results.value = res.data.data.list || []
     total.value = res.data.data.total || 0
-  } catch (e) {
-    console.error('搜索失败', e)
-    results.value = []
-    total.value = 0
+    // 写入缓存
+    searchCache.set(key, { data: results.value, total: total.value, ts: Date.now() })
+  } catch (e: any) {
+    // AbortError 是正常取消，不显示错误
+    if (e?.code !== 'ERR_CANCELED' && e?.name !== 'CanceledError') {
+      console.error('搜索失败', e)
+    }
+    // 取消时不清空已有结果
+    if (e?.code !== 'ERR_CANCELED' && e?.name !== 'CanceledError') {
+      results.value = []
+      total.value = 0
+    }
   } finally {
     loading.value = false
   }

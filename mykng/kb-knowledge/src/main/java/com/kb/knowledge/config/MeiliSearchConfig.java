@@ -14,6 +14,8 @@ public class MeiliSearchConfig {
 
     private String host;
     private String apiKey;
+    /** 搜索超时（毫秒），用于 CompletableFuture.get(timeout) 兜底 */
+    private int searchTimeoutMs = 5000;
 
     @Bean
     public Client meiliSearchClient() {

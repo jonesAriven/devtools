@@ -10,8 +10,8 @@ interface SearchParams {
   size?: number
 }
 
-/** 全文搜索 */
-export function search(params: SearchParams) {
+/** 全文搜索（支持 AbortSignal 取消请求） */
+export function search(params: SearchParams, signal?: AbortSignal) {
   const queryParams: Record<string, any> = {}
   if (params.keyword) queryParams.q = params.keyword
   if (params.type) queryParams.type = params.type
@@ -19,7 +19,10 @@ export function search(params: SearchParams) {
   if (params.tagId !== undefined && params.tagId !== null) queryParams.tagId = params.tagId
   if (params.page) queryParams.page = params.page
   if (params.size) queryParams.size = params.size
-  return request.get<R<PageResult<SearchResult>>>('/search', { params: queryParams })
+  return request.get<R<PageResult<SearchResult>>>('/search', {
+    params: queryParams,
+    signal,
+  })
 }
 
 /** 搜索建议 */
