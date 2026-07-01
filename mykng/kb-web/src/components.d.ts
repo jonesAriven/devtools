@@ -61,6 +61,7 @@ declare module 'vue' {
     ElTimelineItem: typeof import('element-plus/es')['ElTimelineItem']
     ElTree: typeof import('element-plus/es')['ElTree']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    FilePreview: typeof import('./components/FilePreview.vue')['default']
     FileUpload: typeof import('./components/FileUpload.vue')['default']
     FolderTree: typeof import('./components/FolderTree.vue')['default']
     ResourceList: typeof import('./components/ResourceList.vue')['default']

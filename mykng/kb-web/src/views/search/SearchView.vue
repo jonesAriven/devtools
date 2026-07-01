@@ -14,7 +14,7 @@
           <el-icon><Search /></el-icon>
         </template>
         <template #append>
-          <el-button type="primary" @click="handleNewSearch">搜索</el-button>
+          <el-button type="primary" :loading="loading" @click="handleNewSearch">搜索</el-button>
         </template>
       </el-input>
     </div>
@@ -43,23 +43,31 @@
             <span v-if="total > 0" class="result-count">共 {{ total }} 条</span>
           </div>
 
-          <div v-if="results.length === 0 && searched" class="empty-state">
+          <!-- 加载中 -->
+          <div v-if="loading" class="loading-state">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span>正在搜索...</span>
+          </div>
+
+          <!-- 空状态：仅在非首次加载且无结果时显示 -->
+          <div v-else-if="results.length === 0 && searched" class="empty-state">
             <el-icon class="empty-icon"><Search /></el-icon>
             <div class="empty-text">未找到相关结果</div>
           </div>
 
+          <!-- 搜索结果列表 -->
           <div v-else>
-            <div v-for="item in results" :key="item.id" class="resource-item" @click="goToResource(item)">
+            <div v-for="item in results" :key="item.id + '-' + item.type" class="resource-item" @click="goToResource(item)">
               <el-icon class="resource-icon">
                 <Document v-if="item.type === 'doc'" />
                 <Picture v-else-if="item.type === 'file'" />
                 <Link v-else />
               </el-icon>
               <div class="resource-info">
-                <div class="resource-name" v-html="item.title"></div>
+                <div class="resource-name" v-html="safeTitle(item.title)"></div>
                 <div class="resource-meta">
                   <span class="resource-type-label">{{ typeLabel(item.type) }}</span>
-                  <span v-if="item.highlight" class="resource-highlight" v-html="item.highlight"></span>
+                  <span v-if="item.highlight" class="resource-highlight" v-html="safeHighlight(item.highlight)"></span>
                 </div>
               </div>
               <div class="resource-actions">
@@ -86,6 +94,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Search, Loading } from '@element-plus/icons-vue'
+import DOMPurify from 'dompurify'
 import { search } from '@/api/search'
 import type { SearchResult } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
@@ -102,6 +112,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const searched = ref(false)
+const loading = ref(false)
 
 const filters = reactive({
   type: 'all' as string,
@@ -133,16 +144,42 @@ function handleClear() {
 
 async function doSearch() {
   if (!keyword.value.trim()) return
+  // 关键：loading 期间不显示"未找到"，避免闪烁
+  loading.value = true
   searched.value = true
-  const typeVal = filters.type && filters.type !== 'all' ? filters.type : undefined
-  const res = await search({
-    keyword: keyword.value,
-    type: typeVal,
-    page: page.value,
-    size: pageSize,
-  })
-  results.value = res.data.data.list || []
-  total.value = res.data.data.total || 0
+  try {
+    const typeVal = filters.type && filters.type !== 'all' ? filters.type : undefined
+    const res = await search({
+      keyword: keyword.value,
+      type: typeVal,
+      page: page.value,
+      size: pageSize,
+    })
+    results.value = res.data.data.list || []
+    total.value = res.data.data.total || 0
+  } catch (e) {
+    console.error('搜索失败', e)
+    results.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 清洗标题 HTML（保留 <em> 高亮标签，移除其他危险标签）
+ */
+function safeTitle(title: string): string {
+  if (!title) return ''
+  return DOMPurify.sanitize(title, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
+}
+
+/**
+ * 清洗高亮片段 HTML（仅保留 <em> 标签）
+ */
+function safeHighlight(html: string): string {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
 }
 
 function typeLabel(type: string): string {
@@ -187,6 +224,19 @@ async function handleToggleStar(item: SearchResult) {
   .filter-card {
     position: sticky;
     top: 0;
+  }
+
+  .loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px;
+    color: #909399;
+
+    .el-icon {
+      font-size: 20px;
+    }
   }
 
   .result-count {

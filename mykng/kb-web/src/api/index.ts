@@ -38,6 +38,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // blob/流式响应跳过业务码检查
+    if (response.config.responseType === 'blob') {
+      return response
+    }
     const data = response.data as R<any>
     if (data.traceId) {
       response.headers['x-trace-id'] = data.traceId

@@ -225,7 +225,55 @@ kb-gateway
 - 网页收藏（5 个）：CRUD + 移动
 - 资源标签推荐（4 个）：基于内容/历史/标签/混合推荐
 
-### 6.4 kb-ops（47 个接口）
+#### 6.3.1 搜索接口详情
+
+搜索模块基于 **MeiliSearch** 全文搜索引擎，支持跨资源类型统一搜索。当前已实现 2 个接口：
+
+| 方法 | 路径 | 描述 | 鉴权 | 搜索引擎 |
+|------|------|------|------|---------|
+| GET | `/search` | 全文搜索（文件+笔记+网页） | 是 | MeiliSearch（主） / MySQL LIKE（降级） |
+| GET | `/search/suggest` | 搜索建议 | 是 | 空实现（返回空列表） |
+
+**GET /search 请求参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| q | string | 是 | 搜索关键词 |
+| type | string | 否 | 资源类型过滤：file/doc/web，不传或为 all 时搜全部 |
+| folderId | long | 否 | 文件夹过滤 |
+| tagId | long | 否 | 标签过滤（走标签关联查询，非全文搜索） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页条数，默认 20 |
+
+**GET /search 响应字段**（PageResult 内）：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 资源 ID |
+| type | string | 资源类型：file/doc/web |
+| title | string | 资源标题/名称 |
+| name | string | 资源名称（同 title，兼容用） |
+| content | string | 资源内容（MeiliSearch 原始返回） |
+| highlight | string | 搜索高亮片段（含 `<em>` 标签） |
+| starred | boolean | 是否收藏 |
+| createdAt | string | 创建时间 |
+
+### 6.4 kb-intelligence（12 个接口）
+
+知识引擎模块提供运维文档智能解析与实体抽取能力，搜索接口如下：
+
+| 方法 | 路径 | 描述 | 鉴权 | 搜索引擎 |
+|------|------|------|------|---------|
+| POST | `/intelligence/machine/search` | 知识引擎文档搜索 | 是（管理员） | MySQL LIKE |
+
+**POST /intelligence/machine/search 请求体**：
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| query | string | 否 | 搜索关键词（匹配标题/摘要/标签/路径） |
+| docTypes | string[] | 否 | 文档类型过滤：TABLE/PLAN/TIMELINE/GRAPH/RULE/GENERAL |
+| tags | string[] | 否 | 标签过滤 |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页条数，默认 20 |
+
+### 6.5 kb-ops（47 个接口）
 
 详细接口清单见 [接口规范清单_v1.md](接口规范清单_v1.md) 第 5 章，按模块组织：
 - 运维看板（4 个）：汇总 + 趋势 + 矛盾数 + 资源分布
@@ -340,6 +388,44 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
   "traceId": "a1b2c3d4e5f6"
 }
 ```
+
+### 7.4 全文搜索接口
+
+```
+GET /kb/api/search?q=知识库&type=doc&page=1&size=20
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+
+成功响应（200）：
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "id": "1",
+        "type": "doc",
+        "title": "知识库设计文档",
+        "name": "知识库设计文档",
+        "content": "# 知识库设计文档...",
+        "highlight": "...<em>知识库</em>设计文档...",
+        "starred": false,
+        "createdAt": "2026-06-28T10:00:00"
+      }
+    ],
+    "total": 42,
+    "page": 1,
+    "size": 20,
+    "pages": 3
+  },
+  "traceId": "a1b2c3d4e5f6"
+}
+```
+
+**说明**：
+- 主搜索引擎为 MeiliSearch，支持中文分词、模糊匹配、相关性排序
+- 当 MeiliSearch 不可用时自动降级到 MySQL LIKE 查询（doc + web 类型，file 暂不支持降级）
+- 搜索结果按 userId 隔离，用户只能搜索到自己的资源
+- 搜索建议接口（`/search/suggest`）当前为空实现，返回空列表
 
 ---
 

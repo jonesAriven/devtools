@@ -195,4 +195,67 @@ class KnowledgeIT {
         assertNotNull(resp.getBody(), "大数据量响应体不应为空");
         assertEquals(200, extractCode(resp), "大数据量分页应返回 code=200 且不超时");
     }
+
+    // ============ 搜索接口测试 ============
+    @Test
+    @DisplayName("搜索-正常参数-返回200")
+    void search_normalParameter_returns200() {
+        HttpHeaders headers = authHeaders("1");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> resp = restTemplate.exchange(
+            "/search?q=test&page=1&size=10", HttpMethod.GET, entity, Map.class);
+
+        assertNotNull(resp.getBody(), "搜索响应体不应为空");
+        assertEquals(200, extractCode(resp), "正常搜索应返回 code=200");
+        assertNotNull(resp.getBody().get("data"), "响应 data 字段不应为空");
+    }
+
+    @Test
+    @DisplayName("搜索-关键词为空-返回错误")
+    void search_blankKeyword_returnsError() {
+        HttpHeaders headers = authHeaders("1");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> resp = restTemplate.exchange(
+            "/search?q=&page=1&size=10", HttpMethod.GET, entity, Map.class);
+
+        assertNotNull(resp.getBody(), "响应体不应为空");
+        assertNotEquals(200, extractCode(resp), "空关键词应返回非200错误码");
+    }
+
+    @Test
+    @DisplayName("搜索-未认证-返回4xx")
+    void search_unauthenticated_returns4xx() {
+        ResponseEntity<Map> resp = restTemplate.getForEntity("/search?q=test", Map.class);
+
+        int status = resp.getStatusCode().value();
+        assertTrue(status >= 400 && status < 500, "未认证应返回4xx，实际: " + status);
+    }
+
+    @Test
+    @DisplayName("搜索-type为空字符串-搜索所有类型")
+    void search_emptyType_searchesAllTypes() {
+        HttpHeaders headers = authHeaders("1");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> resp = restTemplate.exchange(
+            "/search?q=test&type=&page=1&size=10", HttpMethod.GET, entity, Map.class);
+
+        assertNotNull(resp.getBody(), "搜索响应体不应为空");
+        assertEquals(200, extractCode(resp), "空字符串type应正常搜索（搜索所有类型）");
+    }
+
+    @Test
+    @DisplayName("搜索-指定type=doc-只搜文档类型")
+    void search_withDocType_returnsDocResults() {
+        HttpHeaders headers = authHeaders("1");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Map> resp = restTemplate.exchange(
+            "/search?q=test&type=doc&page=1&size=10", HttpMethod.GET, entity, Map.class);
+
+        assertNotNull(resp.getBody(), "搜索响应体不应为空");
+        assertEquals(200, extractCode(resp), "指定类型搜索应返回 code=200");
+    }
 }

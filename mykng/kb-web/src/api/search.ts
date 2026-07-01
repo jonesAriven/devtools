@@ -12,16 +12,14 @@ interface SearchParams {
 
 /** 全文搜索 */
 export function search(params: SearchParams) {
-  return request.get<R<PageResult<SearchResult>>>('/search', {
-    params: {
-      q: params.keyword,
-      type: params.type,
-      folderId: params.folderId,
-      tagId: params.tagId,
-      page: params.page,
-      size: params.size,
-    },
-  })
+  const queryParams: Record<string, any> = {}
+  if (params.keyword) queryParams.q = params.keyword
+  if (params.type) queryParams.type = params.type
+  if (params.folderId !== undefined && params.folderId !== null) queryParams.folderId = params.folderId
+  if (params.tagId !== undefined && params.tagId !== null) queryParams.tagId = params.tagId
+  if (params.page) queryParams.page = params.page
+  if (params.size) queryParams.size = params.size
+  return request.get<R<PageResult<SearchResult>>>('/search', { params: queryParams })
 }
 
 /** 搜索建议 */

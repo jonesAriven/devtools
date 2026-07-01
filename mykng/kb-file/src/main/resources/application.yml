@@ -27,15 +27,15 @@ mybatis-plus:
 
 # MinIO 配置
 minio:
-  endpoint: http://192.168.31.182:9000
+  endpoint: http://127.0.0.1:9000
   access-key: minioadmin
   secret-key: minioadmin
   bucket: kb-file
 
 # MeiliSearch 配置
 meilisearch:
-  host: http://192.168.31.182:7700
-  api-key: masterKey
+  host: http://127.0.0.1:7700
+  api-key: kbMeiliKey2026!!Secure
 
 # Redis 事件通道
 kb:

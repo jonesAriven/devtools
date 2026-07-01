@@ -29,10 +29,19 @@
           </el-descriptions>
         </div>
 
-        <div v-if="file?.parsedContent" class="info-card">
+        <div class="info-card">
           <div class="card-title">文件内容预览</div>
           <div class="file-content-preview">
-            <pre>{{ file.parsedContent }}</pre>
+            <FilePreview
+              v-if="file"
+              :file-id="Number(props.id)"
+              :file-name="file.name"
+              :file-type="file.type"
+            />
+            <div v-else class="content-empty">
+              <el-icon><Document /></el-icon>
+              <span>文件信息加载中...</span>
+            </div>
           </div>
         </div>
       </el-col>
@@ -77,7 +86,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Share, Download, Delete } from '@element-plus/icons-vue'
+import { Share, Download, Delete, Document } from '@element-plus/icons-vue'
 import { getFileDetail, deleteFile, downloadFile, toggleFileStar } from '@/api/file'
 import { getVersionList, rollbackVersion } from '@/api/version'
 import { formatFileSize, formatDate } from '@/utils/format'
@@ -85,6 +94,7 @@ import type { KbFile, Version } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
 import ShareDialog from '@/components/ShareDialog.vue'
+import FilePreview from '@/components/FilePreview.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const props = defineProps<{
@@ -98,20 +108,24 @@ const showShareDialog = ref(false)
 
 const parseStatusType = computed(() => {
   const status = file.value?.parseStatus
-  if (status === 'completed') return 'success'
-  if (status === 'processing') return 'warning'
-  if (status === 'failed') return 'danger'
+  if (status === 'READY' || status === 'completed') return 'success'
+  if (status === 'PARSING' || status === 'processing') return 'warning'
+  if (status === 'PARSE_FAILED' || status === 'failed') return 'danger'
   return 'info'
 })
 
 const parseStatusLabel = computed(() => {
   const map: Record<string, string> = {
+    PENDING: '等待解析',
+    PARSING: '解析中',
+    READY: '解析完成',
+    PARSE_FAILED: '解析失败',
     pending: '等待解析',
     processing: '解析中',
     completed: '解析完成',
     failed: '解析失败',
   }
-  return map[file.value?.parseStatus || 'pending'] || '未知'
+  return map[file.value?.parseStatus || 'pending'] || file.value?.parseStatus || '未知'
 })
 
 onMounted(() => {
@@ -137,7 +151,13 @@ async function handleToggleStar() {
 }
 
 async function handleDownload() {
-  await downloadFile(Number(props.id), file.value?.name)
+  try {
+    await downloadFile(Number(props.id), file.value?.name)
+    ElMessage.success('下载已开始')
+  } catch (e) {
+    console.error('下载失败', e)
+    ElMessage.error('下载失败，请重试')
+  }
 }
 
 async function handleDelete() {
@@ -171,18 +191,20 @@ async function handleRollback(versionId: number) {
   }
 
   .file-content-preview {
-    max-height: 400px;
+    max-height: 800px;
     overflow-y: auto;
-    padding: 12px;
+    padding: 0;
     background-color: #f5f7fa;
     border-radius: 4px;
 
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 13px;
-      line-height: 1.6;
-      margin: 0;
+    .content-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 32px;
+      color: #c0c4cc;
+      justify-content: center;
     }
   }
 }

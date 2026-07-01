@@ -23,8 +23,8 @@ mybatis-plus:
 
 # MeiliSearch 配置
 meilisearch:
-  host: http://192.168.31.105:7700
-  api-key: masterKey
+  host: http://127.0.0.1:7700
+  api-key: kbMeiliKey2026!!Secure
 
 # Redis 事件通道
 kb:

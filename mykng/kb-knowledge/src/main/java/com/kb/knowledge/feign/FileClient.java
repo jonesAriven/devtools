@@ -60,4 +60,8 @@ public interface FileClient {
 
     @org.springframework.web.bind.annotation.DeleteMapping("/file/trash/empty")
     Result<Void> emptyTrash(@RequestParam("userId") Long userId);
+
+    @GetMapping("/file/search")
+    Result<java.util.List<FileDTO>> searchByName(@RequestParam("keyword") String keyword,
+                                                  @RequestParam(value = "folderId", required = false) Long folderId);
 }

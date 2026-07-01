@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -181,6 +182,15 @@ public class KbFileServiceImpl implements KbFileService {
     }
 
     @Override
+    public java.io.InputStream downloadStream(Long id, Long userId) {
+        KbFile file = getById(id, userId);
+        if (file.getMinioPath() == null) {
+            throw new BusinessException("文件路径不存在");
+        }
+        return minioService.download(BUCKET, file.getMinioPath());
+    }
+
+    @Override
     public void reparse(Long id, Long userId) {
         KbFile file = getById(id, userId);
         file.setParseStatus("PENDING");
@@ -231,6 +241,17 @@ public class KbFileServiceImpl implements KbFileService {
         return fileContentRepository.findByFileIdAndIsCurrentTrue(id)
                 .map(c -> c.getContent() != null ? c.getContent() : "")
                 .orElse("");
+    }
+
+    @Override
+    public List<KbFile> searchByName(String keyword, Long userId, Long folderId) {
+        LambdaQueryWrapper<KbFile> wrapper = new LambdaQueryWrapper<KbFile>()
+                .eq(KbFile::getUserId, userId)
+                .eq(folderId != null, KbFile::getFolderId, folderId)
+                .like(KbFile::getName, keyword)
+                .orderByDesc(KbFile::getCreatedAt)
+                .last("LIMIT 100");
+        return kbFileMapper.selectList(wrapper);
     }
 
     // ======================== 私有方法 ========================
