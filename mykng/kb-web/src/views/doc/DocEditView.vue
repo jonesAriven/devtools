@@ -27,6 +27,9 @@
         <el-button @click="showVersionDrawer = true; loadVersions()" size="large">
           <el-icon><Clock /></el-icon>&nbsp;历史版本
         </el-button>
+        <el-button v-if="doc.format === 'markdown'" @click="openLinkPicker" size="large">
+          <el-icon><Link /></el-icon>&nbsp;插入双向链接
+        </el-button>
       </div>
     </div>
 
@@ -40,8 +43,10 @@
             :preview="true"
             language="zh-CN"
             :toolbars-exclude="['github', 'save']"
+            :markdown-it-config="configMarkdownIt"
             placeholder="开始编写 Markdown 笔记..."
             style="height: 600px"
+            @on-click="handlePreviewClick"
           />
           <!-- HTML 富文本编辑器 -->
           <template v-else>
@@ -86,6 +91,23 @@
             :resource-id="Number(id)"
             resource-type="doc"
           />
+        </div>
+
+        <div class="info-card" style="margin-top: 16px">
+          <div class="card-title">反向链接</div>
+          <div v-if="backlinksLoading" class="backlink-loading">加载中...</div>
+          <div v-else-if="backlinks.length === 0" class="backlink-empty">暂无反向链接</div>
+          <ul v-else class="backlink-list">
+            <li
+              v-for="bl in backlinks"
+              :key="bl.id"
+              class="backlink-item"
+              @click="goToDoc(bl.id)"
+            >
+              <div class="backlink-item__title">{{ bl.title }}</div>
+              <div class="backlink-item__preview">{{ bl.preview }}</div>
+            </li>
+          </ul>
         </div>
 
         <div class="info-card" style="margin-top: 16px">
@@ -145,20 +167,48 @@
         </div>
       </div>
     </el-drawer>
+
+    <!-- 双向链接文档选择器 -->
+    <el-dialog v-model="showLinkPicker" title="选择文档" width="500px">
+      <el-input
+        v-model="linkPickerKeyword"
+        placeholder="搜索文档标题..."
+        :prefix-icon="Search"
+        clearable
+        style="margin-bottom: 12px"
+      />
+      <div v-if="linkPickerLoading" style="text-align: center; padding: 24px">加载中...</div>
+      <div v-else-if="filteredLinkDocs.length === 0" style="text-align: center; padding: 24px; color: #909399">
+        无匹配文档
+      </div>
+      <ul v-else class="link-doc-list">
+        <li
+          v-for="d in filteredLinkDocs"
+          :key="d.id"
+          class="link-doc-item"
+          @click="insertBiLink(d)"
+        >
+          <el-icon><Document /></el-icon>
+          <span class="link-doc-item__title">{{ d.title }}</span>
+          <span class="link-doc-item__id">#{{ d.id }}</span>
+        </li>
+      </ul>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { getDocDetail, updateDoc, getDocVersions } from '@/api/doc'
+import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getDocDetail, updateDoc, getDocVersions, getDocList } from '@/api/doc'
 import { getFolderTree } from '@/api/folder'
+import { search as searchApi } from '@/api/search'
 import { formatDate } from '@/utils/format'
 import { extractOutline, scrollToHeading } from '@/utils/docOutline'
 import type { Doc, Folder, DocFormat, OutlineItem, DocVersion } from '@/types'
 import TagInput from '@/components/TagInput.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Clock } from '@element-plus/icons-vue'
+import { ArrowDown, Clock, Link, Search, Document } from '@element-plus/icons-vue'
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import '@wangeditor/editor/dist/css/style.css'
@@ -170,6 +220,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const router = useRouter()
 const toolbarRef = ref<HTMLElement>()
 const editorRef = ref<HTMLElement>()
 const editorInstance = shallowRef<IDomEditor>()
@@ -190,6 +241,24 @@ const selectedVersionId = ref<string>('')
 const diffLines = ref<{ type: 'add' | 'del' | 'same'; text: string }[]>([])
 const diffMode = ref<'inline' | 'split'>('inline')
 
+// 双向链接
+const showLinkPicker = ref(false)
+const linkPickerKeyword = ref('')
+const linkPickerLoading = ref(false)
+const allDocs = ref<Doc[]>([])
+const filteredLinkDocs = computed(() => {
+  const kw = linkPickerKeyword.value.trim().toLowerCase()
+  if (!kw) return allDocs.value.slice(0, 20)
+  return allDocs.value
+    .filter(d => d.id !== Number(props.id))
+    .filter(d => (d.title || '').toLowerCase().includes(kw))
+    .slice(0, 20)
+})
+
+// 反向链接
+const backlinks = ref<{ id: number; title: string; preview: string }[]>([])
+const backlinksLoading = ref(false)
+
 const doc = reactive<Partial<Doc> & { format: DocFormat }>({
   title: '',
   content: '',
@@ -205,6 +274,8 @@ onMounted(async () => {
   initHtmlEditor()
   updateOutline()
   lastSavedTitle.value = doc.title || ''
+  // 加载反向链接
+  loadBacklinks()
   // 每 30 秒保存草稿到 localStorage
   draftTimer = setInterval(saveDraft, 30_000)
   // 每 2 分钟自动保存到服务器
@@ -433,6 +504,103 @@ function computeDiff(oldText: string, newText: string): { type: 'add' | 'del' | 
     }
   }
   return result
+}
+
+// ===== 双向链接功能 =====
+
+/**
+ * 配置 markdown-it，注册 [[docId|标题]] 双向链接语法解析
+ * 预览时将 [[docId|标题]] 渲染为可点击的内部链接
+ */
+function configMarkdownIt(md: any) {
+  // 注册 inline 规则：匹配 [[数字|文本]]
+  md.inline.ruler.before('emphasis', 'bi_link', (state: any, silent: boolean) => {
+    const src = state.src.slice(state.pos)
+    const match = /^\[\[(\d+)\|([^\]]+)\]\]/.exec(src)
+    if (!match) return false
+    if (!silent) {
+      const token = state.push('bi_link', '', 0)
+      token.markup = ''
+      token.content = match[0]
+      token.meta = { docId: match[1], title: match[2] }
+    }
+    state.pos += match[0].length
+    return true
+  })
+  // 渲染规则
+  md.renderer.rules.bi_link = (tokens: any[], idx: number) => {
+    const token = tokens[idx]
+    const { docId, title } = token.meta
+    const escaped = md.utils.escapeHtml(title)
+    return `<a class="bi-link" data-doc-id="${docId}" href="#/doc/edit/${docId}" title="跳转到: ${escaped}">${escaped}</a>`
+  }
+}
+
+/** 打开文档选择器 */
+async function openLinkPicker() {
+  showLinkPicker.value = true
+  linkPickerKeyword.value = ''
+  if (allDocs.value.length === 0) {
+    linkPickerLoading.value = true
+    try {
+      const res = await getDocList({ page: 1, size: 100 })
+      allDocs.value = res.data.data?.list || []
+    } catch {
+      // 错误已在拦截器中处理
+    } finally {
+      linkPickerLoading.value = false
+    }
+  }
+}
+
+/** 插入双向链接到 Markdown 内容 */
+function insertBiLink(d: Doc) {
+  const link = `[[${d.id}|${d.title}]]`
+  // 追加到内容末尾（md-editor-v3 v-model 同步）
+  doc.content = (doc.content || '') + '\n' + link
+  dirty.value = true
+  showLinkPicker.value = false
+  ElMessage.success(`已插入双向链接: ${d.title}`)
+}
+
+/** 预览区域点击事件，处理双向链接跳转 */
+function handlePreviewClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (target.classList?.contains('bi-link')) {
+    e.preventDefault()
+    const docId = target.getAttribute('data-doc-id')
+    if (docId) {
+      goToDoc(Number(docId))
+    }
+  }
+}
+
+/** 跳转到文档 */
+function goToDoc(docId: number) {
+  router.push(`/doc/edit/${docId}`)
+}
+
+/** 加载反向链接：搜索引用了当前文档的其他文档 */
+async function loadBacklinks() {
+  if (!doc.title) return
+  backlinksLoading.value = true
+  try {
+    // 搜索包含当前文档 ID 或标题的文档
+    const res = await searchApi({ keyword: String(props.id), type: 'doc', size: 10 })
+    const results = res.data.data?.list || []
+    // 过滤掉自身，构建预览
+    backlinks.value = results
+      .filter((r: any) => r.id !== Number(props.id))
+      .map((r: any) => ({
+        id: r.id,
+        title: r.title || r.name || '未命名',
+        preview: (r.highlight || r.content || '').replace(/<[^>]+>/g, '').slice(0, 80),
+      }))
+  } catch {
+    // 搜索失败不阻塞编辑
+  } finally {
+    backlinksLoading.value = false
+  }
 }
 
 function handleExport(command: string) {
@@ -790,6 +958,86 @@ function markdownToHtml(md: string): string {
 
     &.diff-same {
       .diff-line__text { color: #606266; }
+    }
+  }
+}
+
+// 双向链接文档选择器
+.link-doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 360px;
+  overflow-y: auto;
+
+  .link-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+
+    &__title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #303133;
+    }
+
+    &__id {
+      font-size: 12px;
+      color: #c0c4cc;
+    }
+  }
+}
+
+// 反向链接面板
+.backlink-loading, .backlink-empty {
+  text-align: center;
+  color: #c0c4cc;
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+.backlink-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  .backlink-item {
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 4px;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+
+    &__title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #409eff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__preview {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }

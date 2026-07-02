@@ -1,5 +1,5 @@
 import request from './index'
-import type { R, Doc, CreateDocRequest, UpdateDocRequest, PageResult, PageParams } from '@/types'
+import type { R, Doc, DocVersion, CreateDocRequest, UpdateDocRequest, PageResult, PageParams } from '@/types'
 
 /** 创建笔记 */
 export function createDoc(data: CreateDocRequest) {
