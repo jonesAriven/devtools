@@ -99,10 +99,14 @@ async function handleRefetch() {
 }
 
 async function handleDelete() {
-  await ElMessageBox.confirm('确定要删除此网页收藏吗？', '提示', { type: 'warning' })
-  await deleteWebPage(Number(props.id))
-  ElMessage.success('已删除')
-  router.back()
+  try {
+    await ElMessageBox.confirm('确定要删除此网页收藏吗？', '提示', { type: 'warning' })
+    await deleteWebPage(Number(props.id))
+    ElMessage.success('已删除')
+    router.back()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 </script>
 

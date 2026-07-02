@@ -210,24 +210,31 @@ async function handleDownload() {
   try {
     await downloadFile(Number(props.id), file.value?.name)
     ElMessage.success('下载已开始')
-  } catch (e) {
-    console.error('下载失败', e)
+  } catch {
     ElMessage.error('下载失败，请重试')
   }
 }
 
 async function handleDelete() {
-  await ElMessageBox.confirm('确定要删除此文件吗？', '提示', { type: 'warning' })
-  await deleteFile(Number(props.id))
-  ElMessage.success('已删除')
-  router.back()
+  try {
+    await ElMessageBox.confirm('确定要删除此文件吗？', '提示', { type: 'warning' })
+    await deleteFile(Number(props.id))
+    ElMessage.success('已删除')
+    router.back()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 async function handleRollback(versionId: number) {
-  await ElMessageBox.confirm('确定要回滚到此版本吗？', '提示', { type: 'warning' })
-  await rollbackVersion(versionId)
-  ElMessage.success('已回滚')
-  loadFile()
+  try {
+    await ElMessageBox.confirm('确定要回滚到此版本吗？', '提示', { type: 'warning' })
+    await rollbackVersion(versionId)
+    ElMessage.success('已回滚')
+    loadFile()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 async function loadFileContent() {
@@ -243,7 +250,11 @@ async function loadFileContent() {
 }
 
 async function handleSaveContent() {
-  await ElMessageBox.confirm('保存将覆盖原文件内容，且会创建新版本。是否继续？', '提示', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm('保存将覆盖原文件内容，且会创建新版本。是否继续？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
   saving.value = true
   try {
     await updateFileContent(Number(props.id), editContent.value)
@@ -252,8 +263,8 @@ async function handleSaveContent() {
     // 重新加载文件信息和版本
     loadFile()
     loadVersions()
-  } catch (e: any) {
-    ElMessage.error('保存失败：' + (e?.message || ''))
+  } catch {
+    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }

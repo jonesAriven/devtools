@@ -84,23 +84,35 @@ function typeLabel(type: string): string {
 }
 
 async function handleRestore(row: TrashItem) {
-  await restoreResource(row.id, row.type)
-  ElMessage.success('已恢复')
-  loadTrash()
+  try {
+    await restoreResource(row.id, row.type)
+    ElMessage.success('已恢复')
+    loadTrash()
+  } catch {
+    // 错误已在拦截器处理
+  }
 }
 
 async function handlePermanentDelete(row: TrashItem) {
-  await ElMessageBox.confirm('永久删除后不可恢复，确定要删除吗？', '警告', { type: 'warning' })
-  await permanentDelete(row.id, row.type)
-  ElMessage.success('已永久删除')
-  loadTrash()
+  try {
+    await ElMessageBox.confirm('永久删除后不可恢复，确定要删除吗？', '警告', { type: 'warning' })
+    await permanentDelete(row.id, row.type)
+    ElMessage.success('已永久删除')
+    loadTrash()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 async function handleEmptyTrash() {
-  await ElMessageBox.confirm('清空回收站后所有资源将永久删除，确定要清空吗？', '警告', { type: 'warning' })
-  await emptyTrash()
-  ElMessage.success('已清空回收站')
-  loadTrash()
+  try {
+    await ElMessageBox.confirm('清空回收站后所有资源将永久删除，确定要清空吗？', '警告', { type: 'warning' })
+    await emptyTrash()
+    ElMessage.success('已清空回收站')
+    loadTrash()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 </script>
 
