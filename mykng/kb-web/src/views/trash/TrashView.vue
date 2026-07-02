@@ -71,8 +71,9 @@
 import { ref, onMounted } from 'vue'
 import { getTrashList, restoreResource, permanentDelete, emptyTrash } from '@/api/trash'
 import { formatDate, typeLabel } from '@/utils/format'
+import { confirmDelete, confirmDanger } from '@/utils/confirm'
 import type { TrashItem } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 const trashList = ref<TrashItem[]>([])
 const page = ref(1)
@@ -112,7 +113,7 @@ async function handleRestore(row: TrashItem) {
 
 async function handlePermanentDelete(row: TrashItem) {
   try {
-    await ElMessageBox.confirm('永久删除后不可恢复，确定要删除吗？', '警告', { type: 'warning' })
+    await confirmDelete('永久删除后不可恢复，确定要删除吗？')
     await permanentDelete(row.id, row.type)
     ElMessage.success('已永久删除')
     loadTrash()
@@ -123,7 +124,7 @@ async function handlePermanentDelete(row: TrashItem) {
 
 async function handleEmptyTrash() {
   try {
-    await ElMessageBox.confirm('清空回收站后所有资源将永久删除，确定要清空吗？', '警告', { type: 'warning' })
+    await confirmDanger('清空回收站后所有资源将永久删除，确定要清空吗？', '确定清空')
     await emptyTrash()
     ElMessage.success('已清空回收站')
     loadTrash()

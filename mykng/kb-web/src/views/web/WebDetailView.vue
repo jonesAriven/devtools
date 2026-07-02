@@ -62,11 +62,12 @@ import { useRouter } from 'vue-router'
 import { Share, Refresh, Delete } from '@element-plus/icons-vue'
 import { getWebPageDetail, deleteWebPage, toggleWebPageStar, refetchWebPage } from '@/api/web'
 import { formatDate } from '@/utils/format'
+import { confirmDelete } from '@/utils/confirm'
 import type { WebPage } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
 import ShareDialog from '@/components/ShareDialog.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps<{
   id: string
@@ -100,7 +101,7 @@ async function handleRefetch() {
 
 async function handleDelete() {
   try {
-    await ElMessageBox.confirm('确定要删除此网页收藏吗？', '提示', { type: 'warning' })
+    await confirmDelete('确定要删除此网页收藏吗？')
     await deleteWebPage(Number(props.id))
     ElMessage.success('已删除')
     router.back()

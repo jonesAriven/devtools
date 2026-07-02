@@ -136,7 +136,8 @@ import type { KbFile } from '@/types'
 import type { UploadRequestOptions } from 'element-plus'
 import { formatDate, formatFileSize } from '@/utils/format'
 import { useSpaceStore } from '@/stores/space'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmDelete } from '@/utils/confirm'
 
 const router = useRouter()
 const spaceStore = useSpaceStore()
@@ -207,9 +208,8 @@ async function toggleStar(row: any) {
   try {
     await toggleFileStar(row.id)
     row.starred = !row.starred
-    ElMessage.success(row.starred ? '已标星' : '已取消标星')
   } catch {
-    ElMessage.error('操作失败')
+    // 错误已在拦截器处理
   }
 }
 
@@ -223,12 +223,12 @@ async function handleDownload(row: any) {
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('确认删除该文件？删除后可在回收站找回。', '提示', { type: 'warning' })
+    await confirmDelete('确认删除该文件？删除后可在回收站找回。')
     await deleteFile(id)
     ElMessage.success('删除成功')
     loadData()
   } catch {
-    // 用户取消
+    // 用户取消或错误已在拦截器处理
   }
 }
 

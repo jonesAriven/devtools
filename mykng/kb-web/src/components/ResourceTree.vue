@@ -230,6 +230,7 @@ import { createWebPage, deleteWebPage } from '@/api/web'
 import { deleteDoc, updateDoc } from '@/api/doc'
 import { deleteFile, downloadFile } from '@/api/file'
 import { typeLabel, navigateToResource } from '@/utils/format'
+import { confirmDelete } from '@/utils/confirm'
 import type { ResourceTreeNode } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FileUpload from '@/components/FileUpload.vue'
@@ -491,23 +492,25 @@ async function handleRenameSubmit() {
 async function handleDelete() {
   const name = contextMenu.name
   const type = contextMenu.type
-  await ElMessageBox.confirm(
-    `确定要删除${typeLabel(type)}"${name}"吗？${type === 'folder' ? '目录下的内容将移至根目录。' : '此操作可在回收站恢复。'}`,
-    '提示',
-    { type: 'warning' }
-  )
-  if (type === 'folder') {
-    await deleteFolder(contextMenu.id)
-  } else if (type === 'doc') {
-    await deleteDoc(contextMenu.id)
-  } else if (type === 'file') {
-    await deleteFile(contextMenu.id)
-  } else if (type === 'web') {
-    await deleteWebPage(contextMenu.id)
+  try {
+    await confirmDelete(
+      `确定要删除${typeLabel(type)}"${name}"吗？${type === 'folder' ? '目录下的内容将移至根目录。' : '此操作可在回收站恢复。'}`,
+    )
+    if (type === 'folder') {
+      await deleteFolder(contextMenu.id)
+    } else if (type === 'doc') {
+      await deleteDoc(contextMenu.id)
+    } else if (type === 'file') {
+      await deleteFile(contextMenu.id)
+    } else if (type === 'web') {
+      await deleteWebPage(contextMenu.id)
+    }
+    ElMessage.success('已删除')
+    loadTree()
+    emit('refresh')
+  } catch {
+    // 用户取消或错误已在拦截器处理
   }
-  ElMessage.success('已删除')
-  loadTree()
-  emit('refresh')
 }
 
 function handleOpen() {

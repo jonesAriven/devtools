@@ -181,8 +181,9 @@ import { getBucketList, createBucket, deleteBucket, testBucketConnection, setDef
 import { getLogList } from '@/api/log'
 import { getTokenList, createToken, deleteToken, toggleTokenStatus } from '@/api/token'
 import { formatDate } from '@/utils/format'
+import { confirmDelete } from '@/utils/confirm'
 import type { Bucket, OperationLog, ApiToken, CreateTokenRequest } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const activeTab = ref('profile')
@@ -288,10 +289,14 @@ async function handleSetDefault(id: number) {
 }
 
 async function handleDeleteBucket(id: number) {
-  await ElMessageBox.confirm('确定要删除此存储桶吗？', '提示', { type: 'warning' })
-  await deleteBucket(id)
-  ElMessage.success('已删除')
-  loadBuckets()
+  try {
+    await confirmDelete('确定要删除此存储桶吗？')
+    await deleteBucket(id)
+    ElMessage.success('已删除')
+    loadBuckets()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 async function loadLogs() {
@@ -332,10 +337,14 @@ async function handleCreateToken() {
 }
 
 async function handleDeleteToken(id: number) {
-  await ElMessageBox.confirm('确定要删除此 Token 吗？', '提示', { type: 'warning' })
-  await deleteToken(id)
-  ElMessage.success('已删除')
-  loadTokens()
+  try {
+    await confirmDelete('确定要删除此 Token 吗？')
+    await deleteToken(id)
+    ElMessage.success('已删除')
+    loadTokens()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 async function handleToggleTokenStatus(id: number) {

@@ -28,17 +28,23 @@ body {
 }
 
 a {
-  color: #409eff;
+  color: var(--el-color-primary);
   text-decoration: none;
 
   &:hover {
-    color: #66b1ff;
+    color: var(--el-color-primary-light-3);
   }
 }
 
-/* Element Plus 主题变量覆盖 */
+/* Element Plus 主题变量覆盖（品牌主色：金色） */
 :root {
-  --el-color-primary: #409eff;
+  --el-color-primary: #c9a96e;
+  --el-color-primary-light-3: #d4b884;
+  --el-color-primary-light-5: #dec4a0;
+  --el-color-primary-light-7: #ead7bb;
+  --el-color-primary-light-8: #efe1cd;
+  --el-color-primary-light-9: #f5ebdf;
+  --el-color-primary-dark-2: #a8895a;
   --el-color-success: #67c23a;
   --el-color-warning: #e6a23c;
   --el-color-danger: #f56c6c;
@@ -203,8 +209,8 @@ a {
 
   &:hover,
   &.dragging {
-    border-color: #409eff;
-    background-color: #ecf5ff;
+    border-color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
   }
 
   .upload-icon {

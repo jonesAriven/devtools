@@ -76,7 +76,8 @@ import { Refresh } from '@element-plus/icons-vue'
 import { getMyShares, cancelShare } from '@/api/share'
 import type { Share } from '@/types'
 import { formatDate } from '@/utils/format'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmDanger } from '@/utils/confirm'
+import { ElMessage } from 'element-plus'
 import { CONTEXT_PATH } from '@/config'
 
 const loading = ref(false)
@@ -147,7 +148,7 @@ async function copyLink(row: any) {
 
 async function handleCancel(id: number) {
   try {
-    await ElMessageBox.confirm('取消后该分享链接将立即失效，确定要取消吗？', '提示', { type: 'warning' })
+    await confirmDanger('取消后该分享链接将立即失效，确定要取消吗？', '确定取消分享')
     await cancelShare(id)
     ElMessage.success('已取消分享')
     loadData()

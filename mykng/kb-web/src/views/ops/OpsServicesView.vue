@@ -50,7 +50,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getServiceList, createService, updateService, deleteService } from '@/api/ops'
 import type { OpsService } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmDelete } from '@/utils/confirm'
 
 const loading = ref(false)
 const list = ref<OpsService[]>([])
@@ -83,10 +84,14 @@ async function handleSave() {
 }
 
 async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确认删除该服务？', '提示', { type: 'warning' })
-  await deleteService(id)
-  ElMessage.success('删除成功')
-  loadData()
+  try {
+    await confirmDelete('确认删除该服务？')
+    await deleteService(id)
+    ElMessage.success('删除成功')
+    loadData()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 onMounted(loadData)

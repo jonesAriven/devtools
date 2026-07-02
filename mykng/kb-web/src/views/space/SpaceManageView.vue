@@ -81,10 +81,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FolderOpened, Plus, MoreFilled, Edit, Delete, Clock, Loading } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useSpaceStore } from '@/stores/space'
 import { getSpaceList, createSpace, updateSpace, deleteSpace } from '@/api/space'
 import { formatDate } from '@/utils/format'
+import { confirmDelete } from '@/utils/confirm'
 import type { Space } from '@/types'
 
 const router = useRouter()
@@ -156,12 +157,10 @@ async function handleSubmit() {
 }
 
 async function handleDelete(space: Space) {
-  await ElMessageBox.confirm(
-    `确定要删除空间"${space.name}"吗？空间内的所有内容（文档、文件、目录）将被一并删除，此操作不可恢复。`,
-    '警告',
-    { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
-  )
   try {
+    await confirmDelete(
+      `确定要删除空间"${space.name}"吗？空间内的所有内容（文档、文件、目录）将被一并删除，此操作不可恢复。`,
+    )
     await deleteSpace(space.id)
     ElMessage.success('已删除')
     if (spaceStore.currentSpace?.id === space.id) {
@@ -170,7 +169,7 @@ async function handleDelete(space: Space) {
     await spaceStore.fetchSpaceList()
     loadSpaces()
   } catch {
-    // 错误已在拦截器处理
+    // 用户取消或错误已在拦截器处理
   }
 }
 

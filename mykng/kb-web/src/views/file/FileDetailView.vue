@@ -127,12 +127,13 @@ import { Share, Download, Delete, Document, Edit } from '@element-plus/icons-vue
 import { getFileDetail, deleteFile, downloadFile, toggleFileStar, getFileContent, updateFileContent } from '@/api/file'
 import { getVersionList, rollbackVersion } from '@/api/version'
 import { formatFileSize, formatDate } from '@/utils/format'
+import { confirmDelete, confirmDanger } from '@/utils/confirm'
 import type { KbFile, Version } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
 import ShareDialog from '@/components/ShareDialog.vue'
 import FilePreview from '@/components/FilePreview.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps<{
   id: string
@@ -217,7 +218,7 @@ async function handleDownload() {
 
 async function handleDelete() {
   try {
-    await ElMessageBox.confirm('确定要删除此文件吗？', '提示', { type: 'warning' })
+    await confirmDelete('确定要删除此文件吗？')
     await deleteFile(Number(props.id))
     ElMessage.success('已删除')
     router.back()
@@ -228,7 +229,7 @@ async function handleDelete() {
 
 async function handleRollback(versionId: number) {
   try {
-    await ElMessageBox.confirm('确定要回滚到此版本吗？', '提示', { type: 'warning' })
+    await confirmDanger('确定要回滚到此版本吗？当前内容将被覆盖。', '确定回滚')
     await rollbackVersion(versionId)
     ElMessage.success('已回滚')
     loadFile()
@@ -251,7 +252,7 @@ async function loadFileContent() {
 
 async function handleSaveContent() {
   try {
-    await ElMessageBox.confirm('保存将覆盖原文件内容，且会创建新版本。是否继续？', '提示', { type: 'warning' })
+    await confirmDanger('保存将覆盖原文件内容，且会创建新版本。是否继续？', '确定保存')
   } catch {
     return
   }

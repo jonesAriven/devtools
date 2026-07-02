@@ -53,7 +53,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getHostList, createHost, updateHost, deleteHost } from '@/api/ops'
 import type { OpsHost } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { confirmDelete } from '@/utils/confirm'
 
 const loading = ref(false)
 const list = ref<OpsHost[]>([])
@@ -86,10 +87,14 @@ async function handleSave() {
 }
 
 async function handleDelete(id: number) {
-  await ElMessageBox.confirm('确认删除该主机？', '提示', { type: 'warning' })
-  await deleteHost(id)
-  ElMessage.success('删除成功')
-  loadData()
+  try {
+    await confirmDelete('确认删除该主机？')
+    await deleteHost(id)
+    ElMessage.success('删除成功')
+    loadData()
+  } catch {
+    // 用户取消或错误已在拦截器处理
+  }
 }
 
 onMounted(loadData)

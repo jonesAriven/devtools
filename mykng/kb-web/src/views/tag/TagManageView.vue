@@ -69,7 +69,8 @@ import { Search } from '@element-plus/icons-vue'
 import { getTagList, createTag, updateTag, deleteTag } from '@/api/tag'
 import type { Tag } from '@/types'
 import { formatDate } from '@/utils/format'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmDelete } from '@/utils/confirm'
+import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const list = ref<Tag[]>([])
@@ -131,9 +132,7 @@ async function handleSave() {
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('确认删除该标签？删除后资源上的该标签关联也将失效。', '提示', {
-      type: 'warning',
-    })
+    await confirmDelete('确认删除该标签？删除后资源上的该标签关联也将失效。')
     await deleteTag(id)
     ElMessage.success('删除成功')
     loadData()

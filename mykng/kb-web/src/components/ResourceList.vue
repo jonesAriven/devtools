@@ -197,6 +197,7 @@ import { getDocList, deleteDoc, updateDoc, moveDoc, toggleDocStar } from '@/api/
 import { getWebPageList, deleteWebPage, moveWebPage, toggleWebPageStar } from '@/api/web'
 import { getFolderTree } from '@/api/folder'
 import { formatRelativeTime, typeLabel, navigateToResource } from '@/utils/format'
+import { confirmDelete } from '@/utils/confirm'
 import type { KbFile, Doc, WebPage } from '@/types'
 import type { Folder as FolderType } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -398,22 +399,24 @@ function handleShare(item: ResourceListItem) {
 }
 
 async function handleDelete(item: ResourceListItem) {
-  const typeLabelText = typeLabel(item.type)
-  await ElMessageBox.confirm(
-    `确定要删除${typeLabelText}"${item.name}"吗？删除后可在回收站恢复。`,
-    '提示',
-    { type: 'warning' }
-  )
-  if (item.type === 'file') {
-    await deleteFile(item.id)
-  } else if (item.type === 'doc') {
-    await deleteDoc(item.id)
-  } else if (item.type === 'web') {
-    await deleteWebPage(item.id)
+  try {
+    const typeLabelText = typeLabel(item.type)
+    await confirmDelete(
+      `确定要删除${typeLabelText}"${item.name}"吗？删除后可在回收站恢复。`,
+    )
+    if (item.type === 'file') {
+      await deleteFile(item.id)
+    } else if (item.type === 'doc') {
+      await deleteDoc(item.id)
+    } else if (item.type === 'web') {
+      await deleteWebPage(item.id)
+    }
+    ElMessage.success('已删除')
+    loadResources()
+    emit('refresh-tree')
+  } catch {
+    // 用户取消或错误已在拦截器处理
   }
-  ElMessage.success('已删除')
-  loadResources()
-  emit('refresh-tree')
 }
 
 async function handleBatchMove() {
@@ -458,12 +461,11 @@ async function confirmBatchMove() {
 
 async function handleBatchDelete() {
   const count = selectedItems.value.length
-  await ElMessageBox.confirm(
-    `确定要删除选中的 ${count} 项吗？删除后可在回收站恢复。`,
-    '批量删除',
-    { type: 'warning' }
-  )
   try {
+    await confirmDelete(
+      `确定要删除选中的 ${count} 项吗？删除后可在回收站恢复。`,
+      { confirmButtonText: '确定批量删除' },
+    )
     const promises = selectedItems.value.map((item) => {
       if (item.type === 'file') return deleteFile(item.id)
       else if (item.type === 'doc') return deleteDoc(item.id)
