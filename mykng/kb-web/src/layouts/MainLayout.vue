@@ -351,6 +351,7 @@
         <router-view />
       </el-main>
     </el-container>
+    <BackToTop />
   </el-container>
 </template>
 
@@ -361,6 +362,7 @@ import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useAuth } from '@/composables/useAuth'
+import BackToTop from '@/components/BackToTop.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -454,6 +456,7 @@ function checkMobile() {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  window.addEventListener('keydown', handleGlobalKeydown)
   spaceStore.fetchSpaceList()
   if (!userStore.profile) {
     userStore.fetchProfile()
@@ -462,7 +465,21 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
+
+// 全局键盘快捷键：Ctrl+K 聚焦搜索
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault()
+    const searchInput = document.querySelector('.header-center .el-input__inner') as HTMLInputElement
+    if (searchInput) {
+      searchInput.focus()
+    } else {
+      router.push('/search')
+    }
+  }
+}
 
 async function handleCommand(command: string) {
   if (command === 'logout') {

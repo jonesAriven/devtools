@@ -329,6 +329,8 @@ onMounted(async () => {
   autoSaveTimer = setInterval(autoSave, 120_000)
   // 离开页面前提示
   window.addEventListener('beforeunload', handleBeforeUnload)
+  // Ctrl+S 手动保存
+  window.addEventListener('keydown', handleEditorKeydown)
 })
 
 onBeforeUnmount(() => {
@@ -338,7 +340,16 @@ onBeforeUnmount(() => {
   if (draftTimer) clearInterval(draftTimer)
   if (autoSaveTimer) clearInterval(autoSaveTimer)
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('keydown', handleEditorKeydown)
 })
+
+// Ctrl+S 手动保存（业界编辑器标配快捷键）
+function handleEditorKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    handleSave()
+  }
+}
 
 // 监听内容变化更新大纲 + 标记脏数据
 watch(() => doc.content, () => {

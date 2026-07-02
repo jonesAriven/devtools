@@ -11,6 +11,9 @@
       <template #prefix>
         <el-icon><Search /></el-icon>
       </template>
+      <template #suffix>
+        <kbd class="shortcut-hint">Ctrl K</kbd>
+      </template>
     </el-input>
 
     <el-popover
@@ -97,6 +100,20 @@ function handleSelectSuggest(item: string) {
 
 .search-input {
   width: 100%;
+}
+
+.shortcut-hint {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #909399;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
 }
 
 .suggest-list {
