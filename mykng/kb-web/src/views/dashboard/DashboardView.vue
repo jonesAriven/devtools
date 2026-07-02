@@ -62,6 +62,26 @@
         </div>
       </div>
 
+      <!-- 最近文件 -->
+      <div class="panel panel--recent">
+        <div class="panel-header">
+          <el-icon class="panel-icon"><Files /></el-icon>
+          <span class="panel-title">最近文件</span>
+        </div>
+        <div class="panel-body">
+          <div v-if="recentFiles.length === 0" class="empty-text">暂无文件</div>
+          <div v-else>
+            <div v-for="item in recentFiles" :key="item.id" class="recent-item" @click="goToFile(item)">
+              <el-icon class="recent-icon recent-icon--file"><Picture /></el-icon>
+              <div class="recent-info">
+                <div class="recent-name">{{ item.name }}</div>
+                <div class="recent-time">{{ formatRelativeTime(item.updatedAt) }} · {{ formatFileSize(item.size) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 快捷操作 -->
       <div class="panel panel--actions">
         <div class="panel-header">
@@ -125,13 +145,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Document, FolderOpened, PriceTag, Share, Clock, Plus, Search, EditPen } from '@element-plus/icons-vue'
+import { Document, FolderOpened, PriceTag, Share, Clock, Plus, Search, EditPen, Files, Picture } from '@element-plus/icons-vue'
 import { useSpaceStore } from '@/stores/space'
 import { createSpace, getSpaceList } from '@/api/space'
 import { getMyShares } from '@/api/share'
 import { getTagList } from '@/api/tag'
 import { getDocList } from '@/api/doc'
-import { formatRelativeTime } from '@/utils/format'
+import { getFileList } from '@/api/file'
+import { formatRelativeTime, formatFileSize } from '@/utils/format'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -145,6 +166,7 @@ const stats = reactive({
 })
 
 const recentDocs = ref<any[]>([])
+const recentFiles = ref<any[]>([])
 const showSpaceDialog = ref(false)
 const spaceForm = reactive({
   name: '',
@@ -157,11 +179,12 @@ onMounted(() => {
 
 async function loadStats() {
   try {
-    const [spacesRes, tagsRes, sharesRes, docsRes] = await Promise.allSettled([
+    const [spacesRes, tagsRes, sharesRes, docsRes, filesRes] = await Promise.allSettled([
       getSpaceList(),
       getTagList(),
       getMyShares(),
       getDocList({ page: 1, size: 10 }),
+      getFileList({ page: 1, size: 10 }),
     ])
 
     if (spacesRes.status === 'fulfilled' && spacesRes.value?.data?.data) {
@@ -180,7 +203,19 @@ async function loadStats() {
       const pageResult = docsRes.value.data.data
       const list = pageResult.list || []
       stats.docCount = pageResult.total || list.length
-      recentDocs.value = list.slice(0, 6)
+      // 前端按 updatedAt 倒序排序取前 6 条
+      recentDocs.value = list
+        .slice()
+        .sort((a: any, b: any) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
+        .slice(0, 6)
+    }
+    if (filesRes.status === 'fulfilled' && filesRes.value?.data?.data) {
+      const pageResult = filesRes.value.data.data
+      const list = pageResult.list || []
+      recentFiles.value = list
+        .slice()
+        .sort((a: any, b: any) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
+        .slice(0, 6)
     }
   } catch {
     // 统计加载失败不阻塞页面
@@ -190,7 +225,13 @@ async function loadStats() {
 function goToItem(item: any) {
   if (item.type === 'doc') {
     router.push(`/doc/${item.id}`)
+  } else {
+    router.push(`/doc/${item.id}`)
   }
+}
+
+function goToFile(item: any) {
+  router.push(`/file/${item.id}`)
 }
 
 function goToCurrentSpace() {
@@ -299,7 +340,7 @@ async function handleCreateSpaceSubmit() {
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 1fr 320px;
   gap: 20px;
 }
 
@@ -358,6 +399,10 @@ async function handleCreateSpaceSubmit() {
   color: #409eff;
   margin-right: 12px;
   flex-shrink: 0;
+
+  &--file {
+    color: #e6a23c;
+  }
 }
 
 .recent-info {
@@ -422,6 +467,15 @@ async function handleCreateSpaceSubmit() {
 .quick-action__label {
   font-size: 13px;
   color: #606266;
+}
+
+@media (max-width: 1200px) {
+  .main-content {
+    grid-template-columns: 1fr 320px;
+  }
+  .panel--recent:nth-of-type(2) {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 1024px) {

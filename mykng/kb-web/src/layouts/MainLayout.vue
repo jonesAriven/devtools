@@ -317,7 +317,8 @@
           <el-icon v-if="canGoBack" class="header-btn back-btn" @click="goBack">
             <ArrowLeft />
           </el-icon>
-          <span class="header-title">{{ pageTitle }}</span>
+          <Breadcrumb v-if="!isMobile" class="header-breadcrumb" />
+          <span v-else class="header-title">{{ pageTitle }}</span>
         </div>
         <!-- 全局搜索框（桌面端） -->
         <div v-if="!isMobile" class="header-center">
@@ -363,6 +364,7 @@ import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useAuth } from '@/composables/useAuth'
 import BackToTop from '@/components/BackToTop.vue'
+import Breadcrumb from '@/components/Breadcrumb.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -622,6 +624,13 @@ async function handleCommand(command: string) {
   font-weight: 600;
   color: #303133;
   margin-left: 4px;
+}
+
+.header-breadcrumb {
+  margin-left: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .header-right {
