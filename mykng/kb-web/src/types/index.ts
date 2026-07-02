@@ -114,14 +114,14 @@ export interface KbFile {
   name: string
   folderId: number
   spaceId: number
-  fileSize: number
-  fileType: string
-  mimeType: string
-  storageKey: string
-  storageBucket: string
-  parseStatus: 'pending' | 'processing' | 'completed' | 'failed'
-  parsedContent: string
+  userId?: number
+  type: string
+  size: number
+  minioPath?: string
+  parseStatus: 'PENDING' | 'PARSING' | 'READY' | 'PARSE_FAILED'
+  parseError?: string
   starred: boolean
+  deleted?: number
   createdAt: string
   updatedAt: string
 }

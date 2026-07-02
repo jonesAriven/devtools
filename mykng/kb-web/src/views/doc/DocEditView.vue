@@ -579,7 +579,7 @@ function configMarkdownIt(md: any) {
     const token = tokens[idx]
     const { docId, title } = token.meta
     const escaped = md.utils.escapeHtml(title)
-    return `<a class="bi-link" data-doc-id="${docId}" href="#/doc/edit/${docId}" title="跳转到: ${escaped}">${escaped}</a>`
+    return `<a class="bi-link" data-doc-id="${docId}" href="#/doc/${docId}" title="跳转到: ${escaped}">${escaped}</a>`
   }
 }
 
@@ -624,7 +624,7 @@ function handlePreviewClick(e: MouseEvent) {
 
 /** 跳转到文档 */
 function goToDoc(docId: number) {
-  router.push(`/doc/edit/${docId}`)
+  router.push(`/doc/${docId}`)
 }
 
 async function handleTreeSelect(node: any) {
@@ -638,7 +638,7 @@ async function handleTreeSelect(node: any) {
       if (!confirm) return
     }
     if (node.id === Number(props.id)) return
-    router.replace(`/doc/edit/${node.id}`)
+    router.replace(`/doc/${node.id}`)
   }
 }
 

@@ -60,12 +60,12 @@
         </el-table-column>
         <el-table-column label="大小" width="110">
           <template #default="{ row }">
-            {{ formatFileSize(row.fileSize) }}
+            {{ formatFileSize(row.size) }}
           </template>
         </el-table-column>
-        <el-table-column prop="fileType" label="类型" width="100">
+        <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag size="small">{{ row.fileType || '-' }}</el-tag>
+            <el-tag size="small">{{ row.type || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="星标" width="80" align="center">
@@ -99,7 +99,7 @@
         >
           <el-icon class="grid-file-icon"><Document /></el-icon>
           <div class="grid-name" :title="row.name">{{ row.name }}</div>
-          <div class="grid-meta">{{ formatFileSize(row.fileSize) }}</div>
+          <div class="grid-meta">{{ formatFileSize(row.size) }}</div>
           <el-icon
             class="grid-star"
             :class="{ active: row.starred }"

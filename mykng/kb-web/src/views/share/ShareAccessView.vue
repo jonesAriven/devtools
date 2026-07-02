@@ -29,7 +29,7 @@
         <div v-else-if="shareResource.type === 'web'" v-html="shareResource.content"></div>
         <div v-else-if="shareResource.type === 'file'">
           <p>文件名：{{ shareResource.name }}</p>
-          <p>文件大小：{{ formatFileSize(shareResource.fileSize || 0) }}</p>
+          <p>文件大小：{{ formatFileSize(shareResource.size || 0) }}</p>
           <el-button type="primary" @click="handleDownload">下载文件</el-button>
         </div>
       </div>

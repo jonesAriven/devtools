@@ -19,8 +19,8 @@
           <div class="card-title">文件信息</div>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="文件名">{{ file?.name }}</el-descriptions-item>
-            <el-descriptions-item label="文件大小">{{ formatFileSize(file?.fileSize || 0) }}</el-descriptions-item>
-            <el-descriptions-item label="文件类型">{{ file?.mimeType }}</el-descriptions-item>
+            <el-descriptions-item label="文件大小">{{ formatFileSize(file?.size || 0) }}</el-descriptions-item>
+            <el-descriptions-item label="文件类型">{{ file?.type }}</el-descriptions-item>
             <el-descriptions-item label="解析状态">
               <el-tag :type="parseStatusType">{{ parseStatusLabel }}</el-tag>
             </el-descriptions-item>
@@ -168,9 +168,9 @@ const isTextFile = computed(() => {
 
 const parseStatusType = computed(() => {
   const status = file.value?.parseStatus
-  if (status === 'READY' || status === 'completed') return 'success'
-  if (status === 'PARSING' || status === 'processing') return 'warning'
-  if (status === 'PARSE_FAILED' || status === 'failed') return 'danger'
+  if (status === 'READY') return 'success'
+  if (status === 'PARSING') return 'warning'
+  if (status === 'PARSE_FAILED') return 'danger'
   return 'info'
 })
 
@@ -180,12 +180,8 @@ const parseStatusLabel = computed(() => {
     PARSING: '解析中',
     READY: '解析完成',
     PARSE_FAILED: '解析失败',
-    pending: '等待解析',
-    processing: '解析中',
-    completed: '解析完成',
-    failed: '解析失败',
   }
-  return map[file.value?.parseStatus || 'pending'] || file.value?.parseStatus || '未知'
+  return map[file.value?.parseStatus || 'PENDING'] || '未知'
 })
 
 onMounted(() => {

@@ -2,7 +2,7 @@
   <div class="dashboard-page">
     <!-- 统计卡片 -->
     <div class="stat-cards">
-      <div class="stat-card stat-card--blue" @click="router.push(`/space/${spaceStore.currentSpace?.id || ''}`)">
+      <div class="stat-card stat-card--blue" @click="goToCurrentSpace">
         <div class="stat-info">
           <div class="stat-label">文档数</div>
           <div class="stat-value">{{ stats.docCount }}</div>
@@ -11,7 +11,7 @@
           <el-icon :size="28"><Document /></el-icon>
         </div>
       </div>
-      <div class="stat-card stat-card--green" @click="router.push(`/space/${spaceStore.currentSpace?.id || ''}`)">
+      <div class="stat-card stat-card--green" @click="router.push('/spaces')">
         <div class="stat-info">
           <div class="stat-label">空间数</div>
           <div class="stat-value">{{ stats.spaceCount }}</div>
@@ -190,6 +190,15 @@ async function loadStats() {
 function goToItem(item: any) {
   if (item.type === 'doc') {
     router.push(`/doc/${item.id}`)
+  }
+}
+
+function goToCurrentSpace() {
+  const spaceId = spaceStore.currentSpace?.id
+  if (spaceId) {
+    router.push(`/space/${spaceId}`)
+  } else {
+    router.push('/spaces')
   }
 }
 
