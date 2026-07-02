@@ -13,6 +13,17 @@
           <el-option label="Markdown" value="markdown" />
         </el-select>
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-dropdown @command="handleExport" trigger="click">
+          <el-button size="large">
+            导出<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="markdown">导出 Markdown (.md)</el-dropdown-item>
+              <el-dropdown-item command="html">导出 HTML (.html)</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
@@ -98,6 +109,7 @@ import { extractOutline, scrollToHeading } from '@/utils/docOutline'
 import type { Doc, Folder, DocFormat, OutlineItem } from '@/types'
 import TagInput from '@/components/TagInput.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import '@wangeditor/editor/dist/css/style.css'
@@ -322,6 +334,125 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function handleExport(command: string) {
+  const title = doc.title || '未命名文档'
+  if (command === 'markdown') {
+    exportMarkdown(title)
+  } else if (command === 'html') {
+    exportHtml(title)
+  }
+}
+
+function getCurrentContent(): string {
+  let content = doc.content || ''
+  if (doc.format === 'html' && editorInstance.value) {
+    content = editorInstance.value.getHtml()
+  }
+  return content
+}
+
+function downloadBlob(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function exportMarkdown(title: string) {
+  let content = getCurrentContent()
+  // 如果当前是 HTML 格式，做简单的 HTML→Markdown 转换
+  if (doc.format === 'html') {
+    content = htmlToMarkdown(content)
+  }
+  const filename = `${title}.md`
+  downloadBlob(content, filename, 'text/markdown')
+  ElMessage.success(`已导出 ${filename}`)
+}
+
+function exportHtml(title: string) {
+  let bodyContent = getCurrentContent()
+  // 如果当前是 Markdown 格式，转换为 HTML
+  if (doc.format === 'markdown') {
+    bodyContent = markdownToHtml(bodyContent)
+  }
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; line-height: 1.8; }
+    h1, h2, h3, h4, h5, h6 { color: #1a1a1a; margin-top: 1.5em; }
+    img { max-width: 100%; }
+    pre { background: #f5f5f5; padding: 16px; border-radius: 4px; overflow-x: auto; }
+    code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+    blockquote { border-left: 4px solid #ddd; padding-left: 16px; color: #666; margin: 1em 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; }
+    th { background: #f5f5f5; }
+    a { color: #409eff; }
+  </style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`
+  const filename = `${title}.html`
+  downloadBlob(fullHtml, filename, 'text/html')
+  ElMessage.success(`已导出 ${filename}`)
+}
+
+function htmlToMarkdown(html: string): string {
+  let md = html
+  md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n')
+  md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n')
+  md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n')
+  md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n')
+  md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '\n##### $1\n')
+  md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '\n###### $1\n')
+  md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+  md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+  md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+  md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+  md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+  md = md.replace(/<ul[^>]*>/gi, '\n').replace(/<\/ul>/gi, '\n')
+  md = md.replace(/<ol[^>]*>/gi, '\n').replace(/<\/ol>/gi, '\n')
+  md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+  md = md.replace(/<br\s*\/?>/gi, '\n')
+  md = md.replace(/<a[^>]*href="(.*?)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+  md = md.replace(/<img[^>]*src="(.*?)"[^>]*alt="(.*?)"[^>]*\/?>/gi, '![$2]($1)')
+  md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+  md = md.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '\n```\n$1\n```\n')
+  md = md.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '> $1\n')
+  md = md.replace(/<[^>]+>/g, '')
+  md = md.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+  md = md.replace(/\n{3,}/g, '\n\n').trim()
+  return md + '\n'
+}
+
+function markdownToHtml(md: string): string {
+  let html = md
+  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>')
+  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  html = html.replace(/`(.+?)`/g, '<code>$1</code>')
+  html = html.replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1">')
+  html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+  html = html.replace(/^- (.*$)/gm, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+  html = html.replace(/\n\n([^<].*)/g, '<p>$1</p>')
+  return html
 }
 </script>
 
