@@ -79,6 +79,14 @@
               <el-icon><Connection /></el-icon>
               <template #title>服务管理</template>
             </el-menu-item>
+            <el-menu-item :index="'/ops/conflicts'">
+              <el-icon><Warning /></el-icon>
+              <template #title>矛盾检测</template>
+            </el-menu-item>
+            <el-menu-item :index="'/ops/knowledge'">
+              <el-icon><Reading /></el-icon>
+              <template #title>运维知识</template>
+            </el-menu-item>
             <el-menu-item :index="'/ops/log'">
               <el-icon><Tickets /></el-icon>
               <template #title>操作日志</template>
@@ -225,6 +233,14 @@
               <el-menu-item :index="'/ops/services'">
                 <el-icon><Connection /></el-icon>
                 <template #title>服务管理</template>
+              </el-menu-item>
+              <el-menu-item :index="'/ops/conflicts'">
+                <el-icon><Warning /></el-icon>
+                <template #title>矛盾检测</template>
+              </el-menu-item>
+              <el-menu-item :index="'/ops/knowledge'">
+                <el-icon><Reading /></el-icon>
+                <template #title>运维知识</template>
               </el-menu-item>
               <el-menu-item :index="'/ops/log'">
                 <el-icon><Tickets /></el-icon>

@@ -2,7 +2,7 @@
   <div class="trash-page">
     <div class="page-header">
       <div class="page-title">回收站</div>
-      <el-button type="danger" size="small" @click="handleEmptyTrash">清空回收站</el-button>
+      <el-button type="danger" size="small" :disabled="loading || trashList.length === 0" @click="handleEmptyTrash">清空回收站</el-button>
     </div>
 
     <el-alert
@@ -14,34 +14,45 @@
     />
 
     <div class="info-card">
-      <div class="table-wrapper">
-      <el-table :data="trashList" stripe style="width: 100%">
-        <el-table-column prop="name" label="名称" min-width="200" />
-        <el-table-column prop="type" label="类型" width="100">
-          <template #default="{ row }">
-            <el-tag size="small">{{ typeLabel(row.type) }}</el-tag>
+      <div v-show="!loadError" v-loading="loading" class="table-wrapper">
+        <el-table :data="trashList" stripe style="width: 100%">
+          <el-table-column prop="name" label="名称" min-width="200" />
+          <el-table-column prop="type" label="类型" width="100">
+            <template #default="{ row }">
+              <el-tag size="small">{{ typeLabel(row.type) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="deletedAt" label="删除时间" width="180">
+            <template #default="{ row }">
+              {{ formatDate(row.deletedAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="expireAt" label="过期时间" width="180">
+            <template #default="{ row }">
+              {{ formatDate(row.expireAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="handleRestore(row)">恢复</el-button>
+              <el-button link type="danger" size="small" @click="handlePermanentDelete(row)">永久删除</el-button>
+            </template>
+          </el-table-column>
+          <template #empty>
+            <el-empty description="回收站为空" />
           </template>
-        </el-table-column>
-        <el-table-column prop="deletedAt" label="删除时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.deletedAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="expireAt" label="过期时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.expireAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleRestore(row)">恢复</el-button>
-            <el-button link type="danger" size="small" @click="handlePermanentDelete(row)">永久删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </el-table>
       </div>
 
-      <div class="pagination-wrapper">
+      <div v-if="loadError" class="error-state">
+        <el-result icon="error" title="加载失败" sub-title="回收站数据加载失败，请重试">
+          <template #extra>
+            <el-button type="primary" @click="loadTrash">重新加载</el-button>
+          </template>
+        </el-result>
+      </div>
+
+      <div v-if="!loadError && total > pageSize" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="pageSize"
@@ -67,15 +78,26 @@ const trashList = ref<TrashItem[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const loading = ref(false)
+const loadError = ref(false)
 
 onMounted(() => {
   loadTrash()
 })
 
 async function loadTrash() {
-  const res = await getTrashList({ page: page.value, size: pageSize.value })
-  trashList.value = res.data.data.list
-  total.value = res.data.data.total
+  loading.value = true
+  loadError.value = false
+  try {
+    const res = await getTrashList({ page: page.value, size: pageSize.value })
+    trashList.value = res.data.data.list
+    total.value = res.data.data.total
+  } catch {
+    loadError.value = true
+    trashList.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 async function handleRestore(row: TrashItem) {
@@ -116,6 +138,10 @@ async function handleEmptyTrash() {
   .table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .error-state {
+    padding: 40px 0;
   }
 
   .page-header {

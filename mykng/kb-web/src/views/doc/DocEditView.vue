@@ -356,10 +356,50 @@ function saveDraft() {
       content: doc.content,
       format: doc.format,
       folderId: doc.folderId,
+      savedAt: Date.now(),
     }
     localStorage.setItem(`doc-draft-${props.id}`, JSON.stringify(draft))
   } catch {
     // localStorage 不可用时静默忽略
+  }
+}
+
+async function checkDraftRecovery() {
+  const key = `doc-draft-${props.id}`
+  let draft: { title?: string; content?: string; format?: string; folderId?: number; savedAt?: number } | null = null
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw) draft = JSON.parse(raw)
+  } catch {
+    // 草稿解析失败直接清除
+    localStorage.removeItem(key)
+    return
+  }
+  if (!draft || !draft.content) return
+  // 比较草稿保存时间与服务端更新时间，判断草稿是否更新
+  const serverUpdated = doc.updatedAt ? new Date(doc.updatedAt).getTime() : 0
+  const draftSaved = draft.savedAt || 0
+  // 草稿早于或等于服务端更新，说明已保存过，清理草稿
+  if (draftSaved <= serverUpdated) {
+    localStorage.removeItem(key)
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      '检测到未保存的草稿，是否恢复？',
+      '草稿恢复',
+      { confirmButtonText: '恢复草稿', cancelButtonText: '丢弃草稿', type: 'warning' }
+    )
+    // 用户选择恢复
+    if (draft.title) doc.title = draft.title
+    if (typeof draft.content === 'string') doc.content = draft.content
+    if (draft.format === 'html' || draft.format === 'markdown') doc.format = draft.format
+    if (typeof draft.folderId === 'number') doc.folderId = draft.folderId
+    dirty.value = true
+    ElMessage.success('已恢复草稿')
+  } catch {
+    // 用户选择丢弃，清理草稿
+    localStorage.removeItem(key)
   }
 }
 
@@ -378,6 +418,8 @@ async function autoSave() {
       folderId: doc.folderId,
     })
     dirty.value = false
+    // 自动保存成功后清理本地草稿
+    localStorage.removeItem(`doc-draft-${props.id}`)
     ElMessage.success({ message: '已自动保存', duration: 1500 })
   } catch {
     // 自动保存失败不弹窗，下次重试
@@ -400,6 +442,8 @@ async function loadDoc() {
       // 忽略空间详情加载失败
     }
   }
+  // 检查是否有未保存的本地草稿
+  await checkDraftRecovery()
 }
 
 async function loadFolders() {
@@ -505,6 +549,8 @@ async function handleSave() {
     })
     ElMessage.success('保存成功')
     dirty.value = false
+    // 保存成功后清理本地草稿
+    localStorage.removeItem(`doc-draft-${props.id}`)
   } catch {
     // 错误已在拦截器中处理
   } finally {
