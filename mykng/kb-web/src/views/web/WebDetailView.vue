@@ -24,7 +24,12 @@
         </div>
 
         <div class="info-card">
-          <div class="card-title">正文内容</div>
+          <div class="card-title">
+            正文内容
+            <span v-if="webPage?.content" class="reading-meta">
+              {{ webWordCount.words }} 字 · {{ webWordCount.readingTimeText }}
+            </span>
+          </div>
           <div class="web-content" v-html="sanitizeWeb(webPage?.content)"></div>
         </div>
       </el-col>
@@ -57,11 +62,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Share, Refresh, Delete } from '@element-plus/icons-vue'
 import { getWebPageDetail, deleteWebPage, toggleWebPageStar, refetchWebPage } from '@/api/web'
 import { formatDate } from '@/utils/format'
+import { countDocumentContent } from '@/utils/wordCount'
 import { confirmDelete } from '@/utils/confirm'
 import { sanitizeWeb } from '@/utils/sanitize'
 import type { WebPage } from '@/types'
@@ -78,6 +84,11 @@ const router = useRouter()
 const webPage = ref<WebPage | null>(null)
 const showShareDialog = ref(false)
 const loading = ref(false)
+
+// 网页内容字数统计与阅读时间
+const webWordCount = computed(() => {
+  return countDocumentContent(webPage.value?.content || '', 'html')
+})
 
 onMounted(() => {
   if (!props.id || Number.isNaN(Number(props.id))) {
@@ -180,6 +191,13 @@ async function handleDelete() {
     :deep(a) {
       color: var(--el-color-primary);
     }
+  }
+
+  .reading-meta {
+    font-size: 12px;
+    font-weight: 400;
+    color: #909399;
+    margin-left: 8px;
   }
 }
 </style>

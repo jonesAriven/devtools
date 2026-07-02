@@ -137,7 +137,9 @@
           <div class="info-card" style="margin-top: 16px">
             <div class="card-title">信息</div>
             <div class="doc-meta">
-              <div>字数：{{ doc.wordCount || 0 }}</div>
+              <div>字数：<span class="meta-value">{{ wordCount.words }}</span></div>
+              <div>字符数：<span class="meta-value">{{ wordCount.characters }}</span></div>
+              <div>阅读：<span class="meta-value">{{ wordCount.readingTimeText }}</span></div>
               <div>格式：{{ doc.format === 'markdown' ? 'Markdown' : '富文本' }}</div>
               <div>创建：{{ formatDate(doc.createdAt || '') }}</div>
               <div>更新：{{ formatDate(doc.updatedAt || '') }}</div>
@@ -237,6 +239,7 @@ import { getFolderTree } from '@/api/folder'
 import { getSpaceDetail } from '@/api/space'
 import { search as searchApi } from '@/api/search'
 import { formatDate } from '@/utils/format'
+import { countDocumentContent } from '@/utils/wordCount'
 import { extractOutline, scrollToHeading } from '@/utils/docOutline'
 import type { Doc, Folder, DocFormat, OutlineItem, DocVersion } from '@/types'
 import TagInput from '@/components/TagInput.vue'
@@ -304,6 +307,15 @@ const doc = reactive<Partial<Doc> & { format: DocFormat }>({
   folderId: 0,
   spaceId: 0,
   wordCount: 0,
+})
+
+// 实时字数统计（中文字符 + 英文单词 + 数字序列，参考 Notion/Yuque 规则）
+const wordCount = computed(() => {
+  let content = doc.content || ''
+  if (doc.format === 'html' && editorInstance.value) {
+    content = editorInstance.value.getHtml()
+  }
+  return countDocumentContent(content, doc.format)
 })
 
 onMounted(async () => {
@@ -973,6 +985,11 @@ function markdownToHtml(md: string): string {
   font-size: 13px;
   color: #909399;
   line-height: 2;
+
+  .meta-value {
+    color: #303133;
+    font-weight: 600;
+  }
 }
 
 .outline-empty {

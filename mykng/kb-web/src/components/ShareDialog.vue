@@ -17,20 +17,35 @@
     </div>
 
     <div v-else class="share-result">
+      <el-alert type="success" :closable="false" show-icon class="share-tip">
+        分享链接已创建，可发送给他人访问
+      </el-alert>
       <el-form label-width="100px">
         <el-form-item label="分享链接">
           <el-input :model-value="shareLink" readonly>
             <template #append>
-              <el-button @click="handleCopyLink">复制</el-button>
+              <el-button @click="handleCopyLink">
+                <el-icon v-if="linkCopied" class="copy-success-icon"><Check /></el-icon>
+                <span>{{ linkCopied ? '已复制' : '复制链接' }}</span>
+              </el-button>
+              <el-button @click="handleOpenLink" title="在新窗口打开">
+                <el-icon><Link /></el-icon>
+              </el-button>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item v-if="shareResult.extractCode" label="提取码">
           <el-input :model-value="shareResult.extractCode" readonly>
             <template #append>
-              <el-button @click="handleCopyCode">复制</el-button>
+              <el-button @click="handleCopyCode">
+                <el-icon v-if="codeCopied" class="copy-success-icon"><Check /></el-icon>
+                <span>{{ codeCopied ? '已复制' : '复制' }}</span>
+              </el-button>
             </template>
           </el-input>
+        </el-form-item>
+        <el-form-item v-if="shareResult.expireAt" label="有效期至">
+          <span class="expire-text">{{ formatExpireAt(shareResult.expireAt) }}</span>
         </el-form-item>
       </el-form>
     </div>
@@ -49,7 +64,9 @@ import { ref, computed, reactive, watch } from 'vue'
 import { createShare } from '@/api/share'
 import type { Share } from '@/types'
 import { ElMessage } from 'element-plus'
+import { Check, Link } from '@element-plus/icons-vue'
 import { CONTEXT_PATH } from '@/config'
+import { copyToClipboard } from '@/utils/clipboard'
 
 const props = defineProps<{
   visible: boolean
@@ -68,6 +85,8 @@ const dialogVisible = computed({
 
 const creating = ref(false)
 const shareResult = ref<Share | null>(null)
+const linkCopied = ref(false)
+const codeCopied = ref(false)
 
 const shareForm = reactive({
   extractCode: '',
@@ -79,6 +98,8 @@ watch(() => props.visible, (val) => {
     shareResult.value = null
     shareForm.extractCode = ''
     shareForm.expireType = 'never'
+    linkCopied.value = false
+    codeCopied.value = false
   }
 })
 
@@ -113,21 +134,42 @@ async function handleCreateShare() {
 }
 
 async function handleCopyLink() {
-  try {
-    await navigator.clipboard.writeText(shareLink.value)
+  const ok = await copyToClipboard(shareLink.value)
+  if (ok) {
+    linkCopied.value = true
     ElMessage.success('链接已复制')
-  } catch {
-    ElMessage.error('复制失败')
+    setTimeout(() => { linkCopied.value = false }, 2000)
+  } else {
+    ElMessage.error('复制失败，请手动选择复制')
   }
 }
 
 async function handleCopyCode() {
-  try {
-    await navigator.clipboard.writeText(shareResult.value?.extractCode || '')
+  const ok = await copyToClipboard(shareResult.value?.extractCode || '')
+  if (ok) {
+    codeCopied.value = true
     ElMessage.success('提取码已复制')
-  } catch {
-    ElMessage.error('复制失败')
+    setTimeout(() => { codeCopied.value = false }, 2000)
+  } else {
+    ElMessage.error('复制失败，请手动选择复制')
   }
+}
+
+function handleOpenLink() {
+  window.open(shareLink.value, '_blank', 'noopener,noreferrer')
+}
+
+/** 格式化有效期显示 */
+function formatExpireAt(expireAt: string): string {
+  if (!expireAt) return '永久有效'
+  const d = new Date(expireAt)
+  if (isNaN(d.getTime())) return '永久有效'
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
 }
 
 function handleClose() {
@@ -138,6 +180,19 @@ function handleClose() {
 <style scoped lang="scss">
 .share-result {
   margin-top: 8px;
+}
+
+.share-tip {
+  margin-bottom: 16px;
+}
+
+.copy-success-icon {
+  color: var(--el-color-success);
+}
+
+.expire-text {
+  color: #909399;
+  font-size: 13px;
 }
 
 @media (max-width: 768px) {
