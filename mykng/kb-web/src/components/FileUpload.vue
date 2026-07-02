@@ -108,8 +108,36 @@ function handleDrop(event: DragEvent) {
   }
 }
 
+// 允许的文件扩展名白名单（与后端保持一致）
+const ALLOWED_EXTENSIONS = [
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'txt', 'md', 'markdown', 'json', 'csv', 'xml', 'html', 'htm', 'log',
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg',
+  'zip', '7z', 'rar', 'gz', 'tar',
+]
+// 单文件大小上限：100MB（与后端保持一致）
+const MAX_FILE_SIZE = 100 * 1024 * 1024
+
+function getFileExtension(name: string): string {
+  const idx = name.lastIndexOf('.')
+  return idx >= 0 ? name.slice(idx + 1).toLowerCase() : ''
+}
+
 function addFiles(files: File[]) {
   for (const file of files) {
+    const ext = getFileExtension(file.name)
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      ElMessage.warning(`不支持的文件类型: ${file.name}（仅支持 ${ALLOWED_EXTENSIONS.length} 种常见格式）`)
+      continue
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      ElMessage.warning(`文件过大（超过 100MB）: ${file.name}`)
+      continue
+    }
+    if (file.size === 0) {
+      ElMessage.warning(`文件为空: ${file.name}`)
+      continue
+    }
     fileList.value.push({
       file,
       progress: 0,
@@ -172,8 +200,8 @@ function handleClose() {
 
   &:hover,
   &.dragging {
-    border-color: #409eff;
-    background-color: #ecf5ff;
+    border-color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
   }
 
   .upload-icon {

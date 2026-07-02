@@ -25,7 +25,7 @@
 
         <div class="info-card">
           <div class="card-title">正文内容</div>
-          <div class="web-content" v-html="webPage?.content"></div>
+          <div class="web-content" v-html="sanitizeWeb(webPage?.content)"></div>
         </div>
       </el-col>
 
@@ -63,6 +63,7 @@ import { Share, Refresh, Delete } from '@element-plus/icons-vue'
 import { getWebPageDetail, deleteWebPage, toggleWebPageStar, refetchWebPage } from '@/api/web'
 import { formatDate } from '@/utils/format'
 import { confirmDelete } from '@/utils/confirm'
+import { sanitizeWeb } from '@/utils/sanitize'
 import type { WebPage } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
 import TagInput from '@/components/TagInput.vue'
@@ -147,7 +148,7 @@ async function handleDelete() {
     color: #909399;
 
     a {
-      color: #409eff;
+      color: var(--el-color-primary);
       word-break: break-all;
     }
   }
@@ -164,7 +165,7 @@ async function handleDelete() {
     }
 
     :deep(a) {
-      color: #409eff;
+      color: var(--el-color-primary);
     }
   }
 }

@@ -25,8 +25,8 @@
       <el-divider />
 
       <div v-if="shareResource" class="share-resource-content">
-        <div v-if="shareResource.type === 'doc'" v-html="shareResource.content"></div>
-        <div v-else-if="shareResource.type === 'web'" v-html="shareResource.content"></div>
+        <div v-if="shareResource.type === 'doc'" v-html="sanitizeDoc(shareResource.content)"></div>
+        <div v-else-if="shareResource.type === 'web'" v-html="sanitizeWeb(shareResource.content)"></div>
         <div v-else-if="shareResource.type === 'file'">
           <p>文件名：{{ shareResource.name }}</p>
           <p>文件大小：{{ formatFileSize(shareResource.size || 0) }}</p>
@@ -46,6 +46,7 @@ import { useRoute } from 'vue-router'
 import { getShareByCode, verifyExtractCode, getShareContent } from '@/api/share'
 import { getFileDownloadUrl } from '@/api/file'
 import { formatDate, formatFileSize } from '@/utils/format'
+import { sanitizeDoc, sanitizeWeb } from '@/utils/sanitize'
 import type { Share } from '@/types'
 import { ElMessage } from 'element-plus'
 

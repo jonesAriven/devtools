@@ -23,7 +23,7 @@
             <el-option v-for="name in sheetNames" :key="name" :label="name" :value="name" />
           </el-select>
         </div>
-        <div class="xlsx-table-wrapper" v-html="xlsxHtml"></div>
+        <div class="xlsx-table-wrapper" v-html="sanitizeTable(xlsxHtml)"></div>
       </div>
 
       <!-- pdf 预览 -->
@@ -52,6 +52,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Loading, WarningFilled, Document } from '@element-plus/icons-vue'
 import { getFileBlob, getFileContent } from '@/api/file'
+import { sanitizeTable } from '@/utils/sanitize'
 
 const props = defineProps<{
   fileId: number
@@ -267,7 +268,7 @@ function getMimeType(type: string): string {
         }
 
         tr:hover td {
-          background-color: #f0f7ff;
+          background-color: var(--el-color-primary-light-9);
         }
       }
     }

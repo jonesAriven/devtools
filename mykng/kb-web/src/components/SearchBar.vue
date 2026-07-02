@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchSuggest } from '@/api/search'
 
@@ -48,6 +48,13 @@ const showSuggest = ref(false)
 const suggestions = ref<string[]>([])
 
 let suggestTimer: ReturnType<typeof setTimeout> | null = null
+
+onUnmounted(() => {
+  if (suggestTimer) {
+    clearTimeout(suggestTimer)
+    suggestTimer = null
+  }
+})
 
 async function handleSuggest() {
   if (!keyword.value.trim()) {
@@ -100,8 +107,8 @@ function handleSelectSuggest(item: string) {
     color: #606266;
 
     &:hover {
-      background-color: #f5f7fa;
-      color: #409eff;
+      background-color: var(--el-color-primary-light-9);
+      color: var(--el-color-primary);
     }
   }
 
