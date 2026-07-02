@@ -281,7 +281,7 @@
     </el-drawer>
 
     <el-container>
-      <el-header class="header-bar" height="50px">
+      <el-header class="header-bar" height="56px">
         <div class="header-left">
           <el-icon v-if="isMobile" class="header-btn" @click="drawerVisible = true">
             <Expand />
@@ -295,7 +295,32 @@
           </el-icon>
           <span class="header-title">{{ pageTitle }}</span>
         </div>
+        <!-- 全局搜索框（桌面端） -->
+        <div v-if="!isMobile" class="header-center">
+          <SearchBar />
+        </div>
         <div class="header-right">
+          <!-- 快捷新建按钮 -->
+          <el-dropdown v-if="!isMobile" trigger="click" @command="handleQuickCreate">
+            <el-button type="primary" size="small" class="quick-create-btn">
+              <el-icon><Plus /></el-icon>
+              <span>新建</span>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="doc">
+                  <el-icon><EditPen /></el-icon>新建文档
+                </el-dropdown-item>
+                <el-dropdown-item command="upload">
+                  <el-icon><Upload /></el-icon>上传文件
+                </el-dropdown-item>
+                <el-dropdown-item command="web">
+                  <el-icon><Link /></el-icon>收藏网页
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="30" :src="userStore.profile?.avatar" class="user-avatar">
@@ -450,6 +475,26 @@ async function handleCommand(command: string) {
     router.push('/settings')
   }
 }
+
+function handleQuickCreate(command: string) {
+  if (command === 'doc') {
+    router.push('/doc/create')
+  } else if (command === 'upload') {
+    const spaceId = spaceStore.currentSpace?.id
+    if (spaceId) {
+      router.push(`/space/${spaceId}`)
+    } else {
+      router.push('/file')
+    }
+  } else if (command === 'web') {
+    const spaceId = spaceStore.currentSpace?.id
+    if (spaceId) {
+      router.push(`/space/${spaceId}`)
+    } else {
+      router.push('/file')
+    }
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -465,7 +510,7 @@ async function handleCommand(command: string) {
   flex-direction: column;
 
   .sidebar-header {
-    height: 50px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -545,8 +590,17 @@ async function handleCommand(command: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  flex-shrink: 0;
   min-width: 0;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 20px;
 }
 
 .header-btn {
@@ -578,7 +632,13 @@ async function handleCommand(command: string) {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 12px;
   flex-shrink: 0;
+}
+
+.quick-create-btn {
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(201, 169, 110, 0.3);
 }
 
 .user-info {
