@@ -105,6 +105,10 @@ async function handleRestore(row: TrashItem) {
   try {
     await restoreResource(row.id, row.type)
     ElMessage.success('已恢复')
+    // 操作最后一页的最后一条数据时，回退到上一页避免空页
+    if (trashList.value.length === 1 && page.value > 1) {
+      page.value--
+    }
     loadTrash()
   } catch {
     // 错误已在拦截器处理
@@ -116,6 +120,10 @@ async function handlePermanentDelete(row: TrashItem) {
     await confirmDelete('永久删除后不可恢复，确定要删除吗？')
     await permanentDelete(row.id, row.type)
     ElMessage.success('已永久删除')
+    // 操作最后一页的最后一条数据时，回退到上一页避免空页
+    if (trashList.value.length === 1 && page.value > 1) {
+      page.value--
+    }
     loadTrash()
   } catch {
     // 用户取消或错误已在拦截器处理
@@ -127,6 +135,8 @@ async function handleEmptyTrash() {
     await confirmDanger('清空回收站后所有资源将永久删除，确定要清空吗？', '确定清空')
     await emptyTrash()
     ElMessage.success('已清空回收站')
+    // 清空后回到第 1 页
+    page.value = 1
     loadTrash()
   } catch {
     // 用户取消或错误已在拦截器处理

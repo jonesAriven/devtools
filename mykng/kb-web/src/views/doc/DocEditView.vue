@@ -307,8 +307,17 @@ const doc = reactive<Partial<Doc> & { format: DocFormat }>({
 })
 
 onMounted(async () => {
-  await loadDoc()
-  await loadFolders()
+  // 即使文档加载失败，也要注册定时器和事件监听，确保草稿保护不丢失
+  try {
+    await loadDoc()
+  } catch {
+    // 文档加载失败，错误已在拦截器处理
+  }
+  try {
+    await loadFolders()
+  } catch {
+    // 文件夹加载失败，不影响编辑
+  }
   initHtmlEditor()
   updateOutline()
   lastSavedTitle.value = doc.title || ''
@@ -449,8 +458,12 @@ async function loadDoc() {
 async function loadFolders() {
   const spaceId = doc.spaceId || Number(route.query.spaceId)
   if (!spaceId) return
-  const res = await getFolderTree(spaceId)
-  folders.value = flattenFolders(res.data.data)
+  try {
+    const res = await getFolderTree(spaceId)
+    folders.value = flattenFolders(res.data.data)
+  } catch {
+    // 文件夹树加载失败，不影响文档编辑
+  }
 }
 
 function flattenFolders(tree: Folder[]): Folder[] {

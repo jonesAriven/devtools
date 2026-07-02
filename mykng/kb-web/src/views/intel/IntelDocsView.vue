@@ -46,6 +46,9 @@
         <el-table-column prop="commandCount" label="命令数" width="80" align="right" />
         <el-table-column prop="wordCount" label="字数" width="100" align="right" />
         <el-table-column prop="updatedAt" label="更新时间" width="170" />
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
 
       <div class="pagination-wrapper">
@@ -159,6 +162,9 @@
                     <el-table-column prop="credType" label="类型" width="100" />
                     <el-table-column prop="username" label="用户名" width="140" />
                     <el-table-column prop="passwordHint" label="密码提示" show-overflow-tooltip />
+                  <template #empty>
+                    <el-empty description="暂无数据" />
+                  </template>
                   </el-table>
                 </el-collapse-item>
 
@@ -172,6 +178,9 @@
                     <el-table-column prop="description" label="说明" min-width="160" show-overflow-tooltip />
                     <el-table-column prop="category" label="分类" width="100" />
                     <el-table-column prop="riskLevel" label="风险" width="80" />
+                  <template #empty>
+                    <el-empty description="暂无数据" />
+                  </template>
                   </el-table>
                 </el-collapse-item>
 
@@ -185,6 +194,9 @@
                     <el-table-column prop="title" label="事件" min-width="160" show-overflow-tooltip />
                     <el-table-column prop="severity" label="级别" width="80" />
                     <el-table-column prop="status" label="状态" width="80" />
+                  <template #empty>
+                    <el-empty description="暂无数据" />
+                  </template>
                   </el-table>
                 </el-collapse-item>
               </el-collapse>

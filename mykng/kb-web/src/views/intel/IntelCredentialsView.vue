@@ -50,6 +50,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="hostId" label="主机ID" width="100" />
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
     </el-card>
   </div>

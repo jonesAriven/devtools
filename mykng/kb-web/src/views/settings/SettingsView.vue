@@ -65,6 +65,9 @@
                 <el-button link type="danger" size="small" @click="handleDeleteBucket(row.id)">删除</el-button>
               </template>
             </el-table-column>
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
           </el-table>
         </div>
 
@@ -120,6 +123,9 @@
                 {{ formatDate(row.createdAt) }}
               </template>
             </el-table-column>
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
           </el-table>
           <div class="pagination-wrapper">
             <el-pagination
@@ -165,6 +171,9 @@
                 <el-button size="small" type="danger" @click="handleDeleteToken(row.id)">删除</el-button>
               </template>
             </el-table-column>
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
           </el-table>
         </div>
       </el-tab-pane>

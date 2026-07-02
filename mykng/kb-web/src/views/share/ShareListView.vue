@@ -65,6 +65,9 @@
             <el-button text type="danger" @click="handleCancel(row.id)">取消分享</el-button>
           </template>
         </el-table-column>
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
     </el-card>
   </div>

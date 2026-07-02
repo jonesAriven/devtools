@@ -83,6 +83,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="detail" label="详情" min-width="220" show-overflow-tooltip />
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
 
       <div class="pagination-wrapper">

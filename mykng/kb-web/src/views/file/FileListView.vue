@@ -87,6 +87,9 @@
             <el-button text type="danger" :icon="Delete" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
 
       <!-- 网格视图 -->
@@ -226,6 +229,10 @@ async function handleDelete(id: number) {
     await confirmDelete('确认删除该文件？删除后可在回收站找回。')
     await deleteFile(id)
     ElMessage.success('删除成功')
+    // 删除最后一页的最后一条数据时，回退到上一页避免空页
+    if (list.value.length === 1 && page.value > 1) {
+      page.value--
+    }
     loadData()
   } catch {
     // 用户取消或错误已在拦截器处理

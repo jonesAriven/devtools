@@ -72,6 +72,9 @@
             <el-table-column prop="version" label="版本" width="80" />
             <el-table-column prop="deployer" label="部署人" width="80" />
             <el-table-column prop="deployTime" label="时间" />
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
           </el-table>
         </el-card>
       </el-col>
@@ -89,6 +92,9 @@
               </template>
             </el-table-column>
             <el-table-column prop="description" label="描述" show-overflow-tooltip />
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
           </el-table>
         </el-card>
       </el-col>
@@ -119,6 +125,9 @@
               <span class="text-danger">{{ row.failed }}</span>
             </template>
           </el-table-column>
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
         </el-table>
       </div>
       <template #footer>

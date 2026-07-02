@@ -1,5 +1,5 @@
 <template>
-  <div class="file-detail-page">
+  <div class="file-detail-page" v-loading="loading">
     <div class="page-header">
       <el-breadcrumb separator="/">
         <el-breadcrumb-item :to="{ path: '/dashboard' }">首页</el-breadcrumb-item>
@@ -143,6 +143,7 @@ const router = useRouter()
 const file = ref<KbFile | null>(null)
 const versions = ref<Version[]>([])
 const showShareDialog = ref(false)
+const loading = ref(false)
 
 // 在线编辑相关状态
 const showEditDialog = ref(false)
@@ -186,18 +187,34 @@ const parseStatusLabel = computed(() => {
 })
 
 onMounted(() => {
+  if (!props.id || Number.isNaN(Number(props.id))) {
+    ElMessage.error('参数错误：文件 ID 无效')
+    router.back()
+    return
+  }
   loadFile()
   loadVersions()
 })
 
 async function loadFile() {
-  const res = await getFileDetail(Number(props.id))
-  file.value = res.data.data
+  loading.value = true
+  try {
+    const res = await getFileDetail(Number(props.id))
+    file.value = res.data.data
+  } catch {
+    // 错误已在拦截器处理
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadVersions() {
-  const res = await getVersionList(Number(props.id), 'file')
-  versions.value = res.data.data
+  try {
+    const res = await getVersionList(Number(props.id), 'file')
+    versions.value = res.data.data
+  } catch {
+    // 错误已在拦截器处理
+  }
 }
 
 async function handleToggleStar() {

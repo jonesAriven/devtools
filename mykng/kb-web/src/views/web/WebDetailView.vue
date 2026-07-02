@@ -1,5 +1,5 @@
 <template>
-  <div class="web-detail-page">
+  <div class="web-detail-page" v-loading="loading">
     <div class="page-header">
       <el-breadcrumb separator="/">
         <el-breadcrumb-item :to="{ path: '/dashboard' }">首页</el-breadcrumb-item>
@@ -77,14 +77,27 @@ const props = defineProps<{
 const router = useRouter()
 const webPage = ref<WebPage | null>(null)
 const showShareDialog = ref(false)
+const loading = ref(false)
 
 onMounted(() => {
+  if (!props.id || Number.isNaN(Number(props.id))) {
+    ElMessage.error('参数错误：网页 ID 无效')
+    router.back()
+    return
+  }
   loadWebPage()
 })
 
 async function loadWebPage() {
-  const res = await getWebPageDetail(Number(props.id))
-  webPage.value = res.data.data
+  loading.value = true
+  try {
+    const res = await getWebPageDetail(Number(props.id))
+    webPage.value = res.data.data
+  } catch {
+    // 错误已在拦截器处理
+  } finally {
+    loading.value = false
+  }
 }
 
 async function handleToggleStar() {

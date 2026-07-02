@@ -76,6 +76,9 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
       </el-table>
     </el-card>
   </div>
