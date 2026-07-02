@@ -196,7 +196,7 @@ import { getFileList, deleteFile, moveFile, toggleFileStar } from '@/api/file'
 import { getDocList, deleteDoc, updateDoc, moveDoc, toggleDocStar } from '@/api/doc'
 import { getWebPageList, deleteWebPage, moveWebPage, toggleWebPageStar } from '@/api/web'
 import { getFolderTree } from '@/api/folder'
-import { formatRelativeTime } from '@/utils/format'
+import { formatRelativeTime, typeLabel, navigateToResource } from '@/utils/format'
 import type { KbFile, Doc, WebPage } from '@/types'
 import type { Folder as FolderType } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -329,19 +329,8 @@ function findFolderPath(tree: FolderType[], targetId: number, path: BreadcrumbIt
   return false
 }
 
-function typeLabel(type: string): string {
-  const map: Record<string, string> = { file: '文件', doc: '笔记', web: '网页' }
-  return map[type] || type
-}
-
 function goToResource(item: ResourceListItem) {
-  if (item.type === 'file') {
-    router.push(`/file/${item.id}`)
-  } else if (item.type === 'doc') {
-    router.push(`/doc/${item.id}`)
-  } else if (item.type === 'web') {
-    router.push(`/web/${item.id}`)
-  }
+  navigateToResource(router, item.type, item.id)
 }
 
 function handleItemClick(event: MouseEvent, item: ResourceListItem) {

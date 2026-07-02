@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getTrashList, restoreResource, permanentDelete, emptyTrash } from '@/api/trash'
-import { formatDate } from '@/utils/format'
+import { formatDate, typeLabel } from '@/utils/format'
 import type { TrashItem } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -76,11 +76,6 @@ async function loadTrash() {
   const res = await getTrashList({ page: page.value, size: pageSize.value })
   trashList.value = res.data.data.list
   total.value = res.data.data.total
-}
-
-function typeLabel(type: string): string {
-  const map: Record<string, string> = { file: '文件', doc: '笔记', web: '网页' }
-  return map[type] || type
 }
 
 async function handleRestore(row: TrashItem) {

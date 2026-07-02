@@ -229,6 +229,7 @@ import { getResourceTree, createFolder, updateFolder, deleteFolder } from '@/api
 import { createWebPage, deleteWebPage } from '@/api/web'
 import { deleteDoc, updateDoc } from '@/api/doc'
 import { deleteFile, downloadFile } from '@/api/file'
+import { typeLabel, navigateToResource } from '@/utils/format'
 import type { ResourceTreeNode } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FileUpload from '@/components/FileUpload.vue'
@@ -490,9 +491,8 @@ async function handleRenameSubmit() {
 async function handleDelete() {
   const name = contextMenu.name
   const type = contextMenu.type
-  const typeLabel: Record<string, string> = { folder: '目录', doc: '笔记', file: '文件', web: '网页' }
   await ElMessageBox.confirm(
-    `确定要删除${typeLabel[type]}"${name}"吗？${type === 'folder' ? '目录下的内容将移至根目录。' : '此操作可在回收站恢复。'}`,
+    `确定要删除${typeLabel(type)}"${name}"吗？${type === 'folder' ? '目录下的内容将移至根目录。' : '此操作可在回收站恢复。'}`,
     '提示',
     { type: 'warning' }
   )
@@ -511,13 +511,7 @@ async function handleDelete() {
 }
 
 function handleOpen() {
-  if (contextMenu.type === 'doc') {
-    router.push(`/doc/${contextMenu.id}`)
-  } else if (contextMenu.type === 'file') {
-    router.push(`/file/${contextMenu.id}`)
-  } else if (contextMenu.type === 'web') {
-    router.push(`/web/${contextMenu.id}`)
-  }
+  navigateToResource(router, contextMenu.type, contextMenu.id)
 }
 
 function handleShare() {

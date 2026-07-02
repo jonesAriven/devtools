@@ -84,6 +84,7 @@ import { FolderOpened, Plus, MoreFilled, Edit, Delete, Clock, Loading } from '@e
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useSpaceStore } from '@/stores/space'
 import { getSpaceList, createSpace, updateSpace, deleteSpace } from '@/api/space'
+import { formatDate } from '@/utils/format'
 import type { Space } from '@/types'
 
 const router = useRouter()
@@ -176,12 +177,6 @@ async function handleDelete(space: Space) {
 function handleEnter(space: Space) {
   spaceStore.setCurrentSpace(space)
   router.push(`/space/${space.id}`)
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 </script>
 

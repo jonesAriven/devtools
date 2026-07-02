@@ -103,6 +103,7 @@ import StarToggle from '@/components/StarToggle.vue'
 import { toggleFileStar } from '@/api/file'
 import { toggleDocStar } from '@/api/doc'
 import { toggleWebPageStar } from '@/api/web'
+import { typeLabel, navigateToResource } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -235,19 +236,8 @@ function safeHighlight(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
 }
 
-function typeLabel(type: string): string {
-  const map: Record<string, string> = { file: '文件', doc: '笔记', web: '网页' }
-  return map[type] || type
-}
-
 function goToResource(item: SearchResult) {
-  if (item.type === 'file') {
-    router.push(`/file/${item.id}`)
-  } else if (item.type === 'doc') {
-    router.push(`/doc/${item.id}`)
-  } else if (item.type === 'web') {
-    router.push(`/web/${item.id}`)
-  }
+  navigateToResource(router, item.type, item.id)
 }
 
 async function handleToggleStar(item: SearchResult) {

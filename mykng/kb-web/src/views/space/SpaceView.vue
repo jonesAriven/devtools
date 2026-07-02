@@ -28,6 +28,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSpaceStore } from '@/stores/space'
 import { getSpaceDetail } from '@/api/space'
+import { navigateToResource } from '@/utils/format'
 import ResourceTree from '@/components/ResourceTree.vue'
 import ResourceList from '@/components/ResourceList.vue'
 import type { Space } from '@/types'
@@ -64,12 +65,8 @@ async function loadSpace() {
 function handleTreeSelect(node: any) {
   if (node.type === 'folder') {
     currentFolderId.value = node.id
-  } else if (node.type === 'doc') {
-    router.push(`/doc/${node.id}`)
-  } else if (node.type === 'file') {
-    router.push(`/file/${node.id}`)
-  } else if (node.type === 'web') {
-    router.push(`/web/${node.id}`)
+  } else {
+    navigateToResource(router, node.type, node.id)
   }
 }
 

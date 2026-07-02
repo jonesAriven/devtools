@@ -82,3 +82,33 @@ export function getFileIcon(mimeType: string): string {
   if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z') || mimeType.includes('tar')) return 'Folder'
   return 'Document'
 }
+
+/**
+ * 资源类型中文标签映射
+ */
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  folder: '目录',
+  file: '文件',
+  doc: '笔记',
+  web: '网页',
+}
+
+/**
+ * 获取资源类型的中文标签
+ */
+export function typeLabel(type: string): string {
+  return RESOURCE_TYPE_LABELS[type] || type
+}
+
+/**
+ * 根据资源类型和ID跳转到对应详情页
+ */
+export function navigateToResource(router: { push: (path: string) => void }, type: string, id: number) {
+  if (type === 'file') {
+    router.push(`/file/${id}`)
+  } else if (type === 'doc') {
+    router.push(`/doc/${id}`)
+  } else if (type === 'web') {
+    router.push(`/web/${id}`)
+  }
+}
