@@ -69,6 +69,12 @@
         </div>
         <div class="panel-body">
           <div class="quick-actions-grid">
+            <div class="quick-action" @click="router.push('/doc/create')">
+              <div class="quick-action__icon quick-action__icon--blue">
+                <el-icon :size="24"><EditPen /></el-icon>
+              </div>
+              <div class="quick-action__label">新建文档</div>
+            </div>
             <div class="quick-action" @click="handleCreateSpace">
               <div class="quick-action__icon">
                 <el-icon :size="24"><Plus /></el-icon>
@@ -119,7 +125,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Document, FolderOpened, PriceTag, Share, Clock, Plus, Search } from '@element-plus/icons-vue'
+import { Document, FolderOpened, PriceTag, Share, Clock, Plus, Search, EditPen } from '@element-plus/icons-vue'
 import { useSpaceStore } from '@/stores/space'
 import { createSpace, getSpaceList } from '@/api/space'
 import { getMyShares } from '@/api/share'

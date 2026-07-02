@@ -115,6 +115,10 @@ const editorInstance = shallowRef<IDomEditor>()
 const saving = ref(false)
 const folders = ref<Folder[]>([])
 const outline = ref<OutlineItem[]>([])
+const dirty = ref(false)
+const lastSavedTitle = ref('')
+let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+let draftTimer: ReturnType<typeof setInterval> | null = null
 
 const doc = reactive<Partial<Doc> & { format: DocFormat }>({
   title: '',
@@ -130,18 +134,76 @@ onMounted(async () => {
   await loadFolders()
   initHtmlEditor()
   updateOutline()
+  lastSavedTitle.value = doc.title || ''
+  // 每 30 秒保存草稿到 localStorage
+  draftTimer = setInterval(saveDraft, 30_000)
+  // 每 2 分钟自动保存到服务器
+  autoSaveTimer = setInterval(autoSave, 120_000)
+  // 离开页面前提示
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onBeforeUnmount(() => {
   if (editorInstance.value) {
     editorInstance.value.destroy()
   }
+  if (draftTimer) clearInterval(draftTimer)
+  if (autoSaveTimer) clearInterval(autoSaveTimer)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
-// 监听内容变化更新大纲
+// 监听内容变化更新大纲 + 标记脏数据
 watch(() => doc.content, () => {
   updateOutline()
+  dirty.value = true
 })
+
+watch(() => doc.title, () => {
+  dirty.value = true
+})
+
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+  if (dirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+function saveDraft() {
+  if (!dirty.value) return
+  try {
+    const draft = {
+      title: doc.title,
+      content: doc.content,
+      format: doc.format,
+      folderId: doc.folderId,
+    }
+    localStorage.setItem(`doc-draft-${props.id}`, JSON.stringify(draft))
+  } catch {
+    // localStorage 不可用时静默忽略
+  }
+}
+
+async function autoSave() {
+  if (!dirty.value) return
+  if (!doc.title) return
+  try {
+    let content = doc.content
+    if (doc.format === 'html' && editorInstance.value) {
+      content = editorInstance.value.getHtml()
+    }
+    await updateDoc(Number(props.id), {
+      title: doc.title,
+      content: content,
+      format: doc.format,
+      folderId: doc.folderId,
+    })
+    dirty.value = false
+    ElMessage.success({ message: '已自动保存', duration: 1500 })
+  } catch {
+    // 自动保存失败不弹窗，下次重试
+  }
+}
 
 async function loadDoc() {
   const res = await getDocDetail(Number(props.id))
@@ -254,6 +316,7 @@ async function handleSave() {
       folderId: doc.folderId,
     })
     ElMessage.success('保存成功')
+    dirty.value = false
   } catch {
     // 错误已在拦截器中处理
   } finally {

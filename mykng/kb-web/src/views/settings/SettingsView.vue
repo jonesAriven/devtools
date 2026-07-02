@@ -161,7 +161,7 @@
             <el-table-column prop="createdAt" label="创建时间" width="180" />
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button size="small" @click="toggleTokenStatus(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
+                <el-button size="small" @click="handleToggleTokenStatus(row.id)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button>
                 <el-button size="small" type="danger" @click="handleDeleteToken(row.id)">删除</el-button>
               </template>
             </el-table-column>
@@ -338,7 +338,7 @@ async function handleDeleteToken(id: number) {
   loadTokens()
 }
 
-async function toggleTokenStat(id: number) {
+async function handleToggleTokenStatus(id: number) {
   await toggleTokenStatus(id)
   ElMessage.success('状态已切换')
   loadTokens()
