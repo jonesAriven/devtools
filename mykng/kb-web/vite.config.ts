@@ -39,12 +39,18 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'es2015',  // 现代浏览器目标，跳过不必要的 polyfill
-      chunkSizeWarningLimit: 1000,  // core-js polyfill chunk ~790KB，可缓存
+      chunkSizeWarningLimit: 1600,  // wangeditor 单体 ~1.6MB，无法再拆
       rollupOptions: {
         output: {
           manualChunks: {
             'vue-vendor': ['vue', 'vue-router', 'pinia'],
             'axios': ['axios'],
+            'wangeditor': ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
+            'md-editor': ['md-editor-v3'],
+            'element-plus': ['element-plus', '@element-plus/icons-vue'],
+            'xlsx': ['xlsx'],
+            'docx-preview': ['docx-preview'],
+            'dompurify': ['dompurify'],
           },
         },
       },

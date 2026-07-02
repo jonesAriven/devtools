@@ -67,6 +67,7 @@ declare module 'vue' {
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElTree: typeof import('element-plus/es')['ElTree']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    EmptyState: typeof import('./components/EmptyState.vue')['default']
     FilePreview: typeof import('./components/FilePreview.vue')['default']
     FileUpload: typeof import('./components/FileUpload.vue')['default']
     ResourceList: typeof import('./components/ResourceList.vue')['default']

@@ -30,6 +30,7 @@
               <el-radio-button value="grid">网格</el-radio-button>
             </el-radio-group>
             <el-upload
+              ref="uploadRef"
               :show-file-list="false"
               :http-request="handleUpload"
               :disabled="!currentSpaceId"
@@ -112,7 +113,17 @@
             <Star v-else />
           </el-icon>
         </div>
-        <el-empty v-if="!loading && filteredList.length === 0" description="暂无文件" />
+        <EmptyState
+          v-if="!loading && filteredList.length === 0"
+          :icon="Document"
+          variant="primary"
+          title="暂无文件"
+          description="上传文件后会在此显示，支持图片、文档、表格等多种格式"
+        >
+          <template #action>
+            <el-button type="primary" :icon="Upload" @click="triggerUpload">上传文件</el-button>
+          </template>
+        </EmptyState>
       </div>
 
       <div class="pagination-wrapper">
@@ -141,6 +152,7 @@ import { formatDate, formatFileSize } from '@/utils/format'
 import { useSpaceStore } from '@/stores/space'
 import { ElMessage } from 'element-plus'
 import { confirmDelete } from '@/utils/confirm'
+import EmptyState from '@/components/EmptyState.vue'
 
 const router = useRouter()
 const spaceStore = useSpaceStore()
@@ -156,6 +168,12 @@ const total = ref(0)
 const currentSpaceId = ref<number | undefined>(undefined)
 const uploading = ref(false)
 const uploadProgress = ref(0)
+const uploadRef = ref()
+
+function triggerUpload() {
+  const input = uploadRef.value?.$el?.querySelector('input[type="file"]') as HTMLInputElement | null
+  if (input) input.click()
+}
 
 const filteredList = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
