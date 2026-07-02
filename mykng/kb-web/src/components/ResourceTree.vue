@@ -211,6 +211,13 @@
       :resource-id="contextMenu.id"
       :resource-type="contextMenu.type as 'doc' | 'file' | 'web'"
     />
+
+    <FileUpload
+      v-model:visible="showUpload"
+      :folder-id="uploadFolderId || 0"
+      :space-id="spaceId"
+      @uploaded="handleUploaded"
+    />
   </div>
 </template>
 
@@ -548,6 +555,12 @@ async function handleCreateWeb(folderId: number) {
   } catch {
     // 错误已在拦截器处理
   }
+}
+
+function handleUploaded() {
+  showUpload.value = false
+  loadTree()
+  emit('refresh')
 }
 
 defineExpose({ loadTree, expandToDoc })

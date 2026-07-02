@@ -149,6 +149,8 @@ async function handleUpload() {
 async function uploadSmallFile(item: FileItem) {
   const formData = new FormData()
   formData.append('file', item.file)
+  formData.append('folderId', String(props.folderId || 0))
+  formData.append('spaceId', String(props.spaceId || 0))
   await uploadFile(formData, (progress) => {
     item.progress = progress
   })
