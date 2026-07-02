@@ -169,12 +169,18 @@ function actionTagType(action: string): 'success' | 'warning' | 'danger' | 'prim
 async function loadData() {
   loading.value = true
   try {
-    const res = await getLogList({
+    const params: any = {
       page: page.value,
       size: pageSize.value,
       action: filterAction.value || undefined,
       resourceType: filterResourceType.value || undefined,
-    })
+    }
+    // 传入时间范围筛选（value-format 为 "YYYY-MM-DD HH:mm:ss"，后端 LocalDateTime 需 T 分隔符）
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.startTime = dateRange.value[0].replace(' ', 'T')
+      params.endTime = dateRange.value[1].replace(' ', 'T')
+    }
+    const res = await getLogList(params)
     list.value = res.data.data.list
     total.value = res.data.data.total
   } catch {

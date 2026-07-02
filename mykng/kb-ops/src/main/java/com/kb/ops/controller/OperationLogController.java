@@ -18,9 +18,12 @@ public class OperationLogController {
     public Result<PageResult<OperationLog>> list(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,
+            @RequestParam(required = false) String resourceType,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(logService.list(userId, action, page, size));
+        return Result.ok(logService.list(userId, action, resourceType, startTime, endTime, page, size));
     }
 
     @GetMapping("/{id}")

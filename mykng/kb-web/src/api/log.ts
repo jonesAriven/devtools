@@ -7,7 +7,7 @@ import type { R, OperationLog, PageResult, PageParams } from '@/types'
  */
 
 /** 获取操作日志列表 */
-export function getLogList(params: PageParams & { action?: string; resourceType?: string }) {
+export function getLogList(params: PageParams & { action?: string; resourceType?: string; startTime?: string; endTime?: string }) {
   return request.get<R<PageResult<OperationLog>>>('/ops/log/list', { params })
 }
 

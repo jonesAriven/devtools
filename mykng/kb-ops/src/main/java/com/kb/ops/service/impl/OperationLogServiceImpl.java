@@ -12,6 +12,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -38,13 +40,22 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
-    public PageResult<OperationLog> list(Long userId, String action, int page, int size) {
+    public PageResult<OperationLog> list(Long userId, String action, String resourceType, String startTime, String endTime, int page, int size) {
         LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
         if (userId != null) {
             wrapper.eq(OperationLog::getUserId, userId);
         }
         if (StringUtils.hasText(action)) {
             wrapper.eq(OperationLog::getAction, action);
+        }
+        if (StringUtils.hasText(resourceType)) {
+            wrapper.eq(OperationLog::getResourceType, resourceType);
+        }
+        if (StringUtils.hasText(startTime)) {
+            wrapper.ge(OperationLog::getCreatedAt, LocalDateTime.parse(startTime));
+        }
+        if (StringUtils.hasText(endTime)) {
+            wrapper.le(OperationLog::getCreatedAt, LocalDateTime.parse(endTime));
         }
         wrapper.orderByDesc(OperationLog::getCreatedAt);
         Page<OperationLog> p = logMapper.selectPage(new Page<>(page, size), wrapper);

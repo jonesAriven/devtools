@@ -61,7 +61,7 @@ class OperationLogServiceImplTest {
         page.setTotal(1);
         when(logMapper.selectPage(any(), any())).thenReturn(page);
 
-        PageResult<OperationLog> result = logService.list(null, null, 1, 20);
+        PageResult<OperationLog> result = logService.list(null, null, null, null, null, 1, 20);
 
         assertEquals(1, result.getTotal());
         assertEquals("admin", result.getList().get(0).getUsername());
@@ -77,7 +77,7 @@ class OperationLogServiceImplTest {
         page.setTotal(1);
         when(logMapper.selectPage(any(), any())).thenReturn(page);
 
-        PageResult<OperationLog> result = logService.list(1L, "CREATE", 1, 20);
+        PageResult<OperationLog> result = logService.list(1L, "CREATE", null, null, null, 1, 20);
 
         assertEquals(1, result.getTotal());
     }
