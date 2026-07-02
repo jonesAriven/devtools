@@ -33,13 +33,21 @@
               <el-icon><FolderOpened /></el-icon>
               <span>知识库</span>
             </template>
+            <el-menu-item :index="'/spaces'">
+              <el-icon><List /></el-icon>
+              <template #title>知识空间</template>
+            </el-menu-item>
             <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
               <el-icon><FolderOpened /></el-icon>
-              <template #title>知识空间</template>
+              <template #title>当前空间</template>
             </el-menu-item>
             <el-menu-item :index="'/search'">
               <el-icon><Search /></el-icon>
               <template #title>搜索</template>
+            </el-menu-item>
+            <el-menu-item :index="'/file'">
+              <el-icon><Document /></el-icon>
+              <template #title>文件</template>
             </el-menu-item>
             <el-menu-item :index="'/tag'">
               <el-icon><PriceTag /></el-icon>
@@ -52,10 +60,6 @@
             <el-menu-item :index="'/trash'">
               <el-icon><Delete /></el-icon>
               <template #title>回收站</template>
-            </el-menu-item>
-            <el-menu-item :index="'/file'">
-              <el-icon><Document /></el-icon>
-              <template #title>文件</template>
             </el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="ops-group">
@@ -176,13 +180,21 @@
                 <el-icon><FolderOpened /></el-icon>
                 <span>知识库</span>
               </template>
+              <el-menu-item :index="'/spaces'">
+                <el-icon><List /></el-icon>
+                <template #title>知识空间</template>
+              </el-menu-item>
               <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
                 <el-icon><FolderOpened /></el-icon>
-                <template #title>知识空间</template>
+                <template #title>当前空间</template>
               </el-menu-item>
               <el-menu-item :index="'/search'">
                 <el-icon><Search /></el-icon>
                 <template #title>搜索</template>
+              </el-menu-item>
+              <el-menu-item :index="'/file'">
+                <el-icon><Document /></el-icon>
+                <template #title>文件</template>
               </el-menu-item>
               <el-menu-item :index="'/tag'">
                 <el-icon><PriceTag /></el-icon>
@@ -195,10 +207,6 @@
               <el-menu-item :index="'/trash'">
                 <el-icon><Delete /></el-icon>
                 <template #title>回收站</template>
-              </el-menu-item>
-              <el-menu-item :index="'/file'">
-                <el-icon><Document /></el-icon>
-                <template #title>文件</template>
               </el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="ops-group">
@@ -300,27 +308,6 @@
           <SearchBar />
         </div>
         <div class="header-right">
-          <!-- 快捷新建按钮 -->
-          <el-dropdown v-if="!isMobile" trigger="click" @command="handleQuickCreate">
-            <el-button type="primary" size="small" class="quick-create-btn">
-              <el-icon><Plus /></el-icon>
-              <span>新建</span>
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="doc">
-                  <el-icon><EditPen /></el-icon>新建文档
-                </el-dropdown-item>
-                <el-dropdown-item command="upload">
-                  <el-icon><Upload /></el-icon>上传文件
-                </el-dropdown-item>
-                <el-dropdown-item command="web">
-                  <el-icon><Link /></el-icon>收藏网页
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="30" :src="userStore.profile?.avatar" class="user-avatar">
@@ -375,7 +362,7 @@ const currentRoute = computed(() => route.path)
 const defaultOpeneds = computed<string[]>(() => {
   const path = route.path
   const groups: string[] = []
-  if (path.startsWith('/space') || path.startsWith('/search') || path.startsWith('/tag') ||
+  if (path.startsWith('/space') || path.startsWith('/spaces') || path.startsWith('/search') || path.startsWith('/tag') ||
       path.startsWith('/share') || path.startsWith('/trash') || path.startsWith('/file') ||
       path.startsWith('/doc') || path.startsWith('/web')) {
     groups.push('kb-group')
@@ -421,11 +408,6 @@ const pageTitleMap: Record<string, string> = {
   'IntelCommands': '命令库',
   'IntelTimelines': '时间线',
   web: '网页详情',
-  // 知识引擎
-  IntelligenceDashboard: '知识看板',
-  IntelligenceDocs: '记忆文档',
-  IntelligenceDocDetail: '文档详情',
-  IntelligenceEntities: '实体视图',
 }
 
 const pageTitle = computed(() => {
@@ -473,26 +455,6 @@ async function handleCommand(command: string) {
     router.push('/settings')
   } else if (command === 'profile') {
     router.push('/settings')
-  }
-}
-
-function handleQuickCreate(command: string) {
-  if (command === 'doc') {
-    router.push('/doc/create')
-  } else if (command === 'upload') {
-    const spaceId = spaceStore.currentSpace?.id
-    if (spaceId) {
-      router.push(`/space/${spaceId}`)
-    } else {
-      router.push('/file')
-    }
-  } else if (command === 'web') {
-    const spaceId = spaceStore.currentSpace?.id
-    if (spaceId) {
-      router.push(`/space/${spaceId}`)
-    } else {
-      router.push('/file')
-    }
   }
 }
 </script>
@@ -634,11 +596,6 @@ function handleQuickCreate(command: string) {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-}
-
-.quick-create-btn {
-  font-weight: 500;
-  box-shadow: 0 2px 6px rgba(201, 169, 110, 0.3);
 }
 
 .user-info {

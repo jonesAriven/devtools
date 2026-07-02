@@ -226,7 +226,7 @@ async function handleCreate() {
       spaceId: doc.spaceId,
     })
     ElMessage.success('创建成功')
-    router.push(`/doc/${res.data.data.id}`)
+    router.push(`/space/${doc.spaceId}`)
   } catch {
     // 错误已在拦截器中处理
   } finally {

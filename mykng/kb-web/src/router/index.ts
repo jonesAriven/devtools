@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { getToken } from '@/utils/token'
 import MainLayout from '@/layouts/MainLayout.vue'
-import ShareLayout from '@/layouts/ShareLayout.vue'
 import { CONTEXT_PATH as ctx } from '@/config'
 
 const routes: RouteRecordRaw[] = [
@@ -38,6 +37,11 @@ const routes: RouteRecordRaw[] = [
         name: 'Space',
         component: () => import('@/views/space/SpaceView.vue'),
         props: true,
+      },
+      {
+        path: 'spaces',
+        name: 'SpaceManage',
+        component: () => import('@/views/space/SpaceManageView.vue'),
       },
       {
         path: 'file/:id',

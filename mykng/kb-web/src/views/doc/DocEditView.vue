@@ -1,126 +1,158 @@
 <template>
-  <div class="doc-edit-page">
-    <div class="doc-header">
-      <el-input
-        v-model="doc.title"
-        placeholder="请输入笔记标题"
-        class="doc-title-input"
-        size="large"
+  <div class="doc-edit-layout">
+    <div class="doc-sidebar">
+      <ResourceTree
+        ref="resourceTreeRef"
+        :space-id="doc.spaceId"
+        :space-name="spaceName"
+        :current-folder-id="doc.folderId"
+        :current-doc-id="Number(id)"
+        @select="handleTreeSelect"
+        @refresh="handleRefreshTree"
       />
-      <div class="doc-actions">
-        <el-select v-model="doc.format" placeholder="格式" style="width: 130px" size="large" @change="handleFormatChange">
-          <el-option label="富文本 HTML" value="html" />
-          <el-option label="Markdown" value="markdown" />
-        </el-select>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
-        <el-dropdown @command="handleExport" trigger="click">
-          <el-button size="large">
-            导出<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+    </div>
+    <div class="doc-edit-content">
+      <div class="doc-header">
+        <el-input
+          v-model="doc.title"
+          placeholder="请输入笔记标题"
+          class="doc-title-input"
+          size="large"
+        />
+        <div class="doc-actions">
+          <el-select v-model="doc.format" placeholder="格式" style="width: 120px" size="default" @change="handleFormatChange">
+            <el-option label="富文本 HTML" value="html" />
+            <el-option label="Markdown" value="markdown" />
+          </el-select>
+          <el-dropdown trigger="click">
+            <el-button size="default">
+              <el-icon><MoreFilled /></el-icon>
+              <span>更多</span>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="handleShare">
+                  <el-icon><Share /></el-icon>分享
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="showVersionDrawer = true; loadVersions()">
+                  <el-icon><Clock /></el-icon>历史版本
+                </el-dropdown-item>
+                <el-dropdown-item divided @click.stop="handleExport('markdown')">
+                  <el-icon><Download /></el-icon>导出 Markdown
+                </el-dropdown-item>
+                <el-dropdown-item @click.stop="handleExport('html')">
+                  <el-icon><Download /></el-icon>导出 HTML
+                </el-dropdown-item>
+                <el-dropdown-item v-if="doc.format === 'markdown'" divided @click="openLinkPicker">
+                  <el-icon><Link /></el-icon>插入双向链接
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button type="primary" :loading="saving" size="default" class="save-btn" @click="handleSave">
+            <el-icon><Check /></el-icon>
+            <span>保存</span>
           </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="markdown">导出 Markdown (.md)</el-dropdown-item>
-              <el-dropdown-item command="html">导出 HTML (.html)</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-button @click="showVersionDrawer = true; loadVersions()" size="large">
-          <el-icon><Clock /></el-icon>&nbsp;历史版本
-        </el-button>
-        <el-button v-if="doc.format === 'markdown'" @click="openLinkPicker" size="large">
-          <el-icon><Link /></el-icon>&nbsp;插入双向链接
-        </el-button>
+        </div>
+      </div>
+
+      <div class="doc-body">
+        <div class="editor-area">
+          <div class="editor-container">
+            <!-- Markdown 编辑器 -->
+            <MdEditor
+              v-if="doc.format === 'markdown'"
+              v-model="doc.content"
+              :preview="true"
+              language="zh-CN"
+              :toolbars-exclude="['github', 'save']"
+              :markdown-it-config="configMarkdownIt"
+              placeholder="开始编写 Markdown 笔记..."
+              style="height: 100%"
+              @on-click="handlePreviewClick"
+            />
+            <!-- HTML 富文本编辑器 -->
+            <template v-else>
+              <div class="toolbar-container" ref="toolbarRef"></div>
+              <div class="editor-content" ref="editorRef"></div>
+            </template>
+          </div>
+        </div>
+        <div class="info-area">
+          <div class="info-card">
+            <div class="card-title">目录</div>
+            <el-select v-model="doc.folderId" placeholder="选择目录" style="width: 100%">
+              <el-option
+                v-for="folder in folders"
+                :key="folder.id"
+                :label="folder.name"
+                :value="folder.id"
+              />
+            </el-select>
+          </div>
+
+          <div class="info-card" style="margin-top: 16px">
+            <div class="card-title">文档大纲</div>
+            <div v-if="outline.length === 0" class="outline-empty">
+              <span>暂无大纲</span>
+            </div>
+            <ul v-else class="outline-list">
+              <li
+                v-for="item in outline"
+                :key="item.id"
+                :class="`outline-item level-${item.level}`"
+                @click="handleOutlineClick(item.id)"
+              >
+                {{ item.text }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="info-card" style="margin-top: 16px">
+            <div class="card-title">标签</div>
+            <TagInput
+              :resource-id="Number(id)"
+              resource-type="doc"
+            />
+          </div>
+
+          <div class="info-card" style="margin-top: 16px">
+            <div class="card-title">反向链接</div>
+            <div v-if="backlinksLoading" class="backlink-loading">加载中...</div>
+            <div v-else-if="backlinks.length === 0" class="backlink-empty">暂无反向链接</div>
+            <ul v-else class="backlink-list">
+              <li
+                v-for="bl in backlinks"
+                :key="bl.id"
+                class="backlink-item"
+                @click="goToDoc(bl.id)"
+              >
+                <div class="backlink-item__title">{{ bl.title }}</div>
+                <div class="backlink-item__preview">{{ bl.preview }}</div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="info-card" style="margin-top: 16px">
+            <div class="card-title">信息</div>
+            <div class="doc-meta">
+              <div>字数：{{ doc.wordCount || 0 }}</div>
+              <div>格式：{{ doc.format === 'markdown' ? 'Markdown' : '富文本' }}</div>
+              <div>创建：{{ formatDate(doc.createdAt || '') }}</div>
+              <div>更新：{{ formatDate(doc.updatedAt || '') }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <el-row :gutter="16">
-      <el-col :span="18">
-        <div class="editor-container">
-          <!-- Markdown 编辑器 -->
-          <MdEditor
-            v-if="doc.format === 'markdown'"
-            v-model="doc.content"
-            :preview="true"
-            language="zh-CN"
-            :toolbars-exclude="['github', 'save']"
-            :markdown-it-config="configMarkdownIt"
-            placeholder="开始编写 Markdown 笔记..."
-            style="height: 600px"
-            @on-click="handlePreviewClick"
-          />
-          <!-- HTML 富文本编辑器 -->
-          <template v-else>
-            <div class="toolbar-container" ref="toolbarRef"></div>
-            <div class="editor-content" ref="editorRef"></div>
-          </template>
-        </div>
-      </el-col>
-      <el-col :span="6">
-        <div class="info-card">
-          <div class="card-title">目录</div>
-          <el-select v-model="doc.folderId" placeholder="选择目录" style="width: 100%">
-            <el-option
-              v-for="folder in folders"
-              :key="folder.id"
-              :label="folder.name"
-              :value="folder.id"
-            />
-          </el-select>
-        </div>
-
-        <div class="info-card" style="margin-top: 16px">
-          <div class="card-title">文档大纲</div>
-          <div v-if="outline.length === 0" class="outline-empty">
-            <span>暂无大纲</span>
-          </div>
-          <ul v-else class="outline-list">
-            <li
-              v-for="item in outline"
-              :key="item.id"
-              :class="`outline-item level-${item.level}`"
-              @click="handleOutlineClick(item.id)"
-            >
-              {{ item.text }}
-            </li>
-          </ul>
-        </div>
-
-        <div class="info-card" style="margin-top: 16px">
-          <div class="card-title">标签</div>
-          <TagInput
-            :resource-id="Number(id)"
-            resource-type="doc"
-          />
-        </div>
-
-        <div class="info-card" style="margin-top: 16px">
-          <div class="card-title">反向链接</div>
-          <div v-if="backlinksLoading" class="backlink-loading">加载中...</div>
-          <div v-else-if="backlinks.length === 0" class="backlink-empty">暂无反向链接</div>
-          <ul v-else class="backlink-list">
-            <li
-              v-for="bl in backlinks"
-              :key="bl.id"
-              class="backlink-item"
-              @click="goToDoc(bl.id)"
-            >
-              <div class="backlink-item__title">{{ bl.title }}</div>
-              <div class="backlink-item__preview">{{ bl.preview }}</div>
-            </li>
-          </ul>
-        </div>
-
-        <div class="info-card" style="margin-top: 16px">
-          <div class="card-title">信息</div>
-          <div class="doc-meta">
-            <div>字数：{{ doc.wordCount || 0 }}</div>
-            <div>格式：{{ doc.format === 'markdown' ? 'Markdown' : '富文本' }}</div>
-            <div>创建：{{ formatDate(doc.createdAt || '') }}</div>
-            <div>更新：{{ formatDate(doc.updatedAt || '') }}</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+    <!-- 分享对话框 -->
+    <ShareDialog
+      v-model:visible="showShareDialog"
+      :resource-id="Number(id)"
+      resource-type="doc"
+    />
 
     <!-- 版本历史抽屉 -->
     <el-drawer v-model="showVersionDrawer" title="历史版本" size="70%" direction="rtl">
@@ -198,20 +230,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getDocDetail, updateDoc, getDocVersions, getDocList } from '@/api/doc'
 import { getFolderTree } from '@/api/folder'
+import { getSpaceDetail } from '@/api/space'
 import { search as searchApi } from '@/api/search'
 import { formatDate } from '@/utils/format'
 import { extractOutline, scrollToHeading } from '@/utils/docOutline'
 import type { Doc, Folder, DocFormat, OutlineItem, DocVersion } from '@/types'
 import TagInput from '@/components/TagInput.vue'
+import ResourceTree from '@/components/ResourceTree.vue'
+import ShareDialog from '@/components/ShareDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, Clock, Link, Search, Document } from '@element-plus/icons-vue'
+import { ArrowDown, Clock, Link, Search, Document, MoreFilled, Download, Check, Share } from '@element-plus/icons-vue'
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
-import '@wangeditor/editor/dist/css/style.css'
+
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 
@@ -229,6 +264,9 @@ const folders = ref<Folder[]>([])
 const outline = ref<OutlineItem[]>([])
 const dirty = ref(false)
 const lastSavedTitle = ref('')
+const resourceTreeRef = ref()
+const spaceName = ref('')
+const showShareDialog = ref(false)
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
 let draftTimer: ReturnType<typeof setInterval> | null = null
 
@@ -353,6 +391,15 @@ async function loadDoc() {
   // 兼容旧数据：format 为空时按 html 处理
   if (!doc.format) doc.format = 'html'
   if (!doc.content) doc.content = ''
+  // 加载空间名称
+  if (doc.spaceId) {
+    try {
+      const spaceRes = await getSpaceDetail(doc.spaceId)
+      spaceName.value = spaceRes.data.data?.name || ''
+    } catch {
+      // 忽略空间详情加载失败
+    }
+  }
 }
 
 async function loadFolders() {
@@ -580,6 +627,33 @@ function goToDoc(docId: number) {
   router.push(`/doc/edit/${docId}`)
 }
 
+async function handleTreeSelect(node: any) {
+  if (node.type === 'doc') {
+    if (dirty.value) {
+      const confirm = await ElMessageBox.confirm(
+        '当前文档有未保存的更改，切换将丢失内容，是否继续？',
+        '提示',
+        { type: 'warning', confirmButtonText: '继续切换', cancelButtonText: '取消' }
+      ).catch(() => false)
+      if (!confirm) return
+    }
+    if (node.id === Number(props.id)) return
+    router.replace(`/doc/edit/${node.id}`)
+  }
+}
+
+function handleShare() {
+  if (dirty.value) {
+    ElMessage.warning('请先保存再分享')
+    return
+  }
+  showShareDialog.value = true
+}
+
+function handleRefreshTree() {
+  resourceTreeRef.value?.loadTree()
+}
+
 /** 加载反向链接：搜索引用了当前文档的其他文档 */
 async function loadBacklinks() {
   if (!doc.title) return
@@ -724,121 +798,191 @@ function markdownToHtml(md: string): string {
 </script>
 
 <style scoped lang="scss">
-.doc-edit-page {
-  .doc-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
+.doc-edit-layout {
+  display: flex;
+  height: 100%;
+  background-color: #faf8f5;
+}
+
+.doc-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #ebeef5;
+  padding: 16px 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-edit-content {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.doc-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.editor-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-area {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.doc-title-input {
+  flex: 1;
+  min-width: 200px;
+
+  :deep(.el-input__inner) {
+    font-size: 20px;
+    font-weight: 600;
   }
+}
 
-  .doc-title-input {
-    flex: 1;
-    min-width: 200px;
+.doc-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
-    :deep(.el-input__inner) {
-      font-size: 20px;
-      font-weight: 600;
-    }
-  }
+.save-btn {
+  font-weight: 600;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
 
-  .doc-actions {
+.editor-container {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+
+  .toolbar-container {
+    border-bottom: 1px solid #dcdfe6;
     flex-shrink: 0;
-    display: flex;
-    gap: 8px;
   }
 
-  .editor-container {
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    overflow: hidden;
-    background-color: #fff;
-
-    .toolbar-container {
-      border-bottom: 1px solid #dcdfe6;
-    }
-
-    .editor-content {
-      min-height: 500px;
-    }
-  }
-
-  .doc-meta {
-    font-size: 13px;
-    color: #909399;
-    line-height: 2;
-  }
-
-  .outline-empty {
-    color: #c0c4cc;
-    font-size: 13px;
-    padding: 8px 0;
-    text-align: center;
-  }
-
-  .outline-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 320px;
+  .editor-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+  }
+}
 
-    .outline-item {
-      padding: 4px 8px;
-      font-size: 13px;
-      color: #606266;
-      cursor: pointer;
-      border-radius: 2px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      transition: background-color 0.2s;
+.doc-meta {
+  font-size: 13px;
+  color: #909399;
+  line-height: 2;
+}
 
-      &:hover {
-        background-color: #f5f7fa;
-        color: #409eff;
-      }
+.outline-empty {
+  color: #c0c4cc;
+  font-size: 13px;
+  padding: 8px 0;
+  text-align: center;
+}
 
-      &.level-1 { font-weight: 600; padding-left: 8px; }
-      &.level-2 { padding-left: 16px; }
-      &.level-3 { padding-left: 24px; }
-      &.level-4 { padding-left: 32px; font-size: 12px; }
-      &.level-5 { padding-left: 40px; font-size: 12px; }
-      &.level-6 { padding-left: 48px; font-size: 12px; }
+.outline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 320px;
+  overflow-y: auto;
+
+  .outline-item {
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #606266;
+    cursor: pointer;
+    border-radius: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #f5f7fa;
+      color: #409eff;
     }
+
+    &.level-1 { font-weight: 600; padding-left: 8px; }
+    &.level-2 { padding-left: 16px; }
+    &.level-3 { padding-left: 24px; }
+    &.level-4 { padding-left: 32px; font-size: 12px; }
+    &.level-5 { padding-left: 40px; font-size: 12px; }
+    &.level-6 { padding-left: 48px; font-size: 12px; }
   }
 }
 
 @media (max-width: 768px) {
-  .doc-edit-page {
-    .doc-header {
-      flex-direction: column;
-      gap: 8px;
-      align-items: stretch;
-    }
+  .doc-edit-layout {
+    flex-direction: column;
 
-    .doc-title-input {
-      :deep(.el-input__inner) {
-        font-size: 16px;
-      }
+    .doc-sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 50%;
+      border-right: none;
+      border-bottom: 1px solid #ebeef5;
     }
+  }
 
-    .doc-actions {
-      .el-button {
-        width: 100%;
-      }
-    }
+  .doc-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
 
-    .editor-container {
-      .editor-content {
-        min-height: 300px;
-      }
+  .doc-title-input {
+    :deep(.el-input__inner) {
+      font-size: 16px;
     }
+  }
 
-    .info-card {
-      margin-top: 12px;
+  .doc-actions {
+    .el-button {
+      width: 100%;
     }
+  }
+
+  .editor-container {
+    .editor-content {
+      min-height: 300px;
+    }
+  }
+
+  .info-card {
+    margin-top: 12px;
   }
 }
 
