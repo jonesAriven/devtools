@@ -219,4 +219,11 @@ public class DocServiceImpl implements DocService {
         doc.setFolderId(request.getFolderId());
         docMapper.updateById(doc);
     }
+
+    @Override
+    public List<DocContent> getVersions(Long id, Long userId) {
+        // 校验文档存在且属于当前用户
+        getById(id, userId);
+        return docContentRepository.findByDocIdOrderByVersionDesc(id);
+    }
 }

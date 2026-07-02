@@ -35,3 +35,8 @@ export function toggleDocStar(id: number) {
 export function moveDoc(id: number, folderId: number) {
   return request.put<R<void>>(`/doc/${id}/move`, { folderId })
 }
+
+/** 获取笔记版本历史 */
+export function getDocVersions(id: number) {
+  return request.get<R<DocVersion[]>>(`/doc/${id}/versions`)
+}

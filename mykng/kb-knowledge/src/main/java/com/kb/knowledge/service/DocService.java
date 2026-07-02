@@ -5,6 +5,9 @@ import com.kb.knowledge.dto.doc.DocCreateRequest;
 import com.kb.knowledge.dto.doc.DocMoveRequest;
 import com.kb.knowledge.dto.doc.DocUpdateRequest;
 import com.kb.knowledge.entity.Doc;
+import com.kb.knowledge.mongo.doc.DocContent;
+
+import java.util.List;
 
 public interface DocService {
 
@@ -21,4 +24,6 @@ public interface DocService {
     void star(Long id, Long userId);
 
     void move(Long id, Long userId, DocMoveRequest request);
+
+    List<DocContent> getVersions(Long id, Long userId);
 }

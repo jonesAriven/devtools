@@ -149,6 +149,17 @@ export interface Doc {
   updatedAt: string
 }
 
+/** 文档版本历史 */
+export interface DocVersion {
+  id: string
+  docId: number
+  userId: number
+  content: string
+  version: number
+  isCurrent: boolean
+  createdAt: string
+}
+
 /** 创建笔记请求 */
 export interface CreateDocRequest {
   title: string

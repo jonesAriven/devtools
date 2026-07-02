@@ -6,12 +6,15 @@ import com.kb.knowledge.dto.doc.DocCreateRequest;
 import com.kb.knowledge.dto.doc.DocMoveRequest;
 import com.kb.knowledge.dto.doc.DocUpdateRequest;
 import com.kb.knowledge.entity.Doc;
+import com.kb.knowledge.mongo.doc.DocContent;
 import com.kb.knowledge.service.DocService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/doc")
@@ -59,6 +62,11 @@ public class DocController {
     public Result<Void> move(@PathVariable Long id, @Valid @RequestBody DocMoveRequest request) {
         docService.move(id, getCurrentUserId(), request);
         return Result.ok();
+    }
+
+    @GetMapping("/{id}/versions")
+    public Result<List<DocContent>> getVersions(@PathVariable Long id) {
+        return Result.ok(docService.getVersions(id, getCurrentUserId()));
     }
 
     private Long getCurrentUserId() {

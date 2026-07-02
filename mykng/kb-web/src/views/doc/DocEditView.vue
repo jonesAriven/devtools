@@ -24,6 +24,9 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        <el-button @click="showVersionDrawer = true; loadVersions()" size="large">
+          <el-icon><Clock /></el-icon>&nbsp;历史版本
+        </el-button>
       </div>
     </div>
 
@@ -96,20 +99,66 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- 版本历史抽屉 -->
+    <el-drawer v-model="showVersionDrawer" title="历史版本" size="70%" direction="rtl">
+      <div class="version-drawer">
+        <div class="version-list-panel">
+          <div v-if="versionsLoading" class="version-loading">加载中...</div>
+          <div v-else-if="versions.length === 0" class="version-empty">暂无历史版本</div>
+          <div
+            v-for="v in versions"
+            :key="v.id"
+            class="version-item"
+            :class="{ active: selectedVersionId === v.id }"
+            @click="selectVersion(v)"
+          >
+            <div class="version-item__header">
+              <span class="version-item__num">v{{ v.version }}</span>
+              <el-tag v-if="v.isCurrent" size="small" type="success">当前</el-tag>
+            </div>
+            <div class="version-item__time">{{ v.createdAt }}</div>
+            <div class="version-item__preview">{{ (v.content || '').replace(/<[^>]+>/g, '').slice(0, 60) }}...</div>
+          </div>
+        </div>
+        <div class="version-diff-panel">
+          <div v-if="!selectedVersion" class="diff-empty">请选择左侧的版本查看差异</div>
+          <div v-else>
+            <div class="diff-header">
+              <span>v{{ selectedVersion.version }} 与当前版本对比</span>
+              <el-button size="small" @click="diffMode = diffMode === 'inline' ? 'split' : 'inline'">
+                {{ diffMode === 'inline' ? '切换分栏' : '切换内联' }}
+              </el-button>
+            </div>
+            <div class="diff-content">
+              <div
+                v-for="(line, idx) in diffLines"
+                :key="idx"
+                class="diff-line"
+                :class="{ 'diff-add': line.type === 'add', 'diff-del': line.type === 'del', 'diff-same': line.type === 'same' }"
+              >
+                <span class="diff-line__sign">{{ line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' ' }}</span>
+                <span class="diff-line__text">{{ line.text }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getDocDetail, updateDoc } from '@/api/doc'
+import { getDocDetail, updateDoc, getDocVersions } from '@/api/doc'
 import { getFolderTree } from '@/api/folder'
 import { formatDate } from '@/utils/format'
 import { extractOutline, scrollToHeading } from '@/utils/docOutline'
-import type { Doc, Folder, DocFormat, OutlineItem } from '@/types'
+import type { Doc, Folder, DocFormat, OutlineItem, DocVersion } from '@/types'
 import TagInput from '@/components/TagInput.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Clock } from '@element-plus/icons-vue'
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import '@wangeditor/editor/dist/css/style.css'
@@ -131,6 +180,15 @@ const dirty = ref(false)
 const lastSavedTitle = ref('')
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
 let draftTimer: ReturnType<typeof setInterval> | null = null
+
+// 版本历史
+const showVersionDrawer = ref(false)
+const versions = ref<DocVersion[]>([])
+const versionsLoading = ref(false)
+const selectedVersion = ref<DocVersion | null>(null)
+const selectedVersionId = ref<string>('')
+const diffLines = ref<{ type: 'add' | 'del' | 'same'; text: string }[]>([])
+const diffMode = ref<'inline' | 'split'>('inline')
 
 const doc = reactive<Partial<Doc> & { format: DocFormat }>({
   title: '',
@@ -334,6 +392,47 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+async function loadVersions() {
+  versionsLoading.value = true
+  try {
+    const res = await getDocVersions(Number(props.id))
+    versions.value = res.data.data || []
+  } catch {
+    // 错误已在拦截器中处理
+  } finally {
+    versionsLoading.value = false
+  }
+}
+
+function selectVersion(v: DocVersion) {
+  selectedVersion.value = v
+  selectedVersionId.value = v.id
+  const currentContent = getCurrentContent()
+  diffLines.value = computeDiff(v.content || '', currentContent)
+}
+
+function computeDiff(oldText: string, newText: string): { type: 'add' | 'del' | 'same'; text: string }[] {
+  const oldLines = oldText.split('\n')
+  const newLines = newText.split('\n')
+  const result: { type: 'add' | 'del' | 'same'; text: string }[] = []
+  const maxLen = Math.max(oldLines.length, newLines.length)
+  for (let i = 0; i < maxLen; i++) {
+    const oldLine = i < oldLines.length ? oldLines[i] : undefined
+    const newLine = i < newLines.length ? newLines[i] : undefined
+    if (oldLine === newLine) {
+      result.push({ type: 'same', text: oldLine || '' })
+    } else {
+      if (oldLine !== undefined) {
+        result.push({ type: 'del', text: oldLine })
+      }
+      if (newLine !== undefined) {
+        result.push({ type: 'add', text: newLine })
+      }
+    }
+  }
+  return result
 }
 
 function handleExport(command: string) {
@@ -571,6 +670,126 @@ function markdownToHtml(md: string): string {
 
     .info-card {
       margin-top: 12px;
+    }
+  }
+}
+
+.version-drawer {
+  display: flex;
+  height: 100%;
+  gap: 16px;
+
+  .version-list-panel {
+    width: 280px;
+    overflow-y: auto;
+    border-right: 1px solid #ebeef5;
+    padding-right: 12px;
+  }
+
+  .version-diff-panel {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .version-loading, .version-empty, .diff-empty {
+    text-align: center;
+    color: #909399;
+    padding: 48px 0;
+  }
+
+  .version-item {
+    padding: 10px 12px;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: #409eff;
+      background: #f5f7fa;
+    }
+
+    &.active {
+      border-color: #409eff;
+      background: #ecf5ff;
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    &__num {
+      font-weight: 600;
+      color: #303133;
+    }
+
+    &__time {
+      font-size: 12px;
+      color: #909399;
+      margin-bottom: 4px;
+    }
+
+    &__preview {
+      font-size: 12px;
+      color: #606266;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .diff-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ebeef5;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .diff-content {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .diff-line {
+    display: flex;
+    padding: 2px 8px;
+
+    &__sign {
+      width: 20px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    &__text {
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    &.diff-add {
+      background: #e6ffed;
+      .diff-line__text { color: #22863a; }
+    }
+
+    &.diff-del {
+      background: #ffeef0;
+      .diff-line__text { color: #cb2431; }
+    }
+
+    &.diff-same {
+      .diff-line__text { color: #606266; }
     }
   }
 }
