@@ -120,9 +120,21 @@ const filters = reactive({
   type: 'all' as string,
 })
 
-// 本地缓存：相同查询 5 分钟内不重复请求
+// 本地缓存：相同查询 5 分钟内不重复请求（LRU 上限 50 条防止内存膨胀）
 const searchCache = new Map<string, { data: SearchResult[]; total: number; ts: number }>()
 const CACHE_TTL = 5 * 60 * 1000
+const CACHE_MAX_SIZE = 50
+
+/** 写入缓存并维持 LRU 上限：超出时淘汰最早的条目 */
+function setCache(key: string, value: { data: SearchResult[]; total: number; ts: number }) {
+  searchCache.set(key, value)
+  // Map 的迭代顺序为插入顺序，超出上限时淘汰最早的（FIFO 近似 LRU）
+  while (searchCache.size > CACHE_MAX_SIZE) {
+    const oldestKey = searchCache.keys().next().value
+    if (oldestKey === undefined) break
+    searchCache.delete(oldestKey)
+  }
+}
 
 // 请求取消：新请求发出时取消上一个未完成的请求
 let abortController: AbortController | null = null
@@ -185,6 +197,9 @@ async function doSearch() {
     results.value = cached.data
     total.value = cached.total
     searched.value = true
+    // LRU touch：删除后重新插入，移到末尾
+    searchCache.delete(key)
+    searchCache.set(key, cached)
     return
   }
 
@@ -203,8 +218,8 @@ async function doSearch() {
     }, abortController.signal)
     results.value = res.data.data.list || []
     total.value = res.data.data.total || 0
-    // 写入缓存
-    searchCache.set(key, { data: results.value, total: total.value, ts: Date.now() })
+    // 写入缓存（LRU 维持上限）
+    setCache(key, { data: results.value, total: total.value, ts: Date.now() })
   } catch (e: any) {
     // AbortError 是正常取消，不显示错误
     if (e?.code !== 'ERR_CANCELED' && e?.name !== 'CanceledError') {

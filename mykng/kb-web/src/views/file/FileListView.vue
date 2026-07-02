@@ -181,16 +181,25 @@ const filteredList = computed(() => {
   return list.value.filter((f) => f.name.toLowerCase().includes(kw))
 })
 
+// 请求序号：防止快速翻页/切换空间时旧响应覆盖新响应
+let requestSeq = 0
+
 async function loadData() {
+  const seq = ++requestSeq
   loading.value = true
   try {
     const res = await getFileList({ page: page.value, size: pageSize.value, folderId: 0 })
+    // 仅当本次请求仍是最新请求时才应用结果，避免竞态
+    if (seq !== requestSeq) return
     list.value = res.data.data.list
     total.value = res.data.data.total
   } catch {
+    if (seq !== requestSeq) return
     ElMessage.error('加载文件列表失败')
   } finally {
-    loading.value = false
+    if (seq === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
