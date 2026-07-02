@@ -66,7 +66,6 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     FilePreview: typeof import('./components/FilePreview.vue')['default']
     FileUpload: typeof import('./components/FileUpload.vue')['default']
-    FolderTree: typeof import('./components/FolderTree.vue')['default']
     ResourceList: typeof import('./components/ResourceList.vue')['default']
     ResourceTree: typeof import('./components/ResourceTree.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

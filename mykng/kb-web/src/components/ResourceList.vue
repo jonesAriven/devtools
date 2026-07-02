@@ -225,6 +225,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'refresh-tree'): void
+  (e: 'folder-change', folderId: number | null): void
 }>()
 
 const router = useRouter()
@@ -254,12 +255,14 @@ const isIndeterminate = computed(() => {
 
 onMounted(() => {
   loadResources()
+  loadBreadcrumbs()
 })
 
 watch(() => [props.spaceId, props.folderId], () => {
   page.value = 1
   selectedItems.value = []
   loadResources()
+  loadBreadcrumbs()
 })
 
 async function loadResources() {
@@ -299,6 +302,31 @@ async function loadResources() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadBreadcrumbs() {
+  if (!props.spaceId || !props.folderId) {
+    breadcrumbs.value = []
+    return
+  }
+  try {
+    const res = await getFolderTree(props.spaceId)
+    const path: BreadcrumbItem[] = []
+    findFolderPath(res.data.data || [], props.folderId, path)
+    breadcrumbs.value = path
+  } catch {
+    breadcrumbs.value = []
+  }
+}
+
+function findFolderPath(tree: FolderType[], targetId: number, path: BreadcrumbItem[]): boolean {
+  for (const folder of tree) {
+    path.push({ id: folder.id, name: folder.name })
+    if (folder.id === targetId) return true
+    if (folder.children && findFolderPath(folder.children, targetId, path)) return true
+    path.pop()
+  }
+  return false
 }
 
 function typeLabel(type: string): string {
@@ -464,7 +492,7 @@ async function handleBatchDelete() {
 }
 
 function goToFolder(id: number | null) {
-  // 由父组件处理
+  emit('folder-change', id)
 }
 </script>
 

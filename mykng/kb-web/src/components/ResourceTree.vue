@@ -175,10 +175,6 @@
           <el-icon><Share /></el-icon>
           <span>分享</span>
         </li>
-        <li @click="handleRename">
-          <el-icon><Edit /></el-icon>
-          <span>重命名</span>
-        </li>
         <li class="danger" @click="handleDelete">
           <el-icon><Delete /></el-icon>
           <span>删除</span>
@@ -224,7 +220,7 @@ import { useRouter } from 'vue-router'
 import { Search, Refresh, Plus, Folder, Document, Files, Link, Edit, Delete, View, Download, EditPen, Upload, Loading, FolderOpened, Share } from '@element-plus/icons-vue'
 import { getResourceTree, createFolder, updateFolder, deleteFolder } from '@/api/folder'
 import { createWebPage, deleteWebPage } from '@/api/web'
-import { deleteDoc } from '@/api/doc'
+import { deleteDoc, updateDoc } from '@/api/doc'
 import { deleteFile, downloadFile } from '@/api/file'
 import type { ResourceTreeNode } from '@/types'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -472,8 +468,10 @@ async function handleRenameSubmit() {
   }
   if (renameTarget.type === 'folder') {
     await updateFolder(renameTarget.id, { name: renameForm.name })
+  } else if (renameTarget.type === 'doc') {
+    await updateDoc(renameTarget.id, { title: renameForm.name })
   } else {
-    ElMessage.info('暂不支持重命名')
+    ElMessage.info('暂不支持重命名此类型')
     return
   }
   ElMessage.success('已重命名')

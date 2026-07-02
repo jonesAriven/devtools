@@ -17,6 +17,7 @@
         :space-name="currentSpace?.name"
         :folder-id="currentFolderId"
         @refresh-tree="handleRefreshTree"
+        @folder-change="handleFolderChange"
       />
     </div>
   </div>
@@ -74,6 +75,10 @@ function handleTreeSelect(node: any) {
 
 function handleRefreshTree() {
   resourceTreeRef.value?.loadTree()
+}
+
+function handleFolderChange(folderId: number | null) {
+  currentFolderId.value = folderId
 }
 </script>
 
