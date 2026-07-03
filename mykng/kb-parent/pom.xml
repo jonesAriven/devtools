@@ -56,7 +56,6 @@
         <module>../kb-auth</module>
         <module>../kb-file</module>
         <module>../kb-knowledge</module>
-        <module>../kb-ops</module>
         <module>../kb-intelligence</module>
     </modules>
 

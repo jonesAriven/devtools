@@ -99,16 +99,6 @@ updates:
       prefix: "deps(kb-knowledge)"
 
   - package-ecosystem: "maven"
-    directory: "/kb-ops"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "maven", "kb-ops"]
-    commit-message:
-      prefix: "deps(kb-ops)"
-
-  - package-ecosystem: "maven"
     directory: "/kb-gateway"
     schedule:
       interval: "weekly"
@@ -163,16 +153,6 @@ updates:
       day: "monday"
     open-pull-requests-limit: 3
     labels: ["dependencies", "docker", "kb-knowledge"]
-    commit-message:
-      prefix: "deps(docker)"
-
-  - package-ecosystem: "docker"
-    directory: "/kb-ops"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels: ["dependencies", "docker", "kb-ops"]
     commit-message:
       prefix: "deps(docker)"
 

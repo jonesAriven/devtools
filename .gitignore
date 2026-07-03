@@ -65,3 +65,17 @@ mykng/test-output/
 mykng/.tools/
 *.zip
 
+# Playwright 浏览器缓存（测试时下载，不入库）
+.playwright-browsers/
+
+# 备份目录与文件（含 .bak / .bak.YYYYMMDDHHMMSS 等多种格式）
+*.bak
+*.bak.*
+mykng/kb-web.bak_/
+
+# 含敏感凭据的部署辅助脚本（SSH密码、Token 等，不入库）
+portal/scripts/ssh_*.py
+portal/scripts/sftp_upload.py
+portal/scripts/configure_nginx.py
+portal/scripts/add_portal_to_tx2.py
+

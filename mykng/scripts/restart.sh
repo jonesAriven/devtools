@@ -39,7 +39,7 @@ mykng 知识库微服务重启脚本
 参数:
   service   可选服务名，不指定则重启全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                 kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence
+                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   bash scripts/restart.sh

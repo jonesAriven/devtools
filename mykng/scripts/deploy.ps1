@@ -106,10 +106,10 @@ function Invoke-Up {
     Wait-Healthy "kb-mongo" 60 | Out-Null
 
     Write-Step "启动微服务..."
-    Invoke-Dc up -d kb-auth kb-file kb-knowledge kb-ops kb-intelligence kb-gateway
+    Invoke-Dc up -d kb-auth kb-file kb-knowledge kb-intelligence kb-gateway
 
     Write-Step "等待微服务就绪（最多 180s）..."
-    foreach ($svc in @("kb-auth","kb-file","kb-knowledge","kb-ops","kb-intelligence","kb-gateway")) {
+    foreach ($svc in @("kb-auth","kb-file","kb-knowledge","kb-intelligence","kb-gateway")) {
         $ok = Wait-Healthy $svc 180
         if (-not $ok) { Write-Warn "$svc 未在规定时间内就绪，请检查日志: docker logs $svc" }
     }

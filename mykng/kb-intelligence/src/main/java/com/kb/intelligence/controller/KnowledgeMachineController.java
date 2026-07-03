@@ -121,7 +121,7 @@ public class KnowledgeMachineController {
         return Result.ok(queryService.getStats());
     }
 
-    // ============ 内部同步接口（供 kb-ops 同步用，返回完整实体含敏感字段） ============
+    // ============ 内部同步接口（供内部同步用（原 kb-ops 已剥离），返回完整实体含敏感字段） ============
 
     @GetMapping("/internal/hosts")
     public Result<List<KnHost>> listAllHostsInternal() {

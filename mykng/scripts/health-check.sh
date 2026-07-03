@@ -45,7 +45,6 @@ SERVICES=(
     "kb-auth=8081"
     "kb-file=8082"
     "kb-knowledge=8083"
-    "kb-ops=8084"
     "kb-intelligence=8086"
 )
 
@@ -80,7 +79,7 @@ mykng 知识库微服务健康检查脚本
   bash scripts/health-check.sh -help
 
 参数:
-  service   可选服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence
+  service   可选服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
             不指定则全量检查
 
 示例:

@@ -45,7 +45,7 @@ mykng 知识库微服务构建脚本 (PowerShell)
   -SkipMvn          跳过 Maven 编译步骤
   -Help             显示此帮助
 
-服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence
+服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
 "@
     exit 0
 }
@@ -76,7 +76,7 @@ if (-not $SkipMvn) {
 }
 
 # ---------- Docker 构建 ----------
-$allServices = @("kb-gateway","kb-auth","kb-file","kb-knowledge","kb-ops","kb-intelligence")
+$allServices = @("kb-gateway","kb-auth","kb-file","kb-knowledge","kb-intelligence")
 $cacheArg = if ($NoCache) { "--no-cache" } else { "" }
 $buildArgs = @("build")
 if ($NoCache) { $buildArgs += "--no-cache" }

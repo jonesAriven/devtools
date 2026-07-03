@@ -7,7 +7,6 @@ kb:
       auth: ${KB_AUTH_HOST:kb-auth:8081}
       file: ${KB_FILE_HOST:kb-file:8082}
       knowledge: ${KB_KNOWLEDGE_HOST:kb-knowledge:8083}
-      ops: ${KB_OPS_HOST:kb-ops:8084}
       intelligence: ${KB_INTELLIGENCE_HOST:kb-intelligence:8086}
 
 logging:

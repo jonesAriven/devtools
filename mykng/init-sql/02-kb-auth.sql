@@ -1,6 +1,6 @@
 -- kb-auth 初始化
 -- kb_auth 数据库初始化脚本
--- 包含 user, refresh_token, jwt_blacklist, ops_api_token 表
+-- 包含 user, refresh_token, jwt_blacklist, ops_api_token, operation_log 表
 
 CREATE DATABASE IF NOT EXISTS `kb_auth` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -66,6 +66,24 @@ CREATE TABLE IF NOT EXISTS `ops_api_token` (
     KEY `idx_user_id` (`user_id`),
     KEY `idx_token_prefix` (`token_prefix`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='API Token表';
+
+-- 操作日志表（从 kb_ops 迁移至 kb_auth，统一由认证服务管理用户行为审计）
+CREATE TABLE IF NOT EXISTS `operation_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint DEFAULT NULL,
+  `username` varchar(100) DEFAULT NULL,
+  `action` varchar(50) NOT NULL COMMENT 'LOGIN/UPLOAD/DELETE/UPDATE等',
+  `resource_type` varchar(50) DEFAULT NULL,
+  `resource_id` bigint DEFAULT NULL,
+  `detail` varchar(2000) DEFAULT NULL,
+  `ip` varchar(50) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_action` (`action`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
 
 -- 初始管理员账号（密码: admin123, BCrypt加密）
 INSERT INTO `user` (`username`, `password`, `nickname`, `status`)

@@ -82,7 +82,7 @@ log "  ✓ $CONTAINER 已停止"
 info "观察微服务反应（10s）..."
 sleep 10
 info "微服务容器状态:"
-for svc in kb-auth kb-file kb-knowledge kb-ops kb-intelligence kb-gateway; do
+for svc in kb-auth kb-file kb-knowledge kb-intelligence kb-gateway; do
     local_status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
     local_health=$(docker inspect --format='{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "no-healthcheck")
     echo "  $svc: status=$local_status, health=$local_health"

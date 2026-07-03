@@ -113,11 +113,12 @@ services:
     mem_limit: 512m
 
   # ========== 微服务 ==========
-  # 启动顺序: gateway → auth → file → knowledge → ops
+  # 启动顺序: gateway → auth → file → knowledge → intelligence
   # gateway 不依赖其他服务（路由延迟生效）
-  # auth/file/knowledge/ops 依赖 mysql + redis
+  # auth/file/knowledge/intelligence 依赖 mysql + redis
   # file 额外依赖 minio + meilisearch + mongodb
   # knowledge 额外依赖 meilisearch + mongodb
+  # intelligence 额外依赖 mongodb + meilisearch
 
   kb-gateway:
     build:
@@ -134,7 +135,6 @@ services:
       - KB_AUTH_HOST=kb-auth:8081
       - KB_FILE_HOST=kb-file:8082
       - KB_KNOWLEDGE_HOST=kb-knowledge:8083
-      - KB_OPS_HOST=kb-ops:8084
       - KB_INTELLIGENCE_HOST=kb-intelligence:8086
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
@@ -272,41 +272,6 @@ services:
       kb-auth:
         condition: service_healthy
       kb-file:
-        condition: service_healthy
-    networks:
-      - kb-net
-    mem_limit: 512m
-
-  kb-ops:
-    build:
-      context: ./kb-ops
-      dockerfile: Dockerfile
-    container_name: kb-ops
-    restart: unless-stopped
-    # 不映射宿主机端口，仅 Docker 内网通信
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=kb_ops
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
-      - KB_AUTH_HOST=kb-auth
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kb-auth:
         condition: service_healthy
     networks:
       - kb-net

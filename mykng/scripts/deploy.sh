@@ -107,11 +107,11 @@ cmd_up() {
     wait_healthy kb-meilisearch 60
     wait_healthy kb-mongo 60
 
-    step "启动微服务（gateway/auth/file/knowledge/ops/intelligence）..."
-    dc up -d kb-auth kb-file kb-knowledge kb-ops kb-intelligence kb-gateway
+    step "启动微服务（gateway/auth/file/knowledge/intelligence）..."
+    dc up -d kb-auth kb-file kb-knowledge kb-intelligence kb-gateway
 
     step "等待微服务就绪（最多 180s）..."
-    for svc in kb-auth kb-file kb-knowledge kb-ops kb-intelligence kb-gateway; do
+    for svc in kb-auth kb-file kb-knowledge kb-intelligence kb-gateway; do
         wait_healthy "$svc" 180 || warn "$svc 未在规定时间内就绪，请检查日志: docker logs $svc"
     done
 

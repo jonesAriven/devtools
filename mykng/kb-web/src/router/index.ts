@@ -97,34 +97,9 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/settings/SettingsView.vue'),
       },
       {
-        path: 'ops',
-        name: 'OpsDashboard',
-        component: () => import('@/views/ops/OpsDashboardView.vue'),
-      },
-      {
-        path: 'ops/hosts',
-        name: 'OpsHosts',
-        component: () => import('@/views/ops/OpsHostsView.vue'),
-      },
-      {
-        path: 'ops/services',
-        name: 'OpsServices',
-        component: () => import('@/views/ops/OpsServicesView.vue'),
-      },
-      {
-        path: 'ops/conflicts',
-        name: 'OpsConflicts',
-        component: () => import('@/views/ops/OpsConflictsView.vue'),
-      },
-      {
-        path: 'ops/knowledge',
-        name: 'OpsKnowledge',
-        component: () => import('@/views/ops/OpsKnowledgeView.vue'),
-      },
-      {
-        path: 'ops/log',
-        name: 'OpsLog',
-        component: () => import('@/views/ops/OpsLogView.vue'),
+        path: 'log',
+        name: 'OperationLog',
+        component: () => import('@/views/log/LogView.vue'),
       },
       {
         path: 'intel',

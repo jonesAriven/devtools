@@ -77,7 +77,7 @@ jobs:
           echo "[INFO] 构建并推送镜像，tag=$IMAGE_TAG"
           docker compose -p ${{ env.COMPOSE_PROJECT }} build
           # 推送到 Nexus Docker 私服（如果配置了 push 步骤）
-          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence; do
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
             docker tag kb-deploy-$svc:latest nexus.marschat.online:8082/kb/$svc:$IMAGE_TAG || true
             docker tag kb-deploy-$svc:latest nexus.marschat.online:8082/kb/$svc:latest || true
             docker push nexus.marschat.online:8082/kb/$svc:$IMAGE_TAG || true
@@ -87,7 +87,7 @@ jobs:
       - name: Save Docker Images (for artifact)
         run: |
           mkdir -p docker-images
-          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence; do
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
             docker image save kb-deploy-$svc:latest -o docker-images/$svc.tar || true
           done
 
@@ -264,7 +264,6 @@ jobs:
             - kb-auth
             - kb-file
             - kb-knowledge
-            - kb-ops
             - kb-intelligence
 
             ### 部署状态

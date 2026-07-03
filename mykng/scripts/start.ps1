@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # mykng 知识库微服务启动脚本（Windows PowerShell 版本，SOP附录G要求）
 # ============================================================
 # 用法:
@@ -39,7 +39,7 @@ mykng 知识库微服务启动脚本 (PowerShell)
 参数:
   service   可选服务名，不指定则启动全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                 kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence
+                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   .\scripts\start.ps1

@@ -52,7 +52,6 @@ $services = @(
     @{ Name = "kb-auth"; Port = 8081 },
     @{ Name = "kb-file"; Port = 8082 },
     @{ Name = "kb-knowledge"; Port = 8083 },
-    @{ Name = "kb-ops"; Port = 8084 },
     @{ Name = "kb-intelligence"; Port = 8086 }
 )
 

@@ -1,6 +1,6 @@
 # mykng 个人知识库微服务
 
-> 基于 Spring Cloud 的私有化全端个人知识库系统，支持文档管理、文件存储、全文搜索、运维知识管理、智能知识导入。
+> 基于 Spring Cloud 的私有化全端个人知识库系统，支持文档管理、文件存储、全文搜索、智能知识导入。
 
 ## 快速开始
 
@@ -32,19 +32,17 @@ bash scripts/health-check.sh
 | 服务 | 端口 | 职责 |
 |------|------|------|
 | kb-gateway | 8090 | API网关（路由/JWT鉴权/限流） |
-| kb-auth | 8081 | 认证服务（JWT/用户/API Token） |
+| kb-auth | 8081 | 认证服务（JWT/用户/API Token/操作日志） |
 | kb-file | 8082 | 文件服务（MinIO/分块上传/解析） |
 | kb-knowledge | 8083 | 知识服务（文档/搜索/分享/版本） |
-| kb-ops | 8084 | 运维服务（主机/服务/部署/看板） |
 | kb-intelligence | 8086 | 智能服务（知识导入/解析/渲染） |
 
 ## 项目结构
 ```
 mykng/
-├── kb-auth/            # 认证微服务
+├── kb-auth/            # 认证微服务（含操作日志）
 ├── kb-file/            # 文件微服务
 ├── kb-knowledge/       # 知识微服务
-├── kb-ops/             # 运维微服务
 ├── kb-intelligence/    # 智能微服务
 ├── kb-gateway/         # API网关
 ├── kb-common/          # 公共模块

@@ -56,7 +56,7 @@ mykng 知识库微服务构建脚本
   -help         显示此帮助
 
 服务名:
-  kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence
+  kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
   不指定则构建全部
 
 示例:
@@ -71,7 +71,7 @@ EOF
 done
 
 # 所有微服务（按依赖顺序）
-ALL_SERVICES="kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence"
+ALL_SERVICES="kb-gateway kb-auth kb-file kb-knowledge kb-intelligence"
 
 # ---------- Maven 编译 ----------
 maven_build() {

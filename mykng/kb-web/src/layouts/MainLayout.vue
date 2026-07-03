@@ -62,36 +62,6 @@
               <template #title>回收站</template>
             </el-menu-item>
           </el-sub-menu>
-          <el-sub-menu index="ops-group">
-            <template #title>
-              <el-icon><Monitor /></el-icon>
-              <span>运维中心</span>
-            </template>
-            <el-menu-item :index="'/ops'">
-              <el-icon><Monitor /></el-icon>
-              <template #title>运维看板</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/hosts'">
-              <el-icon><Cpu /></el-icon>
-              <template #title>主机管理</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/services'">
-              <el-icon><Connection /></el-icon>
-              <template #title>服务管理</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/conflicts'">
-              <el-icon><Warning /></el-icon>
-              <template #title>矛盾检测</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/knowledge'">
-              <el-icon><Reading /></el-icon>
-              <template #title>运维知识</template>
-            </el-menu-item>
-            <el-menu-item :index="'/ops/log'">
-              <el-icon><Tickets /></el-icon>
-              <template #title>操作日志</template>
-            </el-menu-item>
-          </el-sub-menu>
           <el-sub-menu index="intel-group">
             <template #title>
               <el-icon><MagicStick /></el-icon>
@@ -139,6 +109,10 @@
               <el-icon><Setting /></el-icon>
               <span>系统</span>
             </template>
+            <el-menu-item :index="'/log'">
+              <el-icon><Tickets /></el-icon>
+              <template #title>操作日志</template>
+            </el-menu-item>
             <el-menu-item :index="'/settings'">
               <el-icon><Setting /></el-icon>
               <template #title>设置</template>
@@ -215,36 +189,6 @@
               <el-menu-item :index="'/trash'">
                 <el-icon><Delete /></el-icon>
                 <template #title>回收站</template>
-              </el-menu-item>
-            </el-sub-menu>
-            <el-sub-menu index="ops-group">
-              <template #title>
-                <el-icon><Monitor /></el-icon>
-                <span>运维中心</span>
-              </template>
-              <el-menu-item :index="'/ops'">
-                <el-icon><Monitor /></el-icon>
-                <template #title>运维看板</template>
-              </el-menu-item>
-              <el-menu-item :index="'/ops/hosts'">
-                <el-icon><Cpu /></el-icon>
-                <template #title>主机管理</template>
-              </el-menu-item>
-              <el-menu-item :index="'/ops/services'">
-                <el-icon><Connection /></el-icon>
-                <template #title>服务管理</template>
-              </el-menu-item>
-              <el-menu-item :index="'/ops/conflicts'">
-                <el-icon><Warning /></el-icon>
-                <template #title>矛盾检测</template>
-              </el-menu-item>
-              <el-menu-item :index="'/ops/knowledge'">
-                <el-icon><Reading /></el-icon>
-                <template #title>运维知识</template>
-              </el-menu-item>
-              <el-menu-item :index="'/ops/log'">
-                <el-icon><Tickets /></el-icon>
-                <template #title>操作日志</template>
               </el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="intel-group">
@@ -387,13 +331,10 @@ const defaultOpeneds = computed<string[]>(() => {
       path.startsWith('/doc') || path.startsWith('/web')) {
     groups.push('kb-group')
   }
-  if (path.startsWith('/ops')) {
-    groups.push('ops-group')
-  }
   if (path.startsWith('/intel')) {
     groups.push('intel-group')
   }
-  if (path.startsWith('/settings')) {
+  if (path.startsWith('/settings') || path.startsWith('/log')) {
     groups.push('system-group')
   }
   return groups
@@ -411,13 +352,8 @@ const pageTitleMap: Record<string, string> = {
   'doc-edit': '编辑文档',
   'file-detail': '文件详情',
   space: '知识空间',
-  ops: '运维看板',
-  'ops-hosts': '主机管理',
-  'ops-services': '服务管理',
-  'ops-conflicts': '矛盾检测',
-  'ops-knowledge': '运维知识',
-  'ops-log': '操作日志',
-  'intel': '知识引擎',
+  OperationLog: '操作日志',
+  intel: '知识引擎',
   'IntelDashboard': '引擎看板',
   'IntelDocs': '文档库',
   'IntelHosts': '主机总览',

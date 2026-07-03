@@ -1,0 +1,50 @@
+server:
+  port: 8084
+  servlet:
+    context-path: /kb-ops
+
+spring:
+  application:
+    name: kb-ops
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# AES-256-GCM 密钥 (Base64, 32字节)。生产环境通过环境变量覆盖。
+crypto:
+  aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
+
+# 服务间调用 (单机部署，直接 HTTP URL)
+# 独立运行时可选：kb-ops 脱离 mykng 后，以下 Feign 调用 kb-auth/kb-intelligence 为可选依赖。
+# 若不需要 Token 验证 / 智能同步，可忽略；需要时请确保目标服务可达。
+kb:
+  feign:
+    auth-url: ${AUTH_URL:http://kb-auth:8081}
+    intelligence-url: ${INTELLIGENCE_URL:http://kb-intelligence:8086}
+
+logging:
+  level:
+    com.kb.ops: debug
+    com.kb.common: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

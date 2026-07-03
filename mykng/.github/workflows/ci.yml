@@ -331,7 +331,7 @@ jobs:
       - name: Save Docker Images
         run: |
           mkdir -p docker-images
-          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-ops kb-intelligence; do
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
             docker image save kb-deploy-$svc:latest -o docker-images/$svc.tar || true
           done
 

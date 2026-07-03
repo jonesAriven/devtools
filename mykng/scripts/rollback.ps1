@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # mykng 知识库微服务回滚脚本（Windows PowerShell 版本，SOP附录G要求）
 # ============================================================
 # 用法:
@@ -54,11 +54,10 @@ $SvcDbMap = @{
     "kb-auth"         = "kb_auth"
     "kb-file"         = "kb_file"
     "kb-knowledge"    = "kb_knowledge"
-    "kb-ops"          = "kb_ops"
     "kb-intelligence" = "kb_intelligence"
 }
 
-$AllServices = @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-ops", "kb-intelligence")
+$AllServices = @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence")
 
 # ---------- 帮助 ----------
 function Show-Help {
@@ -70,7 +69,7 @@ mykng 知识库微服务回滚脚本 (PowerShell)
   .\scripts\rollback.ps1 all
 
 参数:
-  service   服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence / all
+  service   服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence / all
   tag       可选镜像 tag（默认使用上一 timestamp 版本）
 
 示例:
@@ -193,7 +192,7 @@ switch ($Service) {
     "all" {
         Invoke-RollbackAll
     }
-    { $_ -in @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-ops", "kb-intelligence") } {
+    { $_ -in @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence") } {
         Invoke-RollbackOne -Svc $Service -TargetTag $Tag | Out-Null
     }
     default {

@@ -2,6 +2,13 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.5.0] - 2026-07-03
+
+### 变更
+- **剥离 kb-ops 模块**：从代码库彻底删除 kb-ops 微服务（82 个 Java 文件、13 个 Controller、目录、pom 注册、网关路由、docker-compose 服务、CI/CD 配置、脚本、SQL 全部清理），微服务数量由 6 个精简为 5 个
+- **OperationLog 迁移至 kb-auth**：操作日志能力从 kb-ops 迁移到 kb-auth，Controller 路径由 `/ops/log` 改为 `/auth/log`，网关路由 `/kb/api/log/**` 现由 kb-auth 处理
+- **新建 devtools portal 工具看板**：作为 devtools 所有系统/工具的总入口看板（Vue3 + Vite + Element Plus），部署在 mykng-debain，访问地址 https://tools.marschat.online/portal/
+
 ## [1.4.0] - 2026-06-28
 
 ### 新增

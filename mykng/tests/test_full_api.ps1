@@ -204,45 +204,6 @@ Test-Api "knowledge" "空间默认" "GET" "/kb/api/space/default" "" $token -All
 Test-Api "knowledge" "分享统计" "GET" "/kb/api/share/stats" "" $token -Allow404
 Write-Host ""
 
-# ===== 5. kb-ops 服务（27 个接口）=====
-Write-Host "[5/6] 测试 kb-ops 服务（27 接口）..." -ForegroundColor Yellow
-# 主机
-Test-Api "ops" "主机列表" "GET" "/kb/api/ops/host/list" "" $token
-Test-Api "ops" "主机详情" "GET" "/kb/api/ops/host/1" "" $token -Allow404
-Test-Api "ops" "创建主机" "POST" "/kb/api/ops/host" '{"name":"test-host","ip":"192.168.1.1"}' $token
-Test-Api "ops" "更新主机" "PUT" "/kb/api/ops/host/1" '{"name":"new-host"}' $token -Allow404
-Test-Api "ops" "删除主机" "DELETE" "/kb/api/ops/host/999999" "" $token
-# 端口
-Test-Api "ops" "端口列表" "GET" "/kb/api/ops/port/list" "" $token -Allow404
-Test-Api "ops" "端口详情" "GET" "/kb/api/ops/port/1" "" $token -Allow404
-Test-Api "ops" "创建端口" "POST" "/kb/api/ops/port" '{"hostId":1,"port":8080}' $token -Allow404
-Test-Api "ops" "更新端口" "PUT" "/kb/api/ops/port/1" '{"port":9090}' $token -Allow404
-Test-Api "ops" "删除端口" "DELETE" "/kb/api/ops/port/999999" "" $token -Allow404
-# 凭据
-Test-Api "ops" "凭据列表" "GET" "/kb/api/ops/credential/list" "" $token -Allow404
-Test-Api "ops" "创建凭据" "POST" "/kb/api/ops/credential" '{"name":"test-cred","username":"root"}' $token -Allow404
-Test-Api "ops" "凭据详情" "GET" "/kb/api/ops/credential/1" "" $token -Allow404
-Test-Api "ops" "更新凭据" "PUT" "/kb/api/ops/credential/1" '{"name":"new-cred"}' $token -Allow404
-Test-Api "ops" "删除凭据" "DELETE" "/kb/api/ops/credential/999999" "" $token -Allow404
-# 域名
-Test-Api "ops" "域名列表" "GET" "/kb/api/ops/domain/list" "" $token -Allow404
-Test-Api "ops" "创建域名" "POST" "/kb/api/ops/domain" '{"domain":"test.com"}' $token -Allow404
-Test-Api "ops" "域名详情" "GET" "/kb/api/ops/domain/1" "" $token -Allow404
-Test-Api "ops" "删除域名" "DELETE" "/kb/api/ops/domain/999999" "" $token -Allow404
-# 依赖
-Test-Api "ops" "依赖列表" "GET" "/kb/api/ops/dependency/list" "" $token -Allow404
-Test-Api "ops" "创建依赖" "POST" "/kb/api/ops/dependency" '{"name":"test-dep"}' $token -Allow404
-# 变更日志
-Test-Api "ops" "变更日志列表" "GET" "/kb/api/ops/change/list" "" $token -Allow404
-Test-Api "ops" "创建变更日志" "POST" "/kb/api/ops/change" '{"title":"test","content":"test"}' $token -Allow404
-# 矛盾检测
-Test-Api "ops" "矛盾列表" "GET" "/kb/api/ops/conflict/list" "" $token -Allow404
-Test-Api "ops" "矛盾检测" "POST" "/kb/api/ops/conflict/detect" "" $token -Allow404
-# 操作日志
-Test-Api "ops" "操作日志列表" "GET" "/kb/api/ops/log/list" "" $token
-Test-Api "ops" "操作日志详情" "GET" "/kb/api/ops/log/1" "" $token -Allow404
-Write-Host ""
-
 # ===== 6. 前端页面路由测试 =====
 Write-Host "[6/6] 前端页面路由测试..." -ForegroundColor Yellow
 $pages = @(

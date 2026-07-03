@@ -33,6 +33,4 @@ public class KbEvent {
     public static final String FILE_PARSED = "file.parsed";
     public static final String FILE_DELETED = "file.deleted";
     public static final String FILE_REPARSE = "file.reparse";
-    public static final String OPS_IMPORTED = "ops.imported";
-    public static final String OPS_CONFLICT = "ops.conflict";
 }
