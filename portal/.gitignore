@@ -5,7 +5,4 @@ dist/
 *.log
 
 # 部署辅助脚本包含 SSH 凭据等敏感信息，禁止入库
-scripts/ssh_*.py
-scripts/sftp_upload.py
-scripts/configure_nginx.py
-scripts/add_portal_to_tx2.py
+scripts/*.py
