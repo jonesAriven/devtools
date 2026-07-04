@@ -1,16 +1,26 @@
 # ============================================================
 # mykng 知识库微服务 Docker Compose 编排
 # ============================================================
-# 启动: docker compose up -d
-# 构建: docker compose build
+# 启动: docker compose --profile <dev|test|prod> up -d
+# 构建: docker compose --profile <dev|test|prod> build
 # 日志: docker compose logs -f [service]
-# 停止: docker compose down
-# 重建: docker compose up -d --build [service]
+# 停止: docker compose --profile dev --profile test --profile prod down
+# 重建: docker compose --profile <dev|test|prod> up -d --build [service]
+#
+# Profiles 说明（按需启停模块）:
+#   - dev:  最小化启动 (mysql + redis + nacos + kb-gateway + kb-auth + kb-knowledge)
+#   - test: 核心功能验证 (全量基础设施 + 全部微服务)
+#   - prod: 生产环境 (全量启动)
+#
+# 一键管理脚本: kb-cli.ps1
+#   .\kb-cli.ps1 up dev | test | prod
+#   .\kb-cli.ps1 down
+#   .\kb-cli.ps1 status | logs | list
 # ============================================================
 
 services:
   # ========== 基础设施 ==========
-  
+
   mysql:
     image: mysql:8.0
     container_name: kb-mysql
@@ -32,6 +42,7 @@ services:
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [dev, test, prod]
 
   redis:
     image: redis:7-alpine
@@ -49,6 +60,30 @@ services:
       retries: 5
     networks:
       - kb-net
+    profiles: [dev, test, prod]
+
+  # Nacos 服务注册与配置中心（所有微服务依赖）
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: kb-nacos
+    restart: unless-stopped
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    environment:
+      - MODE=standalone
+      - JVM_XMS=256m
+      - JVM_XMX=256m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8848/nacos/v1/console/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - kb-net
+    mem_limit: 384m
+    profiles: [dev, test, prod]
 
   minio:
     image: minio/minio:latest
@@ -71,6 +106,7 @@ services:
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [test, prod]
 
   meilisearch:
     image: getmeili/meilisearch:v1.12
@@ -91,6 +127,7 @@ services:
     networks:
       - kb-net
     mem_limit: 256m
+    profiles: [dev, test, prod]  # kb-knowledge 依赖，dev 也需启动
 
   mongodb:
     image: mongo:7.0
@@ -111,6 +148,7 @@ services:
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [dev, test, prod]  # kb-knowledge 依赖，dev 也需启动
 
   # ========== 微服务 ==========
   # 启动顺序: gateway → auth → file → knowledge → intelligence
@@ -119,6 +157,7 @@ services:
   # file 额外依赖 minio + meilisearch + mongodb
   # knowledge 额外依赖 meilisearch + mongodb
   # intelligence 额外依赖 mongodb + meilisearch
+  # 全部微服务依赖 nacos 作为注册中心
 
   kb-gateway:
     build:
@@ -136,6 +175,8 @@ services:
       - KB_FILE_HOST=kb-file:8082
       - KB_KNOWLEDGE_HOST=kb-knowledge:8083
       - KB_INTELLIGENCE_HOST=kb-intelligence:8086
+      - NACOS_HOST=nacos
+      - NACOS_PORT=8848
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
       interval: 30s
@@ -145,9 +186,12 @@ services:
     depends_on:
       kb-auth:
         condition: service_healthy
+      nacos:
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [dev, test, prod]
 
   kb-auth:
     build:
@@ -167,6 +211,8 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
+      - NACOS_HOST=nacos
+      - NACOS_PORT=8848
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
       interval: 30s
@@ -178,9 +224,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      nacos:
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [dev, test, prod]
 
   kb-file:
     build:
@@ -208,6 +257,8 @@ services:
       - MONGO_USER=kb
       - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
       - MONGO_DB=kb_file
+      - NACOS_HOST=nacos
+      - NACOS_PORT=8848
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health"]
       interval: 30s
@@ -225,9 +276,12 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      nacos:
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [test, prod]
 
   kb-knowledge:
     build:
@@ -254,6 +308,8 @@ services:
       - MONGO_DB=kb_knowledge
       - KB_AUTH_HOST=kb-auth
       - KB_FILE_HOST=kb-file
+      - NACOS_HOST=nacos
+      - NACOS_PORT=8848
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/actuator/health"]
       interval: 30s
@@ -273,9 +329,12 @@ services:
         condition: service_healthy
       kb-file:
         condition: service_healthy
+      nacos:
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 512m
+    profiles: [dev, test, prod]
 
   kb-intelligence:
     build:
@@ -303,6 +362,8 @@ services:
       - LLM_ENDPOINT=${LLM_ENDPOINT:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-qwen-turbo}
+      - NACOS_HOST=nacos
+      - NACOS_PORT=8848
     volumes:
       - ${IMPORT_SOURCE_DIR:-/data/import}:/data/import:ro
       - /root/openclaw-work-space:/root/openclaw-work-space:ro
@@ -321,9 +382,12 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+      nacos:
+        condition: service_healthy
     networks:
       - kb-net
     mem_limit: 768m
+    profiles: [test, prod]
 
 # ========== 数据卷 ==========
 volumes:
