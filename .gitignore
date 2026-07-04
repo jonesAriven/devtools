@@ -76,3 +76,30 @@ mykng/kb-web.bak_/
 # 含敏感凭据的部署辅助脚本（SSH密码、Token 等，不入库）
 portal/scripts/*.py
 
+# ============================================================
+# 大文件防护（防止再次提交 >10MB 的文件到 Git 历史）
+# ============================================================
+# C# / .NET 编译产物（之前因为缺少这些规则导致 111MB 的 QRCodeTool.exe 被提交）
+QR_GENERATORBYC#V1/*/bin/
+QR_GENERATORBYC#V1/*/obj/
+QR_GENERATORBYC#V1/*/publish/
+QR_GENERATORV3/bin/
+QR_GENERATORV3/build/
+QR_GENERATORV3/dist/
+
+# Python 打包产物
+QR_generator/temp/
+
+# macOS 应用打包
+*.pkg
+*.app
+
+# ============================================================
+# 临时脚本（本次同步产生的辅助工具，不入库）
+# ============================================================
+check_*.py
+clean_*.py
+find_*.py
+deploy_*.py
+fix_*.py
+
