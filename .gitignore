@@ -109,6 +109,16 @@ test_*.ts
 update_*.py
 add_new_systems_db.py
 
+# 临时 Shell 脚本（调试、测试、部署辅助，不入库）
+check_*.sh
+clean_*.sh
+find_*.sh
+deploy_*.sh
+fix_*.sh
+test_*.sh
+verify_*.sh
+update_*.sh
+
 # Playwright 浏览器测试产物（截图、trace 等）
 mykng/test_shots/
 
