@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -398,5 +399,173 @@ class KbFileServiceImplTest {
                 .when(minioService).upload(anyString(), anyString(), any(MultipartFile.class));
 
         assertThrows(BusinessException.class, () -> fileService.uploadChunk(1L, null, null, file));
+    }
+
+    // ======================== M4-7 回收站功能测试 ========================
+
+    @Test
+    @DisplayName("回收站列表 - 返回用户已删除文件")
+    void listTrashReturnsDeletedFiles() {
+        KbFile f1 = new KbFile();
+        f1.setId(1L);
+        f1.setUserId(1L);
+        f1.setName("deleted.txt");
+        when(kbFileMapper.selectTrashList(1L)).thenReturn(List.of(f1));
+
+        List<KbFile> result = fileService.listTrash(1L);
+
+        assertEquals(1, result.size());
+        assertEquals("deleted.txt", result.get(0).getName());
+        verify(kbFileMapper).selectTrashList(1L);
+    }
+
+    @Test
+    @DisplayName("恢复文件 - 成功恢复已删除文件")
+    void restoreSuccess() {
+        KbFile file = new KbFile();
+        file.setId(1L);
+        file.setUserId(1L);
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(file);
+        when(kbFileMapper.restoreById(1L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> fileService.restore(1L, 1L));
+        verify(kbFileMapper).restoreById(1L);
+    }
+
+    @Test
+    @DisplayName("恢复文件 - 文件不在回收站抛异常")
+    void restoreNotFound() {
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(null);
+        assertThrows(BusinessException.class, () -> fileService.restore(1L, 1L));
+        verify(kbFileMapper, never()).restoreById(anyLong());
+    }
+
+    @Test
+    @DisplayName("恢复文件 - 无权限抛异常")
+    void restoreNoPermission() {
+        KbFile file = new KbFile();
+        file.setId(1L);
+        file.setUserId(2L);
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(file);
+
+        assertThrows(BusinessException.class, () -> fileService.restore(1L, 1L));
+        verify(kbFileMapper, never()).restoreById(anyLong());
+    }
+
+    @Test
+    @DisplayName("永久删除 - 成功删除并清理 MinIO+索引+事件")
+    void permanentDeleteSuccess() {
+        KbFile file = new KbFile();
+        file.setId(1L);
+        file.setUserId(1L);
+        file.setMinioPath("files/abc.txt");
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(file);
+        when(kbFileMapper.physicalDeleteById(1L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> fileService.permanentDelete(1L, 1L));
+
+        verify(minioService).remove("kb-file", "files/abc.txt");
+        verify(searchIndexService).removeIndex(1L);
+        verify(kbFileMapper).physicalDeleteById(1L);
+        verify(eventPublisher).publishFilePermanentDeleted(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("永久删除 - minioPath 为null时跳过 MinIO 删除")
+    void permanentDeleteNullMinioPath() {
+        KbFile file = new KbFile();
+        file.setId(1L);
+        file.setUserId(1L);
+        file.setMinioPath(null);
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(file);
+        when(kbFileMapper.physicalDeleteById(1L)).thenReturn(1);
+
+        assertDoesNotThrow(() -> fileService.permanentDelete(1L, 1L));
+        verify(minioService, never()).remove(anyString(), anyString());
+        verify(searchIndexService).removeIndex(1L);
+        verify(eventPublisher).publishFilePermanentDeleted(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("永久删除 - 文件不存在抛异常")
+    void permanentDeleteNotFound() {
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(null);
+        assertThrows(BusinessException.class, () -> fileService.permanentDelete(1L, 1L));
+        verify(kbFileMapper, never()).physicalDeleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("永久删除 - 无权限抛异常")
+    void permanentDeleteNoPermission() {
+        KbFile file = new KbFile();
+        file.setId(1L);
+        file.setUserId(2L);
+        when(kbFileMapper.selectDeletedById(1L)).thenReturn(file);
+
+        assertThrows(BusinessException.class, () -> fileService.permanentDelete(1L, 1L));
+        verify(kbFileMapper, never()).physicalDeleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("清空回收站 - 成功清空多个文件并发布事件")
+    void emptyTrashSuccess() {
+        KbFile f1 = new KbFile();
+        f1.setId(1L);
+        f1.setUserId(1L);
+        f1.setMinioPath("files/a.txt");
+        KbFile f2 = new KbFile();
+        f2.setId(2L);
+        f2.setUserId(1L);
+        f2.setMinioPath("files/b.txt");
+        when(kbFileMapper.selectTrashList(1L)).thenReturn(List.of(f1, f2));
+        when(kbFileMapper.physicalDeleteAllByUserId(1L)).thenReturn(2);
+
+        int count = fileService.emptyTrash(1L);
+
+        assertEquals(2, count);
+        verify(minioService).remove("kb-file", "files/a.txt");
+        verify(minioService).remove("kb-file", "files/b.txt");
+        verify(searchIndexService).removeIndex(1L);
+        verify(searchIndexService).removeIndex(2L);
+        verify(kbFileMapper).physicalDeleteAllByUserId(1L);
+        verify(eventPublisher).publishFileTrashEmptied(1L, 2);
+    }
+
+    @Test
+    @DisplayName("清空回收站 - 回收站为空直接返回0")
+    void emptyTrashEmpty() {
+        when(kbFileMapper.selectTrashList(1L)).thenReturn(Collections.emptyList());
+
+        int count = fileService.emptyTrash(1L);
+
+        assertEquals(0, count);
+        verify(kbFileMapper, never()).physicalDeleteAllByUserId(anyLong());
+        verify(eventPublisher, never()).publishFileTrashEmptied(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("清空回收站 - 单个 MinIO 删除失败不影响整体流程")
+    void emptyTrashPartialMinioFailure() {
+        KbFile f1 = new KbFile();
+        f1.setId(1L);
+        f1.setUserId(1L);
+        f1.setMinioPath("files/a.txt");
+        KbFile f2 = new KbFile();
+        f2.setId(2L);
+        f2.setUserId(1L);
+        f2.setMinioPath("files/b.txt");
+        when(kbFileMapper.selectTrashList(1L)).thenReturn(List.of(f1, f2));
+        // 第一个文件 MinIO 删除失败
+        doThrow(new RuntimeException("MinIO error")).when(minioService).remove("kb-file", "files/a.txt");
+        when(kbFileMapper.physicalDeleteAllByUserId(1L)).thenReturn(2);
+
+        int count = fileService.emptyTrash(1L);
+
+        // 即使 MinIO 删除失败，数据库仍然清空
+        assertEquals(2, count);
+        verify(minioService).remove("kb-file", "files/a.txt");
+        verify(minioService).remove("kb-file", "files/b.txt");
+        verify(kbFileMapper).physicalDeleteAllByUserId(1L);
+        verify(eventPublisher).publishFileTrashEmptied(1L, 2);
     }
 }

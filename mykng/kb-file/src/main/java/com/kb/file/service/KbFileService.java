@@ -54,4 +54,30 @@ public interface KbFileService {
     List<KbFile> listAll(Long userId);
 
     List<KbFile> searchByName(String keyword, Long userId, Long folderId);
+
+    /**
+     * 查询用户回收站文件列表（已逻辑删除的文件）
+     */
+    List<KbFile> listTrash(Long userId);
+
+    /**
+     * 恢复已删除的文件（从回收站还原）
+     */
+    void restore(Long id, Long userId);
+
+    /**
+     * 永久删除文件（物理删除，无法恢复）
+     * <p>
+     * 同时清理 MinIO 对象和 MeiliSearch 索引，并发布 FILE_PERMANENT_DELETED 事件。
+     */
+    void permanentDelete(Long id, Long userId);
+
+    /**
+     * 清空回收站（物理删除用户所有已删除文件）
+     * <p>
+     * 同时清理 MinIO 对象和 MeiliSearch 索引，并发布 FILE_TRASH_EMPTIED 事件。
+     *
+     * @return 清空的文件数量
+     */
+    int emptyTrash(Long userId);
 }

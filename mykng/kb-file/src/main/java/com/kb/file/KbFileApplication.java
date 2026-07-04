@@ -1,5 +1,6 @@
 package com.kb.file;
 
+import com.kb.common.event.KbEventAutoConfig;
 import com.kb.common.exception.GlobalExceptionHandler;
 import com.kb.common.trace.TraceIdAutoConfig;
 import org.mybatis.spring.annotation.MapperScan;
@@ -12,13 +13,13 @@ import org.springframework.scheduling.annotation.EnableAsync;
 /**
  * kb-file 文件微服务启动类
  * <p>
- * 通过 @Import 引入 kb-common 的全局异常处理器和 TraceId 链路追踪。
+ * 通过 @Import 引入 kb-common 的全局异常处理器、TraceId 链路追踪、事件总线。
  * 端口 8082，无 context-path。
  */
 @SpringBootApplication
 @MapperScan("com.kb.file.mapper")
 @EnableAsync
-@Import({GlobalExceptionHandler.class, TraceIdAutoConfig.class})
+@Import({GlobalExceptionHandler.class, TraceIdAutoConfig.class, KbEventAutoConfig.class})
 @EnableDiscoveryClient
 public class KbFileApplication {
 

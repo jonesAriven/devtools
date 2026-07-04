@@ -34,7 +34,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <meilisearch.version>0.14.2</meilisearch.version>
         <minio.version>8.5.9</minio.version>
-        <kb-common.version>1.0.0</kb-common.version>
+        <kb-common.version>1.1.0</kb-common.version>
 
         <!-- 测试工具版本 -->
         <jacoco.version>0.8.12</jacoco.version>

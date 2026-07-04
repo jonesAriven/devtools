@@ -1,14 +1,10 @@
-# 生产 / Docker 环境：下游服务以容器服务名寻址
+# 生产 / Docker 环境：M6 改造后路由 uri 为 lb://服务名，通过 Nacos 服务发现寻址
+# kb.gateway.services 已废弃
 kb:
   gateway:
     jwt:
       # 生产环境建议通过环境变量 JWT_SECRET 注入，此处仅作兜底默认值
       secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
-    services:
-      auth: ${KB_AUTH_HOST:kb-auth:8081}
-      file: ${KB_FILE_HOST:kb-file:8082}
-      knowledge: ${KB_KNOWLEDGE_HOST:kb-knowledge:8083}
-      intelligence: ${KB_INTELLIGENCE_HOST:kb-intelligence:8086}
 
 logging:
   level:

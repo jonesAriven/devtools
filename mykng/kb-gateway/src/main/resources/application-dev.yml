@@ -1,13 +1,5 @@
-# 开发环境：下游服务运行在本机端口
-kb:
-  gateway:
-    services:
-      auth: localhost:8081
-      file: localhost:8082
-      knowledge: localhost:8083
-      ops: localhost:8084
-      intelligence: localhost:8086
-
+# 开发环境：M6 改造后路由 uri 为 lb://服务名，通过 Nacos 服务发现寻址
+# kb.gateway.services 已废弃（保留日志配置）
 logging:
   level:
     com.kb.gateway: debug

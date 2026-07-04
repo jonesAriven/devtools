@@ -1,13 +1,14 @@
-# mykng 模块注册清单（M1 重构：可拔插架构核心）
+# mykng 模块注册清单（M4 重构：可拔插架构核心）
 #
-# 作用：声明所有模块的元信息，支持模块的动态注册/发现/启停
-# - 新增模块：在此文件添加条目 + 启动时注册到 Nacos
-# - 删除模块：从此文件移除条目 + 停止服务（Nacos 自动注销）
-# - 网关路由：从 Nacos 动态感知模块上下线，自动更新路由
+# 作用：声明所有模块的元信息，支持模块的动态注册/发现/启停/降级
+# - 新增模块：在此文件添加条目 + 启动时注册到 Nacos → 网关自动路由 → 前端自动显示菜单
+# - 删除模块：从此文件移除条目 + 停止服务 → Nacos 自动注销 → 网关自动移除路由 → 前端自动隐藏菜单
+# - 替换模块：保留契约（API/事件），替换实现，调用方无感知
 #
 # 配合 docker-compose profiles 使用：
 #   docker compose --profile dev up        # 开发环境：只启核心模块
-#   docker compose --profile full up       # 生产环境：全量启动
+#   docker compose --profile test up       # 测试环境：全量启动
+#   docker compose --profile prod up       # 生产环境：全量启动
 
 registry:
   # ========== 基础设施 ==========
@@ -21,6 +22,8 @@ registry:
       profile: [dev, test, prod]
       healthCheck: mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD
       required: true  # 核心依赖，所有环境必须启动
+      # 数据库隔离：每个微服务独立 database，删除模块时只需 DROP 对应 database
+      databases: [kb_auth, kb_file, kb_knowledge, kb_intelligence]
 
     - id: kb-redis
       name: Redis 缓存
@@ -31,6 +34,11 @@ registry:
       profile: [dev, test, prod]
       healthCheck: redis-cli ping
       required: true
+      # Redis Streams 用作事件总线（M4-M5），key 命名规则：kb:streams:{事件类型}
+      streams:
+        - kb:streams:file-events       # 文件相关事件流
+        - kb:streams:knowledge-events  # 知识库相关事件流
+        - kb:streams:share-events      # 分享相关事件流
 
     - id: kb-nacos
       name: Nacos 注册/配置中心
@@ -42,6 +50,9 @@ registry:
       profile: [dev, test, prod]
       healthCheck: curl -sf http://localhost:8848/nacos/v1/console/health/readiness
       required: true  # M2 起所有服务注册到 Nacos
+      # 配置隔离：每个模块独立 namespace + group
+      configNamespace: ${NACOS_NAMESPACE:public}
+      configGroup: ${NACOS_GROUP:KB_GROUP}
 
     - id: kb-minio
       name: MinIO 对象存储
@@ -53,6 +64,8 @@ registry:
       profile: [dev, test, prod]
       healthCheck: curl -sf http://localhost:9000/minio/health/live
       required: false  # 仅 kb-file 依赖
+      # 桶隔离：每个使用 MinIO 的模块独立 bucket
+      buckets: [kb-files]
 
     - id: kb-meilisearch
       name: MeiliSearch 搜索引擎
@@ -62,9 +75,30 @@ registry:
       network: kb-deploy_kb-net
       profile: [dev, test, prod]
       healthCheck: curl -sf http://localhost:7700/health
-      required: false  # 仅 kb-knowledge 依赖
+      required: false  # 仅 kb-knowledge/kb-file/kb-intelligence 依赖
+      # 索引隔离：每个模块独立 index，删除模块时删除对应 index
+      indexes: [kb_docs, kb_webpages, kb_files, kb_folders]
+
+    - id: kb-mongodb
+      name: MongoDB 文档库
+      type: infrastructure
+      image: mongo:7.0
+      port: 27017
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: 'mongosh --eval "db.adminCommand(''ping'')"'
+      required: false
+      # 集合隔离：每个模块独立 collection
+      collections: [doc_content, web_content, file_content]
 
   # ========== 微服务模块 ==========
+  # 每个模块的自描述契约：
+  #   api: 暴露的 REST 端点（网关路由依据）
+  #   publishes: 发布的事件类型（其他模块订阅）
+  #   subscribes: 订阅的事件类型（来自其他模块）
+  #   dependsOnServices: 软依赖（被依赖模块下线时本模块降级，而非崩溃）
+  #   degradation: 降级策略（依赖模块不可用时的行为）
+  #   menu: 前端菜单注册（模块下线时菜单自动隐藏）
   services:
     - id: kb-gateway
       name: API 网关
@@ -75,6 +109,16 @@ registry:
       network: kb-deploy_kb-net
       profile: [dev, test, prod]
       dependsOn: [kb-nacos]
+      healthCheck: /actuator/health
+      required: true  # 网关是统一入口，必须启动
+      nacosDiscovery: true
+      # 网关动态路由（M6）：从 Nacos 自动感知服务上下线
+      dynamicRouting:
+        enabled: true
+        refreshInterval: 10s  # 每 10s 从 Nacos 拉取服务列表
+        # 路由规则：/kb/api/{module}/** → lb://{module-service}
+        routePattern: "/${KB_CONTEXT:/kb}/api/{module}/** → lb://kb-{module}"
+      # 静态路由（兜底，动态路由未生效时使用）
       routes:
         - path: /kb/api/auth/**
           target: kb-auth
@@ -84,9 +128,6 @@ registry:
           target: kb-knowledge
         - path: /kb/api/intelligence/**
           target: kb-intelligence
-      healthCheck: /actuator/health
-      required: true  # 网关是统一入口，必须启动
-      nacosDiscovery: true  # M2: 注册到 Nacos
 
     - id: kb-auth
       name: 认证服务
@@ -100,6 +141,23 @@ registry:
       healthCheck: /actuator/health
       required: true
       nacosDiscovery: true
+      # 模块契约
+      api:
+        - path: /auth/login
+          method: POST
+          auth: false
+        - path: /auth/refresh
+          method: POST
+          auth: false
+        - path: /user/**
+          method: ANY
+          auth: true
+        - path: /token/**
+          method: ANY
+          auth: true
+      publishes: []  # 不发布事件
+      subscribes: []  # 不订阅事件
+      menu: []  # 不直接对应前端菜单
 
     - id: kb-file
       name: 文件服务
@@ -113,6 +171,66 @@ registry:
       healthCheck: /actuator/health
       required: false  # 可选模块，不启动时文件功能不可用
       nacosDiscovery: true
+      # 模块契约
+      api:
+        - path: /file/upload
+          method: POST
+        - path: /file/merge
+          method: POST
+        - path: /file/list
+          method: GET
+        - path: /file/{id}
+          method: GET
+        - path: /file/{id}/download
+          method: GET
+        - path: /file/{id}/content
+          method: GET
+        - path: /file/{id}/restore
+          method: GET
+        - path: /file/{id}/permanent
+          method: DELETE
+        - path: /file/trash
+          method: GET
+        - path: /file/trash/empty
+          method: DELETE
+        - path: /file/search
+          method: GET
+        - path: /file/list-all
+          method: GET
+      # 发布事件（其他模块订阅）
+      publishes:
+        - event: file.parsed
+          description: 文件解析完成
+          payload: {fileId, userId, name, content}
+        - event: file.deleted
+          description: 文件删除（逻辑删除）
+          payload: {fileId, userId}
+        - event: file.reparse
+          description: 文件重新解析
+          payload: {fileId, userId, content}
+        - event: file.permanent_deleted
+          description: 文件永久删除（M4 新增）
+          payload: {fileId, userId}
+        - event: file.trash_emptied
+          description: 回收站清空（M4 新增）
+          payload: {userId, count}
+      subscribes: []  # 不订阅其他模块事件
+      # 降级策略：kb-file 不可用时
+      degradation:
+        # 调用方（kb-knowledge）的降级行为
+        - scenario: 资源树加载
+          behavior: 不展示文件类型节点，仅展示 doc/web
+        - scenario: 搜索文件
+          behavior: 跳过 file 索引，仅搜 doc/web
+        - scenario: 分享文件详情
+          behavior: 提示"文件服务暂不可用"
+        - scenario: 回收站列表
+          behavior: 仅展示 doc/web 回收站
+      menu:
+        - id: file-list
+          name: 文件管理
+          icon: Document
+          path: /file/list
 
     - id: kb-knowledge
       name: 知识库服务
@@ -122,23 +240,163 @@ registry:
       contextPath: /kb/api/knowledge
       network: kb-deploy_kb-net
       profile: [dev, test, prod]
-      dependsOn: [kb-mysql, kb-redis, kb-meilisearch, kb-nacos]
+      dependsOn: [kb-mysql, kb-redis, kb-meilisearch, kb-mongodb, kb-nacos]
       healthCheck: /actuator/health
       required: true
       nacosDiscovery: true
+      # 模块契约
+      api:
+        - path: /doc/**
+          method: ANY
+        - path: /folder/**
+          method: ANY
+        - path: /web/**
+          method: ANY
+        - path: /search/**
+          method: ANY
+        - path: /share/**
+          method: ANY
+        - path: /tag/**
+          method: ANY
+        - path: /space/**
+          method: ANY
+        - path: /trash/**
+          method: ANY
+        - path: /version/**
+          method: ANY
+      # 发布事件
+      publishes:
+        - event: doc.created
+          description: 文档创建
+          payload: {userId, docId, title, folderId}
+        - event: doc.updated
+          description: 文档更新
+          payload: {userId, docId, title}
+        - event: doc.deleted
+          description: 文档删除
+          payload: {userId, docId}
+        - event: web.collected
+          description: 网页收藏
+          payload: {userId, webId, url}
+        - event: web.deleted
+          description: 网页删除
+          payload: {userId, webId}
+        - event: share.created
+          description: 分享创建
+          payload: {userId, shareId, resourceType, resourceId}
+        - event: share.deleted
+          description: 分享删除
+          payload: {userId, shareId}
+        - event: folder.created
+          description: 文件夹创建
+          payload: {userId, folderId, name}
+        - event: folder.deleted
+          description: 文件夹删除
+          payload: {userId, folderId}
+        - event: space.created
+          description: 空间创建
+          payload: {userId, spaceId, name}
+        - event: space.deleted
+          description: 空间删除
+          payload: {userId, spaceId}
+        - event: tag.created
+          description: 标签创建
+          payload: {userId, tagId, name}
+        - event: tag.deleted
+          description: 标签删除
+          payload: {userId, tagId}
+      # 订阅事件（来自 kb-file）
+      subscribes:
+        - event: file.parsed
+          handler: 索引关联维护（记录日志，索引由 kb-file 自维护）
+        - event: file.deleted
+          handler: 标记关联分享为失效
+        - event: file.permanent_deleted
+          handler: 标记关联分享为失效（M4 新增）
+        - event: file.trash_emptied
+          handler: 批量标记关联分享为失效（M4 新增）
+        - event: file.reparse
+          handler: 重新关联文档（如有）
+      # 软依赖（通过网关/事件调用，下线时降级）
+      dependsOnServices:
+        - service: kb-file
+          via: gateway  # 通过网关调用（M5）
+          fallback: 跳过文件相关功能（资源树/搜索/分享/回收站仅展示 doc/web）
+      menu:
+        - id: doc-list
+          name: 文档管理
+          icon: Files
+          path: /doc/list
+        - id: web-list
+          name: 网页收藏
+          icon: Link
+          path: /web/list
+        - id: folder-tree
+          name: 资源树
+          icon: FolderOpened
+          path: /folder/tree
+        - id: search
+          name: 搜索
+          icon: Search
+          path: /search
+        - id: share-list
+          name: 分享管理
+          icon: Share
+          path: /share/list
+        - id: tag-list
+          name: 标签管理
+          icon: PriceTag
+          path: /tag/list
+        - id: space-list
+          name: 知识空间
+          icon: CopyDocument
+          path: /space/list
+        - id: trash
+          name: 回收站
+          icon: Delete
+          path: /trash
 
     - id: kb-intelligence
       name: 知识引擎服务
       type: service
       techStack: Spring Boot 3.2 + AI
-      port: 8085
+      port: 8086
       contextPath: /kb/api/intelligence
       network: kb-deploy_kb-net
       profile: [test, prod]  # 开发环境不启动（AI 服务耗资源）
-      dependsOn: [kb-mysql, kb-redis, kb-nacos]
+      dependsOn: [kb-mysql, kb-redis, kb-mongodb, kb-meilisearch, kb-nacos]
       healthCheck: /actuator/health
       required: false  # 可选模块
       nacosDiscovery: true
+      # 模块契约
+      api:
+        - path: /intelligence/summary
+          method: POST
+        - path: /intelligence/qa
+          method: POST
+        - path: /intelligence/recommend
+          method: GET
+      publishes: []
+      subscribes:
+        - event: doc.created
+          handler: 触发 AI 摘要生成（异步）
+        - event: web.collected
+          handler: 触发 AI 摘要生成（异步）
+      # 降级策略：AI 服务不可用时
+      degradation:
+        - scenario: AI 摘要按钮
+          behavior: 隐藏入口或提示"AI 服务暂不可用"
+        - scenario: 智能问答
+          behavior: 提示"AI 服务暂不可用，请稍后再试"
+      menu:
+        - id: ai-summary
+          name: AI 摘要
+          icon: MagicStick
+          path: /intelligence/summary
+        - id: ai-qa
+          name: 智能问答
+          icon: ChatDotRound
+          path: /intelligence/qa
 
   # ========== 前端 ==========
   frontend:
@@ -149,6 +407,12 @@ registry:
       deployPath: /data/knowledge-base/web
       profile: [dev, test, prod]
       required: true
+      # 前端动态菜单：启动时从 kb-gateway 拉取已注册模块的菜单
+      # 模块下线时菜单自动隐藏，模块上线时菜单自动显示
+      dynamicMenu:
+        enabled: true
+        endpoint: ${KB_CONTEXT:/kb}/api/gateway/modules  # 从网关拉取已注册模块
+        refreshInterval: 30s  # 每 30s 刷新一次菜单
 
 # ========== Profile 预设 ==========
 # 不同环境启停不同模块组合
@@ -156,41 +420,75 @@ profilePresets:
   dev:
     description: 开发环境（最小化启动）
     services: [kb-gateway, kb-auth, kb-knowledge]
-    infrastructure: [kb-mysql, kb-redis, kb-nacos]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-meilisearch, kb-mongodb]
     excludeOptional: true  # 排除所有非 required 模块
 
   test:
     description: 测试环境（核心功能验证）
     services: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence]
-    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch, kb-mongodb]
     excludeOptional: false
 
   prod:
     description: 生产环境（全量启动）
     services: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence]
-    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch, kb-mongodb]
     excludeOptional: false
 
 # ========== 可拔插规则 ==========
 pluggableRules:
-  # 新增模块步骤
+  # 新增模块步骤（标准化流程，5 步完成）
   addModule:
-    - 在 module-registry.yml 添加模块条目
-    - 模块 pom.xml 添加 nacos-discovery 依赖
-    - 模块 application.yml 配置 nacos discovery
-    - 启动服务，自动注册到 Nacos
-    - 网关自动感知并路由（M6 动态路由）
+    - step: 1. 创建独立 Maven 模块（继承 kb-parent，依赖 kb-common jar）
+      cmd: mkdir mykng/kb-{name}; cd mykng/kb-{name}; mvn archetype:generate
+    - step: 2. 配置模块契约（在 module-registry.yml 添加 services 条目）
+      fields: [id, name, port, api, publishes, subscribes, menu, degradation]
+    - step: 3. 启用 Nacos 服务发现（pom.xml 加 nacos-discovery 依赖 + 启动类加 @EnableDiscoveryClient）
+    - step: 4. 在 docker-compose.yml 添加服务定义（指定 profiles + dependsOn + nacos 环境变量）
+    - step: 5. 启动服务，自动注册到 Nacos → 网关自动路由 → 前端自动显示菜单
+      verify: curl http://kb-nacos:8848/nacos/v1/ns/instance/list?serviceName=kb-{name}
 
-  # 删除模块步骤
+  # 删除模块步骤（标准化流程，4 步完成，无残留）
   removeModule:
-    - 停止服务容器（Nacos 自动注销）
-    - 从 module-registry.yml 移除条目
-    - 网关自动感知并移除路由（M6 动态路由）
-    - 清理相关配置（可选）
+    - step: 1. 停止服务容器（Nacos 自动注销 → 网关自动移除路由 → 前端自动隐藏菜单）
+      cmd: docker compose stop kb-{name}; docker compose rm -f kb-{name}
+    - step: 2. 从 module-registry.yml 移除条目
+    - step: 3. 从 docker-compose.yml 移除服务定义
+    - step: 4. 清理模块数据（可选，保留以备恢复）
+      cleanup:
+        - database: DROP DATABASE IF EXISTS kb_{name}
+        - meilisearch: DELETE /indexes/kb_{name}_*
+        - minio: mc rm --recursive minio/kb-{name}
+        - mongodb: db.kb_{name}_*.drop()
+        - redis: DEL kb:streams:{name}-events
 
-  # 模块独立性约束
+  # 替换模块实现（保留契约，替换实现，调用方无感知）
+  replaceModule:
+    - step: 1. 新实现必须遵守原模块契约（api/publishes/subscribes）
+    - step: 2. 在 Nacos 中以相同 serviceName 注册新实例
+    - step: 3. 老实例平滑下线（先停止接收新请求，再等待存量请求完成）
+    - step: 4. 网关自动感知，路由切换到新实例
+
+  # 模块独立性约束（硬性约束，违反则不可拔插）
   independence:
     - 每个模块必须独立编译（不依赖其他模块源码）
-    - 模块间通信通过 Nacos 服务发现 + Feign/事件
     - 公共依赖通过 kb-common jar（Nexus 私服）
-    - 配置通过 Nacos 配置中心统一管理（M3）
+    - 模块间通信通过 Nacos 服务发现 + 网关转发 + 事件总线
+    - 禁止数据库共享（每个模块独立 database）
+    - 禁止内存共享（不通过 static/单例传递跨模块状态）
+    - 配置通过 Nacos 配置中心统一管理（namespace/group 隔离）
+
+  # 事件契约约束
+  eventContract:
+    - 事件类型命名: {模块名}.{动作}（如 file.parsed, doc.created）
+    - 事件 payload 必须包含: entityId, userId, timestamp
+    - 事件发布必须幂等（消费者需处理重复事件）
+    - 事件必须持久化（Redis Streams，不使用 Pub/Sub）
+    - 事件必须包含 traceId（用于链路追踪）
+
+  # 降级规则（模块下线时调用方行为）
+  degradationRules:
+    - 调用方必须 catch 调用异常，不可让请求整体失败
+    - 调用方必须降级到无该模块时的可用状态（部分功能不可用）
+    - 调用方必须返回有意义的提示（如"文件服务暂不可用"）
+    - 事件订阅方必须处理事件流断开后的恢复（重新订阅 + 从 last consumed id 继续）

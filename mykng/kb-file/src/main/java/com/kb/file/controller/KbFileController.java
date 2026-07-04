@@ -154,6 +154,44 @@ public class KbFileController {
         return Result.ok(kbFileService.searchByName(keyword, getCurrentUserId(), folderId));
     }
 
+    /**
+     * 回收站列表（M4-7 新增）
+     */
+    @GetMapping("/trash")
+    public Result<List<KbFile>> listTrash() {
+        return Result.ok(kbFileService.listTrash(getCurrentUserId()));
+    }
+
+    /**
+     * 恢复已删除文件（M4-7 新增）
+     */
+    @PutMapping("/{id}/restore")
+    public Result<Void> restore(@PathVariable Long id) {
+        kbFileService.restore(id, getCurrentUserId());
+        return Result.ok();
+    }
+
+    /**
+     * 永久删除文件（M4-7 新增）
+     * <p>
+     * 物理删除文件，同时清理 MinIO 对象和 MeiliSearch 索引，发布 FILE_PERMANENT_DELETED 事件。
+     */
+    @DeleteMapping("/{id}/permanent")
+    public Result<Void> permanentDelete(@PathVariable Long id) {
+        kbFileService.permanentDelete(id, getCurrentUserId());
+        return Result.ok();
+    }
+
+    /**
+     * 清空回收站（M4-7 新增）
+     * <p>
+     * 物理删除用户所有已删除文件，清理 MinIO 对象和 MeiliSearch 索引，发布 FILE_TRASH_EMPTIED 事件。
+     */
+    @DeleteMapping("/trash/empty")
+    public Result<Integer> emptyTrash() {
+        return Result.ok(kbFileService.emptyTrash(getCurrentUserId()));
+    }
+
     @PostMapping("/rebuild-index")
     public Result<Integer> rebuildIndex() {
         log.info("开始全量重建文件索引");

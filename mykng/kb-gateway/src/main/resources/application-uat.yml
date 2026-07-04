@@ -1,13 +1,9 @@
-# UAT 环境：下游服务以容器服务名寻址
+# UAT 环境：M6 改造后路由 uri 为 lb://服务名，通过 Nacos 服务发现寻址
+# kb.gateway.services 已废弃
 kb:
   gateway:
     jwt:
       secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
-    services:
-      auth: ${KB_AUTH_HOST:kb-auth:8081}
-      file: ${KB_FILE_HOST:kb-file:8082}
-      knowledge: ${KB_KNOWLEDGE_HOST:kb-knowledge:8083}
-      intelligence: ${KB_INTELLIGENCE_HOST:kb-intelligence:8086}
 
 logging:
   level:

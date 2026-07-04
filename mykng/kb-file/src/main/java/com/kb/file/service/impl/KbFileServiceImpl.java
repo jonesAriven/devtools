@@ -324,6 +324,93 @@ public class KbFileServiceImpl implements KbFileService {
         return kbFileMapper.selectList(wrapper);
     }
 
+    @Override
+    public List<KbFile> listTrash(Long userId) {
+        return kbFileMapper.selectTrashList(userId);
+    }
+
+    @Override
+    public void restore(Long id, Long userId) {
+        KbFile file = kbFileMapper.selectDeletedById(id);
+        if (file == null) {
+            throw new BusinessException(404, "回收站中不存在该文件");
+        }
+        if (!file.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作该文件");
+        }
+        kbFileMapper.restoreById(id);
+        log.info("文件恢复成功 fileId={} userId={}", id, userId);
+    }
+
+    @Override
+    @Transactional
+    public void permanentDelete(Long id, Long userId) {
+        KbFile file = kbFileMapper.selectDeletedById(id);
+        if (file == null) {
+            throw new BusinessException(404, "回收站中不存在该文件");
+        }
+        if (!file.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作该文件");
+        }
+
+        // 清理 MinIO 对象
+        if (file.getMinioPath() != null) {
+            try {
+                minioService.remove(BUCKET, file.getMinioPath());
+            } catch (Exception e) {
+                log.warn("永久删除时清理 MinIO 对象失败 fileId={} path={}: {}", id, file.getMinioPath(), e.getMessage());
+            }
+        }
+
+        // 清理 MeiliSearch 索引
+        searchIndexService.removeIndex(id);
+
+        // 物理删除数据库记录
+        kbFileMapper.physicalDeleteById(id);
+
+        // 发布文件永久删除事件（通知下游服务清理关联数据，如分享记录）
+        eventPublisher.publishFilePermanentDeleted(id, userId);
+
+        log.info("文件永久删除成功 fileId={} userId={}", id, userId);
+    }
+
+    @Override
+    @Transactional
+    public int emptyTrash(Long userId) {
+        // 查询所有已删除文件，用于清理 MinIO 和索引
+        List<KbFile> trashFiles = kbFileMapper.selectTrashList(userId);
+        if (trashFiles.isEmpty()) {
+            return 0;
+        }
+
+        int successCount = 0;
+        for (KbFile file : trashFiles) {
+            // 清理 MinIO 对象
+            if (file.getMinioPath() != null) {
+                try {
+                    minioService.remove(BUCKET, file.getMinioPath());
+                    successCount++;
+                } catch (Exception e) {
+                    log.warn("清空回收站时清理 MinIO 对象失败 fileId={} path={}: {}", file.getId(), file.getMinioPath(), e.getMessage());
+                }
+            } else {
+                successCount++;
+            }
+
+            // 清理 MeiliSearch 索引
+            searchIndexService.removeIndex(file.getId());
+        }
+
+        // 物理删除数据库记录
+        int deletedCount = kbFileMapper.physicalDeleteAllByUserId(userId);
+
+        // 发布回收站清空事件（通知下游服务批量清理关联数据）
+        eventPublisher.publishFileTrashEmptied(userId, deletedCount);
+
+        log.info("回收站清空成功 userId={} 数据库删除 {} 条 MinIO 清理 {} 条", userId, deletedCount, successCount);
+        return deletedCount;
+    }
+
     // ======================== 私有方法 ========================
 
     /**

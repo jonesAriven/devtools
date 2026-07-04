@@ -3,19 +3,26 @@ package com.kb.knowledge.feign;
 import com.kb.common.result.Result;
 import com.kb.knowledge.feign.dto.FileDTO;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 /**
  * kb-file Feign 客户端
  * <p>
  * 用于跨服务获取文件信息、下载链接、解析内容。
- * 注意：架构上 kb-knowledge → kb-file 通过事件解耦索引构建，
- * 但分享详情等读操作需要获取文件元数据，故通过 Feign 调用。
+ * <p>
+ * M5-1：去掉 url 参数，Feign 通过 Nacos 服务发现自动路由到 kb-file 实例。
+ * 这样 kb-file 可水平扩展、可拔插：下线时 Nacos 自动感知，Feign 调用失败时业务层降级。
+ * <p>
+ * M4-7：回收站 4 个端点已补齐，FileClient 与 kb-file Controller 完全对齐。
+ * M4-5：文件解析完成等非用户主动操作已改事件驱动（EventBus + Redis Streams）。
  */
-@FeignClient(name = "kb-file", url = "${kb.feign.file-url:http://kb-file:8082}")
+@FeignClient(name = "kb-file")
 public interface FileClient {
 
     /**
@@ -32,42 +39,41 @@ public interface FileClient {
 
     /**
      * 获取文件解析后的文本内容
-     * 调用 kb-file 的内容接口（需 kb-file 暴露 /api/file/{id}/content 端点）
      */
     @GetMapping("/file/{id}/content")
     Result<String> getContent(@PathVariable("id") Long id);
 
     /**
      * 列出用户已删除的文件（回收站）
-     * 调用 kb-file 的回收站列表接口（需 kb-file 暴露 /api/file/trash 端点）
      */
     @GetMapping("/file/trash")
-    Result<java.util.List<FileDTO>> listTrash(@RequestParam("userId") Long userId);
+    Result<List<FileDTO>> listTrash(@RequestParam("userId") Long userId);
 
     /**
-     * 恢复已删除的文件
-     * 调用 kb-file 的恢复接口（需 kb-file 暴露 /api/file/{id}/restore 端点）
+     * 恢复已删除的文件（M4-7：改为 PUT 方法，符合 RESTful 规范）
      */
-    @GetMapping("/file/{id}/restore")
+    @PutMapping("/file/{id}/restore")
     Result<Void> restore(@PathVariable("id") Long id);
 
     /**
-     * 永久删除文件
-     * 调用 kb-file 的永久删除接口（需 kb-file 暴露 /api/file/{id}/permanent 端点）
+     * 永久删除文件（M4-7 新增对齐）
      */
-    @org.springframework.web.bind.annotation.DeleteMapping("/file/{id}/permanent")
+    @DeleteMapping("/file/{id}/permanent")
     Result<Void> permanentDelete(@PathVariable("id") Long id);
 
-    @org.springframework.web.bind.annotation.DeleteMapping("/file/trash/empty")
+    /**
+     * 清空回收站（M4-7 新增对齐）
+     */
+    @DeleteMapping("/file/trash/empty")
     Result<Void> emptyTrash(@RequestParam("userId") Long userId);
 
     @GetMapping("/file/search")
-    Result<java.util.List<FileDTO>> searchByName(@RequestParam("keyword") String keyword,
-                                                  @RequestParam(value = "folderId", required = false) Long folderId);
+    Result<List<FileDTO>> searchByName(@RequestParam("keyword") String keyword,
+                                       @RequestParam(value = "folderId", required = false) Long folderId);
 
     /**
      * 查询当前用户所有文件（供资源树聚合使用）
      */
     @GetMapping("/file/list-all")
-    Result<java.util.List<FileDTO>> listAll();
+    Result<List<FileDTO>> listAll();
 }

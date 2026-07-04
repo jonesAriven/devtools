@@ -34,6 +34,12 @@
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
 
+        <!-- Spring Cloud LoadBalancer (M6: 网关 lb://服务名 路由必须) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
         <!-- WebFlux（显式声明，与 Gateway 共用 Reactive 栈） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

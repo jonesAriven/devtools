@@ -36,9 +36,8 @@ meilisearch:
 kb:
   event:
     channel: kb:events
-  feign:
-    auth-url: http://kb-auth:8081
-    file-url: http://kb-file:8082
+  # M5-1: Feign 通过 Nacos 服务发现路由，不再需要硬编码 URL
+  # kb.feign.file-url 已废弃，FileClient 去掉 url 参数后自动走服务发现
 
 logging:
   level:
