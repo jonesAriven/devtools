@@ -140,6 +140,7 @@ public class WebLogAspect {
                                         String controllerMethod, String requestArgs, String responseResult,
                                         Long costMs, String status, String exception, String ip, String userAgent) {
         if (!eventEnabled || eventBus == null) {
+            log.info("publishRequestLogEvent skipped: eventEnabled={}, eventBus={}", eventEnabled, eventBus == null ? "null" : eventBus.getClass().getName());
             return;
         }
         try {
