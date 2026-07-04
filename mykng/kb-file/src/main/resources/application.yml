@@ -13,6 +13,12 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_HOST:kb-nacos}:${NACOS_PORT:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

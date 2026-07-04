@@ -2,6 +2,7 @@ package com.kb.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * kb-gateway 启动类。
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 因此不会与 WebFlux 冲突；仅复用 {@code com.kb.common.result.Result} 用于统一错误响应。
  */
 @SpringBootApplication
+@EnableDiscoveryClient
 public class KbGatewayApplication {
 
     public static void main(String[] args) {

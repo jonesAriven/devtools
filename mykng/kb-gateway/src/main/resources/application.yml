@@ -10,6 +10,11 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
   cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_HOST:kb-nacos}:${NACOS_PORT:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
     gateway:
       # ============================================================
       # 统一上下文路径：${KB_CONTEXT:/kb}

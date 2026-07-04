@@ -22,6 +22,12 @@
             <artifactId>kb-common</artifactId>
         </dependency>
 
+        <!-- Nacos 服务发现（M2: 可拔插架构基础） -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
