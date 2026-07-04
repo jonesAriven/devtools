@@ -84,6 +84,9 @@ kb:
       - ${KB_CONTEXT:/kb}/api/auth/refresh
       - ${KB_CONTEXT:/kb}/api/share/verify/**
       - ${KB_CONTEXT:/kb}/api/share/detail/**
+      # M7-1: 模块健康检查端点公开（前端登录前也需要知道哪些模块可用）
+      - ${KB_CONTEXT:/kb}/api/system/modules
+      - ${KB_CONTEXT:/kb}/api/system/modules/**
     # M6: kb.gateway.services 已废弃，路由 uri 改为 lb://服务名 通过 Nacos 服务发现
 
 management:

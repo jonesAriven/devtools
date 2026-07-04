@@ -28,41 +28,41 @@
             <el-icon><Grid /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
-          <el-sub-menu index="kb-group">
+          <el-sub-menu index="kb-group" v-if="showKbGroup">
             <template #title>
               <el-icon><FolderOpened /></el-icon>
               <span>知识库</span>
             </template>
-            <el-menu-item :index="'/spaces'">
+            <el-menu-item :index="'/spaces'" v-if="kbKnowledgeAvailable">
               <el-icon><List /></el-icon>
               <template #title>知识空间</template>
             </el-menu-item>
-            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace && kbKnowledgeAvailable">
               <el-icon><FolderOpened /></el-icon>
               <template #title>当前空间</template>
             </el-menu-item>
-            <el-menu-item :index="'/search'">
+            <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
               <el-icon><Search /></el-icon>
               <template #title>搜索</template>
             </el-menu-item>
-            <el-menu-item :index="'/file'">
+            <el-menu-item :index="'/file'" v-if="kbFileAvailable">
               <el-icon><Document /></el-icon>
               <template #title>文件</template>
             </el-menu-item>
-            <el-menu-item :index="'/tag'">
+            <el-menu-item :index="'/tag'" v-if="kbKnowledgeAvailable">
               <el-icon><PriceTag /></el-icon>
               <template #title>标签</template>
             </el-menu-item>
-            <el-menu-item :index="'/share'">
+            <el-menu-item :index="'/share'" v-if="kbKnowledgeAvailable">
               <el-icon><Share /></el-icon>
               <template #title>分享</template>
             </el-menu-item>
-            <el-menu-item :index="'/trash'">
+            <el-menu-item :index="'/trash'" v-if="kbKnowledgeAvailable">
               <el-icon><Delete /></el-icon>
               <template #title>回收站</template>
             </el-menu-item>
           </el-sub-menu>
-          <el-sub-menu index="intel-group">
+          <el-sub-menu index="intel-group" v-if="kbIntelAvailable">
             <template #title>
               <el-icon><MagicStick /></el-icon>
               <span>知识引擎</span>
@@ -109,7 +109,7 @@
               <el-icon><Setting /></el-icon>
               <span>系统</span>
             </template>
-            <el-menu-item :index="'/log'">
+            <el-menu-item :index="'/log'" v-if="kbAuthAvailable">
               <el-icon><Tickets /></el-icon>
               <template #title>操作日志</template>
             </el-menu-item>
@@ -157,41 +157,41 @@
               <el-icon><Grid /></el-icon>
               <template #title>工作台</template>
             </el-menu-item>
-            <el-sub-menu index="kb-group">
+            <el-sub-menu index="kb-group" v-if="showKbGroup">
               <template #title>
                 <el-icon><FolderOpened /></el-icon>
                 <span>知识库</span>
               </template>
-              <el-menu-item :index="'/spaces'">
+              <el-menu-item :index="'/spaces'" v-if="kbKnowledgeAvailable">
                 <el-icon><List /></el-icon>
                 <template #title>知识空间</template>
               </el-menu-item>
-              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace">
+              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace && kbKnowledgeAvailable">
                 <el-icon><FolderOpened /></el-icon>
                 <template #title>当前空间</template>
               </el-menu-item>
-              <el-menu-item :index="'/search'">
+              <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
                 <el-icon><Search /></el-icon>
                 <template #title>搜索</template>
               </el-menu-item>
-              <el-menu-item :index="'/file'">
+              <el-menu-item :index="'/file'" v-if="kbFileAvailable">
                 <el-icon><Document /></el-icon>
                 <template #title>文件</template>
               </el-menu-item>
-              <el-menu-item :index="'/tag'">
+              <el-menu-item :index="'/tag'" v-if="kbKnowledgeAvailable">
                 <el-icon><PriceTag /></el-icon>
                 <template #title>标签</template>
               </el-menu-item>
-              <el-menu-item :index="'/share'">
+              <el-menu-item :index="'/share'" v-if="kbKnowledgeAvailable">
                 <el-icon><Share /></el-icon>
                 <template #title>分享</template>
               </el-menu-item>
-              <el-menu-item :index="'/trash'">
+              <el-menu-item :index="'/trash'" v-if="kbKnowledgeAvailable">
                 <el-icon><Delete /></el-icon>
                 <template #title>回收站</template>
               </el-menu-item>
             </el-sub-menu>
-            <el-sub-menu index="intel-group">
+            <el-sub-menu index="intel-group" v-if="kbIntelAvailable">
               <template #title>
                 <el-icon><MagicStick /></el-icon>
                 <span>知识引擎</span>
@@ -306,6 +306,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
+import { useModuleStore } from '@/stores/module'
 import { useAuth } from '@/composables/useAuth'
 import BackToTop from '@/components/BackToTop.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
@@ -315,7 +316,16 @@ const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
 const spaceStore = useSpaceStore()
+const moduleStore = useModuleStore()
 const { logout } = useAuth()
+
+// 模块动态菜单：各菜单项依赖对应微服务模块的可用性
+const kbKnowledgeAvailable = computed(() => moduleStore.isModuleAvailable('kb-knowledge'))
+const kbFileAvailable = computed(() => moduleStore.isModuleAvailable('kb-file'))
+const kbIntelAvailable = computed(() => moduleStore.isModuleAvailable('kb-intelligence'))
+const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('kb-auth'))
+// 知识库分组同时包含 kb-knowledge 与 kb-file 依赖项，任一可用即显示分组
+const showKbGroup = computed(() => kbKnowledgeAvailable.value || kbFileAvailable.value)
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
@@ -399,6 +409,8 @@ onMounted(() => {
   if (!userStore.profile) {
     userStore.fetchProfile()
   }
+  // 拉取模块状态用于动态菜单（若 main.ts 已拉取则刷新一次，失败时内部降级）
+  moduleStore.fetchModules()
 })
 
 onUnmounted(() => {

@@ -545,3 +545,19 @@ export interface IntelSearchResult {
   score: number
   matchedSections: string[]
 }
+
+// ============================================================
+// 系统模块状态 (M7-2 动态菜单)
+// ============================================================
+
+/** 系统模块状态 */
+export interface ModuleStatus {
+  /** 模块名称，如 kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence */
+  name: string
+  /** 健康状态：UP / DOWN */
+  status: string
+  /** 在线实例数 */
+  instances: number
+  /** 是否可用（status=UP 且 instances>0） */
+  available: boolean
+}
