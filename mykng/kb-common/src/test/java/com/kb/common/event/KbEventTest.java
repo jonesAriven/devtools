@@ -81,13 +81,13 @@ class KbEventTest {
         KbEvent event = new KbEvent();
         Map<String, Object> payload = Map.of("k", "v");
 
-        event.setEvent(KbEvent.OPS_IMPORTED);
+        event.setEvent(KbEvent.FILE_REPARSE);
         event.setEntityId(99L);
         event.setPayload(payload);
         event.setTimestamp(Instant.parse("2026-01-01T00:00:00Z"));
         event.setSource("kb-file");
 
-        assertEquals(KbEvent.OPS_IMPORTED, event.getEvent());
+        assertEquals(KbEvent.FILE_REPARSE, event.getEvent());
         assertEquals(99L, event.getEntityId());
         assertSame(payload, event.getPayload());
         assertEquals(Instant.parse("2026-01-01T00:00:00Z"), event.getTimestamp());
@@ -100,8 +100,6 @@ class KbEventTest {
         assertEquals("file.parsed", KbEvent.FILE_PARSED);
         assertEquals("file.deleted", KbEvent.FILE_DELETED);
         assertEquals("file.reparse", KbEvent.FILE_REPARSE);
-        assertEquals("ops.imported", KbEvent.OPS_IMPORTED);
-        assertEquals("ops.conflict", KbEvent.OPS_CONFLICT);
     }
 
     @Test
@@ -110,7 +108,5 @@ class KbEventTest {
         assertDoesNotThrow(() -> new KbEvent(KbEvent.FILE_PARSED, 1L, null));
         assertDoesNotThrow(() -> new KbEvent(KbEvent.FILE_DELETED, 2L, null));
         assertDoesNotThrow(() -> new KbEvent(KbEvent.FILE_REPARSE, 3L, null));
-        assertDoesNotThrow(() -> new KbEvent(KbEvent.OPS_IMPORTED, 4L, null));
-        assertDoesNotThrow(() -> new KbEvent(KbEvent.OPS_CONFLICT, 5L, null));
     }
 }
