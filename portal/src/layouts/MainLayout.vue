@@ -6,6 +6,10 @@
           <el-icon :size="28"><Menu /></el-icon>
           <span class="logo-text">devtools 看板</span>
         </div>
+        <el-button v-if="isManagePage" class="back-btn" type="primary" plain @click="goBack">
+          <el-icon><Back /></el-icon>
+          返回首页
+        </el-button>
       </div>
       <div class="header-center">
         <el-input
@@ -19,7 +23,7 @@
         />
       </div>
       <div class="header-right">
-        <el-button type="primary" plain @click="$router.push('/manage')">
+        <el-button v-if="!isManagePage" type="primary" plain @click="$router.push('/manage')">
           <el-icon><Setting /></el-icon>
           管理
         </el-button>
@@ -42,7 +46,7 @@
     </el-header>
 
     <el-container class="layout-body">
-      <el-aside width="240px" class="layout-aside">
+      <el-aside v-if="!isManagePage" width="240px" class="layout-aside">
         <div class="sidebar">
           <div class="sidebar-section">
             <div class="sidebar-title">
@@ -76,7 +80,7 @@
         </div>
       </el-aside>
 
-      <el-main class="layout-main">
+      <el-main class="layout-main" :class="{ 'full-width': isManagePage }">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="$route.path" />
@@ -89,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -98,7 +102,8 @@ import {
   ArrowDown,
   SwitchButton,
   Menu,
-  Star
+  Star,
+  Back
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -106,12 +111,15 @@ import { useSystemStore } from '@/stores/system'
 import { categoryLabels, categoryIcons, type SystemCategory } from '@/config/systems'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const favoritesStore = useFavoritesStore()
 const systemStore = useSystemStore()
 
 const searchText = ref('')
 const categories: SystemCategory[] = ['web', 'infra', 'tool', 'doc']
+
+const isManagePage = computed(() => route.name === 'Manage')
 
 function handleSearch(value: string) {
   document.dispatchEvent(new CustomEvent('portal-search', { detail: { keyword: value } }))
@@ -143,6 +151,10 @@ function handleCommand(command: string) {
       router.push('/login')
     }).catch(() => {})
   }
+}
+
+function goBack() {
+  router.push('/')
 }
 
 onMounted(() => {
@@ -288,6 +300,14 @@ onMounted(() => {
   background: #f5f7fa;
   padding: 24px;
   overflow-y: auto;
+
+  &.full-width {
+    padding: 24px;
+  }
+}
+
+.back-btn {
+  margin-left: 20px;
 }
 
 .fade-enter-active,

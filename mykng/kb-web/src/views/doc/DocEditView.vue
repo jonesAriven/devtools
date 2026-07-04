@@ -253,6 +253,7 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import 'katex/dist/katex.min.css'
+import '@wangeditor/editor/dist/css/style.css'
 import '@/styles/markdown.scss'
 import { configureMarkdownIt } from '@/utils/markdownConfig'
 
