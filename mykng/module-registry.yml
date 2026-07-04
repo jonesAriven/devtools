@@ -1,0 +1,196 @@
+# mykng 模块注册清单（M1 重构：可拔插架构核心）
+#
+# 作用：声明所有模块的元信息，支持模块的动态注册/发现/启停
+# - 新增模块：在此文件添加条目 + 启动时注册到 Nacos
+# - 删除模块：从此文件移除条目 + 停止服务（Nacos 自动注销）
+# - 网关路由：从 Nacos 动态感知模块上下线，自动更新路由
+#
+# 配合 docker-compose profiles 使用：
+#   docker compose --profile dev up        # 开发环境：只启核心模块
+#   docker compose --profile full up       # 生产环境：全量启动
+
+registry:
+  # ========== 基础设施 ==========
+  infrastructure:
+    - id: kb-mysql
+      name: MySQL 数据库
+      type: infrastructure
+      image: mysql:8.0
+      port: 3306
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD
+      required: true  # 核心依赖，所有环境必须启动
+
+    - id: kb-redis
+      name: Redis 缓存
+      type: infrastructure
+      image: redis:7.4
+      port: 6379
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: redis-cli ping
+      required: true
+
+    - id: kb-nacos
+      name: Nacos 注册/配置中心
+      type: infrastructure
+      image: nacos/nacos-server:v2.3.2
+      port: 8848
+      grpcPort: 9848
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: curl -sf http://localhost:8848/nacos/v1/console/health/readiness
+      required: true  # M2 起所有服务注册到 Nacos
+
+    - id: kb-minio
+      name: MinIO 对象存储
+      type: infrastructure
+      image: minio/minio
+      port: 9000
+      consolePort: 9001
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: curl -sf http://localhost:9000/minio/health/live
+      required: false  # 仅 kb-file 依赖
+
+    - id: kb-meilisearch
+      name: MeiliSearch 搜索引擎
+      type: infrastructure
+      image: getmeili/meilisearch:v1.6
+      port: 7700
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      healthCheck: curl -sf http://localhost:7700/health
+      required: false  # 仅 kb-knowledge 依赖
+
+  # ========== 微服务模块 ==========
+  services:
+    - id: kb-gateway
+      name: API 网关
+      type: service
+      techStack: Spring Cloud Gateway
+      port: 8090
+      contextPath: /kb
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      dependsOn: [kb-nacos]
+      routes:
+        - path: /kb/api/auth/**
+          target: kb-auth
+        - path: /kb/api/file/**
+          target: kb-file
+        - path: /kb/api/knowledge/**
+          target: kb-knowledge
+        - path: /kb/api/intelligence/**
+          target: kb-intelligence
+      healthCheck: /actuator/health
+      required: true  # 网关是统一入口，必须启动
+      nacosDiscovery: true  # M2: 注册到 Nacos
+
+    - id: kb-auth
+      name: 认证服务
+      type: service
+      techStack: Spring Boot 3.2 + JWT
+      port: 8081
+      contextPath: /kb/api/auth
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      dependsOn: [kb-mysql, kb-redis, kb-nacos]
+      healthCheck: /actuator/health
+      required: true
+      nacosDiscovery: true
+
+    - id: kb-file
+      name: 文件服务
+      type: service
+      techStack: Spring Boot 3.2 + MinIO
+      port: 8082
+      contextPath: /kb/api/file
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      dependsOn: [kb-mysql, kb-redis, kb-minio, kb-nacos]
+      healthCheck: /actuator/health
+      required: false  # 可选模块，不启动时文件功能不可用
+      nacosDiscovery: true
+
+    - id: kb-knowledge
+      name: 知识库服务
+      type: service
+      techStack: Spring Boot 3.2 + MeiliSearch
+      port: 8083
+      contextPath: /kb/api/knowledge
+      network: kb-deploy_kb-net
+      profile: [dev, test, prod]
+      dependsOn: [kb-mysql, kb-redis, kb-meilisearch, kb-nacos]
+      healthCheck: /actuator/health
+      required: true
+      nacosDiscovery: true
+
+    - id: kb-intelligence
+      name: 知识引擎服务
+      type: service
+      techStack: Spring Boot 3.2 + AI
+      port: 8085
+      contextPath: /kb/api/intelligence
+      network: kb-deploy_kb-net
+      profile: [test, prod]  # 开发环境不启动（AI 服务耗资源）
+      dependsOn: [kb-mysql, kb-redis, kb-nacos]
+      healthCheck: /actuator/health
+      required: false  # 可选模块
+      nacosDiscovery: true
+
+  # ========== 前端 ==========
+  frontend:
+    - id: kb-web
+      name: 知识库前端
+      type: frontend
+      techStack: Vue3 + Element Plus
+      deployPath: /data/knowledge-base/web
+      profile: [dev, test, prod]
+      required: true
+
+# ========== Profile 预设 ==========
+# 不同环境启停不同模块组合
+profilePresets:
+  dev:
+    description: 开发环境（最小化启动）
+    services: [kb-gateway, kb-auth, kb-knowledge]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos]
+    excludeOptional: true  # 排除所有非 required 模块
+
+  test:
+    description: 测试环境（核心功能验证）
+    services: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch]
+    excludeOptional: false
+
+  prod:
+    description: 生产环境（全量启动）
+    services: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence]
+    infrastructure: [kb-mysql, kb-redis, kb-nacos, kb-minio, kb-meilisearch]
+    excludeOptional: false
+
+# ========== 可拔插规则 ==========
+pluggableRules:
+  # 新增模块步骤
+  addModule:
+    - 在 module-registry.yml 添加模块条目
+    - 模块 pom.xml 添加 nacos-discovery 依赖
+    - 模块 application.yml 配置 nacos discovery
+    - 启动服务，自动注册到 Nacos
+    - 网关自动感知并路由（M6 动态路由）
+
+  # 删除模块步骤
+  removeModule:
+    - 停止服务容器（Nacos 自动注销）
+    - 从 module-registry.yml 移除条目
+    - 网关自动感知并移除路由（M6 动态路由）
+    - 清理相关配置（可选）
+
+  # 模块独立性约束
+  independence:
+    - 每个模块必须独立编译（不依赖其他模块源码）
+    - 模块间通信通过 Nacos 服务发现 + Feign/事件
+    - 公共依赖通过 kb-common jar（Nexus 私服）
+    - 配置通过 Nacos 配置中心统一管理（M3）
