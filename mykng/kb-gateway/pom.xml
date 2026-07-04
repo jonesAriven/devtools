@@ -40,6 +40,12 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
+        <!-- M6: springdoc-openapi（WebFlux / Gateway 版本） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+        </dependency>
+
         <!-- WebFlux（显式声明，与 Gateway 共用 Reactive 栈） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

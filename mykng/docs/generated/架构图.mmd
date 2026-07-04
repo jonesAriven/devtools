@@ -1,0 +1,52 @@
+graph TD
+
+    %% ===== 用户端 ===== %%
+    User[用户] -->|HTTPS| Gateway[API 网关<br/>kb-gateway:8090]
+
+    %% ===== 网关层 ===== %%
+    Gateway -->|lb://| Auth[认证服务<br/>kb-auth:8081]
+    Gateway -->|lb://| File[文件服务<br/>kb-file:8082]
+    Gateway -->|lb://| Knowledge[知识库服务<br/>kb-knowledge:8083]
+    Gateway -->|lb://| Intelligence[知识引擎<br/>kb-intelligence:8086]
+
+    %% ===== 服务间事件总线 ===== %%
+    File -->|发布事件| Redis[(Redis Streams<br/>kb-redis:6379)]
+    Knowledge -->|发布事件| Redis
+    Knowledge -->|订阅事件| Redis
+    Intelligence -->|订阅事件| Redis
+
+    %% ===== 基础设施 ===== %%
+    Auth --> MySQL[(MySQL<br/>kb-mysql:3306)]
+    File --> MySQL
+    Knowledge --> MySQL
+    Intelligence --> MySQL
+
+    File --> MinIO[(MinIO<br/>kb-minio:9000)]
+
+    Knowledge --> Meili[(MeiliSearch<br/>kb-meilisearch:7700)]
+    File --> Meili
+    Intelligence --> Meili
+
+    Knowledge --> MongoDB[(MongoDB<br/>kb-mongodb:27017)]
+    Intelligence --> MongoDB
+
+    %% ===== 服务发现 ===== %%
+    Nacos[(Nacos<br/>kb-nacos:8848)]
+    Auth -.注册/发现.-> Nacos
+    File -.注册/发现.-> Nacos
+    Knowledge -.注册/发现.-> Nacos
+    Intelligence -.注册/发现.-> Nacos
+    Gateway -.发现.-> Nacos
+
+    %% ===== 样式 ===== %%
+    style Gateway fill:#4f46e5,color:#fff,stroke:#4338ca
+    style Auth fill:#10b981,color:#fff,stroke:#059669
+    style File fill:#f59e0b,color:#fff,stroke:#d97706
+    style Knowledge fill:#3b82f6,color:#fff,stroke:#2563eb
+    style Intelligence fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    style Redis fill:#ef4444,color:#fff,stroke:#dc2626
+    style MySQL fill:#00758f,color:#fff,stroke:#005f74
+    style MinIO fill:#c83b34,color:#fff,stroke:#a32e29
+    style Meili fill:#ff6c0c,color:#fff,stroke:#d95c0a
+    style MongoDB fill:#13aa52,color:#fff,stroke:#0f8a42
+    style Nacos fill:#646cff,color:#fff,stroke:#5355d8

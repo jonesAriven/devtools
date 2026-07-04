@@ -87,7 +87,31 @@ kb:
       # M7-1: 模块健康检查端点公开（前端登录前也需要知道哪些模块可用）
       - ${KB_CONTEXT:/kb}/api/system/modules
       - ${KB_CONTEXT:/kb}/api/system/modules/**
+      # M6: Swagger 文档端点公开
+      - ${KB_CONTEXT:/kb}/swagger-ui/**
+      - ${KB_CONTEXT:/kb}/v3/api-docs/**
+      - ${KB_CONTEXT:/kb}/api/*/v3/api-docs/**
+      - ${KB_CONTEXT:/kb}/api/*/swagger-ui/**
     # M6: kb.gateway.services 已废弃，路由 uri 改为 lb://服务名 通过 Nacos 服务发现
+
+# M6: springdoc-openapi 网关聚合配置（WebFlux）
+# 统一入口：/kb/swagger-ui.html，可切换各模块的 API 文档
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    urls:
+      - name: 认证服务 (kb-auth)
+        url: /api/auth/v3/api-docs
+      - name: 文件服务 (kb-file)
+        url: /api/file/v3/api-docs
+      - name: 知识库服务 (kb-knowledge)
+        url: /api/knowledge/v3/api-docs
+      - name: 知识引擎 (kb-intelligence)
+        url: /api/intelligence/v3/api-docs
+  api-docs:
+    path: /v3/api-docs
 
 management:
   endpoints:

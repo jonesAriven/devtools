@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/share/verify/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/share/detail/**").permitAll()
+                // M6: Swagger 文档端点公开
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )

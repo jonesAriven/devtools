@@ -35,6 +35,8 @@
         <meilisearch.version>0.14.2</meilisearch.version>
         <minio.version>8.5.9</minio.version>
         <kb-common.version>1.1.0</kb-common.version>
+        <!-- M6: springdoc-openapi 统一版本管理 -->
+        <springdoc.version>2.5.0</springdoc.version>
 
         <!-- 测试工具版本 -->
         <jacoco.version>0.8.12</jacoco.version>
@@ -130,6 +132,19 @@
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
+            </dependency>
+
+            <!-- M6: springdoc-openapi（API 文档自动生成） -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <!-- M6: springdoc-openapi（WebFlux / Gateway 版本） -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
 
             <!-- Cucumber BDD（SOP V1.1 阶段2.5 强制要求） -->

@@ -480,8 +480,8 @@ pluggableRules:
 
   # 事件契约约束
   eventContract:
-    - 事件类型命名: {模块名}.{动作}（如 file.parsed, doc.created）
-    - 事件 payload 必须包含: entityId, userId, timestamp
+    - "事件类型命名: {模块名}.{动作}（如 file.parsed, doc.created）"
+    - "事件 payload 必须包含: entityId, userId, timestamp"
     - 事件发布必须幂等（消费者需处理重复事件）
     - 事件必须持久化（Redis Streams，不使用 Pub/Sub）
     - 事件必须包含 traceId（用于链路追踪）

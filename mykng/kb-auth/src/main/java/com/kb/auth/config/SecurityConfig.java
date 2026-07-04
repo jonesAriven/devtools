@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/login", "/auth/refresh").permitAll()
                 .requestMatchers("/token/verify").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                // M6: Swagger 文档端点公开
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )

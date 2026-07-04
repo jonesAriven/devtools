@@ -52,3 +52,13 @@ management:
   endpoint:
     health:
       show-details: always
+
+# M6: springdoc-openapi 配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: false
