@@ -31,6 +31,36 @@ spring:
       # 模块下线：Nacos 感知，网关不再路由到该实例（可拔插基础）
       # ============================================================
       routes:
+        # M6: 各服务 Swagger API Docs 路由（必须放在业务路由前面，优先匹配）
+        # StripPrefix=3：去掉 /kb/api/{service} 三段，后端收到 /v3/api-docs
+        - id: kb-auth-api-docs
+          uri: lb://kb-auth
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/auth/v3/api-docs/**,${KB_CONTEXT:/kb}/api/auth/swagger-ui/**
+          filters:
+            - StripPrefix=3
+
+        - id: kb-file-api-docs
+          uri: lb://kb-file
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/file/v3/api-docs/**,${KB_CONTEXT:/kb}/api/file/swagger-ui/**
+          filters:
+            - StripPrefix=3
+
+        - id: kb-knowledge-api-docs
+          uri: lb://kb-knowledge
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/knowledge/v3/api-docs/**,${KB_CONTEXT:/kb}/api/knowledge/swagger-ui/**
+          filters:
+            - StripPrefix=3
+
+        - id: kb-intelligence-api-docs
+          uri: lb://kb-intelligence
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/intelligence/v3/api-docs/**,${KB_CONTEXT:/kb}/api/intelligence/swagger-ui/**
+          filters:
+            - StripPrefix=3
+
         - id: kb-auth
           uri: lb://kb-auth
           predicates:
@@ -58,6 +88,18 @@ spring:
             - Path=${KB_CONTEXT:/kb}/api/intelligence/**
           filters:
             - StripPrefix=2
+
+        # 前端静态资源路由（/kb/s/）
+        - id: kb-web-static
+          uri: http://kb-web:80
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/s/**
+
+        # 前端 SPA 页面路由（/kb/ 兜底，放在最后）
+        - id: kb-web-spa
+          uri: http://kb-web:80
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/**
 
       # CORS 跨域
       globalcors:
@@ -101,17 +143,18 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
+    config-url: ${KB_CONTEXT:/kb}/v3/api-docs/swagger-config
     urls:
       - name: 认证服务 (kb-auth)
-        url: /api/auth/v3/api-docs
+        url: ${KB_CONTEXT:/kb}/api/auth/v3/api-docs
       - name: 文件服务 (kb-file)
-        url: /api/file/v3/api-docs
+        url: ${KB_CONTEXT:/kb}/api/file/v3/api-docs
       - name: 知识库服务 (kb-knowledge)
-        url: /api/knowledge/v3/api-docs
+        url: ${KB_CONTEXT:/kb}/api/knowledge/v3/api-docs
       - name: 知识引擎 (kb-intelligence)
-        url: /api/intelligence/v3/api-docs
+        url: ${KB_CONTEXT:/kb}/api/intelligence/v3/api-docs
   api-docs:
-    path: /v3/api-docs
+    path: ${KB_CONTEXT:/kb}/v3/api-docs
 
 management:
   endpoints:

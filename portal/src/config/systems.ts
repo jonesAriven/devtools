@@ -110,7 +110,7 @@ export const systems: SystemConfig[] = [
     techStack: 'C# .NET 6 WinForms',
     downloadPath: '/portal/downloads/QRCodeTool.zip',
     docs: [
-      { label: '使用说明', url: 'https://tools.marschat.online/kb/' },
+      { label: '使用说明', url: 'https://kb.marschat.online/kb/' },
     ],
   },
   {
@@ -150,11 +150,11 @@ export const systems: SystemConfig[] = [
     name: '项目文档中心',
     description: 'devtools 项目文档：架构设计、部署手册、API规范',
     category: 'doc',
-    url: 'https://tools.marschat.online/kb/',
+    url: 'https://kb.marschat.online/kb/',
     icon: 'Document',
     color: '#00bcd4',
     docs: [
-      { label: 'mykng 文档', url: 'https://tools.marschat.online/kb/' },
+      { label: 'mykng 文档', url: 'https://kb.marschat.online/kb/' },
       { label: '激活码文档', url: 'https://tools-test.marschat.online' },
       { label: 'Nexus 文档', url: 'https://nexus.marschat.online' },
     ],
@@ -164,7 +164,7 @@ export const systems: SystemConfig[] = [
     name: 'OpenClaw 知识库',
     description: '龙虾 OpenClaw 体系文档：主机清单、凭据汇总、运维方案',
     category: 'doc',
-    url: 'https://tools.marschat.online/kb/',
+    url: 'https://kb.marschat.online/kb/',
     icon: 'Memo',
     color: '#00bcd4',
   },

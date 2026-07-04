@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/api/health.ts","./src/config/systems.ts","./src/app.vue","./src/components/statusbadge.vue","./src/components/systemcard.vue","./src/views/dashboardview.vue","./env.d.ts"],"errors":true,"version":"5.9.3"}

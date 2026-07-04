@@ -1,0 +1,146 @@
+# ============================================================
+# 通用部署引擎配置文件
+# ------------------------------------------------------------
+# 用法：复制此文件为 deploy-config.yml，修改为你的项目配置
+# 引擎不变，配置常变 —— 换项目只改这个文件
+# ============================================================
+
+# ---------- 项目基本信息 ----------
+project:
+  name: mykng
+  description: 知识库微服务系统
+  local_root: D:/huliang/java/ideaworkspace/devtools/mykng
+  remote_root: /root/kb-deploy
+  # 部署策略：docker-hotfix（热更新） | docker-compose（全量） | k8s | ssh-script
+  deploy_strategy: docker-hotfix
+
+# ---------- 服务器配置 ----------
+server:
+  host: 120.26.66.182
+  port: 3385
+  username: root
+  password: root
+  # 可选：用 key 登录
+  # key_file: ~/.ssh/id_rsa
+  connect_timeout: 15
+  # 命令执行超时（秒），超过则后台执行并轮询
+  command_timeout: 120
+
+# ---------- 构建配置 ----------
+build:
+  # 构建工具：maven | gradle | npm | pnpm | make
+  tool: maven
+  maven:
+    path: D:/huliang/software/apache-maven-3.9.11/bin/mvn.cmd
+    java_home: D:/huliang/software/Java/jdk-21.0.11
+    args: package -DskipTests -q
+  # 本地打包后 jar 包的相对路径（相对于 local_root）
+  artifacts:
+    - service: kb-gateway
+      local_path: kb-gateway/target/kb-gateway.jar
+      remote_path: kb-gateway/target/kb-gateway.jar
+    - service: kb-auth
+      local_path: kb-auth/target/kb-auth.jar
+      remote_path: kb-auth/target/kb-auth.jar
+    - service: kb-file
+      local_path: kb-file/target/kb-file.jar
+      remote_path: kb-file/target/kb-file.jar
+    - service: kb-knowledge
+      local_path: kb-knowledge/target/kb-knowledge.jar
+      remote_path: kb-knowledge/target/kb-knowledge.jar
+    - service: kb-intelligence
+      local_path: kb-intelligence/target/kb-intelligence.jar
+      remote_path: kb-intelligence/target/kb-intelligence.jar
+
+# ---------- Docker 热更新策略配置 ----------
+docker_hotfix:
+  # 容器名规则：{service} 会被替换为服务名
+  container_name_pattern: "{service}"
+  # 容器内 jar 包路径
+  container_jar_path: "/app/{service}.jar"
+  # 启动成功标志（日志中出现这些关键词之一即视为启动成功）
+  success_keywords:
+    - "Started Kb"
+    - "JVM running for"
+    - "Started Application"
+  # 启动失败标志（日志中出现这些关键词之一即视为启动失败）
+  fail_keywords:
+    - "APPLICATION FAILED TO START"
+    - "ERROR.*Exception during context initialization"
+    - "BeanCreationException"
+  # 启动等待超时（秒）
+  startup_timeout: 120
+  # 日志检查间隔（秒）
+  log_check_interval: 5
+
+# ---------- 健康检查配置 ----------
+health_check:
+  # 模式：docker（用 docker exec） | http（用 HTTP 请求）
+  mode: http
+  http:
+    base_url: "http://localhost:8090"
+    # 每个服务的健康检查路径
+    endpoints:
+      kb-gateway: "/actuator/health"
+      kb-auth: "/kb/api/auth/actuator/health"
+      kb-file: "/kb/api/file/actuator/health"
+      kb-knowledge: "/kb/api/knowledge/actuator/health"
+      kb-intelligence: "/kb/api/intelligence/actuator/health"
+  # 模块状态总览接口（可选）
+  modules_endpoint: "/kb/api/system/modules"
+
+# ---------- 服务依赖顺序 ----------
+# 部署顺序：先部署被依赖的，后部署依赖别人的
+services:
+  - name: kb-auth
+    depends_on: [mysql, redis, nacos]
+    weight: 10
+  - name: kb-file
+    depends_on: [mysql, redis, minio, meilisearch, mongodb, nacos]
+    weight: 20
+  - name: kb-knowledge
+    depends_on: [mysql, redis, meilisearch, mongodb, nacos, kb-auth, kb-file]
+    weight: 30
+  - name: kb-intelligence
+    depends_on: [mysql, redis, mongodb, meilisearch, nacos]
+    weight: 40
+  - name: kb-gateway
+    depends_on: [nacos, kb-auth]
+    weight: 50
+
+# ---------- 基础设施（仅状态查看，不部署） ----------
+infrastructure:
+  - name: mysql
+    container: kb-mysql
+    port: 3306
+  - name: redis
+    container: kb-redis
+    port: 6379
+  - name: nacos
+    container: kb-nacos
+    port: 8848
+    ui_path: /nacos/
+  - name: minio
+    container: kb-minio
+    port: 9001
+    ui_path: /
+  - name: meilisearch
+    container: kb-meilisearch
+    port: 7700
+    health_path: /health
+  - name: mongodb
+    container: kb-mongo
+    port: 27017
+
+# ---------- 自进化配置 ----------
+evolution:
+  # 是否启用经验记录
+  enabled: true
+  # 经验库目录（相对于 local_root）
+  history_dir: .deploy-history
+  # 经验记录文件
+  log_file: deploy-log.jsonl
+  # 已知问题库
+  issues_file: known-issues.md
+  # 部署模式记录
+  patterns_dir: patterns

@@ -53,7 +53,7 @@ mykng 知识库项目原有 kb-ops 运维模块，承担运维知识导入与分
 
 | ID | 名称 | URL | 健康检查 | 技术栈 |
 |----|------|-----|----------|--------|
-| mykng | mykng 知识库 | https://tools.marschat.online/kb/ | /kb/api/auth/actuator/health | Spring Boot 3.2 + Vue3 + MySQL + MongoDB + MinIO + MeiliSearch |
+| mykng | mykng 知识库 | https://kb.marschat.online/kb/ | /kb/api/auth/actuator/health | Spring Boot 3.2 + Vue3 + MySQL + MongoDB + MinIO + MeiliSearch |
 | activation-code | 激活码服务 | https://tools-test.marschat.online | /actuator/health | Spring Boot 3.4 + Java 21 + MyBatis-Plus + MySQL |
 
 ### 4.2 基础设施（3 个）
@@ -77,8 +77,8 @@ mykng 知识库项目原有 kb-ops 运维模块，承担运维知识导入与分
 
 | ID | 名称 | URL | 说明 |
 |----|------|-----|------|
-| devtools-docs | 项目文档中心 | https://tools.marschat.online/kb/ | devtools 项目文档：架构设计、部署手册、API规范 |
-| openclaw-docs | OpenClaw 知识库 | https://tools.marschat.online/kb/ | 龙虾 OpenClaw 体系文档：主机清单、凭据汇总、运维方案 |
+| devtools-docs | 项目文档中心 | https://kb.marschat.online/kb/ | devtools 项目文档：架构设计、部署手册、API规范 |
+| openclaw-docs | OpenClaw 知识库 | https://kb.marschat.online/kb/ | 龙虾 OpenClaw 体系文档：主机清单、凭据汇总、运维方案 |
 
 ## 5. 部署方案
 
@@ -97,7 +97,7 @@ mykng 知识库项目原有 kb-ops 运维模块，承担运维知识导入与分
 ```
 用户浏览器
     ↓ HTTPS
-腾讯云2号 Nginx (tools.marschat.online:443)
+腾讯云2号 Nginx (main.marschat.online:443)
     ↓ proxy_pass http://100.93.36.113:80/portal/
 mykng-debain Nginx (100.93.36.113:80)
     ↓ alias /data/portal/
@@ -117,20 +117,24 @@ mykng-debain Nginx (100.93.36.113:80)
        access_log off;
    }
    ```
-4. **腾讯云2号 Nginx 配置**（`/etc/nginx/sites-enabled/tools`）：
+4. **腾讯云2号 Nginx 配置**（`/etc/nginx/sites-enabled/main.marschat.online`）：
    ```nginx
-   location /portal/ {
-       proxy_pass http://100.93.36.113:80/portal/;
-       proxy_set_header Host $host;
-       proxy_set_header X-Real-IP $remote_addr;
-       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-       proxy_set_header X-Forwarded-Proto $scheme;
-       proxy_connect_timeout 5s;
-       proxy_read_timeout 60s;
+   server {
+       listen 443 ssl;
+       server_name main.marschat.online;
+       location /portal/ {
+           proxy_pass http://100.93.36.113:80/portal/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_connect_timeout 5s;
+           proxy_read_timeout 60s;
+       }
    }
    ```
 5. **重载 Nginx**：`nginx -t && nginx -s reload`（两台机器分别执行）
-6. **验证**：`curl -s -o /dev/null -w "%{http_code}" https://tools.marschat.online/portal/` 应返回 200
+6. **验证**：`curl -s -o /dev/null -w "%{http_code}" https://main.marschat.online/portal/` 应返回 200
 
 ### 5.4 辅助脚本
 
@@ -144,7 +148,7 @@ mykng-debain Nginx (100.93.36.113:80)
 
 ## 6. 访问地址
 
-- **生产地址**：https://tools.marschat.online/portal/
+- **生产地址**：https://main.marschat.online/portal/
 - **内网直连**：http://192.168.31.105/portal/
 - **Tailscale**：http://100.93.36.113/portal/
 
