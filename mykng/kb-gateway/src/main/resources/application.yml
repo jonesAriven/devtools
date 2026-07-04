@@ -124,6 +124,7 @@ kb:
     whitelist:
       - ${KB_CONTEXT:/kb}/api/auth/login
       - ${KB_CONTEXT:/kb}/api/auth/refresh
+      - ${KB_CONTEXT:/kb}/api/auth/error-log/report
       - ${KB_CONTEXT:/kb}/api/share/verify/**
       - ${KB_CONTEXT:/kb}/api/share/detail/**
       # M7-1: 模块健康检查端点公开（前端登录前也需要知道哪些模块可用）

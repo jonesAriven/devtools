@@ -94,6 +94,52 @@ public class DatabaseInitializer implements CommandLineRunner {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表'
             """);
 
+        createTableIfNotExists("sys_error_log", """
+            CREATE TABLE IF NOT EXISTS sys_error_log (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT COMMENT '用户ID',
+                username VARCHAR(100) COMMENT '用户名',
+                level VARCHAR(20) COMMENT '日志级别 error/warn/info',
+                source VARCHAR(50) COMMENT '来源 frontend/backend',
+                message TEXT COMMENT '错误信息',
+                stack_trace TEXT COMMENT '堆栈信息',
+                url VARCHAR(500) COMMENT '页面URL',
+                ip VARCHAR(50) COMMENT 'IP地址',
+                user_agent VARCHAR(500) COMMENT '用户代理',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_level (level),
+                INDEX idx_source (source),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统错误日志表'
+            """);
+
+        createTableIfNotExists("sys_request_log", """
+            CREATE TABLE IF NOT EXISTS sys_request_log (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                trace_id VARCHAR(64) COMMENT '链路追踪ID',
+                user_id BIGINT COMMENT '用户ID',
+                username VARCHAR(100) COMMENT '用户名',
+                http_method VARCHAR(10) COMMENT 'HTTP方法',
+                request_uri VARCHAR(500) COMMENT '请求URI',
+                controller_method VARCHAR(200) COMMENT '控制器方法',
+                request_args TEXT COMMENT '请求参数',
+                response_result TEXT COMMENT '响应结果',
+                cost_ms BIGINT COMMENT '耗时(毫秒)',
+                status VARCHAR(20) COMMENT '状态 success/error/slow',
+                exception TEXT COMMENT '异常信息',
+                ip VARCHAR(50) COMMENT 'IP地址',
+                user_agent VARCHAR(500) COMMENT '用户代理',
+                service_name VARCHAR(50) COMMENT '服务名称',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_trace_id (trace_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at),
+                INDEX idx_service (service_name, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='请求日志表'
+            """);
+
         log.info("认证服务数据库表初始化完成");
     }
 

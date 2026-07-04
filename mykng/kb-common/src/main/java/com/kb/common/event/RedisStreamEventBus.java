@@ -67,6 +67,7 @@ public class RedisStreamEventBus implements EventBus {
      * 路由规则：
      * - file 点号开头的类型 路由到 kb:streams:file-events
      * - doc/web/share/folder/space/tag 点号开头的类型 路由到 kb:streams:knowledge-events
+     * - request 点号开头的类型 路由到 kb:streams:request-logs
      * - 其他 路由到 kb:streams:knowledge-events（默认）
      */
     private String routeStream(String eventType) {
@@ -78,6 +79,9 @@ public class RedisStreamEventBus implements EventBus {
         }
         if (eventType.startsWith("share.")) {
             return KbEvent.STREAM_SHARE_EVENTS;
+        }
+        if (eventType.startsWith("request.")) {
+            return KbEvent.STREAM_REQUEST_LOGS;
         }
         return KbEvent.STREAM_KNOWLEDGE_EVENTS;
     }

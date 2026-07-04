@@ -6,7 +6,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 /**
- * 安全工具类，获取当前登录用户 ID
+ * 安全工具类，获取当前登录用户信息
  */
 @Component
 public class SecurityUtils {
@@ -21,5 +21,13 @@ public class SecurityUtils {
         } catch (NumberFormatException e) {
             throw new NotLoginException("无法解析用户身份");
         }
+    }
+
+    public static String getCurrentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth.getName() == null) {
+            throw new NotLoginException();
+        }
+        return auth.getName();
     }
 }

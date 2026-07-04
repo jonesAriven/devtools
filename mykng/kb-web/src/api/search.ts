@@ -29,3 +29,12 @@ export function search(params: SearchParams, signal?: AbortSignal) {
 export function searchSuggest(keyword: string) {
   return request.get<R<string[]>>('/search/suggest', { params: { q: keyword } })
 }
+
+/** 收藏列表（服务端分页） */
+export function getStarredList(params: { type?: string; page?: number; size?: number }) {
+  const queryParams: Record<string, any> = {}
+  if (params.type && params.type !== 'all') queryParams.type = params.type
+  if (params.page) queryParams.page = params.page
+  if (params.size) queryParams.size = params.size
+  return request.get<R<PageResult<SearchResult>>>('/search/starred', { params: queryParams })
+}

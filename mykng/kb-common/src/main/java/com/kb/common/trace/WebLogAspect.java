@@ -2,6 +2,8 @@ package com.kb.common.trace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.kb.common.event.EventBus;
+import com.kb.common.event.KbEvent;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -10,13 +12,17 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +43,7 @@ import java.util.stream.Collectors;
  *   <li>敏感参数（password、token）自动脱敏</li>
  *   <li>大对象（MultipartFile、HttpServletResponse）只记录类型</li>
  *   <li>慢请求（>500ms）标记 WARN 级别</li>
+ *   <li>可选：发布请求日志事件到 Redis Stream（通过 EventBus）</li>
  * </ul>
  */
 @Aspect
@@ -60,6 +67,18 @@ public class WebLogAspect {
             MultipartFile.class, HttpServletRequest.class, HttpServletResponse.class
     );
 
+    /** 事件总线（可选，用于发布请求日志事件） */
+    @Autowired(required = false)
+    private EventBus eventBus;
+
+    /** 服务名（用于标识请求来源服务） */
+    @Value("${spring.application.name:unknown}")
+    private String applicationName;
+
+    /** 是否启用请求日志事件发布（默认关闭，避免过多事件） */
+    @Value("${kb.web-log.event-enabled:false}")
+    private boolean eventEnabled;
+
     /**
      * 切入所有 @RestController 注解的类的 public 方法
      */
@@ -73,6 +92,8 @@ public class WebLogAspect {
         HttpServletRequest request = getRequest();
         String httpMethod = request != null ? request.getMethod() : "N/A";
         String requestUri = request != null ? request.getRequestURI() : "N/A";
+        String ip = request != null ? getClientIp(request) : null;
+        String userAgent = request != null ? request.getHeader("User-Agent") : null;
 
         // 记录入参
         String argsStr = formatArgs(joinPoint.getArgs());
@@ -86,23 +107,81 @@ public class WebLogAspect {
 
             // 记录出参
             String resultStr = formatResult(result);
+            String status = costMs > SLOW_REQUEST_THRESHOLD ? "slow" : "success";
             if (costMs > SLOW_REQUEST_THRESHOLD) {
                 log.warn("[{}] <<< {} {} | cost={}ms (SLOW) | result={}", traceId, httpMethod, requestUri, costMs, resultStr);
             } else {
                 log.info("[{}] <<< {} {} | cost={}ms | result={}", traceId, httpMethod, requestUri, costMs, resultStr);
             }
+
+            // 发布请求日志事件（可选）
+            publishRequestLogEvent(traceId, httpMethod, requestUri, methodName,
+                    argsStr, resultStr, costMs, status, null, ip, userAgent);
+
             return result;
         } catch (Throwable e) {
             long costMs = System.currentTimeMillis() - startTime;
+            String exceptionStr = e.getClass().getSimpleName() + ": " + e.getMessage();
             log.error("[{}] !!! {} {} | cost={}ms | exception={}: {}", traceId, httpMethod, requestUri, costMs,
                     e.getClass().getSimpleName(), e.getMessage());
+
+            // 发布请求日志事件（可选）
+            publishRequestLogEvent(traceId, httpMethod, requestUri, methodName,
+                    argsStr, null, costMs, "error", exceptionStr, ip, userAgent);
+
             throw e;
+        }
+    }
+
+    /**
+     * 发布请求日志事件到 Redis Stream
+     */
+    private void publishRequestLogEvent(String traceId, String httpMethod, String requestUri,
+                                        String controllerMethod, String requestArgs, String responseResult,
+                                        Long costMs, String status, String exception, String ip, String userAgent) {
+        if (!eventEnabled || eventBus == null) {
+            return;
+        }
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("traceId", traceId);
+            payload.put("httpMethod", httpMethod);
+            payload.put("requestUri", requestUri);
+            payload.put("controllerMethod", controllerMethod);
+            payload.put("requestArgs", requestArgs);
+            payload.put("responseResult", responseResult);
+            payload.put("costMs", costMs);
+            payload.put("status", status);
+            payload.put("exception", exception);
+            payload.put("ip", ip);
+            payload.put("userAgent", userAgent);
+            payload.put("serviceName", applicationName);
+
+            KbEvent event = new KbEvent(KbEvent.REQUEST_LOG, null, payload, applicationName);
+            event.setTraceId(traceId);
+            eventBus.publish(event);
+        } catch (Exception e) {
+            log.warn("发布请求日志事件失败: traceId={}, uri={}", traceId, requestUri, e);
         }
     }
 
     private HttpServletRequest getRequest() {
         ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attrs != null ? attrs.getRequest() : null;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
     /**

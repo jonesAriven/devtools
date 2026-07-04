@@ -83,6 +83,9 @@ public class KbEvent {
     public static final String TAG_CREATED = "tag.created";
     public static final String TAG_DELETED = "tag.deleted";
 
+    // ========== 请求日志事件类型 ==========
+    public static final String REQUEST_LOG = "request.log";
+
     // ========== 事件流通道（Redis Streams Key） ==========
     /** 文件事件流（kb-file → kb-knowledge） */
     public static final String STREAM_FILE_EVENTS = "kb:streams:file-events";
@@ -90,6 +93,8 @@ public class KbEvent {
     public static final String STREAM_KNOWLEDGE_EVENTS = "kb:streams:knowledge-events";
     /** 分享事件流（kb-knowledge → 其他模块） */
     public static final String STREAM_SHARE_EVENTS = "kb:streams:share-events";
+    /** 请求日志流（所有服务 → kb-auth 统一存储） */
+    public static final String STREAM_REQUEST_LOGS = "kb:streams:request-logs";
     /** 死信流（处理失败的事件） */
     public static final String STREAM_DEAD_LETTER = "kb:streams:dead-letter";
 
@@ -98,4 +103,6 @@ public class KbEvent {
     public static final String GROUP_KNOWLEDGE = "kb-knowledge-group";
     /** kb-intelligence 消费 knowledge-events 的消费者组 */
     public static final String GROUP_INTELLIGENCE = "kb-intelligence-group";
+    /** kb-auth 消费 request-logs 的消费者组 */
+    public static final String GROUP_REQUEST_LOG = "request-log-group";
 }

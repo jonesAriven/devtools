@@ -18,6 +18,32 @@
           <el-button type="primary" :loading="loading" @click="handleNewSearch">搜索</el-button>
         </template>
       </el-input>
+
+      <!-- 搜索历史 -->
+      <div v-if="showHistory" class="search-history">
+        <div class="history-header">
+          <span class="history-title">
+            <el-icon><Clock /></el-icon>
+            搜索历史
+          </span>
+          <el-button link type="info" size="small" @click="clearHistory">
+            <el-icon><Delete /></el-icon>
+            清空
+          </el-button>
+        </div>
+        <div class="history-tags">
+          <el-tag
+            v-for="(item, idx) in searchHistory"
+            :key="idx"
+            class="history-tag"
+            closable
+            @close="removeHistoryItem(idx)"
+            @click="useHistoryItem(item)"
+          >
+            {{ item.keyword }}
+          </el-tag>
+        </div>
+      </div>
     </div>
 
     <el-row :gutter="16">
@@ -32,6 +58,29 @@
                 <el-option label="笔记" value="doc" />
                 <el-option label="网页" value="web" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="标签">
+              <el-select
+                v-model="filters.tagId"
+                placeholder="全部标签"
+                clearable
+                filterable
+                style="width: 100%"
+                @change="handleNewSearch"
+              >
+                <el-option
+                  v-for="tag in tagList"
+                  :key="tag.id"
+                  :label="tag.name"
+                  :value="tag.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item v-if="filters.type !== 'all' || filters.tagId">
+              <el-button type="info" plain size="small" @click="resetFilters">
+                <el-icon><RefreshLeft /></el-icon>
+                重置筛选
+              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -93,12 +142,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, Loading } from '@element-plus/icons-vue'
+import { Search, Loading, Clock, Delete, RefreshLeft } from '@element-plus/icons-vue'
 import DOMPurify from 'dompurify'
 import { search } from '@/api/search'
-import type { SearchResult } from '@/types'
+import { getTagList } from '@/api/tag'
+import type { SearchResult, Tag } from '@/types'
 import StarToggle from '@/components/StarToggle.vue'
 import { toggleFileStar } from '@/api/file'
 import { toggleDocStar } from '@/api/doc'
@@ -116,8 +166,68 @@ const pageSize = 20
 const searched = ref(false)
 const loading = ref(false)
 
+const tagList = ref<Tag[]>([])
+
 const filters = reactive({
   type: 'all' as string,
+  tagId: undefined as number | undefined,
+})
+
+/* ============ 搜索历史 ============ */
+interface HistoryItem {
+  keyword: string
+  ts: number
+}
+const HISTORY_KEY = 'kb-search-history'
+const HISTORY_MAX = 10
+const searchHistory = ref<HistoryItem[]>(loadHistory())
+
+function loadHistory(): HistoryItem[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw) as HistoryItem[]
+    return Array.isArray(arr) ? arr.slice(0, HISTORY_MAX) : []
+  } catch {
+    return []
+  }
+}
+
+function saveHistory(list: HistoryItem[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX)))
+}
+
+function pushHistory(q: string) {
+  const trimmed = q.trim()
+  if (!trimmed) return
+  // 去重
+  const filtered = searchHistory.value.filter(h => h.keyword !== trimmed)
+  filtered.unshift({ keyword: trimmed, ts: Date.now() })
+  searchHistory.value = filtered.slice(0, HISTORY_MAX)
+  saveHistory(searchHistory.value)
+}
+
+function removeHistoryItem(idx: number) {
+  searchHistory.value.splice(idx, 1)
+  saveHistory(searchHistory.value)
+}
+
+function clearHistory() {
+  searchHistory.value = []
+  localStorage.removeItem(HISTORY_KEY)
+}
+
+function useHistoryItem(item: HistoryItem) {
+  keyword.value = item.keyword
+  handleNewSearch()
+}
+
+// 仅在未输入关键字且无结果时显示历史
+const showHistory = computed(() => {
+  if (loading.value) return false
+  if (results.value.length > 0) return false
+  if (searched.value && keyword.value.trim()) return false
+  return searchHistory.value.length > 0
 })
 
 // 本地缓存：相同查询 5 分钟内不重复请求（LRU 上限 50 条防止内存膨胀）
@@ -128,7 +238,6 @@ const CACHE_MAX_SIZE = 50
 /** 写入缓存并维持 LRU 上限：超出时淘汰最早的条目 */
 function setCache(key: string, value: { data: SearchResult[]; total: number; ts: number }) {
   searchCache.set(key, value)
-  // Map 的迭代顺序为插入顺序，超出上限时淘汰最早的（FIFO 近似 LRU）
   while (searchCache.size > CACHE_MAX_SIZE) {
     const oldestKey = searchCache.keys().next().value
     if (oldestKey === undefined) break
@@ -136,17 +245,21 @@ function setCache(key: string, value: { data: SearchResult[]; total: number; ts:
   }
 }
 
-// 请求取消：新请求发出时取消上一个未完成的请求
 let abortController: AbortController | null = null
-
-// 防抖
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-function cacheKey(q: string, type: string, p: number): string {
-  return `${q.trim().toLowerCase()}|${type}|${p}`
+function cacheKey(q: string, type: string, tagId: number | undefined, p: number): string {
+  return `${q.trim().toLowerCase()}|${type}|${tagId ?? ''}|${p}`
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 加载标签列表用于筛选
+  try {
+    const res = await getTagList()
+    tagList.value = res.data.data || []
+  } catch {
+    // 忽略：标签加载失败不阻塞搜索
+  }
   if (route.query.q) {
     keyword.value = route.query.q as string
     handleNewSearch()
@@ -175,9 +288,6 @@ function handleClear() {
   searched.value = false
 }
 
-/**
- * 带防抖的搜索（用于输入框实时触发）
- */
 function debouncedSearch() {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
@@ -185,25 +295,29 @@ function debouncedSearch() {
   }, 350)
 }
 
+function resetFilters() {
+  filters.type = 'all'
+  filters.tagId = undefined
+  handleNewSearch()
+}
+
 async function doSearch() {
   const q = keyword.value.trim()
   if (!q) return
 
-  // 检查本地缓存
   const typeVal = filters.type && filters.type !== 'all' ? filters.type : ''
-  const key = cacheKey(q, typeVal, page.value)
+  const key = cacheKey(q, typeVal, filters.tagId, page.value)
   const cached = searchCache.get(key)
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     results.value = cached.data
     total.value = cached.total
     searched.value = true
-    // LRU touch：删除后重新插入，移到末尾
     searchCache.delete(key)
     searchCache.set(key, cached)
+    pushHistory(q)
     return
   }
 
-  // 取消上一个未完成请求
   if (abortController) abortController.abort()
   abortController = new AbortController()
 
@@ -213,20 +327,20 @@ async function doSearch() {
     const res = await search({
       keyword: q,
       type: typeVal || undefined,
+      tagId: filters.tagId,
       page: page.value,
       size: pageSize,
     }, abortController.signal)
     results.value = res.data.data.list || []
     total.value = res.data.data.total || 0
-    // 写入缓存（LRU 维持上限）
     setCache(key, { data: results.value, total: total.value, ts: Date.now() })
+    // 仅在搜索到结果或第一页时记录历史
+    if (page.value === 1) {
+      pushHistory(q)
+    }
   } catch (e: any) {
-    // AbortError 是正常取消，不显示错误
     if (e?.code !== 'ERR_CANCELED' && e?.name !== 'CanceledError') {
       console.error('搜索失败', e)
-    }
-    // 取消时不清空已有结果
-    if (e?.code !== 'ERR_CANCELED' && e?.name !== 'CanceledError') {
       results.value = []
       total.value = 0
     }
@@ -235,17 +349,11 @@ async function doSearch() {
   }
 }
 
-/**
- * 清洗标题 HTML（保留 <em> 高亮标签，移除其他危险标签）
- */
 function safeTitle(title: string): string {
   if (!title) return ''
   return DOMPurify.sanitize(title, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
 }
 
-/**
- * 清洗高亮片段 HTML（仅保留 <em> 标签）
- */
 function safeHighlight(html: string): string {
   if (!html) return ''
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['em'], ALLOWED_ATTR: [] })
@@ -277,6 +385,42 @@ async function handleToggleStar(item: SearchResult) {
     max-width: 700px;
     margin: 0 auto;
     display: block;
+  }
+
+  .search-history {
+    max-width: 700px;
+    margin: 12px auto 0;
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+
+      .history-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    .history-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .history-tag {
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+    }
   }
 
   .filter-card {
@@ -345,6 +489,10 @@ async function handleToggleStar(item: SearchResult) {
 
     .resource-highlight {
       font-size: 11px;
+    }
+
+    .search-history {
+      max-width: 100%;
     }
   }
 }

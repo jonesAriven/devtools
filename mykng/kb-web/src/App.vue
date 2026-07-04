@@ -7,6 +7,22 @@
 <script setup lang="ts">
 import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { useRoute } from 'vue-router'
+import { onMounted, watch } from 'vue'
+import { logPageView } from '@/utils/errorReporter'
+
+const route = useRoute()
+
+onMounted(() => {
+  logPageView(route.path, (route.meta?.title as string) || document.title)
+})
+
+watch(
+  () => route.fullPath,
+  (newPath) => {
+    logPageView(route.path, (route.meta?.title as string) || document.title)
+  }
+)
 </script>
 
 <style>

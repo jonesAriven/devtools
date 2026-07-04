@@ -34,6 +34,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                .requestMatchers("/auth/error-log/report").permitAll()
                 .requestMatchers("/token/verify").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 // M6: Swagger 文档端点公开

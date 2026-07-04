@@ -1,0 +1,140 @@
+/* 暗黑模式自定义变量覆盖 */
+html.dark {
+  /* 全局背景与文字色 */
+  --kb-bg-page: #141414;
+  --kb-bg-card: #1d1e1f;
+  --kb-bg-hover: #262727;
+  --kb-border-color: #303030;
+  --kb-text-primary: #e5eaf3;
+  --kb-text-regular: #cfd3dc;
+  --kb-text-secondary: #a3a6ad;
+  --kb-text-placeholder: #8d9095;
+
+  /* 品牌主色（暗黑模式下稍微提亮） */
+  --el-color-primary: #d4b884;
+  --el-color-primary-light-3: #dec4a0;
+  --el-color-primary-light-5: #ead7bb;
+  --el-color-primary-light-7: #1a2433;
+  --el-color-primary-light-8: #1f2a3a;
+  --el-color-primary-light-9: #252f3f;
+  --el-color-primary-dark-2: #b6995a;
+
+  body {
+    color: var(--kb-text-primary);
+    background-color: var(--kb-bg-page);
+  }
+
+  /* 主布局背景 */
+  .main-layout {
+    .sidebar {
+      background-color: var(--kb-bg-card);
+      border-right-color: var(--kb-border-color);
+
+      .sidebar-header {
+        border-bottom-color: var(--kb-border-color);
+      }
+
+      .sidebar-menu {
+        background-color: var(--kb-bg-card);
+
+        :deep(.el-menu-item) {
+          color: var(--kb-text-regular);
+          &:hover {
+            background-color: var(--kb-bg-hover);
+            color: var(--el-color-primary);
+          }
+          &.is-active {
+            color: var(--el-color-primary);
+            background-color: var(--el-color-primary-light-9);
+          }
+        }
+
+        :deep(.el-sub-menu__title) {
+          color: var(--kb-text-regular);
+          &:hover {
+            background-color: var(--kb-bg-hover);
+            color: var(--el-color-primary);
+          }
+        }
+      }
+    }
+
+    .header-bar {
+      background-color: var(--kb-bg-card);
+      border-bottom-color: var(--kb-border-color);
+    }
+
+    .content-area {
+      background-color: var(--kb-bg-page);
+    }
+  }
+
+  /* 通用页面背景 */
+  .page-container,
+  .info-card,
+  .share-layout .share-header,
+  .share-layout .share-content {
+    background-color: var(--kb-bg-card);
+    color: var(--kb-text-primary);
+  }
+
+  .share-layout .share-header {
+    border-bottom-color: var(--kb-border-color);
+  }
+
+  /* 资源列表 */
+  .resource-item {
+    border-bottom-color: var(--kb-border-color);
+    &:hover {
+      background-color: var(--kb-bg-hover);
+    }
+    .resource-info .resource-name {
+      color: var(--kb-text-primary);
+    }
+    .resource-info .resource-meta {
+      color: var(--kb-text-secondary);
+    }
+  }
+
+  /* 上传区域 */
+  .upload-drop-zone {
+    border-color: var(--kb-border-color);
+    &:hover,
+    &.dragging {
+      border-color: var(--el-color-primary);
+      background-color: var(--el-color-primary-light-9);
+    }
+    .upload-text {
+      color: var(--kb-text-regular);
+    }
+    .upload-tip {
+      color: var(--kb-text-secondary);
+    }
+  }
+
+  /* 编辑器容器 */
+  .editor-container {
+    border-color: var(--kb-border-color);
+    .toolbar-container {
+      border-bottom-color: var(--kb-border-color);
+    }
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar-thumb {
+    background-color: #414243;
+    &:hover {
+      background-color: #555657;
+    }
+  }
+
+  /* 浮动按钮 */
+  .fab-menu-item {
+    background: var(--kb-bg-card);
+    color: var(--kb-text-primary);
+    &:hover {
+      background-color: var(--kb-bg-hover);
+      color: var(--el-color-primary);
+    }
+  }
+}

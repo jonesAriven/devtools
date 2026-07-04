@@ -64,3 +64,8 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
   show-actuator: false
+
+# 请求日志配置
+kb:
+  web-log:
+    event-enabled: true

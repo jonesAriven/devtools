@@ -67,6 +67,11 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        path: 'stars',
+        name: 'Stars',
+        component: () => import('@/views/stars/StarsView.vue'),
+      },
+      {
         path: 'search',
         name: 'Search',
         component: () => import('@/views/search/SearchView.vue'),

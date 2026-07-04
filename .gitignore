@@ -101,5 +101,17 @@ check_*.py
 clean_*.py
 find_*.py
 deploy_*.py
+deploy.py
+deploy.ps1
 fix_*.py
+test_*.py
+test_*.ts
+update_*.py
+add_new_systems_db.py
+
+# Playwright 浏览器测试产物（截图、trace 等）
+mykng/test_shots/
+
+# tar.gz 构建产物（前端打包传输用，不入库）
+*.tar.gz
 

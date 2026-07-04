@@ -41,6 +41,10 @@
               <el-icon><FolderOpened /></el-icon>
               <template #title>当前空间</template>
             </el-menu-item>
+            <el-menu-item :index="'/stars'" v-if="kbKnowledgeAvailable">
+              <el-icon><Star /></el-icon>
+              <template #title>我的收藏</template>
+            </el-menu-item>
             <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
               <el-icon><Search /></el-icon>
               <template #title>搜索</template>
@@ -132,6 +136,10 @@
                 <el-icon><FolderOpened /></el-icon>
                 <template #title>当前空间</template>
               </el-menu-item>
+              <el-menu-item :index="'/stars'" v-if="kbKnowledgeAvailable">
+                <el-icon><Star /></el-icon>
+                <template #title>我的收藏</template>
+              </el-menu-item>
               <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
                 <el-icon><Search /></el-icon>
                 <template #title>搜索</template>
@@ -193,6 +201,12 @@
           <SearchBar />
         </div>
         <div class="header-right">
+          <el-tooltip :content="appStore.theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式'" placement="bottom" effect="dark">
+            <el-icon class="header-btn theme-toggle-btn" @click="appStore.toggleTheme()">
+              <Sunny v-if="appStore.theme === 'dark'" />
+              <Moon v-else />
+            </el-icon>
+          </el-tooltip>
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="user-info">
               <el-avatar :size="30" :src="userStore.profile?.avatar" class="user-avatar">
@@ -221,6 +235,27 @@
       </el-main>
     </el-container>
     <BackToTop />
+
+    <!-- 全局浮动创建按钮 -->
+    <div class="fab-container">
+      <el-tooltip content="新建" placement="left" effect="dark">
+        <el-button type="primary" class="fab-main-btn" circle @click="showCreateMenu = !showCreateMenu">
+          <el-icon :size="22"><Plus /></el-icon>
+        </el-button>
+      </el-tooltip>
+      <transition name="fab-pop">
+        <div v-show="showCreateMenu" class="fab-menu">
+          <div class="fab-menu-item" @click="handleCreateDoc">
+            <el-icon><EditPen /></el-icon>
+            <span>新建文档</span>
+          </div>
+          <div class="fab-menu-item" @click="handleCreateSpace">
+            <el-icon><FolderOpened /></el-icon>
+            <span>新建空间</span>
+          </div>
+        </div>
+      </transition>
+    </div>
   </el-container>
 </template>
 
@@ -252,6 +287,7 @@ const showKbGroup = computed(() => kbKnowledgeAvailable.value || kbFileAvailable
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
+const showCreateMenu = ref(false)
 
 const currentRoute = computed(() => route.path)
 
@@ -261,7 +297,7 @@ const defaultOpeneds = computed<string[]>(() => {
   const groups: string[] = []
   if (path.startsWith('/space') || path.startsWith('/spaces') || path.startsWith('/search') || path.startsWith('/tag') ||
       path.startsWith('/share') || path.startsWith('/trash') || path.startsWith('/file') ||
-      path.startsWith('/doc') || path.startsWith('/web') || path.startsWith('/graph')) {
+      path.startsWith('/doc') || path.startsWith('/web') || path.startsWith('/graph') || path.startsWith('/stars')) {
     groups.push('kb-group')
   }
   if (path.startsWith('/settings') || path.startsWith('/log')) {
@@ -285,6 +321,7 @@ const pageTitleMap: Record<string, string> = {
   OperationLog: '操作日志',
   web: '网页详情',
   Graph: '知识图谱',
+  Stars: '我的收藏',
 }
 
 const pageTitle = computed(() => {
@@ -316,6 +353,7 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   window.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('click', handleClickOutside)
   spaceStore.fetchSpaceList()
   if (!userStore.profile) {
     userStore.fetchProfile()
@@ -327,6 +365,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
   window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('click', handleClickOutside)
 })
 
 // 全局键盘快捷键：Ctrl+K 聚焦搜索
@@ -349,6 +388,23 @@ async function handleCommand(command: string) {
     router.push('/settings')
   } else if (command === 'profile') {
     router.push('/settings')
+  }
+}
+
+function handleCreateDoc() {
+  showCreateMenu.value = false
+  router.push('/doc/create')
+}
+
+function handleCreateSpace() {
+  showCreateMenu.value = false
+  router.push('/spaces')
+}
+
+function handleClickOutside(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.fab-container')) {
+    showCreateMenu.value = false
   }
 }
 </script>
@@ -528,17 +584,87 @@ async function handleCommand(command: string) {
   overflow-y: auto;
 }
 
+.fab-container {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 12px;
+}
+
+.fab-main-btn {
+  width: 56px !important;
+  height: 56px !important;
+  box-shadow: 0 4px 16px rgba(201, 169, 110, 0.4);
+  background-color: #c9a96e !important;
+  border-color: #c9a96e !important;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: scale(1.08) rotate(90deg);
+    box-shadow: 0 6px 20px rgba(201, 169, 110, 0.5);
+  }
+
+  &:deep(.el-icon) {
+    transition: transform 0.3s ease;
+  }
+}
+
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #303133;
+
+  &:hover {
+    background-color: #faf8f5;
+    color: #c9a96e;
+    transform: translateX(-2px);
+  }
+
+  .el-icon {
+    font-size: 18px;
+  }
+}
+
+.fab-pop-enter-active,
+.fab-pop-leave-active {
+  transition: all 0.25s ease;
+}
+
+.fab-pop-enter-from,
+.fab-pop-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 @media (max-width: 768px) {
-  .header-bar {
-    padding: 0 12px;
+  .fab-container {
+    right: 20px;
+    bottom: 20px;
   }
 
-  .header-left {
-    gap: 4px;
-  }
-
-  .content-area {
-    padding: 0;
+  .fab-main-btn {
+    width: 52px !important;
+    height: 52px !important;
   }
 }
 </style>
