@@ -61,47 +61,9 @@
               <el-icon><Delete /></el-icon>
               <template #title>回收站</template>
             </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu index="intel-group" v-if="kbIntelAvailable">
-            <template #title>
-              <el-icon><MagicStick /></el-icon>
-              <span>知识引擎</span>
-            </template>
-            <el-menu-item :index="'/intel'">
-              <el-icon><MagicStick /></el-icon>
-              <template #title>引擎看板</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/docs'">
-              <el-icon><Reading /></el-icon>
-              <template #title>文档库</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/hosts'">
-              <el-icon><Cpu /></el-icon>
-              <template #title>主机总览</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/services'">
+            <el-menu-item :index="'/graph'" v-if="kbKnowledgeAvailable">
               <el-icon><Connection /></el-icon>
-              <template #title>服务总览</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/ports'">
-              <el-icon><Position /></el-icon>
-              <template #title>端口总览</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/credentials'">
-              <el-icon><Key /></el-icon>
-              <template #title>凭据总览</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/domains'">
-              <el-icon><Link /></el-icon>
-              <template #title>域名总览</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/commands'">
-              <el-icon><Promotion /></el-icon>
-              <template #title>命令库</template>
-            </el-menu-item>
-            <el-menu-item :index="'/intel/timelines'">
-              <el-icon><Clock /></el-icon>
-              <template #title>时间线</template>
+              <template #title>知识图谱</template>
             </el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="system-group">
@@ -190,47 +152,9 @@
                 <el-icon><Delete /></el-icon>
                 <template #title>回收站</template>
               </el-menu-item>
-            </el-sub-menu>
-            <el-sub-menu index="intel-group" v-if="kbIntelAvailable">
-              <template #title>
-                <el-icon><MagicStick /></el-icon>
-                <span>知识引擎</span>
-              </template>
-              <el-menu-item :index="'/intel'">
-                <el-icon><MagicStick /></el-icon>
-                <template #title>引擎看板</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/docs'">
-                <el-icon><Reading /></el-icon>
-                <template #title>文档库</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/hosts'">
-                <el-icon><Cpu /></el-icon>
-                <template #title>主机总览</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/services'">
+              <el-menu-item :index="'/graph'" v-if="kbKnowledgeAvailable">
                 <el-icon><Connection /></el-icon>
-                <template #title>服务总览</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/ports'">
-                <el-icon><Position /></el-icon>
-                <template #title>端口总览</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/credentials'">
-                <el-icon><Key /></el-icon>
-                <template #title>凭据总览</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/domains'">
-                <el-icon><Link /></el-icon>
-                <template #title>域名总览</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/commands'">
-                <el-icon><Promotion /></el-icon>
-                <template #title>命令库</template>
-              </el-menu-item>
-              <el-menu-item :index="'/intel/timelines'">
-                <el-icon><Clock /></el-icon>
-                <template #title>时间线</template>
+                <template #title>知识图谱</template>
               </el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="system-group">
@@ -322,7 +246,6 @@ const { logout } = useAuth()
 // 模块动态菜单：各菜单项依赖对应微服务模块的可用性
 const kbKnowledgeAvailable = computed(() => moduleStore.isModuleAvailable('kb-knowledge'))
 const kbFileAvailable = computed(() => moduleStore.isModuleAvailable('kb-file'))
-const kbIntelAvailable = computed(() => moduleStore.isModuleAvailable('kb-intelligence'))
 const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('kb-auth'))
 // 知识库分组同时包含 kb-knowledge 与 kb-file 依赖项，任一可用即显示分组
 const showKbGroup = computed(() => kbKnowledgeAvailable.value || kbFileAvailable.value)
@@ -338,11 +261,8 @@ const defaultOpeneds = computed<string[]>(() => {
   const groups: string[] = []
   if (path.startsWith('/space') || path.startsWith('/spaces') || path.startsWith('/search') || path.startsWith('/tag') ||
       path.startsWith('/share') || path.startsWith('/trash') || path.startsWith('/file') ||
-      path.startsWith('/doc') || path.startsWith('/web')) {
+      path.startsWith('/doc') || path.startsWith('/web') || path.startsWith('/graph')) {
     groups.push('kb-group')
-  }
-  if (path.startsWith('/intel')) {
-    groups.push('intel-group')
   }
   if (path.startsWith('/settings') || path.startsWith('/log')) {
     groups.push('system-group')
@@ -363,17 +283,8 @@ const pageTitleMap: Record<string, string> = {
   'file-detail': '文件详情',
   space: '知识空间',
   OperationLog: '操作日志',
-  intel: '知识引擎',
-  'IntelDashboard': '引擎看板',
-  'IntelDocs': '文档库',
-  'IntelHosts': '主机总览',
-  'IntelServices': '服务总览',
-  'IntelPorts': '端口总览',
-  'IntelCredentials': '凭据总览',
-  'IntelDomains': '域名总览',
-  'IntelCommands': '命令库',
-  'IntelTimelines': '时间线',
   web: '网页详情',
+  Graph: '知识图谱',
 }
 
 const pageTitle = computed(() => {

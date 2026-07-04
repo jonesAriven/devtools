@@ -43,15 +43,7 @@ const ROUTE_TITLES: Record<string, string> = {
   ShareList: '分享中心',
   Settings: '设置',
   OperationLog: '操作日志',
-  IntelDashboard: '引擎看板',
-  IntelDocs: '文档库',
-  IntelHosts: '主机总览',
-  IntelServices: '服务总览',
-  IntelPorts: '端口总览',
-  IntelCredentials: '凭据总览',
-  IntelDomains: '域名总览',
-  IntelCommands: '命令库',
-  IntelTimelines: '时间线',
+  Graph: '知识图谱',
 }
 
 /** 详情页的父级列表页（面包屑中间层） */

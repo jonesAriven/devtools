@@ -7,8 +7,18 @@
         </el-icon>
       </div>
       <div class="card-title-area">
-        <h3 class="card-title">{{ config.name }}</h3>
-        <StatusBadge v-if="config.healthCheckUrl" :status="status" :latency="latency" />
+        <div class="card-title-row">
+          <h3 class="card-title">{{ config.name }}</h3>
+          <el-button
+            class="favorite-btn"
+            :type="isFavorited ? 'warning' : 'default'"
+            :icon="isFavorited ? StarFilled : Star"
+            circle
+            size="small"
+            @click.stop="handleToggleFavorite"
+          />
+        </div>
+        <StatusBadge v-if="config.healthCheckUrl" :status="status || 'unknown'" :latency="latency" />
       </div>
     </div>
 
@@ -62,15 +72,26 @@
 </template>
 
 <script setup lang="ts">
-import { Position, Download, Document, ArrowDown } from '@element-plus/icons-vue'
+import { computed } from 'vue'
+import { Position, Download, Document, ArrowDown, Star, StarFilled } from '@element-plus/icons-vue'
 import type { SystemConfig, SystemStatus } from '@/config/systems'
 import StatusBadge from './StatusBadge.vue'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const props = defineProps<{
   config: SystemConfig
   status?: SystemStatus
   latency?: number
+  isFavorite?: boolean
 }>()
+
+const favoritesStore = useFavoritesStore()
+
+const isFavorited = computed(() => props.isFavorite || favoritesStore.isFavorite(props.config.id))
+
+function handleToggleFavorite() {
+  favoritesStore.toggleFavorite(props.config.id)
+}
 
 function openUrl(url: string) {
   window.open(url, '_blank', 'noopener')
@@ -124,11 +145,26 @@ function download() {
   min-width: 0;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .card-title {
   font-size: 16px;
   font-weight: 600;
   color: #303133;
-  margin-bottom: 4px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-btn {
+  flex-shrink: 0;
 }
 
 .card-desc {

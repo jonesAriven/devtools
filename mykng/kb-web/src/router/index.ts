@@ -102,49 +102,9 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/log/LogView.vue'),
       },
       {
-        path: 'intel',
-        name: 'IntelDashboard',
-        component: () => import('@/views/intel/IntelDashboardView.vue'),
-      },
-      {
-        path: 'intel/docs',
-        name: 'IntelDocs',
-        component: () => import('@/views/intel/IntelDocsView.vue'),
-      },
-      {
-        path: 'intel/hosts',
-        name: 'IntelHosts',
-        component: () => import('@/views/intel/IntelHostsView.vue'),
-      },
-      {
-        path: 'intel/services',
-        name: 'IntelServices',
-        component: () => import('@/views/intel/IntelServicesView.vue'),
-      },
-      {
-        path: 'intel/ports',
-        name: 'IntelPorts',
-        component: () => import('@/views/intel/IntelPortsView.vue'),
-      },
-      {
-        path: 'intel/credentials',
-        name: 'IntelCredentials',
-        component: () => import('@/views/intel/IntelCredentialsView.vue'),
-      },
-      {
-        path: 'intel/domains',
-        name: 'IntelDomains',
-        component: () => import('@/views/intel/IntelDomainsView.vue'),
-      },
-      {
-        path: 'intel/commands',
-        name: 'IntelCommands',
-        component: () => import('@/views/intel/IntelCommandsView.vue'),
-      },
-      {
-        path: 'intel/timelines',
-        name: 'IntelTimelines',
-        component: () => import('@/views/intel/IntelTimelinesView.vue'),
+        path: 'graph',
+        name: 'Graph',
+        component: () => import('@/views/graph/GraphView.vue'),
       },
     ],
   },

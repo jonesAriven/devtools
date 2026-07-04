@@ -1,0 +1,236 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  font-size: 14px;
+  line-height: 1.5;
+  color: #303133;
+  background-color: #f0f2f5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+a {
+  color: var(--el-color-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--el-color-primary-light-3);
+  }
+}
+
+:root {
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+  --el-border-radius-base: 4px;
+}
+
+.main-layout {
+  height: 100%;
+
+  .el-aside {
+    transition: width 0.3s;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    height: 100%;
+    background-color: #001529;
+    color: #fff;
+
+    .sidebar-header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      border-bottom: 1px solid #1f3a5f;
+      cursor: pointer;
+
+      .logo-icon {
+        font-size: 24px;
+      }
+    }
+
+    .sidebar-body {
+      :deep(.el-menu) {
+        border-right: none;
+        background-color: #001529;
+
+        .el-menu-item,
+        .el-sub-menu__title {
+          color: rgba(255, 255, 255, 0.75);
+
+          &:hover {
+            background-color: #1f3a5f;
+            color: #fff;
+          }
+        }
+
+        .el-menu-item.is-active {
+          background-color: #409eff !important;
+          color: #fff !important;
+        }
+
+        .el-sub-menu .el-menu-item {
+          background-color: #000c17 !important;
+        }
+      }
+    }
+  }
+
+  .header-bar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #e4e7ed;
+    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  }
+
+  .content-area {
+    padding: 16px;
+    background-color: #f0f2f5;
+    overflow-y: auto;
+  }
+}
+
+.page-container {
+  background-color: #fff;
+  border-radius: 4px;
+  padding: 20px;
+  min-height: calc(100vh - 82px);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  .page-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+  }
+
+  .page-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.search-bar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+
+  .toolbar-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .toolbar-right {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #dcdfe6;
+  border-radius: 3px;
+
+  &:hover {
+    background-color: #c0c4cc;
+  }
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  .stat-label {
+    font-size: 14px;
+    color: #909399;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #303133;
+
+    &.primary {
+      color: #409eff;
+    }
+
+    &.success {
+      color: #67c23a;
+    }
+
+    &.warning {
+      color: #e6a23c;
+    }
+
+    &.danger {
+      color: #f56c6c;
+    }
+  }
+}

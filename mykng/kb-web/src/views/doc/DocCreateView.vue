@@ -34,6 +34,7 @@
             :preview="true"
             language="zh-CN"
             :toolbars-exclude="['github', 'save']"
+            :markdown-it-config="configMarkdownIt"
             placeholder="开始编写 Markdown 笔记..."
             style="height: 600px"
           />
@@ -81,6 +82,9 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 import '@wangeditor/editor/dist/css/style.css'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+import 'katex/dist/katex.min.css'
+import '@/styles/markdown.scss'
+import { configureMarkdownIt } from '@/utils/markdownConfig'
 import { DOC_TEMPLATES, getTemplateContent } from '@/utils/docTemplates'
 
 const route = useRoute()
@@ -188,6 +192,10 @@ function initHtmlEditor() {
     selector: toolbarRef.value,
     config: toolbarConfig,
   })
+}
+
+function configMarkdownIt(md: any) {
+  configureMarkdownIt(md)
 }
 
 function handleTemplateChange(key: string) {

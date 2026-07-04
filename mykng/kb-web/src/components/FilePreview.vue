@@ -34,7 +34,14 @@
         <img :src="blobUrl" :alt="fileName" class="preview-image" />
       </div>
 
-      <!-- 纯文本预览（txt/md/json/xml/csv/log） -->
+      <!-- Markdown 预览 -->
+      <div
+        v-if="!error && previewType === 'markdown'"
+        class="markdown-preview"
+        v-html="renderedMarkdown"
+      ></div>
+
+      <!-- 纯文本预览（txt/json/xml/csv/log 等） -->
       <pre v-if="!error && previewType === 'text'" class="text-preview">{{ textContent }}</pre>
 
       <!-- 不支持的类型：回退到 Tika 解析的文本内容 -->
@@ -53,6 +60,10 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Loading, WarningFilled, Document } from '@element-plus/icons-vue'
 import { getFileBlob, getFileContent } from '@/api/file'
 import { sanitizeTable } from '@/utils/sanitize'
+import { configureMarkdownIt } from '@/utils/markdownConfig'
+import MarkdownIt from 'markdown-it'
+import 'katex/dist/katex.min.css'
+import '@/styles/markdown.scss'
 
 const props = defineProps<{
   fileId: number
@@ -69,7 +80,23 @@ const sheetNames = ref<string[]>([])
 const activeSheet = ref('')
 const docxContainer = ref<HTMLElement | null>(null)
 
-// 根据文件名扩展名判断预览类型
+const mdRenderer = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+})
+configureMarkdownIt(mdRenderer)
+
+const renderedMarkdown = computed(() => {
+  if (!textContent.value) return ''
+  return mdRenderer.render(textContent.value)
+})
+
+const isMarkdownFile = computed(() => {
+  const name = (props.fileName || '').toLowerCase()
+  return name.endsWith('.md') || name.endsWith('.markdown')
+})
+
 const previewType = computed(() => {
   const name = (props.fileName || '').toLowerCase()
   if (name.endsWith('.docx')) return 'docx'
@@ -78,7 +105,8 @@ const previewType = computed(() => {
   if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')
       || name.endsWith('.gif') || name.endsWith('.webp') || name.endsWith('.svg')
       || name.endsWith('.bmp')) return 'image'
-  if (name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.json')
+  if (name.endsWith('.md') || name.endsWith('.markdown')) return 'markdown'
+  if (name.endsWith('.txt') || name.endsWith('.json')
       || name.endsWith('.xml') || name.endsWith('.csv') || name.endsWith('.log')
       || name.endsWith('.html') || name.endsWith('.js') || name.endsWith('.ts')
       || name.endsWith('.java') || name.endsWith('.py') || name.endsWith('.go')
@@ -292,6 +320,108 @@ function getMimeType(type: string): string {
       max-width: 100%;
       max-height: 600px;
       object-fit: contain;
+    }
+  }
+
+  .markdown-preview {
+    padding: 24px;
+    background-color: #fff;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    max-height: 800px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #303133;
+
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    h3 { font-size: 18px; }
+    h4 { font-size: 16px; }
+
+    p {
+      margin: 1em 0;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin: 1em 0;
+    }
+
+    li {
+      margin: 0.3em 0;
+    }
+
+    code {
+      background-color: #f5f7fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    pre {
+      background-color: #f5f7fa;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1em 0;
+
+      code {
+        background: none;
+        padding: 0;
+      }
+    }
+
+    blockquote {
+      border-left: 4px solid #dcdfe6;
+      padding-left: 16px;
+      color: #909399;
+      margin: 1em 0;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+
+      th, td {
+        border: 1px solid #ebeef5;
+        padding: 8px 12px;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f5f7fa;
+        font-weight: 600;
+      }
+    }
+
+    a {
+      color: #409eff;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #ebeef5;
+      margin: 2em 0;
     }
   }
 

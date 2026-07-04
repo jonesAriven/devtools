@@ -15,7 +15,7 @@ body,
 }
 
 body {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+  background: #f5f7fa;
 }
 
 a {
@@ -23,83 +23,20 @@ a {
   color: inherit;
 }
 
-.portal-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.portal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  padding: 32px 40px;
-  text-align: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-
-  h1 {
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 14px;
-    opacity: 0.9;
-  }
+::-webkit-scrollbar-track {
+  background: #f5f7fa;
 }
 
-.portal-body {
-  flex: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
+::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 4px;
 
-.portal-footer {
-  text-align: center;
-  padding: 24px;
-  color: #909399;
-  font-size: 13px;
-  border-top: 1px solid #ebeef5;
-  background: #fff;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 32px 0 16px;
-
-  .el-icon {
-    font-size: 22px;
-    color: #667eea;
-  }
-}
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 768px) {
-  .portal-header {
-    padding: 24px 16px;
-
-    h1 {
-      font-size: 22px;
-    }
-  }
-
-  .portal-body {
-    padding: 16px;
-  }
-
-  .cards-grid {
-    grid-template-columns: 1fr;
+  &:hover {
+    background: #c0c4cc;
   }
 }

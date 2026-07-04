@@ -252,6 +252,9 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+import 'katex/dist/katex.min.css'
+import '@/styles/markdown.scss'
+import { configureMarkdownIt } from '@/utils/markdownConfig'
 
 const props = defineProps<{
   id: string
@@ -642,7 +645,8 @@ function computeDiff(oldText: string, newText: string): { type: 'add' | 'del' | 
  * 预览时将 [[docId|标题]] 渲染为可点击的内部链接
  */
 function configMarkdownIt(md: any) {
-  // 注册 inline 规则：匹配 [[数字|文本]]
+  configureMarkdownIt(md)
+
   md.inline.ruler.before('emphasis', 'bi_link', (state: any, silent: boolean) => {
     const src = state.src.slice(state.pos)
     const match = /^\[\[(\d+)\|([^\]]+)\]\]/.exec(src)
@@ -656,7 +660,6 @@ function configMarkdownIt(md: any) {
     state.pos += match[0].length
     return true
   })
-  // 渲染规则
   md.renderer.rules.bi_link = (tokens: any[], idx: number) => {
     const token = tokens[idx]
     const { docId, title } = token.meta
