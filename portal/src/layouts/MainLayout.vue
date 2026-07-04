@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import {
@@ -102,11 +102,13 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useFavoritesStore } from '@/stores/favorites'
-import { systems, categoryLabels, categoryIcons, type SystemCategory } from '@/config/systems'
+import { useSystemStore } from '@/stores/system'
+import { categoryLabels, categoryIcons, type SystemCategory } from '@/config/systems'
 
 const router = useRouter()
 const userStore = useUserStore()
 const favoritesStore = useFavoritesStore()
+const systemStore = useSystemStore()
 
 const searchText = ref('')
 const categories: SystemCategory[] = ['web', 'infra', 'tool', 'doc']
@@ -127,7 +129,7 @@ function scrollToSection(id: string) {
 }
 
 function getCategoryCount(cat: SystemCategory): number {
-  return systems.filter(s => s.category === cat).length
+  return systemStore.getCountByCategory(cat)
 }
 
 function handleCommand(command: string) {
@@ -142,6 +144,10 @@ function handleCommand(command: string) {
     }).catch(() => {})
   }
 }
+
+onMounted(() => {
+  systemStore.fetchSystems()
+})
 </script>
 
 <style scoped lang="scss">

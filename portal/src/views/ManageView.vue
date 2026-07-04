@@ -16,8 +16,10 @@
           clearable
           :prefix-icon="Search"
           class="search-input"
+          @keyup.enter="handleSearch"
+          @clear="handleSearch"
         />
-        <el-select v-model="filterCategory" placeholder="全部分类" clearable class="category-select">
+        <el-select v-model="filterCategory" placeholder="全部分类" clearable class="category-select" @change="handleCategoryChange">
           <el-option
             v-for="(label, key) in categoryLabels"
             :key="key"
@@ -81,9 +83,11 @@
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50]"
-          :total="filteredSystems.length"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </el-card>
@@ -144,10 +148,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search, Edit, Delete } from '@element-plus/icons-vue'
-import { systems as systemsConfig, categoryLabels, type SystemConfig, type SystemCategory } from '@/config/systems'
+import { categoryLabels, type SystemConfig, type SystemCategory } from '@/config/systems'
+import { getSystemList, createSystem, updateSystem, deleteSystem } from '@/api/system'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -157,10 +162,11 @@ const searchKeyword = ref('')
 const filterCategory = ref<SystemCategory | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(10)
+const total = ref(0)
 const isEdit = ref(false)
 const editId = ref('')
 
-const systems = ref<SystemConfig[]>([...systemsConfig])
+const systems = ref<SystemConfig[]>([])
 
 const categoryTagTypes: Record<string, string> = {
   web: 'primary',
@@ -169,20 +175,7 @@ const categoryTagTypes: Record<string, string> = {
   doc: 'info'
 }
 
-const filteredSystems = computed(() => {
-  return systems.value.filter(sys => {
-    const matchKeyword = !searchKeyword.value ||
-      sys.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-      sys.description.toLowerCase().includes(searchKeyword.value.toLowerCase())
-    const matchCategory = !filterCategory.value || sys.category === filterCategory.value
-    return matchKeyword && matchCategory
-  })
-})
-
-const pagedSystems = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredSystems.value.slice(start, start + pageSize.value)
-})
+const pagedSystems = computed(() => systems.value)
 
 const dialogTitle = computed(() => isEdit.value ? '编辑系统' : '新增系统')
 
@@ -210,6 +203,45 @@ const formRules: FormRules = {
 
 function colorMix(color: string): string {
   return `color-mix(in srgb, ${color} 12%, transparent)`
+}
+
+async function fetchList() {
+  loading.value = true
+  try {
+    const data = await getSystemList({
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchKeyword.value || undefined,
+      category: filterCategory.value || undefined,
+    })
+    systems.value = data.list
+    total.value = data.total
+  } catch (e: any) {
+    ElMessage.error(e.message || '获取系统列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleSearch() {
+  currentPage.value = 1
+  fetchList()
+}
+
+function handleCategoryChange() {
+  currentPage.value = 1
+  fetchList()
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page
+  fetchList()
+}
+
+function handleSizeChange(size: number) {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchList()
 }
 
 function handleAdd() {
@@ -245,20 +277,16 @@ async function handleSubmit() {
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        const index = systems.value.findIndex(s => s.id === editId.value)
-        if (index > -1) {
-          systems.value[index] = { ...systems.value[index], ...formData } as SystemConfig
-        }
+        await updateSystem(editId.value, formData)
         ElMessage.success('更新成功')
       } else {
-        const newSystem = {
-          ...formData,
-          id: Date.now().toString()
-        } as SystemConfig
-        systems.value.unshift(newSystem)
+        await createSystem(formData)
         ElMessage.success('创建成功')
       }
       dialogVisible.value = false
+      fetchList()
+    } catch (e: any) {
+      ElMessage.error(e.message || '操作失败')
     } finally {
       submitLoading.value = false
     }
@@ -270,16 +298,19 @@ function handleDelete(row: SystemConfig) {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = systems.value.findIndex(s => s.id === row.id)
-    if (index > -1) {
-      systems.value.splice(index, 1)
+  }).then(async () => {
+    try {
+      await deleteSystem(row.id)
+      ElMessage.success('删除成功')
+      fetchList()
+    } catch (e: any) {
+      ElMessage.error(e.message || '删除失败')
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
 onMounted(() => {
+  fetchList()
 })
 </script>
 

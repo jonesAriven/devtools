@@ -21,6 +21,9 @@ spring:
 crypto:
   aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
+jwt:
+  secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
+
 # Feign 客户端配置
 kb:
   feign:

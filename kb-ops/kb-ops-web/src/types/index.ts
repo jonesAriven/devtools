@@ -250,14 +250,26 @@ export interface ImportResult {
 }
 
 export interface DashboardVO {
-  hostCount: number
-  serviceCount: number
-  portCount: number
-  credentialCount: number
-  domainCount: number
-  dependencyCount: number
-  conflictCount: number
-  knowledgeCount: number
-  recentDeployments: Deployment[]
-  recentLogs: OperationLog[]
+  hostStats: Record<string, number>
+  serviceStats: Record<string, number>
+  serviceTypeDistribution: Record<string, number>
+  recentDeployCount: number
+  unresolvedConflictCount: number
+  deployTrend: Array<Record<string, any>>
+  recentDeploys: Array<{
+    serviceName: string
+    version: string
+    operator: string
+    deployTime: string
+    result: number
+    rollback: number
+  }>
+  recentConflicts: Array<{
+    ruleCode: string
+    ruleName: string
+    severity: number
+    targetName: string
+    detail: string
+    detectedAt: string
+  }>
 }

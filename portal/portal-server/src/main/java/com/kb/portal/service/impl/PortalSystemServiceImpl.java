@@ -51,6 +51,15 @@ public class PortalSystemServiceImpl extends ServiceImpl<PortalSystemMapper, Por
     }
 
     @Override
+    public List<PortalSystem> listAllEnabled() {
+        LambdaQueryWrapper<PortalSystem> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PortalSystem::getStatus, 1)
+                .orderByAsc(PortalSystem::getSortOrder)
+                .orderByDesc(PortalSystem::getCreatedAt);
+        return baseMapper.selectList(wrapper);
+    }
+
+    @Override
     public PortalSystem getById(Long id) {
         PortalSystem portalSystem = baseMapper.selectById(id);
         if (portalSystem == null) {
@@ -98,12 +107,15 @@ public class PortalSystemServiceImpl extends ServiceImpl<PortalSystemMapper, Por
         portalSystem.setDescription(r.getDescription());
         portalSystem.setUrl(r.getUrl());
         portalSystem.setIcon(r.getIcon());
+        portalSystem.setColor(r.getColor());
         portalSystem.setCategory(r.getCategory());
         if (r.getStatus() != null) {
             portalSystem.setStatus(r.getStatus());
         }
         portalSystem.setHealthCheckUrl(r.getHealthCheckUrl());
         portalSystem.setDocs(r.getDocs());
+        portalSystem.setDownloadPath(r.getDownloadPath());
+        portalSystem.setTechStack(r.getTechStack());
         if (r.getSortOrder() != null) {
             portalSystem.setSortOrder(r.getSortOrder());
         }

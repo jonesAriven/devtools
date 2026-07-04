@@ -13,9 +13,10 @@ export const useUserStore = defineStore('user', () => {
 
   async function login(credentials: LoginRequest) {
     const res = await loginApi(credentials)
-    token.value = res.token
+    const tokenVal = res.accessToken || res.token || ''
+    token.value = tokenVal
     username.value = res.username || credentials.username
-    localStorage.setItem(TOKEN_KEY, res.token)
+    localStorage.setItem(TOKEN_KEY, tokenVal)
     localStorage.setItem(USER_KEY, res.username || credentials.username)
     return res
   }

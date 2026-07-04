@@ -28,6 +28,11 @@ public class PortalSystemController {
         return Result.ok(portalSystemService.list(keyword, category, status, page, size));
     }
 
+    @GetMapping("/all")
+    public Result<List<PortalSystem>> all() {
+        return Result.ok(portalSystemService.listAllEnabled());
+    }
+
     @GetMapping("/category/{category}")
     public Result<List<PortalSystem>> listByCategory(@PathVariable String category) {
         return Result.ok(portalSystemService.listByCategory(category));

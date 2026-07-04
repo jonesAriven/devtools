@@ -17,6 +17,8 @@ export interface SystemConfig {
   docs?: { label: string; url: string }[]
   downloadPath?: string
   techStack?: string
+  status?: number
+  sortOrder?: number
 }
 
 /** 所有系统/工具配置 */

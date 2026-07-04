@@ -1,4 +1,4 @@
-import request from './request'
+import { authRequest } from './request'
 
 export interface LoginRequest {
   username: string
@@ -6,19 +6,20 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string
+  accessToken?: string
+  token?: string
   username?: string
   [key: string]: any
 }
 
 export function login(data: LoginRequest): Promise<LoginResponse> {
-  return request.post('/auth/login', data)
+  return authRequest.post('/login', data)
 }
 
 export function logout(): Promise<void> {
-  return request.post('/auth/logout')
+  return authRequest.post('/logout')
 }
 
 export function getUserInfo(): Promise<any> {
-  return request.get('/auth/userinfo')
+  return authRequest.get('/userinfo')
 }

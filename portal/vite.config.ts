@@ -14,10 +14,15 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
-      '/api': {
+      '/api/auth': {
         target: 'https://kb.marschat.online',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
+        rewrite: (path) => path.replace(/^\/api\/auth/, '/kb/api/auth')
+      },
+      '/api/portal': {
+        target: 'https://main.marschat.online',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/portal/, '/portal')
       }
     }
   },

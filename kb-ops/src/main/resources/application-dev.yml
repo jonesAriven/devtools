@@ -14,3 +14,6 @@ spring:
       port: 6379
       database: 0
       timeout: 5000ms
+
+jwt:
+  secret: YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!

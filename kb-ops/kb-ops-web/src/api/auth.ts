@@ -1,18 +1,18 @@
-import request from '@/utils/request'
-import type { R, LoginRequest, LoginResponse, User } from '@/types'
+import { authRequest } from '@/utils/request'
+import type { LoginRequest, LoginResponse, User } from '@/types'
 
-export function login(data: LoginRequest) {
-  return request.post<R<LoginResponse>>('/ops/auth/login', data)
+export function login(data: LoginRequest): Promise<LoginResponse> {
+  return authRequest.post('/login', data) as Promise<LoginResponse>
 }
 
-export function logout() {
-  return request.post<R<void>>('/ops/auth/logout')
+export function logout(): Promise<void> {
+  return authRequest.post('/logout') as Promise<void>
 }
 
-export function refreshToken(refreshToken: string) {
-  return request.post<R<{ accessToken: string; refreshToken: string }>>('/ops/auth/refresh', { refreshToken })
+export function refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  return authRequest.post('/refresh', { refreshToken }) as Promise<{ accessToken: string; refreshToken: string }>
 }
 
-export function getUserProfile() {
-  return request.get<R<User>>('/ops/auth/profile')
+export function getUserProfile(): Promise<LoginResponse> {
+  return authRequest.get('/me') as Promise<LoginResponse>
 }

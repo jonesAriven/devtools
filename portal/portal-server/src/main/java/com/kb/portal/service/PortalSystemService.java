@@ -12,6 +12,8 @@ public interface PortalSystemService {
 
     List<PortalSystem> listByCategory(String category);
 
+    List<PortalSystem> listAllEnabled();
+
     PortalSystem getById(Long id);
 
     PortalSystem create(PortalSystemRequest request);

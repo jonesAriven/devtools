@@ -12,8 +12,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = ref(!!getToken())
 
   async function login(username: string, password: string) {
-    const res = await loginApi({ username, password })
-    const data = res.data.data
+    const data = await loginApi({ username, password })
     accessToken.value = data.accessToken
     refreshToken.value = data.refreshToken
     profile.value = data.user
@@ -24,8 +23,8 @@ export const useUserStore = defineStore('user', () => {
 
   async function fetchProfile() {
     try {
-      const res = await getUserProfile()
-      profile.value = res.data.data
+      const data = await getUserProfile()
+      profile.value = data.user
       isLoggedIn.value = true
     } catch {
       profile.value = null

@@ -77,21 +77,26 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Refresh, StarFilled, ArrowDown } from '@element-plus/icons-vue'
-import { systems, categoryLabels, categoryIcons, type SystemCategory, type SystemConfig, type SystemStatus } from '@/config/systems'
+import { categoryLabels, categoryIcons, type SystemCategory, type SystemConfig, type SystemStatus } from '@/config/systems'
 import { checkHealth, type HealthResult } from '@/api/health'
 import SystemCard from '@/components/SystemCard.vue'
 import { useFavoritesStore } from '@/stores/favorites'
+import { useSystemStore } from '@/stores/system'
+import { ElMessage } from 'element-plus'
 
 const favoritesStore = useFavoritesStore()
+const systemStore = useSystemStore()
 const categories: SystemCategory[] = ['web', 'infra', 'tool', 'doc']
 const healthMap = ref<Map<string, HealthResult>>(new Map())
 const checking = ref(false)
 const searchKeyword = ref('')
 
+const systems = computed(() => systemStore.systems)
+
 const filteredSystems = computed(() => {
-  if (!searchKeyword.value.trim()) return systems
+  if (!searchKeyword.value.trim()) return systems.value
   const keyword = searchKeyword.value.toLowerCase()
-  return systems.filter(
+  return systems.value.filter(
     s =>
       s.name.toLowerCase().includes(keyword) ||
       s.description.toLowerCase().includes(keyword)
@@ -123,6 +128,14 @@ function getSystemsByCategory(cat: SystemCategory): SystemConfig[] {
   )
 }
 
+async function fetchSystems() {
+  try {
+    await systemStore.fetchSystems()
+  } catch (e: any) {
+    ElMessage.error(e.message || '获取系统列表失败')
+  }
+}
+
 async function runHealthCheck() {
   checking.value = true
   try {
@@ -152,7 +165,8 @@ function handleCategoryClick(e: Event) {
   }, 50)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchSystems()
   runHealthCheck()
   document.addEventListener('portal-search', handleSearch as EventListener)
   document.addEventListener('portal-category-click', handleCategoryClick as EventListener)

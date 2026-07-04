@@ -20,6 +20,8 @@ public class PortalSystem {
 
     private String icon;
 
+    private String color;
+
     private String category;
 
     private Integer status;
@@ -27,6 +29,10 @@ public class PortalSystem {
     private String healthCheckUrl;
 
     private String docs;
+
+    private String downloadPath;
+
+    private String techStack;
 
     private Integer sortOrder;
 
