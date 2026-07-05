@@ -165,6 +165,15 @@ jobs:
           EOF
           echo "✅ Maven 已配置 Nexus 私服（匿名访问）: ${NEXUS_URL}"
 
+      - name: 🔨 Maven 编译 kb-common (前置依赖)
+        run: |
+          echo "============================================="
+          echo "  [kb-common] 先行编译安装到本地仓库"
+          echo "  Maven 仓库: ${NEXUS_URL}"
+          echo "============================================="
+          cd mykng/kb-common && mvn clean install -DskipTests -B -V -ntp && cd ../..
+          echo "✅ kb-common 已安装到本地 Maven 仓库"
+
       - name: 🔨 Maven 编译 mykng
         run: |
           echo "============================================="
