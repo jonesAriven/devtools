@@ -1,56 +1,46 @@
 # ============================================================
-# Drone CI/CD 流水线 — devtools 仓库 (mykng 项目)
+# Drone CI/CD 流水线 — devtools 仓库
 # ============================================================
+#
+# 📦 多项目管理（单仓库多流水线）:
+#   - mykng/         → mykng-cicd（知识库微服务）
+#   - active-manager/ → active-manager-cicd（激活码系统）
 #
 # 🎯 功能特性:
-#   1. ✅ Push 自动触发（push 到 dev/master，修改 mykng/ 目录）
-#   2. ✅ 手动触发（Drone 网页 "Run" 按钮 + 传入参数）
-#   3. ⏰ 定时触发（每天凌晨自动构建部署，需在 Drone UI 配置 Cron）
-#   4. 🌍 多环境支持（通过 DEPLOY_TARGET 参数选择目标服务器）
+#   1. ✅ Push 自动触发（按修改路径触发对应项目）
+#   2. ✅ 手动触发（Run 按钮 + 传入参数）
+#   3. ⏰ 定时触发（需在 Drone UI 配置 Cron）
+#   4. 🌍 多环境支持（DEPLOY_TARGET 参数）
 #
-# 🔧 手动触发方式:
-#   方式A - Drone 网页:
-#     打开 https://ci.marschat.online/jonesAriven/devtools
-#     点击右上角 "New Build" → 勾选 "Custom" → 传入参数:
-#       DEPLOY_TARGET=production   (默认，部署到 mykng-debain)
-#
-#   方式B - Drone CLI:
-#     drone build add jonesAriven/devtools \
-#       --param DEPLOY_TARGET=production
-#
-# 📋 优化记录 (2026-07-05):
-#   - SSH 到目标服务器本地 docker build+deploy（绕过慢速 Nexus push）
-#   - --no-cache 保证每次全新构建
-#   - 滚动重启避免全部停机
+# 🔧 手动触发:
+#   Drone 网页 → New Build → Custom → 传参: DEPLOY_TARGET=production
 # ============================================================
 
+# ================================
+# Pipeline A: mykng 知识库微服务
+# =================---
 kind: pipeline
 type: docker
 name: mykng-cicd
 
-# ---------- 触发条件 ----------
 trigger:
   branch:
     - dev
     - master
   event:
-    - push        # Push 到 dev/master 自动触发
-    - custom      # 手动触发（Run 按钮）
-  # Push 自动触发：只有修改了 mykng/ 目录才触发（custom 事件不受此限制）
+    - push
+    - custom
   paths:
     include:
       - "mykng/**"
     exclude:
       - "*.md"
 
-# ---------- 全局变量（可通过手动参数覆盖）----------
 environment:
   DEPLOY_TARGET: production
 
-# ============================================================
-# Step 1: Maven 编译
-# ============================================================
 steps:
+  # ---- Step 1: Maven 编译 ----
   - name: build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -61,24 +51,17 @@ steps:
     commands:
       - |
         echo "============================================="
-        echo "  Maven 编译开始"
+        echo "  [mykng] Maven 编译开始"
         echo "  分支: ${DRONE_COMMIT_BRANCH:-dev}"
         echo "  Commit: ${DRONE_COMMIT_SHA}"
-        echo "  触发事件: ${DRONE_BUILD_EVENT}"
-        echo "  部署目标: ${DEPLOY_TARGET:-production}"
         echo "============================================="
       - cd mykng/kb-parent
       - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
-      - echo "=== 编译产物大小 ==="
-      - ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar kb-knowledge/target/*.jar kb-intelligence/target/*.jar
+      - echo "=== 编译产物 ==="
+      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
 
-# ============================================================
-# Step 2: 部署到目标服务器（本地构建 + 滚动重启）
-# ============================================================
-# 支持多环境：通过 DEPLOY_TARGET 参数选择部署目标
-#   production → mykng-debain (100.93.36.113) — 默认
-#   test       → 测试服务器（可后续扩展）
+  # ---- Step 2: 部署到 mykng-debain ----
   - name: deploy
     image: appleboy/drone-ssh
     settings:
@@ -89,8 +72,6 @@ steps:
       port: 22
       script_timeout: 15m
       command_timeout: 5m
-    environment:
-      DEPLOY_TARGET: ${DEPLOY_TARGET:-production}
     when:
       event:
         - push
@@ -98,170 +79,202 @@ steps:
     script:
       - |
         echo "============================================="
-        echo "  mykng 自动部署开始"
+        echo "  [mykng] 自动部署开始"
         echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "  Commit: $DRONE_COMMIT_SHA"
-        echo "  目标: ${DEPLOY_TARGET:-production}"
-        echo "  触发: ${DRONE_BUILD_EVENT}"
         echo "============================================="
       - |
-        # ======== 根据部署目标选择配置 ========
         TARGET="${DEPLOY_TARGET:-production}"
         case "${TARGET}" in
-          production)
-            PROJECT_NAME="kb-deploy"
-            echo "📍 部署目标: 生产环境 (mykng-debain)"
-            ;;
-          test)
-            PROJECT_NAME="kb-test"
-            echo "📍 部署目标: 测试环境"
-            ;;
-          *)
-            echo "❌ 未知的部署目标: ${TARGET}"
-            echo "   可用选项: production, test"
-            exit 1
-            ;;
+          production) PROJECT_NAME="kb-deploy"; echo "📍 生产环境" ;;
+          test)       PROJECT_NAME="kb-test";   echo "📍 测试环境" ;;
+          *)          echo "❌ 未知目标: ${TARGET}"; exit 1 ;;
         esac
       - |
         # 1. 同步代码
-        echo ""
         echo ">>> [1/4] 同步代码 <<<"
         cd /root/devtools
         git fetch origin "${DRONE_COMMIT_BRANCH:-dev}"
         git reset --hard "origin/${DRONE_COMMIT_BRANCH:-dev}"
         echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
       - |
-        # 2. 本地构建 Docker 镜像
-        echo ""
+        # 2. 构建 Docker 镜像
         echo ">>> [2/4] 构建 Docker 镜像 <<<"
         cd /root/devtools/mykng
-
-        echo "--- 当前 commit: $(git rev-parse HEAD) ---"
-        echo "--- 各服务 jar 包时间戳 ---"
-        ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar \
-               kb-knowledge/target/*.jar kb-intelligence/target/*.jar \
-               2>/dev/null || echo "⚠️ jar 包不存在"
-
         docker compose -p "${PROJECT_NAME}" build --no-cache \
           kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
           2>&1 | tail -30
-
-        echo "✅ 镜像构建完成（--no-cache 全新构建）"
+        echo "✅ 镜像构建完成"
         docker images | grep "${PROJECT_NAME}" | head -10
       - |
-        # 3. 按依赖顺序滚动重启
-        echo ""
+        # 3. 滚动重启
         echo ">>> [3/4] 滚动重启服务 <<<"
-
-        COMPOSE_ARGS="-p ${PROJECT_NAME} up -d --no-deps --force-recreate"
-
-        echo "--- [1/5] 重启 kb-auth ---"
-        docker compose ${COMPOSE_ARGS} kb-auth && sleep 20
-
-        echo "--- [2/5] 重启 kb-file ---"
-        docker compose ${COMPOSE_ARGS} kb-file && sleep 15
-
-        echo "--- [3/5] 重启 kb-knowledge ---"
-        docker compose ${COMPOSE_ARGS} kb-knowledge && sleep 15
-
-        echo "--- [4/5] 重启 kb-intelligence ---"
-        docker compose ${COMPOSE_ARGS} kb-intelligence && sleep 15
-
-        echo "--- [5/5] 重启 kb-gateway (入口) ---"
-        docker compose ${COMPOSE_ARGS} kb-gateway && sleep 25
-
+        ARGS="-p ${PROJECT_NAME} up -d --no-deps --force-recreate"
+        docker compose ${ARGS} kb-auth && sleep 20
+        docker compose ${ARGS} kb-file && sleep 15
+        docker compose ${ARGS} kb-knowledge && sleep 15
+        docker compose ${ARGS} kb-intelligence && sleep 15
+        docker compose ${ARGS} kb-gateway && sleep 25
         echo "✅ 所有服务已重启"
       - |
         # 4. 健康检查
-        echo ""
         echo ">>> [4/4] 健康检查 <<<"
         sleep 15
-
-        echo "--- 服务状态 ---"
         docker compose -p "${PROJECT_NAME}" ps
-
-        echo "--- Gateway 健康检查 ---"
         for i in $(seq 1 6); do
           if curl -sf http://localhost:8090/kb/actuator/health > /dev/null 2>&1; then
-            echo "✅ Gateway 健康! (尝试 $i)"
-            break
+            echo "✅ Gateway 健康! (尝试 $i)"; break
           fi
-          echo "⏳ 等待 Gateway 启动... ($i/6)"
-          sleep 10
+          echo "⏳ 等待 Gateway... ($i/6)"; sleep 10
+        done
+        echo "============================================="
+        echo "  mykng 部署完成! | ${TARGET} | $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "============================================="
+
+volumes:
+  - name: maven-cache
+    host:
+      path: /root/.m2/repository
+
+# ================================
+# Pipeline B: active-manager 激活码系统
+# ================================
+kind: pipeline
+type: docker
+name: active-manager-cicd
+
+trigger:
+  branch:
+    - dev
+    - master
+  event:
+    - push
+    - custom
+  paths:
+    include:
+      - "active-manager/**"
+    exclude:
+      - "*.md"
+      - "active-manager/docs/**"
+      - "active-manager/**/.md"
+
+steps:
+  # ---- Step 1: Maven 编译 ----
+  - name: build
+    image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - name: maven-cache
+        path: /root/.m2/repository
+    environment:
+      MAVEN_OPTS: -Xmx1024m
+    commands:
+      - |
+        echo "============================================="
+        echo "  [active-manager] Maven 编译开始"
+        echo "  分支: ${DRONE_COMMIT_BRANCH:-dev}"
+        echo "  Commit: ${DRONE_COMMIT_SHA}"
+        echo "============================================="
+      - cd active-manager/activation-code-server
+      - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
+      - cd ../..
+      - echo "=== 编译产物 ==="
+      - ls -lh active-manager/activation-code-server/target/*.jar
+
+  # ---- Step 2: 部署到内网Debian (192.168.31.182) ----
+  - name: deploy
+    image: appleboy/drone-ssh
+    settings:
+      host: 192.168.31.182
+      username: root
+      password:
+        from_secret: deploy_pass
+      port: 22
+      script_timeout: 10m
+      command_timeout: 5m
+    when:
+      event:
+        - push
+        - custom
+    script:
+      - |
+        echo "============================================="
+        echo "  [active-manager] 自动部署开始"
+        echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "  Commit: $DRONE_COMMIT_SHA"
+        echo "============================================="
+      - |
+        # 1. 同步代码
+        echo ">>> [1/3] 同步代码 <<<"
+        if [ ! -d /root/devtools ]; then
+          echo "⚠️ 首次部署，克隆仓库..."
+          git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
+        fi
+        cd /root/devtools
+        git fetch origin "${DRONE_COMMIT_BRANCH:-dev}"
+        git reset --hard "origin/${DRONE_COMMIT_BRANCH:-dev}"
+        echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
+      - |
+        # 2. 构建 Docker 镜像 + 重启容器
+        echo ">>> [2/3] 构建 & 部署 <<<"
+        cd /root/devtools/active-manager/activation-code-server
+
+        echo "--- JAR 包信息 ---"
+        ls -lh target/activation-code-server-1.0.0.jar
+
+        echo "--- 停止旧容器 ---"
+        docker stop activecode 2>/dev/null || true
+        docker rm activecode 2>/dev/null || true
+
+        echo "--- 构建新镜像 ---"
+        docker build -t activecode . 2>&1 | tail -10
+
+        echo "--- 启动新容器 ---"
+        docker run -d \
+          --name activecode \
+          -p 18080:8080 \
+          --restart unless-stopped \
+          activecode
+
+        echo "✅ 容器已启动"
+      - |
+        # 3. 健康检查
+        echo ">>> [3/3] 健康检查 <<<"
+        sleep 10
+
+        echo "--- 容器状态 ---"
+        docker ps | grep activecode
+
+        echo "--- 健康检查 (端口 18080) ---"
+        for i in $(seq 1 8); do
+          if curl -sf http://localhost:18080/activecode/login.html > /dev/null 2>&1; then
+            echo "✅ 激活码服务健康! (尝试 $i)"; break
+          fi
+          echo "⏳ 等待服务启动... ($i/8)"; sleep 5
         done
 
         echo ""
         echo "============================================="
-        echo "  mykng 部署完成!"
-        echo "  环境: ${TARGET}"
-        echo "  Commit: $(git rev-parse --short HEAD)"
+        echo "  active-manager 部署完成!"
+        echo "  访问: http://192.168.31.182:18080/activecode/login.html"
+        echo "  公网: https://tools.marschat.online/activecode/login.html"
         echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "============================================="
 
-# ============================================================
-# Step 3: 邮件通知（暂时禁用）
-# ============================================================
-# Zoho SMTP: smtp.zoho.com.cn:465 / marschatonline@zohomail.cn
-# 需要在 Zoho 控制台生成应用专用密码后取消注释
-# ------------------------------------------------------------
-#  - name: notify
-#    image: drillster/drone-email
-#    settings:
-#      host: smtp.zoho.com.cn
-#      port: 465
-#      username: marschatonline@zohomail.cn
-#      password:
-#        from_secret: smtp_pass
-#      from: marschatonline@zohomail.cn
-#      recipients:
-#        - huliang2019@163.com
-#      subject: >
-#        [{{#success build.status}}✅{{else}}❌{{/success}}]
-#        mykng #{{build.number}} [${DEPLOY_TARGET}] - {{build.status}}
-#      body: |
-#        仓库: {{repo.name}}
-#        分支: {{build.branch}}
-#        环境: ${DEPLOY_TARGET}
-#        提交: {{build.commit}}
-#        作者: {{build.author}}
-#        信息: {{build.message}}
-#        链接: https://ci.marschat.online/{{repo.owner}}/{{repo.name}}/{{build.number}}
-#    when:
-#      status: [success, failure]
-
-# ============================================================
-# Volumes
-# ============================================================
 volumes:
   - name: maven-cache
     host:
       path: /root/.m2/repository
 
 # ============================================================
-# ⏰ 定时任务配置说明
-# ============================================================
-# Drone Cron 需要在 Web UI 中配置（不支持在 .drone.yml 中定义）：
-#
-# 步骤：
-#   1. 打开 https://ci.marschat.online/jonesAriven/devtools/settings
-#   2. 找到 "Cron Jobs" 部分
-#   3. 点击 "New Cron Job"
-#   4. 填写：
-#      - Name: nightly-build
-#      - Schedule: 0 19 * * *   (UTC 19:00 = 北京时间 03:00)
-#      - Branch: dev
-#      - (可选) 传入参数: DEPLOY_TARGET=production
-#   5. 保存
-#
-# 注意：Drone Server 需要设置环境变量 CRON_ENABLED=true
-# ============================================================
-
-# ============================================================
 # Secrets 配置清单
 # ============================================================
 # 在 Drone Repository Settings → Secrets 中配置：
-# | Secret 名    | 用途           | 说明                    |
-# |-------------|---------------|-------------------------|
-# | deploy_pass  | SSH 登录密码   | 目标服务器的 root 密码   |
-# | smtp_pass    | Zoho SMTP密码 | 应用专用密码（待配置）   |
+#
+# | Secret 名       | 用途              | 说明                    |
+# |-----------------|-------------------|-------------------------|
+# | deploy_pass     | mykng SSH密码     | mykng-debain root 密码  |
+# | activemgr_pass  | 激活码 SSH密码    | 内网Debian root01 密码  |
+# | smtp_pass       | Zoho SMTP密码     | 应用专用密码（待配置）   |
+#
+# ⏰ 定时任务: Drone UI → Settings → Cron Jobs
 # ============================================================
