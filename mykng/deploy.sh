@@ -37,10 +37,32 @@ case "${DEPLOY_TARGET}" in
     ;;
 esac
 
+# ======== 0. 环境准备（首次部署） ========
+echo ""
+echo ">>> [0/4] 环境检查 <<<"
+if [ ! -d /root/devtools ]; then
+  echo "⚠️ 首次部署：/root/devtools 不存在，开始克隆仓库..."
+  echo "ℹ️ 如果旧服务已在运行，部署会重建容器（旧容器数据不受影响）"
+  git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
+fi
+
+# 检查旧容器是否在跑（兼容手动部署的场景）
+OLD_CONTAINERS=$(docker ps -q --filter "name=kb-deploy_*" 2>/dev/null || true)
+if [ -n "$OLD_CONTAINERS" ]; then
+  echo "ℹ️ 检测到旧容器正在运行:"
+  docker ps --filter "name=kb-deploy_*" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+fi
+
 # ======== 1. 同步代码 ========
 echo ""
 echo ">>> [1/4] 同步代码 <<<"
 cd /root/devtools
+# 确保远程地址正确（防止之前是手动 clone 的其他地址）
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if [ "$REMOTE_URL" != "https://gitee.com/jonesAriven/devtools.git" ]; then
+  echo "ℹ️ 更新 remote URL → gitee"
+  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
+fi
 git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
