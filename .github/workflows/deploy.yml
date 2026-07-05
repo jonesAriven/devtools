@@ -67,8 +67,12 @@ on:
 # ============================================================
 env:
   MAVEN_OPTS: '-Xmx2048m'
-  MAVEN_CLI: 'clean package -DskipTests -B -V -ntp'
+  # ⚡ 性能优化: 并行编译(2核) + 跳过 JaCoCo/Surefire/PITest
+  MAVEN_CLI: 'clean package -DskipTests -B -V -ntp -T 2C -Pfast'
   NEXUS_URL: 'https://nexus.marschat.online/repository/maven-public/'
+  NEXUS_RELEASE_URL: 'https://nexus.marschat.online/repository/maven-releases/'
+  NEXUS_USER: ${{ secrets.NEXUS_USER }}
+  NEXUS_PASS: ${{ secrets.NEXUS_PASS }}
 
 # ============================================================
 # 并发控制：同一分支只保留最新的运行
@@ -165,21 +169,72 @@ jobs:
           EOF
           echo "✅ Maven 已配置 Nexus 私服（匿名访问）: ${NEXUS_URL}"
 
-      - name: 🔨 Maven 编译 kb-common (前置依赖)
+      - name: 🔍 检测 kb-common 是否有变更
+        id: check-kbcommon
+        run: |
+          # 检测 kb-common 目录在上次提交后是否有变更
+          # 对比 HEAD 和 HEAD~1 之间 mykng/kb-common/ 的文件变化
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD -- 'mykng/kb-common/' 2>/dev/null || echo "")
+          
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "📝 kb-common 有变更，需要重新编译并发布到 Nexus:"
+            echo "$CHANGED_FILES"
+          else
+            # 如果只有一次提交（首次运行），默认编译
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "✅ kb-common 无变更，将直接从 Nexus 拉取缓存"
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "📝 首次运行，编译并发布 kb-common"
+            fi
+          fi
+
+      - name: 🔨 编译 & 发布 kb-common (仅变更时)
+        if: steps.check-kbcommon.outputs.changed == 'true'
         run: |
           echo "============================================="
-          echo "  [kb-common] 先行编译安装到本地仓库"
+          echo "  [kb-common] 编译 + 发布到 Nexus 私服"
           echo "  Maven 仓库: ${NEXUS_URL}"
           echo "============================================="
-          cd mykng/kb-common && mvn clean install -DskipTests -B -V -ntp && cd ../..
-          echo "✅ kb-common 已安装到本地 Maven 仓库"
+          cd mykng/kb-common
+          
+          # 先安装到本地（供同一次运行的下游模块使用）
+          mvn clean install -DskipTests -B -V -ntp
+          
+          # 再发布到 Nexus（供后续 CI 运行使用，跳过测试和源码加速）
+          mvn deploy -DskipTests -B -ntp \
+            -s /dev/stdin <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus-releases</id>
+                <username>${NEXUS_USER}</username>
+                <password>${NEXUS_PASS}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          
+          cd ../..
+          echo "✅ kb-common 已编译 + 发布到 Nexus"
 
-      - name: 🔨 Maven 编译 mykng
+      - name: ⚡ 跳过 kb-common (无变更，从 Nexus 拉)
+        if: steps.check-kbcommon.outputs.changed == 'false'
         run: |
           echo "============================================="
-          echo "  [mykng] Maven 编译"
+          echo "  [kb-common] ⚡ 跳过编译！直接从 Nexus 拉取"
+          echo "  版本: 1.1.0 | 预计节省 ~9 分钟"
+          echo "============================================="
+
+      - name: 🔨 Maven 编译 mykng (⚡并行+跳过覆盖率)
+        run: |
+          echo "============================================="
+          echo "  [mykng] Maven 编译 (fast profile)"
           echo "  环境: ${DEPLOY_ENV}"
           echo "  Maven 仓库: ${NEXUS_URL}"
+          echo "  优化: -T 2C 并行 | -Pfast 跳过 JaCoCo/PITest"
           echo "============================================="
           cd mykng/kb-parent && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
@@ -245,12 +300,13 @@ jobs:
           </settings>
           echo "✅ Maven 已配置 Nexus 私服（匿名访问）: ${NEXUS_URL}"
 
-      - name: 🔨 Maven 编译 active-manager
+      - name: 🔨 Maven 编译 active-manager (⚡并行)
         run: |
           echo "============================================="
-          echo "  [active-manager] Maven 编译"
+          echo "  [active-manager] Maven 编译 (fast profile)"
           echo "  环境: ${DEPLOY_ENV}"
           echo "  Maven 仓库: ${NEXUS_URL}"
+          echo "  优化: -T 2C 并行 | -Pfast 跳过 JaCoCo/PITest"
           echo "============================================="
           cd active-manager/activation-code-server && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
@@ -303,6 +359,16 @@ jobs:
 # | FRP_HOST               | FRP 服务端公网IP | 120.26.66.182           |
 # | MYKNG_SSH_PORT         | mykng SSH 穿透端口 | 3385                    |
 # | ACTIVE_MANAGER_SSH_PORT| 激活码 SSH 穿透端口 | 3383                    |
+# | NEXUS_USER             | Nexus 发布账号   | Nexus 管理员用户名       |
+# | NEXUS_PASS             | Nexus 发布密码   | Nexus 管理员密码         |
 #
 # 配置路径: Settings → Secrets and variables → Actions → New repository secret
+#
+# ⚡ 性能优化（已启用）:
+#   ① kb-common 变更检测: 无变更时从 Nexus 拉，省 ~9 分钟
+#   ② Maven -T 2C 并行编译: 利用双核 CPU，加速 ~30%
+#   ③ -Pfast Profile: 跳过 JaCoCo/Surefire/PITest，加速 ~20%
+#   ④ cache:maven: 复用 Maven 依赖缓存
+#
+# 预期效果: 首次 ~20min → 后续无 kb-common 变更时 ~8min
 # ============================================================
