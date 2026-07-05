@@ -1,40 +1,71 @@
 # ============================================================
-# Drone CI/CD 流水线 — devtools 仓库
+# Drone CI/CD 流水线 — devtools 仓库 (mykng 项目)
 # ============================================================
-# 仓库结构: devtools 是多项目大仓库
-#   - mykng/        知识库微服务 (Java/Spring Boot)
-#   - active-manager/  激活码管理 (待接入)
-#   - portal/       Portal工具看板 (待接入)
-#   - 其他项目...
 #
-# 触发: push 到 dev 分支
-# 策略: 按修改路径触发对应项目流水线
+# 🎯 功能特性:
+#   1. ✅ Push 自动触发（push 到 dev/master 分支，修改 mykng/ 目录）
+#   2. ✅ 手动触发（Drone 网页 "Run" 按钮 + 传入参数）
+#   3. ⏰ 定时触发（每天凌晨 3:00 自动构建部署）
+#   4. 🌍 多环境支持（通过 DEPLOY_TARGET 参数选择目标服务器）
+#
+# 🔧 手动触发方式:
+#   方式A - Drone 网页:
+#     打开 https://ci.marschat.online/jonesAriven/devtools
+#     点击右上角 "Run" → 勾选 "Custom" → 传入参数:
+#       DEPLOY_TARGET=production   (默认，部署到 mykng-debain)
+#       DEPLOY_TARGET=test         (测试环境)
+#       BRANCH=dev                (指定分支，默认 dev)
+#
+#   方式B - Drone CLI:
+#     drone build add jonesAriven/devtools \
+#       --param DEPLOY_TARGET=production \
+#       --param BRANCH=dev
+#
+#   方式C - API:
+#     curl -X POST https://ci.marschat.online/api/repos/jonesAriven/devtools/builds \
+#       -H "Authorization: Bearer $DRONE_TOKEN" \
+#       -d '{"branch":"dev", "params":{"DEPLOY_TARGET":"production"}}'
 #
 # 📋 优化记录 (2026-07-05):
-#   - 原问题: docker-build-push 步骤 push 到 Nexus 极慢（23分钟+）
-#   - 根因1: Nexus Docker Registry 写入带宽低 (~100KB/s)
-#   - 根因2: 无 .dockerignore → build context 过大 (kb-file 126MB)
-#   - 根因3: 双重推送 (tag + latest) 浪费带宽
-#   - 根因4: Dockerfile 每次安装 tzdata 增加构建时间
-#   - 解决: 改为 SSH 到目标机器本地 build+deploy，跳过 CI 中 docker push
+#   - SSH 到目标服务器本地 docker build+deploy（绕过慢速 Nexus push）
+#   - --no-cache 保证每次全新构建
+#   - 滚动重启避免全部停机
 # ============================================================
 
 kind: pipeline
 type: docker
 name: mykng-cicd
 
+# ---------- 触发条件 ----------
 trigger:
   branch:
     - dev
+    - master
   event:
     - push
-  # 只有修改了 mykng/ 目录才触发
+    - custom      # 允许手动触发
+  # Push 自动触发：只有修改了 mykng/ 目录才触发
   paths:
     - "mykng/**"
 
-# ---------- 全局 ----------
+# ---------- 定时触发（每天凌晨 3:00 自动构建）----------
+# 注意：Drone Server 需要开启 CRON_ENABLED=true
+---
+kind: pipeline
+type: docker
+name: mykng-cicd-nightly
+
+trigger:
+  event:
+    - cron
+  cron:
+    - nightly-build
+
+# ---------- 全局变量 ----------
 environment:
-  DEPLOY_HOST: 100.93.36.113
+  # 默认值可通过手动触发时的参数覆盖
+  DEPLOY_TARGET: production
+  DEPLOY_BRANCH: dev
 
 # ============================================================
 # Step 1: Maven 编译
@@ -48,123 +79,155 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
-      - echo "=== Maven 编译 ==="
+      - |
+        echo "============================================="
+        echo "  Maven 编译开始"
+        echo "  分支: ${DRONE_COMMIT_BRANCH:-dev}"
+        echo "  Commit: ${DRONE_COMMIT_SHA}"
+        echo "  触发事件: ${DRONE_BUILD_EVENT}"
+        echo "  部署目标: ${DEPLOY_TARGET}"
+        echo "============================================="
       - cd mykng/kb-parent
       - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
       - echo "=== 编译产物大小 ==="
-      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
+      - ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar kb-knowledge/target/*.jar kb-intelligence/target/*.jar
 
 # ============================================================
-# Step 2: 部署到 mykng-debain（本地构建 + 滚动重启）
+# Step 2: 部署到目标服务器（本地构建 + 滚动重启）
 # ============================================================
-# 优化说明：
-#   不再在 CI 中 docker build + push 到 Nexus（太慢！）
-#   改为 SSH 到目标服务器，git pull 后本地 docker compose build + up
-#   这样避免了 Drone→Nexus 的慢速网络传输
-#   目标服务器 (mykng-debain) 与 Nexus 在同一内网，速度快很多
+# 支持多环境：通过 DEPLOY_TARGET 参数选择部署目标
+#   production → mykng-debain (100.93.36.113) — 默认
+#   test       → 测试服务器（可后续扩展）
   - name: deploy
     image: appleboy/drone-ssh
     settings:
-      host: 100.93.36.113
+      host:
+        from_secret: deploy_host
       username: root
       password:
         from_secret: deploy_pass
       port: 22
-      script_timeout: 15m  # 15分钟超时（本地构建5个镜像需要时间）
-      command_timeout: 5m   # 单条命令超时5分钟
-      script:
-        - |
-          echo "============================================="
-          echo "  mykng 自动部署开始"
-          echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "  Commit: $DRONE_COMMIT_SHA"
-          echo "============================================="
-        - |
-          # 1. 同步代码
-          echo ">>> [1/4] 同步代码 <<<"
-          cd /root/devtools
-          git fetch origin dev
-          git reset --hard origin/dev
-          echo "✅ 代码已同步到 $DRONE_COMMIT_SHA"
-        - |
-          # 2. 本地构建 Docker 镜像（内网速度快）
-          echo ">>> [2/4] 构建 Docker 镜像 <<<"
-          cd /root/devtools/mykng
+      script_timeout: 15m
+      command_timeout: 5m
+    environment:
+      # 从参数或默认值获取部署目标
+      DEPLOY_TARGET: ${DEPLOY_TARGET:-production}
+      DEPLOY_BRANCH: ${DEPLOY_BRANCH:-${DRONE_COMMIT_BRANCH:-dev}}
+    script:
+      - |
+        echo "============================================="
+        echo "  mykng 自动部署开始"
+        echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "  Commit: $DRONE_COMMIT_SHA"
+        echo "  分支: ${DEPLOY_BRANCH}"
+        echo "  目标: ${DEPLOY_TARGET}"
+        echo "  触发: ${DRONE_BUILD_EVENT}"
+        echo "============================================="
+      - |
+        # ======== 根据部署目标选择配置 ========
+        case "${DEPLOY_TARGET}" in
+          production)
+            DEPLOY_HOST="100.93.36.113"
+            PROJECT_NAME="kb-deploy"
+            echo "📍 部署目标: 生产环境 (mykng-debain)"
+            ;;
+          test)
+            DEPLOY_HOST="100.93.36.113"
+            PROJECT_NAME="kb-test"
+            echo "📍 部署目标: 测试环境"
+            ;;
+          *)
+            echo "❌ 未知的部署目标: ${DEPLOY_TARGET}"
+            echo "   可用选项: production, test"
+            exit 1
+            ;;
+        esac
+      - |
+        # 1. 同步代码
+        echo ""
+        echo ">>> [1/4] 同步代码 <<<"
+        cd /root/devtools
+        git fetch origin "${DEPLOY_BRANCH}"
+        git reset --hard "origin/${DEPLOY_BRANCH}"
+        echo "✅ 代码已同步到 $(git rev-parse --short HEAD) (${DEPLOY_BRANCH})"
+      - |
+        # 2. 本地构建 Docker 镜像
+        echo ""
+        echo ">>> [2/4] 构建 Docker 镜像 <<<"
+        cd /root/devtools/mykng
 
-          # 🔒 关键：每次都 --no-cache 构建全新镜像，绝不使用旧缓存
-          # 这样保证每次部署的都是当前 commit 对应的最新代码产物
-          # 虽然 --no-cache 会稍慢（无法利用层缓存），
-          # 但能100%避免"代码更新了但镜像还是旧的"的致命问题
-          echo "--- 当前 commit: $(git rev-parse HEAD) ---"
-          echo "--- 各服务 jar 包时间戳 ---"
-          ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar kb-knowledge/target/*.jar kb-intelligence/target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在，需要先编译"
+        echo "--- 当前 commit: $(git rev-parse HEAD) ---"
+        echo "--- 各服务 jar 包时间戳 ---"
+        ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar \
+               kb-knowledge/target/*.jar kb-intelligence/target/*.jar \
+               2>/dev/null || echo "⚠️ jar 包不存在"
 
-          docker compose -p kb-deploy build --no-cache \
-            kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
-            2>&1 | tail -30
+        docker compose -p "${PROJECT_NAME}" build --no-cache \
+          kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
+          2>&1 | tail -30
 
-          echo "✅ 镜像构建完成（全新构建，无缓存）"
-          docker images | grep "kb-deploy" | head -10
-        - |
-          # 3. 按依赖顺序滚动重启（每个服务独立重启，避免全部停机）
-          echo ">>> [3/4] 滚动重启服务 <<<"
+        echo "✅ 镜像构建完成（--no-cache 全新构建）"
+        docker images | grep "${PROJECT_NAME}" | head -10
+      - |
+        # 3. 按依赖顺序滚动重启
+        echo ""
+        echo ">>> [3/4] 滚动重启服务 <<<"
 
-          # 3a. auth（其他服务的依赖基础）
-          echo "--- 重启 kb-auth ---"
-          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-auth
-          sleep 20
+        COMPOSE_ARGS="-p ${PROJECT_NAME} up -d --no-deps --force-recreate"
 
-          # 3b. file
-          echo "--- 重启 kb-file ---"
-          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-file
-          sleep 15
+        echo "--- [1/5] 重启 kb-auth ---"
+        docker compose ${COMPOSE_ARGS} kb-auth && sleep 20
 
-          # 3c. knowledge
-          echo "--- 重启 kb-knowledge ---"
-          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-knowledge
-          sleep 15
+        echo "--- [2/5] 重启 kb-file ---"
+        docker compose ${COMPOSE_ARGS} kb-file && sleep 15
 
-          # 3d. intelligence
-          echo "--- 重启 kb-intelligence ---"
-          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-intelligence
-          sleep 15
+        echo "--- [3/5] 重启 kb-knowledge ---"
+        docker compose ${COMPOSE_ARGS} kb-knowledge && sleep 15
 
-          # 3e. gateway（最后重启，因为它是入口）
-          echo "--- 重启 kb-gateway ---"
-          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-gateway
-          sleep 25
+        echo "--- [4/5] 重启 kb-intelligence ---"
+        docker compose ${COMPOSE_ARGS} kb-intelligence && sleep 15
 
-          echo "✅ 所有服务已重启"
-        - |
-          # 4. 健康检查
-          echo ">>> [4/4] 健康检查 <<<"
-          sleep 15
+        echo "--- [5/5] 重启 kb-gateway (入口) ---"
+        docker compose ${COMPOSE_ARGS} kb-gateway && sleep 25
 
-          # 检查各服务状态
-          echo "--- 服务状态 ---"
-          docker compose -p kb-deploy ps
+        echo "✅ 所有服务已重启"
+      - |
+        # 4. 健康检查
+        echo ""
+        echo ">>> [4/4] 健康检查 <<<"
+        sleep 15
 
-          echo "--- Gateway 健康检查 ---"
-          for i in $(seq 1 6); do
-            if curl -sf http://localhost:8090/kb/actuator/health > /dev/null 2>&1; then
-              echo "✅ Gateway 健康 (尝试 $i)"
-              break
-            fi
-            echo "⏳ 等待 Gateway 启动... ($i/6)"
-            sleep 10
-          done
+        echo "--- 服务状态 ---"
+        docker compose -p "${PROJECT_NAME}" ps
 
-          echo "============================================="
-          echo "  mykng 部署完成!"
-          echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "============================================="
+        GATEWAY_PORT=$(docker compose -p "${PROJECT_NAME}" port kb-gateway 8080 2>/dev/null | cut -d: -f2 || echo "8090")
+        echo "--- Gateway 健康检查 (port: ${GATEWAY_PORT}) ---"
+
+        for i in $(seq 1 6); do
+          if curl -sf "http://localhost:${GATEWAY_PORT}/kb/actuator/health" > /dev/null 2>&1; then
+            echo "✅ Gateway 健康! (尝试 $i)"
+            break
+          fi
+          echo "⏳ 等待 Gateway 启动... ($i/6)"
+          sleep 10
+        done
+
+        echo ""
+        echo "============================================="
+        echo "  mykng 部署完成!"
+        echo "  环境: ${DEPLOY_TARGET}"
+        echo "  分支: ${DEPLOY_BRANCH}"
+        echo "  Commit: $(git rev-parse --short HEAD)"
+        echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "============================================="
 
 # ============================================================
-# Step 3: 邮件通知（暂时禁用，待 Zoho 应用专用密码配置后恢复）
+# Step 3: 邮件通知（暂时禁用）
+# ============================================================
 # Zoho SMTP: smtp.zoho.com.cn:465 / marschatonline@zohomail.cn
-# 需要在 Zoho 控制台生成应用专用密码（非登录密码）后才能使用
-# ============================================================
+# 需要在 Zoho 控制台生成应用专用密码后取消注释
+# ------------------------------------------------------------
 #  - name: notify
 #    image: drillster/drone-email
 #    settings:
@@ -178,10 +241,11 @@ steps:
 #        - huliang2019@163.com
 #      subject: >
 #        [{{#success build.status}}✅{{else}}❌{{/success}}]
-#        mykng #{{build.number}} - {{build.status}}
+#        mykng #{{build.number}} [${DEPLOY_TARGET}] - {{build.status}}
 #      body: |
 #        仓库: {{repo.name}}
 #        分支: {{build.branch}}
+#        环境: ${DEPLOY_TARGET}
 #        提交: {{build.commit}}
 #        作者: {{build.author}}
 #        信息: {{build.message}}
@@ -196,3 +260,32 @@ volumes:
   - name: maven-cache
     host:
       path: /root/.m2/repository
+
+# ============================================================
+# Cron 定时任务（每天凌晨 3:00 北京时间）
+# ============================================================
+# 使用方式：
+#   1. 确保 Drone Server 启动时设置了 CRON_ENABLED=true
+#   2. 在 Drone 项目 Settings → Cron 中添加：
+#      Name: nightly-build
+#      Expression: 0 19 * * *   (UTC 19:00 = 北京时间 03:00)
+#      Branch: dev
+#   3. 或者在 Drone UI 中点击项目 → Settings → Cron → New Cron
+# ============================================================
+---
+kind: cron
+name: nightly-build
+spec:
+  # UTC 时间：每天 19:00 = 北京时间 03:00
+  schedule: '0 19 * * *'
+  branch: dev
+
+# ============================================================
+# Secrets 配置清单（需要在 Drone Repository Secrets 中配置）
+# ============================================================
+# | Secret 名    | 用途           | 说明                    |
+# |-------------|---------------|-------------------------|
+# | deploy_pass  | SSH 登录密码   | 目标服务器的 root 密码   |
+# | deploy_host  | 部署目标主机   | 默认 100.93.36.113       |
+# | smtp_pass    | Zoho SMTP密码 | 应用专用密码（待配置）   |
+# ============================================================
