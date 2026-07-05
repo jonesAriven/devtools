@@ -1,0 +1,143 @@
+# ============================================================
+# Drone CI/CD 流水线 — devtools 仓库
+# ============================================================
+# 仓库结构: devtools 是多项目大仓库
+#   - mykng/        知识库微服务 (Java/Spring Boot)
+#   - active-manager/  激活码管理 (待接入)
+#   - portal/       Portal工具看板 (待接入)
+#   - 其他项目...
+#
+# 触发: push 到 dev 分支
+# 策略: 按修改路径触发对应项目流水线
+# ============================================================
+
+kind: pipeline
+type: docker
+name: mykng-cicd
+
+trigger:
+  branch:
+    - dev
+  event:
+    - push
+  # 只有修改了 mykng/ 目录才触发
+  paths:
+    - "mykng/**"
+
+# ---------- 全局 ----------
+environment:
+  NEXUS_REGISTRY: 1.117.70.30:8082
+  DEPLOY_HOST: 100.93.36.113
+
+# ============================================================
+# Step 1: Maven 编译 + Docker 构建 + 推送 Nexus
+# ============================================================
+steps:
+  - name: build-and-push
+    image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - name: maven-cache
+        path: /root/.m2/repository
+      - name: docker-sock
+        path: /var/run/docker.sock
+    environment:
+      MAVEN_OPTS: -Xmx2048m
+      NEXUS_USER:
+        from_secret: nexus_user
+      NEXUS_PASS:
+        from_secret: nexus_pass
+    commands:
+      # --- [1/3] Maven 编译 ---
+      - echo "=== [1/3] Maven 编译 ==="
+      - cd mykng/kb-parent
+      - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
+      - cd ../..
+      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
+
+      # --- [2/3] 安装 docker CLI ---
+      - echo "=== [2/3] Docker 构建 + 推送 ==="
+      - apt-get update -qq && apt-get install -y -qq docker.io > /dev/null 2>&1
+
+      # --- [3/3] Docker 构建 + 推送 ---
+      - SHORT_TAG=$${DRONE_COMMIT_SHA:0:8}
+      - docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
+      - |
+        for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+          echo "--- 构建 $svc:$SHORT_TAG ---"
+          docker build -t $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG -t $NEXUS_REGISTRY/mykng/$svc:latest mykng/$svc
+          docker push $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG
+          docker push $NEXUS_REGISTRY/mykng/$svc:latest
+        done
+      - echo "=== 镜像推送完成 ==="
+      - docker images | grep mykng
+
+# ============================================================
+# Step 2: 部署到 mykng-debain
+# ============================================================
+  - name: deploy
+    image: appleboy/drone-ssh
+    settings:
+      host: 100.93.36.113
+      username: root
+      password:
+        from_secret: deploy_pass
+      port: 22
+      script_timeout: 300
+      script:
+        - echo "=== 拉取最新镜像 ==="
+        - source /root/drone-ci/.env && docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
+        - cd /root/devtools/mykng
+        - docker compose -p kb-deploy pull kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || echo "pull skipped (local build)"
+        - echo "=== 滚动重启 ==="
+        - docker compose -p kb-deploy up -d --no-deps kb-auth
+        - sleep 15
+        - docker compose -p kb-deploy up -d --no-deps kb-file
+        - sleep 10
+        - docker compose -p kb-deploy up -d --no-deps kb-knowledge
+        - sleep 10
+        - docker compose -p kb-deploy up -d --no-deps kb-intelligence
+        - sleep 10
+        - docker compose -p kb-deploy up -d --no-deps kb-gateway
+        - echo "=== 健康检查 ==="
+        - sleep 30
+        - curl -sf http://localhost:8090/kb/actuator/health && echo " ✅ gateway healthy" || echo " ⚠️ gateway health check failed"
+
+# ============================================================
+# Step 3: 邮件通知
+# ============================================================
+  - name: notify
+    image: drillster/drone-email
+    settings:
+      host: smtp.163.com
+      port: 465
+      username:
+        from_secret: smtp_user
+      password:
+        from_secret: smtp_pass
+      from:
+        from_secret: smtp_user
+      recipients:
+        - huliang2019@163.com
+      subject: >
+        [{{#success build.status}}✅{{else}}❌{{/success}}]
+        mykng #{{build.number}} - {{build.status}}
+      body: |
+        仓库: {{repo.name}}
+        分支: {{build.branch}}
+        提交: {{build.commit}}
+        作者: {{build.author}}
+        信息: {{build.message}}
+        链接: https://ci.marschat.online/{{repo.owner}}/{{repo.name}}/{{build.number}}
+    when:
+      status: [success, failure]
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  - name: maven-cache
+    host:
+      path: /root/.m2/repository
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
