@@ -5,15 +5,17 @@
 # 📁 项目结构:
 #   .drone.yml              ← 本文件（调度中心，只做路由）
 #   mykng/
-#     .drone.yml            ← mykng 的构建/部署配置
-#     deploy.sh             ← mykng 的部署脚本
+#     .drone.yml            ← 配置说明
+#     ci/
+#       deploy.sh         ← mykng 部署脚本
 #   active-manager/
-#     .drone.yml            ← active-manager 的构建/部署配置
-#     deploy.sh             ← active-manager 的部署脚本
+#     .drone.yml            ← 配置说明
+#     ci/
+#       deploy.sh         ← active-manager 部署脚本
 #
 # 🎯 工作原理:
-#   本文件只负责：接收 Drone 触发 → 判断改了哪个项目 → 调用对应项目的 deploy.sh
-#   各项目的具体逻辑（Maven 编译、Docker 构建、服务重启）都在各自的 deploy.sh 里
+#   本文件只负责：接收 Drone 触发 → 判断改了哪个项目 → 调用对应项目的 ci/deploy.sh
+#   各项目的具体逻辑（Maven 编译、Docker 构建、服务重启）都在各自项目的 ci/deploy.sh 里
 #
 # 🔧 手动触发:
 #   Drone 网页 → New Build → Custom → 传参: DEPLOY_TARGET=production
@@ -64,7 +66,7 @@ steps:
       - echo "=== 编译产物 ==="
       - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
 
-  # ---- Step 2: 部署（调用 mykng/deploy.sh） ----
+  # ---- Step 2: 部署（调用 mykng/ci/deploy.sh） ----
   - name: deploy
     image: appleboy/drone-ssh
     settings:
@@ -80,8 +82,8 @@ steps:
         - push
         - custom
     script:
-      - chmod +x /root/devtools/mykng/deploy.sh
-      - bash /root/devtools/mykng/deploy.sh "${DRONE_COMMIT_SHA}" "${DRONE_COMMIT_BRANCH:-dev}" "${DEPLOY_TARGET:-production}"
+      - chmod +x /root/devtools/mykng/ci/deploy.sh
+      - bash /root/devtools/mykng/ci/deploy.sh "${DRONE_COMMIT_SHA}" "${DRONE_COMMIT_BRANCH:-dev}" "${DEPLOY_TARGET:-production}"
 
 volumes:
   - name: maven-cache
@@ -129,7 +131,7 @@ steps:
       - echo "=== 编译产物 ==="
       - ls -lh active-manager/activation-code-server/target/*.jar
 
-  # ---- Step 2: 部署（调用 active-manager/deploy.sh） ----
+  # ---- Step 2: 部署（调用 active-manager/ci/deploy.sh） ----
   - name: deploy
     image: appleboy/drone-ssh
     settings:
@@ -145,8 +147,8 @@ steps:
         - push
         - custom
     script:
-      - chmod +x /root/devtools/active-manager/deploy.sh
-      - bash /root/devtools/active-manager/deploy.sh "${DRONE_COMMIT_SHA}" "${DRONE_COMMIT_BRANCH:-dev}"
+      - chmod +x /root/devtools/active-manager/ci/deploy.sh
+      - bash /root/devtools/active-manager/ci/deploy.sh "${DRONE_COMMIT_SHA}" "${DRONE_COMMIT_BRANCH:-dev}"
 
 volumes:
   - name: maven-cache

@@ -2,8 +2,9 @@
 # ============================================================
 # active-manager 部署脚本 — 在目标服务器上执行
 # ============================================================
-# 用法: bash deploy.sh <commit_sha> <branch>
-# 示例: bash deploy.sh abc1234 dev
+# 位置: active-manager/scripts/deploy.sh
+# 用法: bash active-manager/scripts/deploy.sh <commit_sha> <branch>
+# 示例: bash active-manager/scripts/deploy.sh abc1234 dev
 # ============================================================
 
 set -e
@@ -26,7 +27,6 @@ if [ ! -d /root/devtools ]; then
   git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
 fi
 
-# 检查旧容器是否在跑
 if docker ps --format '{{.Names}}' | grep -q '^activecode$'; then
   echo "ℹ️ 检测到旧容器 activecode 正在运行，部署时会重建"
   docker ps --filter "name=activecode" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -44,7 +44,7 @@ git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
-# ======== 2. Docker Compose 构建 & 部署（端口配置在 docker-compose.yml） ========
+# ======== 2. Docker Compose 构建 & 部署 ========
 echo ""
 echo ">>> [2/3] Docker Compose 构建 & 部署 <<<"
 cd /root/devtools/active-manager/activation-code-server
