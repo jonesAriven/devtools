@@ -89,9 +89,14 @@ steps:
       script:
         - echo "=== 拉取最新镜像 ==="
         - source /root/drone-ci/.env && docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
-        - cd /root/devtools/mykng
-        - docker compose -p kb-deploy pull kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || echo "pull skipped (local build)"
+        - |
+          for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+            echo "--- 拉取 $svc ---"
+            docker pull $NEXUS_REGISTRY/mykng/$svc:latest 2>&1 | tail -2
+            docker tag $NEXUS_REGISTRY/mykng/$svc:latest kb-deploy-$svc:latest
+          done
         - echo "=== 滚动重启 ==="
+        - cd /root/devtools/mykng
         - docker compose -p kb-deploy up -d --no-deps kb-auth
         - sleep 15
         - docker compose -p kb-deploy up -d --no-deps kb-file
