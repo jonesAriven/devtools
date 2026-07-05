@@ -1,0 +1,70 @@
+# ============================================================
+# Grafana 数据源自动配置
+# ============================================================
+# 启动时自动创建以下数据源（无需手动添加）：
+#   1. Prometheus - 指标数据源
+#   2. Loki      - 日志数据源
+#   3. AlertManager - 告警数据源
+#
+# 配置文件位置：/etc/grafana/provisioning/datasources/
+# ============================================================
+
+apiVersion: 1
+
+datasources:
+  # ----------------------------------------------------------
+  # 数据源 1: Prometheus（指标查询）
+  # ----------------------------------------------------------
+  - name: Prometheus
+    type: prometheus
+    access: proxy                    # 通过 Grafana 后端代理访问（安全）
+    url: http://prometheus:9090     # Docker 内部网络地址
+    isDefault: true                 # 设为默认数据源
+    editable: false                 # 禁止在 UI 中修改（防止误操作）
+    jsonData:
+      httpMethod: POST              # 使用 POST 查询（支持长查询）
+      manageAlerts: true            # 启用告警管理集成
+      prometheusType: Prometheus    # 数据源类型
+      timeInterval: "15s"           # 默认采集间隔（用于 rate/irate 计算）
+    version: 1
+
+  # ----------------------------------------------------------
+  # 数据源 2: Loki（日志查询）
+  # ----------------------------------------------------------
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100           # Docker 内部网络地址
+    editable: false
+    jsonData:
+      maxLines: 1000                # 日志显示最大行数
+      derivedFields:               # 从日志中提取字段，可点击跳转
+        # 示例：提取 trace_id，点击后跳转到 Jaeger
+        - name: TraceID
+          matcherRegex: "traceId=(\\w+)"
+          url: "${JAEGER_URL}/trace/$${__value.raw}"
+          datasourceUid: jaeger    # 需要配置 Jaeger 数据源（可选）
+      # 日志级别高亮
+      maxConcurrentShardQueries: 10
+
+  # ----------------------------------------------------------
+  # 数据源 3: AlertManager（告警状态）
+  # ----------------------------------------------------------
+  - name: AlertManager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093   # Docker 内部网络地址
+    editable: false
+    jsonData:
+      implementation: prometheus   # 使用 Prometheus AlertManager
+      # 告警静默和路由树可视化
+      handleGrafanaManagedAlerts: false
+
+  # ----------------------------------------------------------
+  # 数据源 4: 内置测试数据源（可选，用于演示）
+  # ----------------------------------------------------------
+  # - name: TestData (DB)
+  #   type: grafana-testdata-datasource
+  #   access: proxy
+  #   isDefault: false
+  #   editable: true

@@ -1,0 +1,211 @@
+# ============================================================
+# Promtail 日志采集代理配置
+# ============================================================
+# 功能：从 Docker 容器和系统日志中采集日志，发送到 Loki
+#
+# 采集目标：
+#   1. Docker 容器日志（/var/lib/docker/containers）
+#   2. 系统日志（/var/log）
+#   3. mykng 应用自定义日志（可选）
+#
+# 标签提取：
+#   - container_name: 容器名称
+#   - service: 服务名称（从容器名或 com.kb.service label 提取）
+#   - level: 日志级别（INFO/WARN/ERROR）
+#   - timestamp: 时间戳
+# ============================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml       # 记录已读取的位置（重启不丢数据）
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push    # Loki 接收端点
+
+# ============================================================
+# 日志采集任务（Scrape Configs）
+# ============================================================
+scrape_configs:
+
+  # ----------------------------------------------------------
+  # Job 1: Docker 容器日志（最重要！）
+  # ----------------------------------------------------------
+  # 从 /var/lib/docker/containers 读取所有容器的 stdout/stderr
+  # 自动解析 JSON 格式的 Docker 日志
+  # ----------------------------------------------------------
+  - job_name: docker-containers
+    
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker-containers
+          __path__: /var/lib/docker/containers/*/*.log
+
+    pipeline_stages:
+      # 解析 Docker JSON 格式日志
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            timestamp: time
+            attrs: attrs
+            
+      # 解析容器属性（attrs 是 base64 编码的 JSON）
+      - json:
+          expressions:
+            container_id: id
+          source: attrs
+      
+      # 提取容器名称（从完整 ID 截取前 12 位）
+      - regex:
+          source: container_id
+          expression: "^([a-f0-9]{12})"
+          
+      # 使用 Docker API 获取容器详细信息（名称、标签等）
+      - docker:
+          # 这一步需要 Promtail 有权限访问 Docker Socket
+          # 如果在 Docker Compose 中运行，需要挂载 /var/run/docker.sock
+
+      # 时间戳处理
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          
+      # 输出格式化
+      - output:
+          source: output
+          
+      # 提取日志级别（如果存在）
+      - regex:
+          source: output
+          expression: '(?i)\\b(INFO|WARN|WARNING|ERROR|FATAL|DEBUG|TRACE)\\b'
+          
+      # 打标签：根据容器名推断服务名
+      - labels:
+          level:
+          stream:
+
+      # 清理多余字段，减少存储占用
+      - output:
+          source: output
+
+  # ----------------------------------------------------------
+  # Job 2: 系统日志（syslog 风格）
+  # ----------------------------------------------------------
+  - job_name: system-logs
+    
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          host: ${HOSTNAME}
+        __path__:
+          - /var/log/syslog*
+          - /var/log/messages*
+          - /var/log/kern.log*
+
+    pipeline_stages:
+      # 尝试匹配 syslog 格式
+      - regex:
+          expression: '^(?P<timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?P<host>\\S+)\\s+(?P<process>[^:\\[]*)(?:\\[(?P<pid>[^\\]]*)\\])?:\\s+(?P<message>.*)$'
+          
+      - timestamp:
+          source: timestamp
+          format: "Jan _2 15:04:05"
+          location: Asia/Shanghai
+          
+      - labels:
+          process:
+          host:
+          
+      - output:
+          source: message
+
+  # ----------------------------------------------------------
+  # Job 3: mykng 应用日志（Spring Boot 格式）
+  # ----------------------------------------------------------
+  # ⚠️ 注意：这需要你的应用将日志输出到特定目录
+  # 或者通过 Docker Volume 挂载到宿主机
+  # ----------------------------------------------------------
+  - job_name: mykng-app-logs
+    
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mykng-app
+          environment: production
+        __path__:
+          - /var/log/mykng/**/*.log           # 应用日志目录（需配置）
+          - /opt/kb-deploy/**/*.log           # 部署日志目录
+
+    pipeline_stages:
+      # 匹配 Spring Boot 默认日志格式
+      # 示例：2026-07-04 23:30:15.123  INFO 12345 --- [nio-8080-exec-1] c.k.a.controller : Message
+      - regex:
+          expression: '^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s+(?P<level>INFO|WARN|ERROR|DEBUG|TRACE)\\s+(?P<pid>\\d+)\\s+---\\s+\\[(?P<thread>[^\\]]+)\\]\\s+(?P<logger>\\S+)\\s*:\\s+(?P<message>.*)$'
+          
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02 15:04:05.000"
+          location: Asia/Shanghai
+          
+      - labels:
+          level:
+          logger:
+          thread:
+          
+      - output:
+          source: message
+
+  # ----------------------------------------------------------
+  # Job 4: Docker Compose 日志（deploy 脚本输出）
+  # ----------------------------------------------------------
+  - job_name: deploy-logs
+    
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: deploy
+          type: deployment
+        __path__:
+          - /opt/kb-deploy/deploy*.log         # 部署脚本日志
+          - /opt/kb-deploy/*_deploy.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}[T\\s]\\d{2}:\\d{2}:\\d{2})[\\.]?(?P<millis>\\d*)?\\s*(?P<level>INFO|WARN|ERROR|SUCCESS|FAIL)?[\\s:]+(?P<message>.*)$'
+          
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02 15:04:05"
+          location: Asia/Shanghai
+          
+      - labels:
+          level:
+          
+      - output:
+          source: message
+
+# ============================================================
+# 全局限制（防止日志量过大导致资源耗尽）
+# ============================================================
+limits_config:
+  # 单次读取最大字节数
+  read_buffer_max_line_size: 256KB
+  
+  # 最大行长度（超长行会被截断）
+  line_max_truncate: false
+  
+  # 丢弃太长的行
+  max_log_size: 256MB
+  
+  # 速率限制（每秒最大发送条数）
+  rate_limit_burst: 10000
+  rate_limit_period: 10s

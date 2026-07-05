@@ -1,0 +1,228 @@
+# ============================================================
+# mykng 知识库微服务 - 完整监控栈
+# ============================================================
+# 组件：
+#   Prometheus  - 时序数据库（存储指标）
+#   Grafana     - 可视化看板（展示指标+日志）
+#   Node Exporter - 服务器基础指标采集（CPU/内存/磁盘/网络）
+#   cAdvisor    - Docker 容器指标采集
+#   Loki        - 日志聚合存储
+#   Promtail    - 日志采集代理（从 Docker 收集日志到 Loki）
+#   AlertManager - 告警管理器
+#
+# 使用方式：
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# 访问地址：
+#   Grafana:    http://<你的IP>:3000  (admin/admin)
+#   Prometheus: http://<你的IP>:9090
+#   AlertManager: http://<你的IP>:9093
+#   Loki API:   http://<你的IP>:3100 (一般不直接访问)
+#
+# 数据持久化目录：./monitoring-data/
+# ============================================================
+
+version: "3.8"
+
+services:
+
+  # ============================================================
+  # 1. Prometheus - 时序数据库 + 告警规则引擎
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: kb-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'           # 保留 30 天数据
+      - '--storage.tsdb.retention.size=10GB'          # 最大占用 10GB
+      - '--web.enable-lifecycle'                       # 支持热重载配置
+      - '--web.enable-admin-api'                       # 支持 API 删除数据
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=prometheus"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 2. Grafana - 统一可视化平台（指标 + 日志）
+  # ============================================================
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: kb-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    ports:
+      - "3000:3000"
+    environment:
+      # 安全配置（生产环境请修改！）
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false                    # 禁止自助注册
+      
+      # 数据源预配置（自动连接 Prometheus 和 Loki）
+      - GF_DATASOURCES_PROVISIONING_ENABLED=true
+      
+      # 日志级别
+      - GF_LOG_LEVEL=info
+      
+      # 匿名统计（可关闭）
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      
+      # 插件（可选，按需启用）
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=grafana"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 3. Node Exporter - 服务器基础指标采集
+  # ============================================================
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: kb-node-exporter
+    restart: unless-stopped
+    pid: host                                        # 访问宿主机的进程信息
+    volumes:
+      - /:/host:ro,rslave                            # 只读挂载根文件系统
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.netclass.ignored-rules=(veth.*|docker.*)'  # 忽略 Docker 虚拟网卡
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=node-exporter"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 4. cAdvisor - Docker 容器指标采集
+  # ============================================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: kb-cadvisor
+    restart: unless-stopped
+    privileged: true                                # 需要特权模式访问 Docker
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    ports:
+      - "8080:8080"
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=cadvisor"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 5. Loki - 日志聚合存储（类似轻量级 Elasticsearch）
+  # ============================================================
+  loki:
+    image: grafana/loki:2.9.5
+    container_name: kb-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=loki"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 6. Promtail - 日志采集代理（Docker 日志 → Loki）
+  # ============================================================
+  promtail:
+    image: grafana/promtail:2.9.5
+    container_name: kb-promtail
+    restart: unless-stopped
+    depends_on:
+      - loki
+    volumes:
+      - /var/log:/var/log:ro                           # 系统日志
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro  # Docker 容器日志
+      - ./config/promtail.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=promtail"
+      - "com.kb.environment=monitoring"
+
+  # ============================================================
+  # 7. AlertManager - 告警管理和通知分发
+  # ============================================================
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: kb-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://<YOUR_IP>:9093'
+    networks:
+      - monitoring
+    labels:
+      - "com.kb.service=alertmanager"
+      - "com.kb.environment=monitoring"
+
+# ============================================================
+# 网络配置
+# ============================================================
+networks:
+  monitoring:
+    driver: bridge
+    name: kb-monitoring
+
+# ============================================================
+# 数据持久化卷
+# ============================================================
+volumes:
+  prometheus_data:
+    driver: local
+    name: kb-prometheus-data
+  grafana_data:
+    driver: local
+    name: kb-grafana-data
+  loki_data:
+    driver: local
+    name: kb-loki-data
+  alertmanager_data:
+    driver: local
+    name: kb-alertmanager-data

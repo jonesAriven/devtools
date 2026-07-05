@@ -1,0 +1,161 @@
+# ============================================================
+# Prometheus 告警规则
+# ============================================================
+# 定义触发告警的条件和级别
+#
+# 告警级别：
+#   critical - 严重（立即处理）
+#   warning  - 警告（尽快处理）
+#   info     - 信息（可暂不处理）
+# ============================================================
+
+groups:
+  # ============================================================
+  # Group 1: 服务器资源告警
+  # ============================================================
+  - name: server-alerts
+    rules:
+      # CPU 使用率 > 80% 持续 5 分钟
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "服务器 CPU 使用率过高 ({{ $labels.instance }})"
+          description: "CPU 使用率超过 80%，当前值: {{ $value }}%\n请检查是否有异常进程或流量突增"
+
+      # 内存使用率 > 85% 持续 5 分钟
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "服务器内存使用率过高 ({{ $labels.instance }})"
+          description: "内存使用率超过 85%，当前值: {{ $value }}%\n可用内存: {{ printf \"%.2f\" (node_memory_MemAvailable_bytes / 1024 / 1024 / 1024) }}GB"
+
+      # 磁盘使用率 > 85%
+      - alert: HighDiskUsage
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "磁盘空间不足 ({{ $labels.instance }} {{ $labels.mountpoint }})"
+          description: "磁盘使用率超过 85%，当前值: {{ $value }}%\n建议清理日志或扩容"
+
+      # 磁盘使用率 > 95%（严重）
+      - alert: CriticalDiskUsage
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "⚠️ 磁盘即将耗尽 ({{ $labels.instance }} {{ $labels.mountpoint }})"
+          description: "磁盘使用率超过 95%！当前值: {{ $value }}%\n**请立即处理！**"
+
+      # 系统负载过高（CPU 核数 * 2）
+      - alert: HighSystemLoad
+        expr: node_load5 / count by(instance) (cpu{mode="idle"}) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "系统负载过高 ({{ $labels.instance }})"
+          description: "5 分钟平均负载: {{ $value }}\nCPU 核心数: {{ count by(instance) (cpu{mode="idle"}) }}"
+
+  # ============================================================
+  # Group 2: Docker 容器告警
+  # ============================================================
+  - name: docker-alerts
+    rules:
+      # 容器 CPU 使用率 > 80%
+      - alert: ContainerHighCPU
+        expr: (rate(container_cpu_usage_seconds_total{name=~".+"}[5m]) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "容器 CPU 使用率过高 ({{ $labels.name }})"
+          description: "容器 {{ $labels.name }} 的 CPU 使用率超过 80%\n当前值: {{ $value }}%"
+
+      # 容器内存使用接近限制（> 90%）
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes{name=~".+"} / container_spec_memory_limit_bytes{name=~".+"} * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "容器内存使用率过高 ({{ $labels.name }})"
+          description: "容器 {{ $labels.name }} 内存使用率达到限制的 90%\n可能存在内存泄漏，建议重启或排查"
+
+      # 容器崩溃重启
+      - alert: ContainerRestarting
+        expr: increase(container_start_time_seconds[1h]) > 3
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "⚠️ 容器频繁重启 ({{ $labels.name }})"
+          description: "容器 {{ $labels.name }} 在过去 1 小时内已重启超过 3 次\n可能原因：OOM、配置错误、健康检查失败"
+
+      # 容器处于非运行状态
+      - alert: ContainerNotRunning
+        expr: time() - container_start_time_seconds > 60 and container_state != "running"
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "⚠️ 容器未运行 ({{ $labels.name }})"
+          description: "容器 {{ $labels.name }} 已停止运行\n最后启动时间: {{ $value | humanizeTimestamp }}"
+
+  # ============================================================
+  # Group 3: Spring Boot 应用告警
+  # ============================================================
+  - name: spring-boot-alerts
+    rules:
+      # 应用响应时间 P99 > 2 秒
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{status!~"5.."}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 响应时间过长 ({{ $labels.service }})"
+          description: "{{ $labels.service }} 的 P99 响应时间超过 2 秒\n当前值: {{ $value }}s\n影响接口: {{ $labels.uri }}"
+
+      # 错误率 > 5%
+      - alert: HighErrorRate
+        expr: |
+      (
+        sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+        /
+        sum(rate(http_server_requests_seconds_count[5m]))
+      ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 错误率过高 ({{ $labels.service }})"
+          description: "{{ $labels.service }} 的 5xx 错误率超过 5%\n当前错误率: {{ $value }}%\n请检查应用日志和依赖服务"
+
+      # JVM 堆内存使用 > 85%
+      - alert: HighJVMHeapUsage
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用率过高 ({{ $labels.service }})"
+          description: "{{ $labels.service }} 的堆内存使用率达到 85%\n当前使用: {{ printf \"%.2f\" (jvm_memory_used_bytes{area="heap"} / 1024 / 1024 ) }}MB\n最大限制: {{ printf \"%.2f\" (jvm_memory_max_bytes{area="heap"} / 1024 / 1024 ) }}MB\n建议：增加 -Xmx 或排查内存泄漏"
+
+      # 服务宕机（无法采集到指标）
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "⚠️ 服务不可用 ({{ $labels.job }})"
+          description: "服务 {{ $labels.service }} 无法连接\n请检查服务是否正常运行\n最后成功采集: {{ $value | humanizeTimestamp }}"

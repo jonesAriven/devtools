@@ -1,0 +1,139 @@
+# ============================================================
+# Prometheus 主配置文件
+# ============================================================
+# 功能：定义数据采集目标（从哪里收集指标）
+#
+# 采集目标：
+#   1. Node Exporter - 服务器基础指标 (端口 9100)
+#   2. cAdvisor      - Docker 容器指标 (端口 8080)
+#   3. 自定义 Job    - Spring Boot Actuator 指标 (需配置)
+# ============================================================
+
+global:
+  scrape_interval: 15s              # 全局默认采集间隔：15秒
+  evaluation_interval: 15s          # 告警规则评估间隔
+  scrape_timeout: 10s               # 单次采集超时时间
+  external_labels:
+    monitor: 'kb-monitoring'
+    env: 'production'
+
+# 告警管理器连接
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'
+
+# 告警规则文件
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+# ============================================================
+# 数据采集任务（Scrape Jobs）
+# ============================================================
+scrape_configs:
+
+  # ----------------------------------------------------------
+  # Job 1: Prometheus 自身监控
+  # ----------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # ----------------------------------------------------------
+  # Job 2: Node Exporter - 服务器基础指标
+  # ----------------------------------------------------------
+  # 采集内容：
+  #   CPU 使用率、负载均衡、内存使用、磁盘 I/O、网络流量
+  #   文件系统空间、进程数、Socket 连接数等
+  # ----------------------------------------------------------
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'production-server'
+          role: 'server'
+    scrape_interval: 15s
+
+  # ----------------------------------------------------------
+  # Job 3: cAdvisor - Docker 容器指标
+  # ----------------------------------------------------------
+  # 采集内容：
+  #   容器 CPU/内存/网络/文件系统使用情况
+  #   容器启动/停止事件
+  #   容器限制和请求资源
+  # ----------------------------------------------------------
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance: 'production-server'
+          role: 'docker'
+    scrape_interval: 15s
+
+  # ----------------------------------------------------------
+  # Job 4: mykng 微服务指标（Spring Boot Actuator）
+  # ----------------------------------------------------------
+  # ⚠️ 注意：需要你的微服务暴露 /actuator/prometheus 端点
+  #
+  # 配置方式（在 application.yml 中）：
+  #   management:
+  #     endpoints:
+  #       web:
+  #         exposure:
+  #           include: health,info,prometheus,metrics
+  #     server:
+  #       port: 8081
+  #     metrics:
+  #       tags:
+  #         application: ${spring.application.name}
+  #       export:
+  #         prometheus:
+  #           enabled: true
+  # ----------------------------------------------------------
+  - job_name: 'kb-gateway'
+    static_configs:
+      - targets: ['host.docker.internal:8081']   # 网关的 Actuator 端口
+        labels:
+          service: 'kb-gateway'
+          group: 'mykng'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'kb-auth'
+    static_configs:
+      - targets: ['host.docker.internal:8082']   # 认证服务的 Actuator 端口
+        labels:
+          service: 'kb-auth'
+          group: 'mykng'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'kb-file'
+    static_configs:
+      - targets: ['host.docker.internal:8083']   # 文件服务的 Actuator 端口
+        labels:
+          service: 'kb-file'
+          group: 'mykng'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'kb-knowledge'
+    static_configs:
+      - targets: ['host.docker.internal:8084']   # 知识库服务的 Actuator 端口
+        labels:
+          service: 'kb-knowledge'
+          group: 'mykng'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'kb-intelligence'
+    static_configs:
+      - targets: ['host.docker.internal:8085']   # AI 服务的 Actuator 端口
+        labels:
+          service: 'kb-intelligence'
+          group: 'mykng'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'

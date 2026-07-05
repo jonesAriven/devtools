@@ -1,0 +1,43 @@
+# ============================================================
+# Grafana Dashboard 自动加载配置
+# ============================================================
+# 启动时自动导入以下 Dashboard：
+#
+# 推荐的 Dashboard（通过 ID 从 grafana.com 导入）：
+#   - 1860: Node Exporter Full（服务器指标）
+#   - 193: Docker & Container Monitoring（容器监控）
+#   - 4701: JVM (Micrometer)（Spring Boot 应用监控）
+#   - 13639: Loki Logs（日志查看）
+#   - 9578: AlertManager Overview（告警总览）
+#
+# 自定义 Dashboard JSON 文件放在：/var/lib/grafana/dashboards/
+# ============================================================
+
+apiVersion: 1
+
+providers:
+  # ----------------------------------------------------------
+  # Provider 1: 默认 Dashboard 提供者
+  # ----------------------------------------------------------
+  - name: 'mykng-monitoring'
+    orgId: 1
+    folder: ''                        # 放在根目录
+    type: file
+    disableDeletion: false            # 允许删除
+    editable: true                    # 允许编辑
+    options:
+      path: /var/lib/grafana/dashboards    # Dashboard JSON 文件目录
+      foldersFromFilesStructure: false     # 不自动创建子文件夹
+
+  # ----------------------------------------------------------
+  # Provider 2: 从 Grafana.com 导入官方推荐 Dashboard
+  # （这些是社区验证的高质量模板，一键导入）
+  # ----------------------------------------------------------
+  - name: 'grafana-community-dashboards'
+    orgId: 1
+    folder: 'Community Templates'
+    type: file
+    disableDeletion: true             # 禁止删除（防止误删官方模板）
+    editable: false                   # 只读（建议复制后修改）
+    options:
+      path: /var/lib/grafana/dashboards/community

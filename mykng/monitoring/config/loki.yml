@@ -1,0 +1,149 @@
+# ============================================================
+# Loki 日志聚合系统配置
+# ============================================================
+# 功能：接收、存储、查询日志数据
+#
+# 特点：
+#   - 不对日志内容建立全文索引（节省资源）
+#   - 仅对标签（labels）建立索引
+#   - 适合容器化环境的日志收集
+#
+# 数据保留：30 天（可调整）
+# ============================================================
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+  # 日志级别
+  log_level: info
+
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+    # 心跳配置
+    heartbeat_period: 10s
+    observe_period: 5s
+  
+  # WAL (Write-Ahead Log) 配置
+  wal:
+    dir: /loki/wal
+    flush_on_shutdown: true
+    replay_memory_ceiling: 256MB
+  
+  # 异步写入配置
+  async_flush:
+    enabled: true
+    watermark: 5m
+    max_chunk_age: 1h
+    
+  # 日志块配置
+  chunk_idle_period: 5m           # 空闲多久后刷新到存储
+  chunk_retain_period: 30s        # 刷新后保留多久供读取
+  max_transfer_retries: 0          # 不重试传输失败
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: boltdb               # 使用 BoltDB 作为索引存储（轻量）
+      object_store: filesystem     # 使用文件系统作为日志存储
+      schema: v11
+      index:
+        prefix: loki_index_
+        period: 24h                # 按天分片
+
+storage_config:
+  boltdb:
+    directory: /loki/index         # 索引存储路径
+  filesystem:
+    directory: /loki/chunks        # 日志文件存储路径
+
+# ============================================================
+# 数据保留策略
+# ============================================================
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h  # 接受 7 天内的旧数据
+  max_query_length: 721h             # 最大查询时间范围（30天）
+  max_query_parallelism: 10          # 并行查询数
+  retention_period: 720h             # 日志保留 30 天（可调整）
+  
+  # 单次查询限制
+  max_entries_limit_per_query: 5000   # 返回最大日志条数
+  max_cache fresher_than: 10m         # 缓存新鲜度
+
+# ============================================================
+# 分片策略（单节点模式）
+# ============================================================
+chunk_store_config:
+  max_look_back_period: 0s
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 720h              # 30 天后自动清理旧日志
+
+# ============================================================
+# compactor 压缩器配置（可选，用于优化存储）
+# ============================================================
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  compaction_interval: 10m            # 每 10 分钟检查一次是否需要压缩
+  retention_enabled: true
+  retain_delete_delay: 2h
+  delete_request_cancel_period: 24h
+
+# ============================================================
+# 查询配置
+# ============================================================
+query_range:
+  # 结果缓存（提升重复查询性能）
+  cache_results: true
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100              # 缓存大小 100MB
+        
+  # 并行查询
+  parallelise_shardable_queries: true
+  max_shards_per_query: 50
+
+# ============================================================
+# 查询调度器
+# ============================================================
+frontend:
+  max_outstanding_per_tenant: 2048     # 最大并发查询数
+  compress_responses: true            # 压缩响应（节省带宽）
+
+# ============================================================
+# 路由配置
+# ============================================================
+frontend_worker:
+  frontend_address: 127.0.0.1:9096
+
+# ============================================================
+# 日志格式化（开发调试用，生产环境建议关闭）
+# ============================================================
+log_format: json                     # JSON 格式便于解析
+
+# ============================================================
+# 告警规则（Loki 自带的告警功能，可选）
+# ============================================================
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  enable_api: true
+  enable_alertmanager_v2: true
+  alertmanager_url: http://alertmanager:9093

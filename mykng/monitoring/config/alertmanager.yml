@@ -1,0 +1,152 @@
+# ============================================================
+# AlertManager 告警通知配置
+# ============================================================
+# 定义告警如何发送（邮件、钉钉、企业微信、Webhook 等）
+#
+# 使用方式：
+#   1. 修改下面的 <YOUR_XXX> 占位符为实际值
+#   2. 或通过环境变量 / Secrets 注入
+# ============================================================
+
+global:
+  # SMTP 邮件服务器配置（用于邮件告警）
+  smtp_smarthost: 'smtp.qq.com:465'     # 示例：QQ邮箱 SMTP
+  smtp_from: 'your-email@qq.com'        # 发件人地址
+  smtp_auth_username: 'your-email@qq.com'
+  smtp_auth_password: '<YOUR_SMTP_PASSWORD>'  # 授权码（非登录密码）
+  smtp_require_tls: true
+
+  # 默认 resolve 超时（告警持续时间）
+  resolve_timeout: 5m
+
+# ============================================================
+# 告警路由规则
+# ============================================================
+# 决定不同级别的告警发给谁、怎么发
+route:
+  # 默认接收者（如果没有匹配到子路由，走这个）
+  receiver: 'default-receiver'
+  
+  # 分组策略：相同 group_by 字段的告警合并为一条通知
+  group_by: ['alertname', 'severity', 'instance']
+  
+  # 分组等待时间：等待同组告警聚合后再发送（避免消息轰炸）
+  group_wait: 30s
+  
+  # 间隔时间：同一组告警的重复通知间隔
+  group_interval: 5m
+  
+  # 重复间隔：已解决的告警再次通知的间隔
+  repeat_interval: 4h
+
+  # 子路由规则（按严重程度分发）
+  routes:
+    # 严重告警 → 立即通知所有渠道
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s               # 严重告警立即发送，不等聚合
+      repeat_interval: 1h            # 严重告警 1 小时重复一次
+      
+    # 警告级别 → 仅工作日工作时间通知
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      repeat_interval: 4h
+
+# ============================================================
+# 告警接收者（通知渠道配置）
+# ============================================================
+receivers:
+
+  # ----------------------------------------------------------
+  # 接收者 1: 默认（不发送，仅记录）
+  # ----------------------------------------------------------
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://grafana:3000/api/alerts/webhook'   # 发送到 Grafana 显示
+        send_resolved: true                               # 告警恢复也通知
+
+  # ----------------------------------------------------------
+  # 接收者 2: 严重告警（全渠道推送）
+  # ----------------------------------------------------------
+  - name: 'critical-alerts'
+    
+    # 邮件通知
+    email_configs:
+      - to: 'your-phone-number@sms.qq.com'              # 短信通知（QQ邮箱转短信）
+        send_resolved: true
+        html: |
+          <h3>🔴 严重告警</h3>
+          <p><b>告警名称:</b> {{ .CommonLabels.alertname }}</p>
+          <p><b>严重程度:</b> {{ .CommonLabels.severity }}</p>
+          <p><b>实例:</b> {{ .CommonLabels.instance }}</p>
+          <p><b>描述:</b> {{ .CommonAnnotations.description }}</p>
+          <p><b>开始时间:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}</p>
+          <hr>
+          <small>来自 mykng 监控系统</small>
+
+    # Webhook 通知（可接入钉钉/企业微信/飞书）
+    webhook_configs:
+      # 方式 A: 钉钉机器人
+      - url: '<YOUR_DINGTALK_WEBHOOK_URL>'
+        send_resolved: true
+        
+      # 方式 B: 企业微信机器人
+      # - url: '<YOUR_WECHAT_WORK_WEBHOOK_URL>'
+      #   send_resolved: true
+      
+      # 方式 C: 飞书机器人
+      # - url: '<YOUR_FEISHU_WEBHOOK_URL>'
+      #   send_resolved: true
+      
+      # 方式 D: 自定义 Webhook（转发到你自己的服务）
+      # - url: 'http://your-server:8080/api/alerts'
+      #   send_resolved: true
+
+  # ----------------------------------------------------------
+  # 接收者 3: 警告级别（仅邮件 + Webhook）
+  # ----------------------------------------------------------
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'your-email@example.com'
+        send_resolved: true
+    
+    webhook_configs:
+      - url: '<YOUR_DINGTALK_WEBHOOK_URL>'       # 可选：钉钉群消息
+        send_resolved: true
+
+# ============================================================
+# 抑制规则（Inhibit Rules）
+# ============================================================
+# 当高级别告警触发时，抑制相关的低级别告警（避免重复通知）
+inhibit_rules:
+  # 如果有 Critical 的 CPU 告警，就抑制 Warning 的 CPU 告警
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+  
+  # 如果有服务宕机告警，就抑制该服务的其他告警
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match_re:
+      service: '.+'
+
+# ============================================================
+# 静默规则示例（Silences）
+# ============================================================
+# 通过 AlertManager UI 或 API 创建临时静默
+# 例如：维护窗口期间暂停告警
+# 
+# 创建方式：
+#   curl -X POST http://<IP>:9093/api/v2/silences \
+#     -H 'Content-Type: application/json' \
+#     -d '{
+#       "matchers": [{"name":"severity","value":"warning","isRegex":true}],
+#       "startsAt": "2026-07-04T23:00:00Z",
+#       "endsAt": "2026-07-05T02:00:00Z",
+#       "comment": "维护窗口",
+#       "createdBy": "admin"
+#     }'
