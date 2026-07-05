@@ -161,31 +161,33 @@ steps:
           echo "============================================="
 
 # ============================================================
-# Step 3: 邮件通知（Zoho 企业邮）
+# Step 3: 邮件通知（暂时禁用，待 Zoho 应用专用密码配置后恢复）
+# Zoho SMTP: smtp.zoho.com.cn:465 / marschatonline@zohomail.cn
+# 需要在 Zoho 控制台生成应用专用密码（非登录密码）后才能使用
 # ============================================================
-  - name: notify
-    image: drillster/drone-email
-    settings:
-      host: smtp.zoho.com.cn
-      port: 465
-      username: marschatonline@zohomail.cn
-      password:
-        from_secret: smtp_pass
-      from: marschatonline@zohomail.cn
-      recipients:
-        - huliang2019@163.com
-      subject: >
-        [{{#success build.status}}✅{{else}}❌{{/success}}]
-        mykng #{{build.number}} - {{build.status}}
-      body: |
-        仓库: {{repo.name}}
-        分支: {{build.branch}}
-        提交: {{build.commit}}
-        作者: {{build.author}}
-        信息: {{build.message}}
-        链接: https://ci.marschat.online/{{repo.owner}}/{{repo.name}}/{{build.number}}
-    when:
-      status: [success, failure]
+#  - name: notify
+#    image: drillster/drone-email
+#    settings:
+#      host: smtp.zoho.com.cn
+#      port: 465
+#      username: marschatonline@zohomail.cn
+#      password:
+#        from_secret: smtp_pass
+#      from: marschatonline@zohomail.cn
+#      recipients:
+#        - huliang2019@163.com
+#      subject: >
+#        [{{#success build.status}}✅{{else}}❌{{/success}}]
+#        mykng #{{build.number}} - {{build.status}}
+#      body: |
+#        仓库: {{repo.name}}
+#        分支: {{build.branch}}
+#        提交: {{build.commit}}
+#        作者: {{build.author}}
+#        信息: {{build.message}}
+#        链接: https://ci.marschat.online/{{repo.owner}}/{{repo.name}}/{{build.number}}
+#    when:
+#      status: [success, failure]
 
 # ============================================================
 # Volumes
