@@ -8,12 +8,9 @@ WORKDIR /app
 # 复制构建产物
 COPY target/kb-knowledge.jar /app/kb-knowledge.jar
 
-# 时区设置（使用阿里云alpine源）
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-    apk add --no-cache tzdata && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone && \
-    apk del tzdata
+# 时区设置（直接复制时区文件，无需安装 tzdata 包）
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 EXPOSE 8083
 

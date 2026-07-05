@@ -9,6 +9,14 @@
 #
 # 触发: push 到 dev 分支
 # 策略: 按修改路径触发对应项目流水线
+#
+# 📋 优化记录 (2026-07-05):
+#   - 原问题: docker-build-push 步骤 push 到 Nexus 极慢（23分钟+）
+#   - 根因1: Nexus Docker Registry 写入带宽低 (~100KB/s)
+#   - 根因2: 无 .dockerignore → build context 过大 (kb-file 126MB)
+#   - 根因3: 双重推送 (tag + latest) 浪费带宽
+#   - 根因4: Dockerfile 每次安装 tzdata 增加构建时间
+#   - 解决: 改为 SSH 到目标机器本地 build+deploy，跳过 CI 中 docker push
 # ============================================================
 
 kind: pipeline
@@ -26,7 +34,6 @@ trigger:
 
 # ---------- 全局 ----------
 environment:
-  NEXUS_REGISTRY: 1.117.70.30:8082
   DEPLOY_HOST: 100.93.36.113
 
 # ============================================================
@@ -45,64 +52,105 @@ steps:
       - cd mykng/kb-parent
       - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
+      - echo "=== 编译产物大小 ==="
       - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
 
-  # ============================================================
-  # Step 2: Docker 构建 + 推送 Nexus（本地手动执行，CI跳过）
-  # ============================================================
-  # - name: docker-build-push
-  #   image: docker:24-cli
-  #   volumes:
-  #     - name: docker-sock
-  #       path: /var/run/docker.sock
-  #   environment:
-  #     NEXUS_USER:
-  #       from_secret: nexus_user
-  #     NEXUS_PASS:
-  #       from_secret: nexus_pass
-  #   commands:
-  #     - echo "=== Docker 构建 + 推送 ==="
-  #     - SHORT_TAG=$${DRONE_COMMIT_SHA:0:8}
-  #     - docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
-  #     - |
-  #       for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
-  #         echo "--- 构建 $svc:$SHORT_TAG ---"
-  #         docker build -t $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG -t $NEXUS_REGISTRY/mykng/$svc:latest mykng/$svc
-  #         docker push $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG
-  #         docker push $NEXUS_REGISTRY/mykng/$svc:latest
-  #       done
-  #     - echo "=== 镜像推送完成 ==="
-  #     - docker images | grep mykng
-
 # ============================================================
-# Step 3: 部署到 mykng-debain
+# Step 2: 部署到 mykng-debain（本地构建 + 滚动重启）
 # ============================================================
+# 优化说明：
+#   不再在 CI 中 docker build + push 到 Nexus（太慢！）
+#   改为 SSH 到目标服务器，git pull 后本地 docker compose build + up
+#   这样避免了 Drone→Nexus 的慢速网络传输
+#   目标服务器 (mykng-debain) 与 Nexus 在同一内网，速度快很多
   - name: deploy
     image: appleboy/drone-ssh
     settings:
-      host: 100.93.36.113
+      host:
+        from_secret: deploy_host
       username: root
       password:
         from_secret: deploy_pass
       port: 22
-      script_timeout: 600
+      script_timeout: 900  # 15分钟超时（本地构建5个镜像需要时间）
+      command_timeout: 300
       script:
-        - echo "=== 本地构建镜像 ==="
-        - cd /root/devtools/mykng
-        - docker compose -p kb-deploy build kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>&1 | tail -5
-        - echo "=== 滚动重启 ==="
-        - docker compose -p kb-deploy up -d --no-deps kb-auth
-        - sleep 15
-        - docker compose -p kb-deploy up -d --no-deps kb-file
-        - sleep 10
-        - docker compose -p kb-deploy up -d --no-deps kb-knowledge
-        - sleep 10
-        - docker compose -p kb-deploy up -d --no-deps kb-intelligence
-        - sleep 10
-        - docker compose -p kb-deploy up -d --no-deps kb-gateway
-        - echo "=== 健康检查 ==="
-        - sleep 30
-        - curl -sf http://localhost:8090/actuator/health && echo " ✅ gateway healthy" || echo " ⚠️ gateway health check failed"
+        - |
+          echo "============================================="
+          echo "  mykng 自动部署开始"
+          echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "  Commit: $DRONE_COMMIT_SHA"
+          echo "============================================="
+        - |
+          # 1. 同步代码
+          echo ">>> [1/4] 同步代码 <<<"
+          cd /root/devtools
+          git fetch origin dev
+          git reset --hard origin/dev
+          echo "✅ 代码已同步到 $DRONE_COMMIT_SHA"
+        - |
+          # 2. 本地构建 Docker 镜像（内网速度快）
+          echo ">>> [2/4] 构建 Docker 镜像 <<<"
+          cd /root/devtools/mykng
+          # 先并行构建所有镜像（不启动容器）
+          docker compose -p kb-deploy build \
+            kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
+            2>&1 | tail -20
+          echo "✅ 镜像构建完成"
+          docker images | grep "kb-deploy" | head -10
+        - |
+          # 3. 按依赖顺序滚动重启（每个服务独立重启，避免全部停机）
+          echo ">>> [3/4] 滚动重启服务 <<<"
+
+          # 3a. auth（其他服务的依赖基础）
+          echo "--- 重启 kb-auth ---"
+          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-auth
+          sleep 20
+
+          # 3b. file
+          echo "--- 重启 kb-file ---"
+          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-file
+          sleep 15
+
+          # 3c. knowledge
+          echo "--- 重启 kb-knowledge ---"
+          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-knowledge
+          sleep 15
+
+          # 3d. intelligence
+          echo "--- 重启 kb-intelligence ---"
+          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-intelligence
+          sleep 15
+
+          # 3e. gateway（最后重启，因为它是入口）
+          echo "--- 重启 kb-gateway ---"
+          docker compose -p kb-deploy up -d --no-deps --force-recreate kb-gateway
+          sleep 25
+
+          echo "✅ 所有服务已重启"
+        - |
+          # 4. 健康检查
+          echo ">>> [4/4] 健康检查 <<<"
+          sleep 15
+
+          # 检查各服务状态
+          echo "--- 服务状态 ---"
+          docker compose -p kb-deploy ps
+
+          echo "--- Gateway 健康检查 ---"
+          for i in $(seq 1 6); do
+            if curl -sf http://localhost:8090/kb/actuator/health > /dev/null 2>&1; then
+              echo "✅ Gateway 健康 (尝试 $i)"
+              break
+            fi
+            echo "⏳ 等待 Gateway 启动... ($i/6)"
+            sleep 10
+          done
+
+          echo "============================================="
+          echo "  mykng 部署完成!"
+          echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "============================================="
 
 # ============================================================
 # Step 3: 邮件通知
@@ -140,9 +188,3 @@ volumes:
   - name: maven-cache
     host:
       path: /root/.m2/repository
-  - name: docker-sock
-    host:
-      path: /var/run/docker.sock
-  - name: docker-bin
-    host:
-      path: /usr/bin/docker

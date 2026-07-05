@@ -1,0 +1,48 @@
+# kb-gateway Docker ignore
+# 减小 build context，只保留 target/*.jar
+
+# 源码
+src/
+*.java
+*.xml
+*.yml
+*.yaml
+*.properties
+*.gradle
+
+# 构建工具
+.mvn/
+mvnw
+mvnw.cmd
+pom.xml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# 测试
+test/
+**/test-classes/
+
+# 文档
+docs/
+*.md
+LICENSE
+.git/
+.gitignore
+
+# 临时文件
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 其他不需要的文件
+*.orig
+*.bak
+*.swp
+*~
