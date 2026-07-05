@@ -44,33 +44,22 @@ git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
-# ======== 2. 构建 Docker 镜像 + 重启容器 ========
+# ======== 2. Docker Compose 构建 & 部署（端口配置在 docker-compose.yml） ========
 echo ""
-echo ">>> [2/3] 构建 & 部署 <<<"
+echo ">>> [2/3] Docker Compose 构建 & 部署 <<<"
 cd /root/devtools/active-manager/activation-code-server
 
 echo "--- JAR 包信息 ---"
 ls -lh target/activation-code-server-1.0.0.jar
 
-echo "--- 停止旧容器 ---"
-if docker ps -a --format '{{.Names}}' | grep -q '^activecode$'; then
-  echo "⏹ 停止并删除旧容器 activecode..."
-  docker stop activecode && docker rm activecode
-else
-  echo "ℹ️ 没有旧容器，跳过停止步骤"
-fi
+echo "--- 端口映射（来自 docker-compose.yml）---"
+grep -A2 "ports:" docker-compose.yml | head -3
 
-echo "--- 构建新镜像 ---"
-docker build -t activecode . 2>&1 | tail -10
+echo "--- 构建镜像并重建容器 ---"
+docker compose -p activecode build --no-cache 2>&1 | tail -10
+docker compose -p activecode up -d --force-recreate
 
-echo "--- 启动新容器 ---"
-docker run -d \
-  --name activecode \
-  -p 18080:8080 \
-  --restart unless-stopped \
-  activecode
-
-echo "✅ 容器已启动"
+echo "✅ 容器已启动（端口、环境变量均由 docker-compose.yml 管理）"
 
 # ======== 3. 健康检查 ========
 echo ""

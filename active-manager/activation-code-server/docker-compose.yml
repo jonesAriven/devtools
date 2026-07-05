@@ -1,0 +1,28 @@
+# ============================================================
+# active-manager (激活码系统) Docker Compose
+# ============================================================
+# 用法:
+#   docker compose -p activecode up -d          # 启动
+#   docker compose -p activecode down            # 停止
+#   docker compose -p activecode logs -f         # 查看日志
+# ============================================================
+
+services:
+  activation-code-server:
+    build: .
+    image: activecode:latest
+    container_name: activecode
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tools
+      - SPRING_DATASOURCE_PASSWORD=toolsmarschat
+    networks:
+      - activecode-net
+
+networks:
+  activecode-net:
+    name: activecode-net
