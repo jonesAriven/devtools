@@ -161,19 +161,17 @@ steps:
           echo "============================================="
 
 # ============================================================
-# Step 3: 邮件通知
+# Step 3: 邮件通知（Zoho 企业邮）
 # ============================================================
   - name: notify
     image: drillster/drone-email
     settings:
-      host: smtp.163.com
-      port: 465
-      username:
-        from_secret: smtp_user
+      host: smtp.zoho.com.cn
+      port: 587
+      username: marschatonline@zohomail.cn
       password:
         from_secret: smtp_pass
-      from:
-        from_secret: smtp_user
+      from: marschatonline@zohomail.cn
       recipients:
         - huliang2019@163.com
       subject: >
