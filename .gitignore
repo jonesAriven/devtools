@@ -125,3 +125,7 @@ mykng/test_shots/
 # tar.gz 构建产物（前端打包传输用，不入库）
 *.tar.gz
 
+# Vaultwarden 导入文件（含敏感凭据，不入库）
+mykng/vaultwarden_import.json
+diagnose_*.py
+

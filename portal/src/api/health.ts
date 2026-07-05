@@ -8,8 +8,15 @@ export interface HealthResult {
   error?: string
 }
 
+function isHttps(url: string): boolean {
+  return url.startsWith('https://')
+}
+
 /** 单个系统健康检查 */
 async function checkOne(id: string, url: string): Promise<HealthResult> {
+  if (!isHttps(url)) {
+    return { id, status: 'unknown', error: 'Mixed Content: HTTP address skipped on HTTPS page' }
+  }
   const start = Date.now()
   try {
     const controller = new AbortController()
@@ -21,7 +28,6 @@ async function checkOne(id: string, url: string): Promise<HealthResult> {
     })
     clearTimeout(timeout)
     const latency = Date.now() - start
-    // no-cors 模式下 resp.type === 'opaque' 也算可达
     return { id, status: 'online', latency }
   } catch (err) {
     return {

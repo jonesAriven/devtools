@@ -53,7 +53,11 @@
               <el-icon><Star /></el-icon>
               快捷导航
             </div>
-            <div class="sidebar-item active" @click="scrollToSection('favorites')">
+            <div
+              class="sidebar-item"
+              :class="{ active: activeSection === 'favorites' }"
+              @click="handleNavClick('favorites')"
+            >
               <el-icon><Star /></el-icon>
               <span>我的收藏</span>
             </div>
@@ -68,6 +72,7 @@
               v-for="cat in categories"
               :key="cat"
               class="sidebar-item"
+              :class="{ active: activeSection === `category-${cat}` }"
               @click="handleCategoryClick(cat)"
             >
               <el-icon>
@@ -92,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import {
@@ -118,6 +123,7 @@ const systemStore = useSystemStore()
 
 const searchText = ref('')
 const categories: SystemCategory[] = ['web', 'infra', 'tool', 'doc']
+const activeSection = ref<string>('favorites')
 
 const isManagePage = computed(() => route.name === 'Manage')
 
@@ -126,14 +132,27 @@ function handleSearch(value: string) {
 }
 
 function handleCategoryClick(cat: SystemCategory) {
+  const sectionId = `category-${cat}`
+  setActiveSection(sectionId)
   document.dispatchEvent(new CustomEvent('portal-category-click', { detail: { category: cat } }))
 }
 
+function handleNavClick(id: string) {
+  setActiveSection(id)
+  scrollToSection(id)
+}
+
+function setActiveSection(id: string) {
+  activeSection.value = id
+}
+
 function scrollToSection(id: string) {
-  const el = document.getElementById(id)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  nextTick(() => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  })
 }
 
 function getCategoryCount(cat: SystemCategory): number {
@@ -157,8 +176,44 @@ function goBack() {
   router.push('/')
 }
 
+function handleScroll() {
+  if (isManagePage.value) return
+  const mainEl = document.querySelector('.layout-main')
+  if (!mainEl) return
+  const scrollTop = mainEl.scrollTop
+  const sectionIds = ['favorites', 'category-web', 'category-infra', 'category-tool', 'category-doc']
+  for (const id of sectionIds) {
+    const el = document.getElementById(id)
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      const mainRect = mainEl.getBoundingClientRect()
+      if (rect.top - mainRect.top <= 100) {
+        activeSection.value = id
+      }
+    }
+  }
+}
+
+let scrollListener: (() => void) | null = null
+
 onMounted(() => {
   systemStore.fetchSystems()
+  nextTick(() => {
+    const mainEl = document.querySelector('.layout-main')
+    if (mainEl) {
+      scrollListener = handleScroll
+      mainEl.addEventListener('scroll', scrollListener)
+    }
+  })
+})
+
+onUnmounted(() => {
+  if (scrollListener) {
+    const mainEl = document.querySelector('.layout-main')
+    if (mainEl) {
+      mainEl.removeEventListener('scroll', scrollListener)
+    }
+  }
 })
 </script>
 

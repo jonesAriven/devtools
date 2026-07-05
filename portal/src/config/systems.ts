@@ -101,6 +101,16 @@ export const systems: SystemConfig[] = [
     ],
   },
   {
+    id: 'drone-ci',
+    name: 'Drone CI',
+    description: '持续集成平台：自动化构建、测试、部署流水线',
+    category: 'infra',
+    url: 'https://ci.marschat.online',
+    icon: 'Cpu',
+    color: '#06b6d4',
+    techStack: 'Drone CI + Docker',
+  },
+  {
     id: 'nacos',
     name: 'Nacos 服务中心',
     description: '服务注册与配置中心：服务发现、配置管理、服务治理',

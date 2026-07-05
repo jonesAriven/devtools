@@ -25,7 +25,7 @@
       </el-button>
     </div>
 
-    <div v-if="favoriteSystems.length > 0" id="favorites" class="section-wrapper">
+    <div id="favorites" class="section-wrapper">
       <div class="section-title" @click="favoritesStore.toggleCollapse('favorites')">
         <el-icon class="section-icon"><StarFilled /></el-icon>
         <span>我的收藏</span>
@@ -34,31 +34,34 @@
           <ArrowDown />
         </el-icon>
       </div>
-      <div v-show="!favoritesStore.isCollapsed('favorites')" class="cards-grid">
-        <SystemCard
-          v-for="sys in favoriteSystems"
-          :key="sys.id"
-          :config="sys"
-          :status="healthMap.get(sys.id)?.status || 'unknown'"
-          :latency="healthMap.get(sys.id)?.latency"
-          :is-favorite="true"
-        />
+      <div v-show="!favoritesStore.isCollapsed('favorites')">
+        <div v-if="favoriteSystems.length > 0" class="cards-grid">
+          <SystemCard
+            v-for="sys in favoriteSystems"
+            :key="sys.id"
+            :config="sys"
+            :status="healthMap.get(sys.id)?.status || 'unknown'"
+            :latency="healthMap.get(sys.id)?.latency"
+            :is-favorite="true"
+          />
+        </div>
+        <el-empty v-else description="暂无收藏，点击卡片上的星标收藏常用系统" :image-size="80" />
       </div>
     </div>
 
-    <template v-for="cat in categories" :key="cat">
-      <div v-if="getSystemsByCategory(cat).length > 0" class="section-wrapper" :id="`category-${cat}`">
-        <div class="section-title" @click="favoritesStore.toggleCollapse(cat)">
-          <el-icon class="section-icon">
-            <component :is="categoryIcons[cat]" />
-          </el-icon>
-          <span>{{ categoryLabels[cat] }}</span>
-          <span class="section-count">({{ getSystemsByCategory(cat).length }})</span>
-          <el-icon class="collapse-icon" :class="{ collapsed: favoritesStore.isCollapsed(cat) }">
-            <ArrowDown />
-          </el-icon>
-        </div>
-        <div v-show="!favoritesStore.isCollapsed(cat)" class="cards-grid">
+    <div v-for="cat in categories" :key="cat" class="section-wrapper" :id="`category-${cat}`">
+      <div class="section-title" @click="favoritesStore.toggleCollapse(cat)">
+        <el-icon class="section-icon">
+          <component :is="categoryIcons[cat]" />
+        </el-icon>
+        <span>{{ categoryLabels[cat] }}</span>
+        <span class="section-count">({{ getSystemsByCategory(cat).length }})</span>
+        <el-icon class="collapse-icon" :class="{ collapsed: favoritesStore.isCollapsed(cat) }">
+          <ArrowDown />
+        </el-icon>
+      </div>
+      <div v-show="!favoritesStore.isCollapsed(cat)">
+        <div v-if="getSystemsByCategory(cat).length > 0" class="cards-grid">
           <SystemCard
             v-for="sys in getSystemsByCategory(cat)"
             :key="sys.id"
@@ -67,8 +70,9 @@
             :latency="healthMap.get(sys.id)?.latency"
           />
         </div>
+        <el-empty v-else description="暂无系统" :image-size="80" />
       </div>
-    </template>
+    </div>
 
     <el-empty v-if="filteredSystems.length === 0" description="没有找到匹配的系统" />
   </div>
