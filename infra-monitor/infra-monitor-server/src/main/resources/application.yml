@@ -1,0 +1,42 @@
+server:
+  port: 8088
+  servlet:
+    context-path: /infra
+
+spring:
+  application:
+    name: infra-monitor
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://192.168.31.182:27017/infra_monitor}
+
+crypto:
+  aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
+
+jwt:
+  secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
+  expiration: 86400000
+
+infra:
+  admin:
+    username: ${INFRA_ADMIN_USER:admin}
+    password: ${INFRA_ADMIN_PASS:admin123}
+
+logging:
+  level:
+    com.kb.infra: debug
+    org.springframework.security: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

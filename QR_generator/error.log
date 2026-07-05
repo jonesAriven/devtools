@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "qr_generator.py", line 24, in <module>
-    from mss import mss
-ModuleNotFoundError: No module named 'mss'
