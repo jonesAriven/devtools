@@ -92,11 +92,20 @@ steps:
           # 2. 本地构建 Docker 镜像（内网速度快）
           echo ">>> [2/4] 构建 Docker 镜像 <<<"
           cd /root/devtools/mykng
-          # 先并行构建所有镜像（不启动容器）
-          docker compose -p kb-deploy build \
+
+          # 🔒 关键：每次都 --no-cache 构建全新镜像，绝不使用旧缓存
+          # 这样保证每次部署的都是当前 commit 对应的最新代码产物
+          # 虽然 --no-cache 会稍慢（无法利用层缓存），
+          # 但能100%避免"代码更新了但镜像还是旧的"的致命问题
+          echo "--- 当前 commit: $(git rev-parse HEAD) ---"
+          echo "--- 各服务 jar 包时间戳 ---"
+          ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar kb-knowledge/target/*.jar kb-intelligence/target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在，需要先编译"
+
+          docker compose -p kb-deploy build --no-cache \
             kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
-            2>&1 | tail -20
-          echo "✅ 镜像构建完成"
+            2>&1 | tail -30
+
+          echo "✅ 镜像构建完成（全新构建，无缓存）"
           docker images | grep "kb-deploy" | head -10
         - |
           # 3. 按依赖顺序滚动重启（每个服务独立重启，避免全部停机）
