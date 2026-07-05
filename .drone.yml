@@ -167,7 +167,7 @@ steps:
     image: drillster/drone-email
     settings:
       host: smtp.zoho.com.cn
-      port: 587
+      port: 465
       username: marschatonline@zohomail.cn
       password:
         from_secret: smtp_pass
