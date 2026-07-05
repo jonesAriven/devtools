@@ -48,34 +48,34 @@ steps:
       - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar
 
   # ============================================================
-  # Step 2: Docker 构建 + 推送 Nexus
+  # Step 2: Docker 构建 + 推送 Nexus（本地手动执行，CI跳过）
   # ============================================================
-  - name: docker-build-push
-    image: docker:24-cli
-    volumes:
-      - name: docker-sock
-        path: /var/run/docker.sock
-    environment:
-      NEXUS_USER:
-        from_secret: nexus_user
-      NEXUS_PASS:
-        from_secret: nexus_pass
-    commands:
-      - echo "=== Docker 构建 + 推送 ==="
-      - SHORT_TAG=$${DRONE_COMMIT_SHA:0:8}
-      - docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
-      - |
-        for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
-          echo "--- 构建 $svc:$SHORT_TAG ---"
-          docker build -t $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG -t $NEXUS_REGISTRY/mykng/$svc:latest mykng/$svc
-          docker push $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG
-          docker push $NEXUS_REGISTRY/mykng/$svc:latest
-        done
-      - echo "=== 镜像推送完成 ==="
-      - docker images | grep mykng
+  # - name: docker-build-push
+  #   image: docker:24-cli
+  #   volumes:
+  #     - name: docker-sock
+  #       path: /var/run/docker.sock
+  #   environment:
+  #     NEXUS_USER:
+  #       from_secret: nexus_user
+  #     NEXUS_PASS:
+  #       from_secret: nexus_pass
+  #   commands:
+  #     - echo "=== Docker 构建 + 推送 ==="
+  #     - SHORT_TAG=$${DRONE_COMMIT_SHA:0:8}
+  #     - docker login $NEXUS_REGISTRY -u $NEXUS_USER -p $NEXUS_PASS
+  #     - |
+  #       for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+  #         echo "--- 构建 $svc:$SHORT_TAG ---"
+  #         docker build -t $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG -t $NEXUS_REGISTRY/mykng/$svc:latest mykng/$svc
+  #         docker push $NEXUS_REGISTRY/mykng/$svc:$SHORT_TAG
+  #         docker push $NEXUS_REGISTRY/mykng/$svc:latest
+  #       done
+  #     - echo "=== 镜像推送完成 ==="
+  #     - docker images | grep mykng
 
 # ============================================================
-# Step 2: 部署到 mykng-debain
+# Step 3: 部署到 mykng-debain
 # ============================================================
   - name: deploy
     image: appleboy/drone-ssh
