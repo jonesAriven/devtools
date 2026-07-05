@@ -72,8 +72,8 @@ steps:
       password:
         from_secret: deploy_pass
       port: 22
-      script_timeout: 900  # 15分钟超时（本地构建5个镜像需要时间）
-      command_timeout: 300
+      script_timeout: 15m  # 15分钟超时（本地构建5个镜像需要时间）
+      command_timeout: 5m   # 单条命令超时5分钟
       script:
         - |
           echo "============================================="
