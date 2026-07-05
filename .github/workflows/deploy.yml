@@ -162,13 +162,13 @@ jobs:
                  mykng/kb-knowledge/target/*.jar \
                  mykng/kb-intelligence/target/*.jar
 
-      - name: 🚀 部署到目标服务器
+      - name: 🚀 部署到目标服务器 (via FRP)
         uses: appleboy/ssh-action@v1.1.0
         with:
-          host: ${{ secrets.MYKNG_HOST }}
+          host: ${{ secrets.FRP_HOST }}
           username: root
           password: ${{ secrets.DEPLOY_PASS }}
-          port: 22
+          port: ${{ secrets.MYKNG_SSH_PORT }}
           script_timeout: 15m
           script: |
             cd /root/devtools
@@ -213,13 +213,13 @@ jobs:
           echo "=== 编译产物 ==="
           ls -lh active-manager/activation-code-server/target/*.jar
 
-      - name: 🚀 部署到目标服务器
+      - name: 🚀 部署到目标服务器 (via FRP)
         uses: appleboy/ssh-action@v1.1.0
         with:
-          host: ${{ secrets.ACTIVE_MANAGER_HOST }}
+          host: ${{ secrets.FRP_HOST }}
           username: root
           password: ${{ secrets.DEPLOY_PASS }}
-          port: 22
+          port: ${{ secrets.ACTIVE_MANAGER_SSH_PORT }}
           script_timeout: 10m
           script: |
             cd /root/devtools
@@ -254,12 +254,12 @@ jobs:
 # ============================================================
 # 📖 Secrets 配置清单（在 GitHub 仓库 Settings 中配置）
 # ============================================================
-# | Secret 名           | 用途           | 值                    |
-# |---------------------|---------------|-----------------------|
-# | DEPLOY_PASS         | SSH 登录密码   | 目标机器的 root 密码  |
-# | MYKNG_HOST          | mykng 目标主机 | 100.93.36.113         |
-# | ACTIVE_MANAGER_HOST | 激活码目标主机 | 192.168.31.182        |
-# | SMTP_PASS           | Zoho SMTP密码 | 应用专用密码           |
+# | Secret 名              | 用途             | 值                      |
+# |------------------------|-----------------|-------------------------|
+# | DEPLOY_PASS            | SSH 登录密码     | 目标机器的 root 密码    |
+# | FRP_HOST               | FRP 服务端公网IP | 120.26.66.182           |
+# | MYKNG_SSH_PORT         | mykng SSH 穿透端口 | 3385                    |
+# | ACTIVE_MANAGER_SSH_PORT| 激活码 SSH 穿透端口 | 3383                    |
 #
 # 配置路径: Settings → Secrets and variables → Actions → New repository secret
 # ============================================================
