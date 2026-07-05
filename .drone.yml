@@ -3,28 +3,20 @@
 # ============================================================
 #
 # 🎯 功能特性:
-#   1. ✅ Push 自动触发（push 到 dev/master 分支，修改 mykng/ 目录）
+#   1. ✅ Push 自动触发（push 到 dev/master，修改 mykng/ 目录）
 #   2. ✅ 手动触发（Drone 网页 "Run" 按钮 + 传入参数）
-#   3. ⏰ 定时触发（每天凌晨 3:00 自动构建部署）
+#   3. ⏰ 定时触发（每天凌晨自动构建部署，需在 Drone UI 配置 Cron）
 #   4. 🌍 多环境支持（通过 DEPLOY_TARGET 参数选择目标服务器）
 #
 # 🔧 手动触发方式:
 #   方式A - Drone 网页:
 #     打开 https://ci.marschat.online/jonesAriven/devtools
-#     点击右上角 "Run" → 勾选 "Custom" → 传入参数:
+#     点击右上角 "New Build" → 勾选 "Custom" → 传入参数:
 #       DEPLOY_TARGET=production   (默认，部署到 mykng-debain)
-#       DEPLOY_TARGET=test         (测试环境)
-#       BRANCH=dev                (指定分支，默认 dev)
 #
 #   方式B - Drone CLI:
 #     drone build add jonesAriven/devtools \
-#       --param DEPLOY_TARGET=production \
-#       --param BRANCH=dev
-#
-#   方式C - API:
-#     curl -X POST https://ci.marschat.online/api/repos/jonesAriven/devtools/builds \
-#       -H "Authorization: Bearer $DRONE_TOKEN" \
-#       -d '{"branch":"dev", "params":{"DEPLOY_TARGET":"production"}}'
+#       --param DEPLOY_TARGET=production
 #
 # 📋 优化记录 (2026-07-05):
 #   - SSH 到目标服务器本地 docker build+deploy（绕过慢速 Nexus push）
@@ -42,30 +34,18 @@ trigger:
     - dev
     - master
   event:
-    - push
-    - custom      # 允许手动触发
-  # Push 自动触发：只有修改了 mykng/ 目录才触发
+    - push        # Push 到 dev/master 自动触发
+    - custom      # 手动触发（Run 按钮）
+  # Push 自动触发：只有修改了 mykng/ 目录才触发（custom 事件不受此限制）
   paths:
-    - "mykng/**"
+    include:
+      - "mykng/**"
+    exclude:
+      - "*.md"
 
-# ---------- 定时触发（每天凌晨 3:00 自动构建）----------
-# 注意：Drone Server 需要开启 CRON_ENABLED=true
----
-kind: pipeline
-type: docker
-name: mykng-cicd-nightly
-
-trigger:
-  event:
-    - cron
-  cron:
-    - nightly-build
-
-# ---------- 全局变量 ----------
+# ---------- 全局变量（可通过手动参数覆盖）----------
 environment:
-  # 默认值可通过手动触发时的参数覆盖
   DEPLOY_TARGET: production
-  DEPLOY_BRANCH: dev
 
 # ============================================================
 # Step 1: Maven 编译
@@ -85,7 +65,7 @@ steps:
         echo "  分支: ${DRONE_COMMIT_BRANCH:-dev}"
         echo "  Commit: ${DRONE_COMMIT_SHA}"
         echo "  触发事件: ${DRONE_BUILD_EVENT}"
-        echo "  部署目标: ${DEPLOY_TARGET}"
+        echo "  部署目标: ${DEPLOY_TARGET:-production}"
         echo "============================================="
       - cd mykng/kb-parent
       - mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/root/.m2/repository
@@ -102,8 +82,7 @@ steps:
   - name: deploy
     image: appleboy/drone-ssh
     settings:
-      host:
-        from_secret: deploy_host
+      host: 100.93.36.113
       username: root
       password:
         from_secret: deploy_pass
@@ -111,34 +90,34 @@ steps:
       script_timeout: 15m
       command_timeout: 5m
     environment:
-      # 从参数或默认值获取部署目标
       DEPLOY_TARGET: ${DEPLOY_TARGET:-production}
-      DEPLOY_BRANCH: ${DEPLOY_BRANCH:-${DRONE_COMMIT_BRANCH:-dev}}
+    when:
+      event:
+        - push
+        - custom
     script:
       - |
         echo "============================================="
         echo "  mykng 自动部署开始"
         echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "  Commit: $DRONE_COMMIT_SHA"
-        echo "  分支: ${DEPLOY_BRANCH}"
-        echo "  目标: ${DEPLOY_TARGET}"
+        echo "  目标: ${DEPLOY_TARGET:-production}"
         echo "  触发: ${DRONE_BUILD_EVENT}"
         echo "============================================="
       - |
         # ======== 根据部署目标选择配置 ========
-        case "${DEPLOY_TARGET}" in
+        TARGET="${DEPLOY_TARGET:-production}"
+        case "${TARGET}" in
           production)
-            DEPLOY_HOST="100.93.36.113"
             PROJECT_NAME="kb-deploy"
             echo "📍 部署目标: 生产环境 (mykng-debain)"
             ;;
           test)
-            DEPLOY_HOST="100.93.36.113"
             PROJECT_NAME="kb-test"
             echo "📍 部署目标: 测试环境"
             ;;
           *)
-            echo "❌ 未知的部署目标: ${DEPLOY_TARGET}"
+            echo "❌ 未知的部署目标: ${TARGET}"
             echo "   可用选项: production, test"
             exit 1
             ;;
@@ -148,9 +127,9 @@ steps:
         echo ""
         echo ">>> [1/4] 同步代码 <<<"
         cd /root/devtools
-        git fetch origin "${DEPLOY_BRANCH}"
-        git reset --hard "origin/${DEPLOY_BRANCH}"
-        echo "✅ 代码已同步到 $(git rev-parse --short HEAD) (${DEPLOY_BRANCH})"
+        git fetch origin "${DRONE_COMMIT_BRANCH:-dev}"
+        git reset --hard "origin/${DRONE_COMMIT_BRANCH:-dev}"
+        echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
       - |
         # 2. 本地构建 Docker 镜像
         echo ""
@@ -201,11 +180,9 @@ steps:
         echo "--- 服务状态 ---"
         docker compose -p "${PROJECT_NAME}" ps
 
-        GATEWAY_PORT=$(docker compose -p "${PROJECT_NAME}" port kb-gateway 8080 2>/dev/null | cut -d: -f2 || echo "8090")
-        echo "--- Gateway 健康检查 (port: ${GATEWAY_PORT}) ---"
-
+        echo "--- Gateway 健康检查 ---"
         for i in $(seq 1 6); do
-          if curl -sf "http://localhost:${GATEWAY_PORT}/kb/actuator/health" > /dev/null 2>&1; then
+          if curl -sf http://localhost:8090/kb/actuator/health > /dev/null 2>&1; then
             echo "✅ Gateway 健康! (尝试 $i)"
             break
           fi
@@ -216,8 +193,7 @@ steps:
         echo ""
         echo "============================================="
         echo "  mykng 部署完成!"
-        echo "  环境: ${DEPLOY_TARGET}"
-        echo "  分支: ${DEPLOY_BRANCH}"
+        echo "  环境: ${TARGET}"
         echo "  Commit: $(git rev-parse --short HEAD)"
         echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "============================================="
@@ -262,30 +238,30 @@ volumes:
       path: /root/.m2/repository
 
 # ============================================================
-# Cron 定时任务（每天凌晨 3:00 北京时间）
+# ⏰ 定时任务配置说明
 # ============================================================
-# 使用方式：
-#   1. 确保 Drone Server 启动时设置了 CRON_ENABLED=true
-#   2. 在 Drone 项目 Settings → Cron 中添加：
-#      Name: nightly-build
-#      Expression: 0 19 * * *   (UTC 19:00 = 北京时间 03:00)
-#      Branch: dev
-#   3. 或者在 Drone UI 中点击项目 → Settings → Cron → New Cron
+# Drone Cron 需要在 Web UI 中配置（不支持在 .drone.yml 中定义）：
+#
+# 步骤：
+#   1. 打开 https://ci.marschat.online/jonesAriven/devtools/settings
+#   2. 找到 "Cron Jobs" 部分
+#   3. 点击 "New Cron Job"
+#   4. 填写：
+#      - Name: nightly-build
+#      - Schedule: 0 19 * * *   (UTC 19:00 = 北京时间 03:00)
+#      - Branch: dev
+#      - (可选) 传入参数: DEPLOY_TARGET=production
+#   5. 保存
+#
+# 注意：Drone Server 需要设置环境变量 CRON_ENABLED=true
 # ============================================================
----
-kind: cron
-name: nightly-build
-spec:
-  # UTC 时间：每天 19:00 = 北京时间 03:00
-  schedule: '0 19 * * *'
-  branch: dev
 
 # ============================================================
-# Secrets 配置清单（需要在 Drone Repository Secrets 中配置）
+# Secrets 配置清单
 # ============================================================
+# 在 Drone Repository Settings → Secrets 中配置：
 # | Secret 名    | 用途           | 说明                    |
 # |-------------|---------------|-------------------------|
 # | deploy_pass  | SSH 登录密码   | 目标服务器的 root 密码   |
-# | deploy_host  | 部署目标主机   | 默认 100.93.36.113       |
 # | smtp_pass    | Zoho SMTP密码 | 应用专用密码（待配置）   |
 # ============================================================
