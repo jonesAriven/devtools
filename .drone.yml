@@ -51,12 +51,10 @@ steps:
   # Step 2: Docker 构建 + 推送 Nexus
   # ============================================================
   - name: docker-build-push
-    image: alpine:latest
+    image: docker:24-cli
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
-      - name: docker-bin
-        path: /usr/bin/docker
     environment:
       NEXUS_USER:
         from_secret: nexus_user
