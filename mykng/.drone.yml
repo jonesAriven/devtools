@@ -1,0 +1,39 @@
+# ============================================================
+# mykng 项目 CI/CD 配置（被根目录 .drone.yml 引用）
+# ============================================================
+# 此文件定义 mykng 项目的构建和部署逻辑
+# 根目录 .drone.yml 负责调度，此文件负责具体实现
+#
+# 部署目标:
+#   production → mykng-debain (100.93.36.113 / Tailscale)
+#   test       → 测试环境
+#
+# 服务列表:
+#   kb-gateway (:8090) → API 网关 + JWT 鉴权
+#   kb-auth     (:8081) → 认证服务
+#   kb-file     (:8082) → 文件服务
+#   kb-knowledge(:8083) → 知识库服务
+#   kb-intelligence(:8086) → AI 智能服务
+# ============================================================
+
+# Maven 编译配置
+MAVEN_IMAGE: maven:3.9-eclipse-temurin-21
+MAVEN_OPTS: -Xmx2048m
+MAVEN_CMD: |
+  cd mykng/kb-parent &&
+  mvn clean package -DskipTests -B -V -ntp \
+    -Dmaven.repo.local=/root/.m2/repository &&
+  cd ../.. &&
+  echo "=== 编译产物 ===" &&
+  ls -lh mykng/kb-gateway/target/*.jar \
+        mykng/kb-auth/target/*.jar \
+        mykng/kb-file/target/*.jar \
+        mykng/kb-knowledge/target/*.jar \
+        mykng/kb-intelligence/target/*.jar
+
+# 部署配置
+DEPLOY_HOST: 100.93.36.113
+DEPLOY_USER: root
+DEPLOY_PORT: 22
+DEPLOY_SCRIPT: mykng/deploy.sh
+DEPLOY_TIMEOUT: 15m
