@@ -68,6 +68,7 @@ on:
 env:
   MAVEN_OPTS: '-Xmx2048m'
   MAVEN_CLI: 'clean package -DskipTests -B -V -ntp'
+  NEXUS_URL: 'https://nexus.marschat.online/repository/maven-public/'
 
 # ============================================================
 # 并发控制：同一分支只保留最新的运行
@@ -148,11 +149,38 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: 📝 配置 Maven settings.xml (Nexus私服)
+        env:
+          NEXUS_USER: ${{ secrets.NEXUS_USER }}
+          NEXUS_PASS: ${{ secrets.NEXUS_PASS }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus-public</id>
+                <username>${NEXUS_USER}</username>
+                <password>${NEXUS_PASS}</password>
+              </server>
+            </servers>
+            <mirrors>
+              <mirror>
+                <id>nexus-public</id>
+                <mirrorOf>*</mirrorOf>
+                <url>${NEXUS_URL}</url>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+          echo "✅ Maven settings.xml 已配置，使用 Nexus 私服: ${NEXUS_URL}"
+
       - name: 🔨 Maven 编译 mykng
         run: |
           echo "============================================="
           echo "  [mykng] Maven 编译"
           echo "  环境: ${DEPLOY_ENV}"
+          echo "  Maven 仓库: ${NEXUS_URL}"
           echo "============================================="
           cd mykng/kb-parent && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
@@ -203,11 +231,38 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: 📝 配置 Maven settings.xml (Nexus私服)
+        env:
+          NEXUS_USER: ${{ secrets.NEXUS_USER }}
+          NEXUS_PASS: ${{ secrets.NEXUS_PASS }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus-public</id>
+                <username>${NEXUS_USER}</username>
+                <password>${NEXUS_PASS}</password>
+              </server>
+            </servers>
+            <mirrors>
+              <mirror>
+                <id>nexus-public</id>
+                <mirrorOf>*</mirrorOf>
+                <url>${NEXUS_URL}</url>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+          echo "✅ Maven settings.xml 已配置，使用 Nexus 私服: ${NEXUS_URL}"
+
       - name: 🔨 Maven 编译 active-manager
         run: |
           echo "============================================="
           echo "  [active-manager] Maven 编译"
           echo "  环境: ${DEPLOY_ENV}"
+          echo "  Maven 仓库: ${NEXUS_URL}"
           echo "============================================="
           cd active-manager/activation-code-server && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
@@ -260,6 +315,8 @@ jobs:
 # | FRP_HOST               | FRP 服务端公网IP | 120.26.66.182           |
 # | MYKNG_SSH_PORT         | mykng SSH 穿透端口 | 3385                    |
 # | ACTIVE_MANAGER_SSH_PORT| 激活码 SSH 穿透端口 | 3383                    |
+# | NEXUS_USER             | Nexus 用户名     | admin                   |
+# | NEXUS_PASS             | Nexus 密码       | (你的 Nexus 密码)       |
 #
 # 配置路径: Settings → Secrets and variables → Actions → New repository secret
 # ============================================================
