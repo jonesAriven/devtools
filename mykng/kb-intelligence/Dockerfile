@@ -8,10 +8,10 @@ WORKDIR /app
 COPY target/kb-intelligence.jar /app/kb-intelligence.jar
 
 # 时区设置（使用阿里云alpine源）
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \\
-    apk add --no-cache tzdata && \\
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \\
-    echo "Asia/Shanghai" > /etc/timezone && \\
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone && \
     apk del tzdata
 
 EXPOSE 8086
