@@ -158,13 +158,14 @@ jobs:
 
       - name: 🚀 安装 Maven Daemon (mvnd)
         run: |
-          # 安装 mvnd: Maven Daemon，使用内嵌构建引擎，速度提升 50-200%
-          curl -fsSL https://github.com/mvndaemon/mvn-daemon/releases/download/0.9.0/mvnd-0.9.0-linux-amd64.zip \
+          # 安装 mvnd (Apache Maven Daemon): 内嵌构建引擎 + 常驻 JVM，速度提升 50-200%
+          # 仓库已迁移至 apache/maven-mvnd，最新版 1.0.6
+          curl -fsSL https://github.com/apache/maven-mvnd/releases/download/1.0.6/maven-mvnd-1.0.6-linux-amd64.zip \
             -o /tmp/mvnd.zip && \
             sudo unzip -q /tmp/mvnd.zip -d /opt && \
-            sudo ln -sf /opt/mvnd-0.9.0/bin/mvnd /usr/local/bin/mvnd && \
+            sudo ln -sf /opt/maven-mvnd-1.0.6/bin/mvnd /usr/local/bin/mvnd && \
           echo "✅ mvnd $(mvnd --version | head -1) 已安装"
-          # 预热 daemon
+          # 预热 daemon（首次启动会慢，后续复用进程）
           mvnd --version
 
       - name: 📝 配置 Maven settings.xml (Nexus私服)
@@ -302,10 +303,10 @@ jobs:
 
       - name: 🚀 安装 Maven Daemon (mvnd)
         run: |
-          curl -fsSL https://github.com/mvndaemon/mvn-daemon/releases/download/0.9.0/mvnd-0.9.0-linux-amd64.zip \
+          curl -fsSL https://github.com/apache/maven-mvnd/releases/download/1.0.6/maven-mvnd-1.0.6-linux-amd64.zip \
             -o /tmp/mvnd.zip && \
             sudo unzip -q /tmp/mvnd.zip -d /opt && \
-            sudo ln -sf /opt/mvnd-0.9.0/bin/mvnd /usr/local/bin/mvnd && \
+            sudo ln -sf /opt/maven-mvnd-1.0.6/bin/mvnd /usr/local/bin/mvnd && \
           echo "✅ mvnd $(mvnd --version | head -1) 已安装"
           mvnd --version
 
