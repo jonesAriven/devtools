@@ -216,7 +216,7 @@ jobs:
             </servers>
           </settings>
           EOF
-          mvn deploy -DskipTests -B -ntp -s /tmp/nexus-settings.xml
+          mvn deploy -DskipTests -B -ntp -s /tmp/nexus-settings.xml -DoverwriteReleases=true -DoverwriteSnapshots=true
           
           cd ../..
           echo "✅ kb-common 已编译 + 发布到 Nexus"
