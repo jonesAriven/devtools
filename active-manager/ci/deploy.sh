@@ -5,15 +5,16 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# 部署信息:
+# 部署信息（基于实际服务器检查 2026-07-06）:
 #   项目名: activation-code-server
-#   端口: 18080 (映射到容器 8080)
+#   端口: 18080(宿主机) → 8080(容器)
 #   Docker Compose Project: activecode
 #   容器名: activecode
 #   数据库: 宿主机 MySQL (host.docker.internal:3306/tools)
+#   DB凭据: tools / toolsmarschat
 #
 # 部署目标:
-#   内网Debian (192.168.31.182) 或 mykng
+#   mykng-debain (当前运行在此服务器)
 # ============================================================
 
 set -e
@@ -70,11 +71,11 @@ cd "${COMPOSE_DIR}"
 
 if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
   echo "--- 停止旧容器 ${CONTAINER_NAME} ---"
-  # 先优雅停止（等待30秒）
-  docker stop ${CONTAINER_NAME} || true
+  # 使用 docker compose 停止（更优雅）
+  docker compose -p "${PROJECT_NAME}" down 2>/dev/null || true
   sleep 5
-  # 删除旧容器
-  docker rm -f ${CONTAINER_NAME} || true
+  # 强制清理残留
+  docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
   echo "✅ 旧容器已删除"
 else
   echo "ℹ️ 没有运行中的容器，跳过停止"

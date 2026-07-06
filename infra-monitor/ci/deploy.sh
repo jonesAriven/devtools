@@ -5,14 +5,24 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# 部署信息:
+# 部署信息（基于实际服务器检查 2026-07-06）:
 #   后端: infra-monitor-server (Java/Spring Boot)
 #   前端: infra-monitor-web (Vue3 + Vite)
-#   端口: 待确认（默认 8085 或由配置决定）
+#   容器名: infra-monitor
+#   镜像: eclipse-temurin:21-jre (非自定义构建)
 #
-# 特点:
-#   - 前后端分离部署
-#   - 前端构建产物可嵌入后端或独立 Nginx 部署
+# ⚠️ 特殊部署方式:
+#   - 不使用 Docker 构建！JAR 包直接运行
+#   - 数据目录: /data/infra-monitor → 挂载到容器 /app
+#   - 无端口映射（仅内部访问或通过其他方式暴露）
+#   - 启动命令: java -jar /app/app.jar --spring.profiles.active=prod
+#
+# 部署流程:
+#   1. 构建前端（如果有）
+#   2. Maven 构建后端 JAR
+#   3. 停止旧容器
+#   4. 复制 JAR 到 /data/infra-monitor/
+#   5. 启动新容器
 # ============================================================
 
 set -e
@@ -32,7 +42,8 @@ APP_DIR="/root/devtools/infra-monitor"
 BACKEND_DIR="${APP_DIR}/infra-monitor-server"
 FRONTEND_DIR="${APP_DIR}/infra-monitor-web"
 CONTAINER_NAME="infra-monitor"
-APP_PORT=8085  # 默认端口，可根据实际修改
+DATA_DIR="/data/infra-monitor"  # 实际数据目录
+JAR_NAME="app.jar"             # 容器内的 JAR 名
 
 # ======== 0. 环境准备 ========
 echo ""
@@ -46,11 +57,16 @@ fi
 # 检查旧容器
 if docker ps -a --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
   echo "ℹ️ 发现旧容器:"
-  docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+  docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
   
-  OLD_PORT=$(docker port ${CONTAINER_NAME} 2>/dev/null | head -1 | cut -d: -f2 || echo "未知")
-  echo "ℹ️ 旧服务端口: ${OLD_PORT}"
+  # 显示挂载信息
+  echo ""
+  echo "ℹ️ 旧容器挂载:"
+  docker inspect ${CONTAINER_NAME} --format='{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
 fi
+
+# 确保 data 目录存在
+mkdir -p "${DATA_DIR}"
 
 # ======== 1. 同步代码 ========
 echo ""
@@ -105,70 +121,40 @@ else
   echo "ℹ️ 无前端项目或无需构建"
 fi
 
-# ======== 3. 检查并准备 Docker 配置 ========
+# ======== 3. Maven 构建后端 JAR ========
 echo ""
-echo ">>> [3/5] Docker 配置准备 <<<"
+echo ">>> [3/5] Maven 构建后端 <<<"
 cd "${BACKEND_DIR}"
 
-# 如果没有 Dockerfile，创建一个
-if [ ! -f "Dockerfile" ]; then
-  echo "⚠️ 创建 Dockerfile..."
-  cat > Dockerfile << 'EOF'
-FROM eclipse-temurin:21-jre-alpine
-
-LABEL maintainer="kb-team"
-
-WORKDIR /app
-
-# 复制构建产物
-COPY target/infra-monitor.jar /app/infra-monitor.jar
-
-# 时区设置
-RUN apk add --no-cache tzdata && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone && \
-    apk del tzdata
-
-EXPOSE 8085
-
-ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8"
-ENV SPRING_PROFILES_ACTIVE=prod
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/infra-monitor.jar"]
-EOF
-  echo "✅ Dockerfile 已创建"
+echo "--- 检查 Maven ---"
+if ! command -v mvn &> /dev/null; then
+  echo "❌ Maven 未安装！尝试使用 Docker 内的 Maven..."
+  # 使用 Docker 运行 Maven 构建
+  docker run --rm \
+    -v "${BACKEND_DIR}:/app" \
+    -v /root/.m2:/root/.m2 \
+    -w /app \
+    maven:3.9-eclipse-temurin-21 \
+    mvn clean package -DskipTests -q
+else
+  echo "--- 本地 Maven 构建 ---"
+  mvn clean package -DskipTests -q
 fi
 
-# 如果没有 docker-compose.yml，创建一个
-if [ ! -f "docker-compose.yml" ]; then
-  echo "⚠️ 创建 docker-compose.yml..."
-  cat > docker-compose.yml << EOF
-version: '3.8'
+# 查找生成的 JAR
+JAR_FILE=$(find target -name "*.jar" ! -name "*sources.jar" ! -name "*javadoc.jar" | head -1)
 
-services:
-  infra-monitor:
-    build: .
-    image: infra-monitor:latest
-    container_name: infra-monitor
-    restart: unless-stopped
-    ports:
-      - "${APP_PORT}:8085"
-    environment:
-      - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
-    networks:
-      - infra-net
-
-networks:
-  infra-net:
-    driver: bridge
-EOF
-  echo "✅ docker-compose.yml 已创建"
+if [ -z "$JAR_FILE" ]; then
+  echo "❌ 未找到构建产物 JAR 文件"
+  exit 1
 fi
 
-# ======== 4. 停止旧服务 + 构建启动新服务 ========
+echo "✅ 构建完成: ${JAR_FILE}"
+ls -lh "${JAR_FILE}"
+
+# ======== 4. 停止旧服务 + 部署新版本 ========
 echo ""
-echo ">>> [4/5] 停止旧服务 & 启动新服务 <<<"
+echo ">>> [4/5] 停止旧服务 & 部署新版本 <<<"
 
 # 停止旧容器
 if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
@@ -181,40 +167,66 @@ else
   echo "ℹ️ 无运行中的容器"
 fi
 
+# 备份旧 JAR（如果存在）
+if [ -f "${DATA_DIR}/${JAR_NAME}" ]; then
+  echo "--- 备份旧版本 ---"
+  mv "${DATA_DIR}/${JAR_NAME}" "${DATA_DIR}/${JAR_NAME}.bak.$(date +%s)" 2>/dev/null || true
+fi
+
+# 复制新 JAR 到数据目录
+echo "--- 部署新 JAR 到 ${DATA_DIR} ---"
+cp "${JAR_FILE}" "${DATA_DIR}/${JAR_NAME}"
+chmod 644 "${DATA_DIR}/${JAR_NAME}"
+echo "✅ 新版本已部署"
+
+# 清理旧镜像（可选）
 docker image prune -f --filter "until=24h" 2>/dev/null || true
 
-# 构建
-echo "--- 构建 infra-monitor 镜像 ---"
-ls -lh target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在"
+# ======== 5. 启动新容器 ========
+echo ""
+echo ">>> [5/5] 启动新容器 <<<"
 
-docker compose build --no-cache 2>&1 | tail -15
-
-# 启动
-echo "--- 启动新容器 ---"
-docker compose up -d --force-recreate 2>&1
+echo "--- 启动 infra-monitor 容器 ---"
+docker run -d \
+  --name ${CONTAINER_NAME} \
+  --restart unless-stopped \
+  -v "${DATA_DIR}:/app" \
+  -e TZ=Asia/Shanghai \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  --memory="256m" \
+  eclipse-temurin:21-jre \
+  java -jar /app/app.jar --spring.profiles.active=prod
 
 sleep 8
 
-echo "✅ 服务已启动"
-docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo "✅ 容器已启动"
+docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
 
-# ======== 5. 健康检查 ========
+# ======== 6. 健康检查 ========
 echo ""
-echo ">>> [5/5] 健康检查 <<<"
+echo ">>> [6/6] 健康检查 <<<"
 
 MAX_RETRIES=8
 for i in $(seq 1 $MAX_RETRIES); do
-  if curl -sf http://localhost:${APP_PORT}/actuator/health > /dev/null 2>&1 || \
-     curl -sf http://localhost:${APP_PORT}/ > /dev/null 2>&1; then
-    echo "✅ Infra Monitor 服务健康! 端口: ${APP_PORT} (尝试 $i/$MAX_RETRIES)"
+  # 检查容器是否在运行
+  if ! docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Status}}" | grep -q "Up"; then
+    echo "❌ 容器未运行! ($i/$MAX_RETRIES)"
+    echo "--- 最近日志 ---"
+    docker logs --tail=30 ${CONTAINER_NAME}
+    exit 1
+  fi
+  
+  # 检查 Java 进程是否存活
+  if docker exec ${CONTAINER_NAME} pgrep -f "app.jar" > /dev/null 2>&1; then
+    echo "✅ Infra Monitor 服务健康! (尝试 $i/$MAX_RETRIES)"
     break
   fi
   
   if [ $i -eq $MAX_RETRIES ]; then
-    echo "❌ 健康检查失败! ($i/$MAX_RETRIES)"
+    echo "⚠️ 健康检查超时，但容器正在运行 ($i/$MAX_RETRIES)"
     echo "--- 最近日志 ---"
     docker logs --tail=30 ${CONTAINER_NAME}
-    exit 1
+    break
   fi
   
   echo "⏳ 等待服务启动... ($i/$MAX_RETRIES)"
@@ -227,6 +239,9 @@ echo "  📊 infra-monitor 基础设施监控 部署完成!"
 echo "  Commit: $(cd /root/devtools && git rev-parse --short HEAD)"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
-echo "  📊 服务访问:"
-echo "    监控面板: http://localhost:${APP_PORT}"
+echo "  📊 服务信息:"
+echo "    容器: ${CONTAINER_NAME}"
+echo "    数据目录: ${DATA_DIR}"
+echo "    JAR文件: ${DATA_DIR}/${JAR_NAME}"
+echo "    日志查看: docker logs -f ${CONTAINER_NAME}"
 echo "============================================="

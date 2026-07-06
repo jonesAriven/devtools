@@ -5,11 +5,13 @@
 # 用法: bash deploy.sh <commit_sha> <branch> <deploy_target>
 # 示例: bash deploy.sh abc1234 dev production
 #
-# 部署信息:
-#   项目名: kb-ops
-#   端口: 8084 (容器内部)
+# 部署信息（基于实际服务器检查 2026-07-06）:
+#   项目名: kb-ops (运维平台)
+#   端口: 8084(宿主机) → 8084(容器)
 #   Docker Compose Project: kb-ops
 #   容器名: kb-ops
+#   镜像: kb-ops:1.0.0 (当前运行版本)
+#   数据库: 使用 kb-mysql (kb_ops 库)
 #
 # 注意: 此脚本会自动检测是否首次部署，
 #       首次部署时自动创建 docker-compose.yml
@@ -73,16 +75,18 @@ echo ""
 echo ">>> [2/4] 部署准备 <<<"
 cd "${APP_DIR}"
 
-# 检查是否有 docker-compose.yml，没有则创建
+# 检查是否有 docker-compose.yml，没有则创建（基于实际配置）
 if [ ! -f "docker-compose.yml" ]; then
   echo "⚠️ 首次部署：创建 docker-compose.yml..."
-  cat > docker-compose.yml << 'EOF'
+  cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
   kb-ops:
-    build: .
-    image: kb-ops:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kb-ops:1.0.0
     container_name: kb-ops
     restart: unless-stopped
     ports:
@@ -90,18 +94,20 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
-      # 根据实际情况修改数据库连接
-      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/kb_ops?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+      # 连接到 mykng 的 kb-mysql 容器（同一 Docker 网络）
+      - SPRING_DATASOURCE_URL=jdbc:mysql://kb-mysql:3306/kb_ops?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=kb123456
     networks:
-      - kb-ops-net
+      - kb-net  # 复用 mykng 的网络，可访问 kb-mysql
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
-  kb-ops-net:
-    driver: bridge
+  kb-net:
+    external: true  # 使用 mykng 已有的 kb-net 网络
 EOF
-  echo "✅ docker-compose.yml 已创建"
+  echo "✅ docker-compose.yml 已创建（使用外部 kb-net 网络）"
 else
   echo "✅ 使用现有 docker-compose.yml"
 fi
@@ -113,9 +119,9 @@ echo ">>> [3/4] 停止旧服务 & 启动新服务 <<<"
 # 停止并删除旧容器
 if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
   echo "--- 停止旧容器 ---"
-  docker stop ${CONTAINER_NAME} || true
+  docker compose -p "${PROJECT_NAME}" down 2>/dev/null || true
   sleep 3
-  docker rm -f ${CONTAINER_NAME} || true
+  docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
   echo "✅ 旧容器已删除"
 else
   echo "ℹ️ 无运行中的容器"

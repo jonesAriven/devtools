@@ -9,12 +9,17 @@
 #   production → mykng-debain (Docker Compose project: kb-deploy)
 #   test       → 测试环境 (Docker Compose project: kb-test)
 #
-# 服务列表 & 端口:
-#   kb-gateway   :8090 → API网关
-#   kb-auth      :8081 → 认证服务(内网)
-#   kb-file      :8082 → 文件服务(内网)
-#   kb-knowledge :8083 → 知识库服务(内网)
-#   kb-intelligence:8086 → AI智能服务(内网)
+# 服务列表 & 端口（基于实际服务器检查 2026-07-06）:
+#   kb-gateway    :8090(宿主机)→8080(容器) → API网关(唯一对外暴露)
+#   kb-auth       :8081(容器内网) → 认证服务
+#   kb-file       :8082(容器内网) → 文件服务
+#   kb-knowledge  :8083(容器内网) → 知识库服务
+#   kb-intelligence:8086(容器内网) → AI智能服务
+#
+# 基础设施（常驻运行，不在此脚本管理）:
+#   kb-mysql      :3306, kb-redis:6379, kb-nacos:8848
+#   kb-mongo      :27017, kb-minio:9000, kb-meilisearch:7700
+#   kb-web(Nginx) :8091
 # ============================================================
 
 set -e
@@ -36,16 +41,24 @@ case "${DEPLOY_TARGET}" in
   production)
     PROJECT_NAME="kb-deploy"
     COMPOSE_DIR="/root/devtools/mykng"
-    echo "📍 部署目标: 生产环境 (mykng)"
+    COMPOSE_PROFILE="prod"  # 使用 prod profile
+    echo "📍 部署目标: 生产环境 (mykng) - Profile: prod"
     ;;
   test)
     PROJECT_NAME="kb-test"
     COMPOSE_DIR="/root/devtools/mykng"
-    echo "📍 部署目标: 测试环境"
+    COMPOSE_PROFILE="test"  # 使用 test profile
+    echo "📍 部署目标: 测试环境 - Profile: test"
+    ;;
+  dev)
+    PROJECT_NAME="kb-dev"
+    COMPOSE_DIR="/root/devtools/mykng"
+    COMPOSE_PROFILE="dev"  # 使用 dev profile（最小化）
+    echo "📍 部署目标: 开发环境 - Profile: dev"
     ;;
   *)
     echo "❌ 未知的部署目标: ${DEPLOY_TARGET}"
-    echo "   可用选项: production, test"
+    echo "   可用选项: production, test, dev"
     exit 1
     ;;
 esac
@@ -80,18 +93,20 @@ git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
-# ======== 2. 停止并删除旧容器 ========
+# ======== 2. 停止并删除旧容器（仅微服务，保留基础设施）=====
 echo ""
-echo ">>> [2/5] 停止旧服务 <<<"
+echo ">>> [2/5] 停止旧微服务 <<<"
 cd "${COMPOSE_DIR}"
 
-if docker compose -p "${PROJECT_NAME}" ps -q 2>/dev/null | grep -q .; then
-  echo "--- 停止旧容器 ---"
-  docker compose -p "${PROJECT_NAME}" down --remove-orphans 2>/dev/null || true
-  sleep 3
-  echo "✅ 旧容器已停止"
+# 注意：只重启微服务，不停止基础设施(mysql/redis/nacos等)
+if docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" ps -q 2>/dev/null | grep -q .; then
+  echo "--- 停止旧微服务容器 ---"
+  # 只停止微服务，不移除基础设施
+  docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" stop \n    kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || true
+  sleep 5
+  echo "✅ 旧微服务已停止（基础设施保留）"
 else
-  echo "ℹ️ 没有运行中的容器，跳过停止"
+  echo "ℹ️ 没有运行中的微服务容器"
 fi
 
 # 清理悬空镜像（可选，节省磁盘）
@@ -107,8 +122,9 @@ ls -lh kb-gateway/target/*.jar kb-auth/target/*.jar kb-file/target/*.jar \
        kb-knowledge/target/*.jar kb-intelligence/target/*.jar \
        2>/dev/null || echo "⚠️ jar 包不存在，需要先编译"
 
-# 构建所有微服务镜像
-docker compose -p "${PROJECT_NAME}" build --no-cache \
+# 构建所有微服务镜像（使用 profile）
+echo "--- 使用 Profile: ${COMPOSE_PROFILE} ---"
+docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" build --no-cache \
   kb-gateway kb-auth kb-file kb-knowledge kb-intelligence \
   2>&1 | tail -30
 
@@ -119,22 +135,22 @@ docker images | grep -E "(kb-gateway|kb-auth|kb-file|kb-knowledge|kb-intelligenc
 echo ""
 echo ">>> [4/5] 启动新服务 <<<"
 
-COMPOSE_ARGS="-p ${PROJECT_NAME} up -d --no-deps --force-recreate"
+COMPOSE_ARGS="-p ${PROJECT_NAME} --profile ${COMPOSE_PROFILE} up -d --no-deps --force-recreate"
 
-# 按依赖顺序启动（重要！）
-echo "--- [1/5] 启动 kb-auth ---"
+# 按依赖顺序启动（重要！auth → file/knowledge → intelligence → gateway）
+echo "--- [1/5] 启动 kb-auth (认证服务) ---"
 docker compose ${COMPOSE_ARGS} kb-auth && sleep 20
 
-echo "--- [2/5] 启动 kb-file ---"
+echo "--- [2/5] 启动 kb-file (文件服务) ---"
 docker compose ${COMPOSE_ARGS} kb-file && sleep 15
 
-echo "--- [3/5] 启动 kb-knowledge ---"
+echo "--- [3/5] 启动 kb-knowledge (知识库服务) ---"
 docker compose ${COMPOSE_ARGS} kb-knowledge && sleep 15
 
-echo "--- [4/5] 启动 kb-intelligence ---"
+echo "--- [4/5] 启动 kb-intelligence (AI智能服务) ---"
 docker compose ${COMPOSE_ARGS} kb-intelligence && sleep 15
 
-echo "--- [5/5] 启动 kb-gateway (入口) ---"
+echo "--- [5/5] 启动 kb-gateway (API网关入口) ---"
 docker compose ${COMPOSE_ARGS} kb-gateway && sleep 25
 
 echo "✅ 所有服务已启动"

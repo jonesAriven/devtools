@@ -5,13 +5,16 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# 部署信息:
-#   项目名: portal (devtools-portal)
-#   技术栈: Vue3 + Vite + Element Plus + TypeScript
+# 部署信息（基于实际服务器检查 2026-07-06）:
+#   项目名: portal (门户系统，含前端+后端)
+#   前端技术栈: Vue3 + Vite + Element Plus + TypeScript (pnpm)
+#   后端技术栈: portal-server (Spring Boot, 端口 8087)
 #   构建产物: 静态文件 (dist/)
-#   部署方式: Nginx 或 Node.js serve
+#   部署方式: Nginx 静态部署
 #
-# 端口: 待确认（默认使用 8088 或由 Nginx 代理）
+#   前端路径: /portal/ → alias /var/www/portal/
+#   后端API: /portal/api/sys/ → proxy 127.0.0.1:8087
+#   认证API: /portal/api/auth/ → proxy 127.0.0.1:8090 (Gateway)
 # ============================================================
 
 set -e
@@ -26,13 +29,13 @@ echo "  Commit: ${COMMIT_SHA}"
 echo "  分支: ${BRANCH}"
 echo "============================================="
 
-# ======== 配置 ========
+# ======== 配置（基于实际服务器配置）=====
 APP_DIR="/root/devtools/portal"
 DIST_DIR="/root/devtools/portal/dist"
-DEPLOY_DIR="/var/www/portal"  # Nginx 静态文件目录（可修改）
-APP_PORT=8088               # 默认端口（如果用 Node.js serve）
+DEPLOY_DIR="/var/www/portal"  # Nginx 静态文件目录（已配置在 kb.conf）
+BACKEND_PORT=8087            # portal-server 后端端口
 CONTAINER_NAME="portal"
-USE_NGINX=true              # 是否使用 Nginx 部署
+USE_NGINX=true                # 使用 Nginx 部署（默认）
 
 # ======== 0. 环境准备 ========
 echo ""
@@ -45,18 +48,15 @@ fi
 
 # 检查旧服务/容器
 OLD_SERVICE=""
-if docker ps -a --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
-  OLD_SERVICE="docker"
-  echo "ℹ️ 发现旧 Docker 容器:"
-  docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-elif pgrep -f "portal.*serve" > /dev/null 2>&1 || pgrep -f "nginx.*portal" > /dev/null 2>&1; then
-  OLD_SERVICE="process"
-  echo "ℹ️ 发现旧进程:"
-  ps aux | grep -E "(portal.*serve|nginx.*portal)" | grep -v grep
-elif [ -d "${DEPLOY_DIR}" ]; then
+if [ -d "${DEPLOY_DIR}" ]; then
   OLD_SERVICE="nginx-static"
   echo "ℹ️ 发现旧静态部署目录: ${DEPLOY_DIR}"
   ls -la "${DEPLOY_DIR}/" | head -5
+fi
+
+# 检查 portal-server 是否运行
+if pgrep -f "portal-server.*8087" > /dev/null 2>&1 || ss -tlnp | grep -q ":${BACKEND_PORT}"; then
+  echo "ℹ️ 发现 portal-server 后端运行在端口 ${BACKEND_PORT}"
 fi
 
 # ======== 1. 同步代码 ========
@@ -88,18 +88,30 @@ echo "--- Node.js 版本 ---"
 node -v
 npm -v
 
-# 安装依赖
-echo "--- 安装 npm 依赖 ---"
+# 安装依赖（使用 pnpm，因为项目有 pnpm-lock.yaml）
+echo "--- 安装 pnpm 依赖 ---"
 if [ ! -d "node_modules" ]; then
-  npm ci --registry=https://registry.npmmirror.com
+  if command -v pnpm &> /dev/null; then
+    pnpm install --registry=https://registry.npmmirror.com
+  else
+    npm ci --registry=https://registry.npmmirror.com
+  fi
 else
-  # 检查是否需要更新
-  npm ci --registry=https://registry.npmmirror.com 2>/dev/null || true
+  # 更新依赖
+  if command -v pnpm &> /dev/null; then
+    pnpm install --registry=https://registry.npmmirror.com 2>/dev/null || true
+  else
+    npm ci --registry=https://registry.npmmirror.com 2>/dev/null || true
+  fi
 fi
 
 # 构建
 echo "--- 构建 portal ---"
-npm run build
+if command -v pnpm &> /dev/null; then
+  pnpm build
+else
+  npm run build
+fi
 
 if [ ! -d "dist" ]; then
   echo "❌ 构建失败：dist 目录不存在"
