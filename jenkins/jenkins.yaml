@@ -1,0 +1,147 @@
+# ============================================================
+# Jenkins Configuration as Code (JCasC)
+# ============================================================
+# 首次启动时自动应用此配置
+# 修改后可通过 Manage Jenkins → Configuration as Code → Reload 重新加载
+# ============================================================
+
+jenkins:
+  systemMessage: |
+    🚀 Welcome to kb-cicd (Jenkins Edition)
+    ========================================
+    Powered by Jenkins LTS + JCasC
+    Deployed on mykng (Tailscale Network)
+    
+  numExecutors: 4                    # 本地并行构建数（根据CPU核数调整）
+  mode: NORMAL
+  projectName: kb-cicd
+  
+  # 全局环境变量
+  globalProperties:
+    environmentProperties:
+      - key: NEXUS_URL
+        value: "https://nexus.marschat.online/repository/maven-public/"
+      - key: MAVEN_OPTS
+        value: "-Xmx2048m"
+      - key: MAVEN_CLI_OPTS
+        value: "-B -V -ntp -Pfast"
+
+  # 安全配置
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${ADMIN_PASSWORD:-admin123}
+          name: 管理员
+          properties:
+            - mailer:
+                emailAddress: admin@marschat.online
+
+  authorizationStrategy:
+    roleBased:
+      roles:
+        global:
+          - name: "admin"
+            description: "Jenkins 管理员"
+            permissions:
+              - "Overall/Administer"
+            entries:
+              - user: "admin"
+          - name: "viewer"
+            description: "只读查看者"
+            permissions:
+              - "Overall/Read"
+              - "View/Read"
+            entries:
+              - group: "authenticated"
+          - name: "builder"
+            description: "构建执行者"
+            permissions:
+              - "Overall/Read"
+              - "View/Read"
+              - "Build/Cancel"
+            entries:
+              - user: "deployer"
+
+  # CrumbIssuer 配置（防止 CSRF）
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: true
+
+# 工具配置
+tools:
+  maven: "Maven 3.9"
+  jdk: "JDK 21"
+
+# 凭据配置（预定义凭据占位，实际值通过 init.groovy.d 注入）
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # SSH 部署密码（mykng + 内网Debian）
+          - usernamePassword:
+              scope: GLOBAL
+              id: "ssh-deploy-mykng"
+              username: "root"
+              password: "${DEPLOY_PASS_MYKNG:-}"
+              description: "SSH部署密码 - mykng (100.93.36.113)"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "ssh-deploy-lan"
+              username: "root"
+              password: "${DEPLOY_PASS_LAN:-}"
+              description: "SSH部署密码 - 内网Debian (192.168.31.182)"
+          # Nexus 凭据
+          - usernamePassword:
+              scope: GLOBAL
+              id: "nexus-credential"
+              username: "${NEXUS_USER:-admin}"
+              password: "${NEXUS_PASS:-}"
+              description: "Nexus 私服凭据"
+          # Gitee Token
+          - string:
+              scope: GLOBAL
+              id: "gitee-token"
+              secret: "${GITEE_TOKEN:-}"
+              description: "Gitee API Token (用于触发构建)"
+
+# 装饰器（日志时间戳等）
+decorators:
+  - buildDescription:
+      regexp: ".*"
+
+# 视图配置
+views:
+  - all:
+      name: "all"
+  - listView:
+      name: "微服务"
+      description: "知识库相关微服务项目"
+      columns:
+        - "status"
+        - "weather"
+        - "name"
+        - "lastSuccess"
+        - "lastFailure"
+        - "lastDuration"
+        - "buildButton"
+      jobs:
+        - "devtools-mykng"
+        - "devtools-active-manager"
+        - "devtools-kb-ops"
+        - "devtools-myfrp"
+  - listView:
+      name: "基础设施"
+      description: "运维/监控类项目"
+      columns:
+        - "status"
+        - "weather"
+        - "name"
+        - "lastSuccess"
+        - "lastFailure"
+        - "lastDuration"
+        - "buildButton"
+      jobs:
+        - "devtools-infra-monitor"
+        - "devtools-portal"

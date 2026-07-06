@@ -1,0 +1,77 @@
+# ============================================================
+# Jenkins CI/CD — Docker Compose 部署
+# ============================================================
+# 部署位置: mykng 主机 (100.93.36.113)
+# 端口: 8096 (API + Web UI)
+#
+# 启动: docker compose -f jenkins/docker-compose.yml up -d
+# 停止: docker compose -f jenkins/docker-compose.yml down
+# 日志: docker compose -f jenkins/docker-compose.yml logs -f
+# 密码: 首次启动后查看 docker logs 或 cat jenkins_admin_password
+#
+# 特性:
+#   ✅ Maven 缓存持久化（~/.m2 复用，编译飞快）
+#   ✅ Docker in Docker（支持构建镜像）
+#   ✅ Gitee 插件预装
+#   ✅ SSH Agent 内置（直接部署内网机器）
+#   ✅ Pipeline as Code（Jenkinsfile 在代码仓库）
+# ============================================================
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: kb-jenkins
+    restart: unless-stopped
+    user: root  # 需要 root 权限执行 docker build 和 SSH
+    ports:
+      - "8096:8080"    # Web UI
+      - "50000:50000"  # Agent 连接端口
+    environment:
+      # Java 优化参数
+      JAVA_OPTS: >
+        -Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=false
+        -Dhudson.security.Security.guessUser=false
+        -Djenkins.install.runSetupWizard=false
+        -Djava.awt.headless=true
+        -Xms512m
+        -Xmx2048m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseStringDeduplication
+        -Dfile.encoding=UTF-8
+      # Gitee 连接配置（通过环境变量注入）
+      GITEE_TOKEN: ${GITEE_TOKEN:-}
+      # Nexus 配置
+      NEXUS_URL: https://nexus.marschat.online
+      NEXUS_USER: ${NEXUS_USER:-}
+      NEXUS_PASS: ${NEXUS_PASS:-}
+    volumes:
+      # Jenkins 主目录（配置、任务、插件等）
+      - jenkins_home:/var/jenkins_home
+      # Maven 本地仓库缓存（关键！复用缓存让编译飞快）
+      - maven_cache:/root/.m2/repository
+      # Docker socket（支持在容器内执行 docker build）
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Jenkins 初始化脚本（首次启动自动执行）
+      - ./init.groovy.d:/usr/share/jenkins/ref/init.groovy.d:ro
+      # Jenkins 配置文件
+      - ./jenkins.yaml:/var/jenkins_home/jenkins.yaml:ro
+      # 预装插件列表
+      - ./plugins.txt:/usr/share/jenkins/ref/plugins.txt:ro
+      # 自定义 Maven settings.xml（指向 Nexus 私服）
+      - ./maven-settings.xml:/root/.m2/settings.xml:ro
+      # 项目源码挂载（可选，用于本地构建模式）
+      - ../:/workspace/devtools:ro
+    networks:
+      - cicd-net
+    mem_limit: 3g  # Jenkins 比较吃内存，给够
+
+networks:
+  cicd-net:
+    driver: bridge
+
+volumes:
+  jenkins_home:
+    driver: local
+  maven_cache:
+    driver: local
