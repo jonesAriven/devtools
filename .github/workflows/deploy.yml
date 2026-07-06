@@ -67,11 +67,8 @@ on:
 # ============================================================
 env:
   MAVEN_OPTS: '-Xmx2048m'
-  # ⚡ 性能优化: mvnd (Maven Daemon) + 并行编译 + 跳过 JaCoCo/Surefire/PITest
-  # mvnd 使用常驻 JVM 进程，比普通 mvn 快 50-200%
-  MVND: 'mvnd clean package -DskipTests -B -V -ntp -T 2C -Pfast'
-  # 兼容旧步骤的别名
-  MAVEN_CLI: 'mvnd clean package -DskipTests -B -V -ntp -T 2C -Pfast'
+  # ⚡ 性能优化: 并行编译(2核) + 跳过 JaCoCo/Surefire/PITest + Maven依赖缓存
+  MAVEN_CLI: 'clean package -DskipTests -B -V -ntp -T 2C -Pfast'
   NEXUS_URL: 'https://nexus.marschat.online/repository/maven-public/'
   NEXUS_RELEASE_URL: 'https://nexus.marschat.online/repository/maven-releases/'
   NEXUS_USER: ${{ secrets.NEXUS_USER }}
@@ -156,18 +153,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: 🚀 安装 Maven Daemon (mvnd)
-        run: |
-          # 安装 mvnd (Apache Maven Daemon): 内嵌构建引擎 + 常驻 JVM，速度提升 50-200%
-          # 仓库已迁移至 apache/maven-mvnd，最新版 1.0.6
-          curl -fsSL https://github.com/apache/maven-mvnd/releases/download/1.0.6/maven-mvnd-1.0.6-linux-amd64.zip \
-            -o /tmp/mvnd.zip && \
-            sudo unzip -q /tmp/mvnd.zip -d /opt && \
-            sudo ln -sf /opt/maven-mvnd-1.0.6/bin/mvnd /usr/local/bin/mvnd && \
-          echo "✅ mvnd $(mvnd --version | head -1) 已安装"
-          # 预热 daemon（首次启动会慢，后续复用进程）
-          mvnd --version
-
       - name: 📝 配置 Maven settings.xml (Nexus私服)
         run: |
           mkdir -p ~/.m2
@@ -216,7 +201,7 @@ jobs:
           cd mykng/kb-common
           
           # 先安装到本地（供同一次运行的下游模块使用）
-          mvnd clean install -DskipTests -B -V -ntp
+          mvn clean install -DskipTests -B -V -ntp
           
           # 再发布到 Nexus（供后续 CI 运行使用）
           # 写入临时 settings.xml（GitHub Actions 不支持 /dev/stdin）
@@ -231,7 +216,7 @@ jobs:
             </servers>
           </settings>
           EOF
-          mvnd deploy -DskipTests -B -ntp -s /tmp/nexus-settings.xml
+          mvn deploy -DskipTests -B -ntp -s /tmp/nexus-settings.xml
           
           cd ../..
           echo "✅ kb-common 已编译 + 发布到 Nexus"
@@ -252,7 +237,7 @@ jobs:
           echo "  Maven 仓库: ${NEXUS_URL}"
           echo "  优化: -T 2C 并行 | -Pfast 跳过 JaCoCo/PITest"
           echo "============================================="
-          cd mykng/kb-parent && mvnd ${{ env.MAVEN_CLI }} && cd ../..
+          cd mykng/kb-parent && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
           ls -lh mykng/kb-gateway/target/*.jar \
                  mykng/kb-auth/target/*.jar \
@@ -301,15 +286,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: 🚀 安装 Maven Daemon (mvnd)
-        run: |
-          curl -fsSL https://github.com/apache/maven-mvnd/releases/download/1.0.6/maven-mvnd-1.0.6-linux-amd64.zip \
-            -o /tmp/mvnd.zip && \
-            sudo unzip -q /tmp/mvnd.zip -d /opt && \
-            sudo ln -sf /opt/maven-mvnd-1.0.6/bin/mvnd /usr/local/bin/mvnd && \
-          echo "✅ mvnd $(mvnd --version | head -1) 已安装"
-          mvnd --version
-
       - name: 📝 配置 Maven settings.xml (Nexus私服)
         run: |
           mkdir -p ~/.m2
@@ -326,15 +302,15 @@ jobs:
           EOF
           echo "✅ Maven 已配置 Nexus 私服（匿名访问）: ${NEXUS_URL}"
 
-      - name: 🔨 Maven 编译 active-manager (⚡mvnd+并行)
+      - name: 🔨 Maven 编译 active-manager (⚡并行)
         run: |
           echo "============================================="
-          echo "  [active-manager] Maven Daemon 编译 (fast profile)"
+          echo "  [active-manager] Maven 编译 (fast profile)"
           echo "  环境: ${DEPLOY_ENV}"
           echo "  Maven 仓库: ${NEXUS_URL}"
-          echo "  优化: mvnd | -T 2C 并行 | -Pfast 跳过 JaCoCo/PITest"
+          echo "  优化: -T 2C 并行 | -Pfast 跳过 JaCoCo/PITest"
           echo "============================================="
-          cd active-manager/activation-code-server && mvnd ${{ env.MAVEN_CLI }} && cd ../..
+          cd active-manager/activation-code-server && mvn ${{ env.MAVEN_CLI }} && cd ../..
           echo "=== 编译产物 ==="
           ls -lh active-manager/activation-code-server/target/*.jar
 
