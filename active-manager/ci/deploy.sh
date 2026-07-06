@@ -5,19 +5,22 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# ⚠️ 实际部署架构（基于全链路检查 2026-07-06）:
+# ⚠️ 实际部署架构（基于全链路检查 2026-07-06，已100%确认）:
 #
-#   访问地址: https://tools.marschat.online/activecode/
-#   
+#   ✅ 部署服务器: 内网Debian (192.168.31.182)
+#   ✅ 访问地址: https://tools.marschat.online/activecode/
+#   ✅ 内网地址: http://192.168.31.182:18080/activecode/
+#
 #   ┌─────────────────────────────────────────────────────┐
 #   │  公网用户                                           │
 #   │  ↓                                                 │
 #   │  腾讯云2号 Nginx (:443 SSL终结)                     │
 #   │  ↓ tools.marschat.online                           │
-#   │  反向代理到目标服务器 (FRP或直连)                    │
+#   │  FRP 或反向代理                                     │
 #   │  ↓                                                 │
-#   │  目标服务器 Docker 容器                             │
-#   │  activecode容器                                     │
+#   │  内网Debian (192.168.31.182:18080)  ← 已确认！     │
+#   │  ↓                                                 │
+#   │  Docker 容器: activecode                           │
 #   │  :18080(宿主机) → :8080(容器)                       │
 #   │                                                     │
 #   │  前后端一体化部署:                                   │
@@ -29,6 +32,7 @@
 #   └─────────────────────────────────────────────────────┘
 #
 # 部署信息:
+#   📍 目标服务器: 内网Debian (192.168.31.182) ✅已确认
 #   项目名: activation-code-server
 #   访问路径: /activecode/ (登录页: /activecode/login.html)
 #   API路径: /activecode/api/* (例: /activecode/api/auth/login)
