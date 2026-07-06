@@ -34,6 +34,10 @@ public class PortalSystem {
 
     private String techStack;
 
+    private String loginUsername;
+
+    private String loginPassword;
+
     private Integer sortOrder;
 
     @TableLogic

@@ -3,6 +3,7 @@ package com.kb.portal.controller;
 import com.kb.common.page.PageResult;
 import com.kb.common.result.Result;
 import com.kb.portal.dto.PortalSystemRequest;
+import com.kb.portal.dto.SystemCredentials;
 import com.kb.portal.entity.PortalSystem;
 import com.kb.portal.service.PortalSystemService;
 import jakarta.validation.Valid;
@@ -41,6 +42,11 @@ public class PortalSystemController {
     @GetMapping("/{id}")
     public Result<PortalSystem> getById(@PathVariable Long id) {
         return Result.ok(portalSystemService.getById(id));
+    }
+
+    @GetMapping("/{id}/credentials")
+    public Result<SystemCredentials> getCredentials(@PathVariable Long id) {
+        return Result.ok(portalSystemService.getCredentials(id));
     }
 
     @PostMapping

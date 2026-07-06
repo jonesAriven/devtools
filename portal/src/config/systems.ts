@@ -17,8 +17,16 @@ export interface SystemConfig {
   docs?: { label: string; url: string }[]
   downloadPath?: string
   techStack?: string
+  loginUsername?: string
+  loginPassword?: string
   status?: number
   sortOrder?: number
+}
+
+/** 系统登录凭据 */
+export interface SystemCredentials {
+  username: string
+  password: string
 }
 
 /** 所有系统/工具配置 */

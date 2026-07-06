@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS `portal_system` (
     `docs`              JSON         DEFAULT NULL COMMENT '文档信息(JSON数组)',
     `download_path`     VARCHAR(512) DEFAULT NULL COMMENT '下载路径(工具软件)',
     `tech_stack`        VARCHAR(512) DEFAULT NULL COMMENT '技术栈描述',
+    `login_username`    VARCHAR(128) DEFAULT NULL COMMENT '登录账号',
+    `login_password`    VARCHAR(512) DEFAULT NULL COMMENT '登录密码（AES加密）',
     `sort_order`        INT          DEFAULT 0 COMMENT '排序号，越小越靠前',
     `deleted`           INT          DEFAULT 0 COMMENT '逻辑删除',
     `created_at`        DATETIME     DEFAULT CURRENT_TIMESTAMP,
@@ -51,6 +53,22 @@ DEALLOCATE PREPARE stmt;
 SELECT COUNT(*) INTO @col_exists FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'tech_stack';
 SET @sql = IF(@col_exists = 0, 'ALTER TABLE portal_system ADD COLUMN tech_stack VARCHAR(512) DEFAULT NULL COMMENT ''技术栈描述'' AFTER download_path', 'SELECT ''tech_stack exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- login_username 列
+SELECT COUNT(*) INTO @col_exists FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'login_username';
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE portal_system ADD COLUMN login_username VARCHAR(128) DEFAULT NULL COMMENT ''登录账号'' AFTER tech_stack', 'SELECT ''login_username exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- login_password 列
+SELECT COUNT(*) INTO @col_exists FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'login_password';
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE portal_system ADD COLUMN login_password VARCHAR(512) DEFAULT NULL COMMENT ''登录密码（AES加密）'' AFTER login_username', 'SELECT ''login_password exists''');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;

@@ -67,16 +67,57 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+
+      <el-dropdown
+        v-if="showCredentialsBtn"
+        trigger="click"
+        @command="handleCredentialsCommand"
+      >
+        <el-button size="small" type="warning">
+          <el-icon><Key /></el-icon>
+          账密
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="copy-username">
+              <el-icon><User /></el-icon>
+              复制账号
+            </el-dropdown-item>
+            <el-dropdown-item command="copy-password">
+              <el-icon><Lock /></el-icon>
+              复制密码
+            </el-dropdown-item>
+            <el-dropdown-item command="quick-login" divided>
+              <el-icon><Lightning /></el-icon>
+              快速登录
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Position, Download, Document, ArrowDown, Star, StarFilled } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
+import {
+  Position,
+  Download,
+  Document,
+  ArrowDown,
+  Star,
+  StarFilled,
+  Key,
+  User,
+  Lock,
+  Lightning
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import type { SystemConfig, SystemStatus } from '@/config/systems'
 import StatusBadge from './StatusBadge.vue'
 import { useFavoritesStore } from '@/stores/favorites'
+import { getSystemCredentials } from '@/api/system'
 
 const props = defineProps<{
   config: SystemConfig
@@ -86,8 +127,10 @@ const props = defineProps<{
 }>()
 
 const favoritesStore = useFavoritesStore()
+const loadingCredentials = ref(false)
 
 const isFavorited = computed(() => props.isFavorite || favoritesStore.isFavorite(props.config.id))
+const showCredentialsBtn = computed(() => !!props.config.url && props.config.loginUsername)
 
 function handleToggleFavorite() {
   favoritesStore.toggleFavorite(props.config.id)
@@ -100,6 +143,69 @@ function openUrl(url: string) {
 function download() {
   if (props.config.downloadPath) {
     window.open(props.config.downloadPath, '_blank')
+  }
+}
+
+async function fetchCredentials() {
+  loadingCredentials.value = true
+  try {
+    return await getSystemCredentials(props.config.id)
+  } catch (e: any) {
+    ElMessage.error(e.message || '获取账密失败')
+    return null
+  } finally {
+    loadingCredentials.value = false
+  }
+}
+
+function copyToClipboard(text: string): boolean {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return true
+  } catch (e) {
+    document.body.removeChild(textarea)
+    return false
+  }
+}
+
+async function handleCredentialsCommand(command: string) {
+  const creds = await fetchCredentials()
+  if (!creds) return
+
+  switch (command) {
+    case 'copy-username':
+      if (creds.username && copyToClipboard(creds.username)) {
+        ElMessage.success('账号已复制到剪贴板')
+      }
+      break
+    case 'copy-password':
+      if (creds.password && copyToClipboard(creds.password)) {
+        ElMessage.success('密码已复制到剪贴板')
+      }
+      break
+    case 'quick-login':
+      if (creds.username && creds.password) {
+        const text = `${creds.username}\t${creds.password}`
+        copyToClipboard(text)
+        if (props.config.url) {
+          openUrl(props.config.url)
+        }
+        ElMessage.success('账号密码已复制，登录页按 Ctrl+V 粘贴')
+      } else if (creds.username) {
+        copyToClipboard(creds.username)
+        if (props.config.url) {
+          openUrl(props.config.url)
+        }
+        ElMessage.success('账号已复制，登录页按 Ctrl+V 粘贴')
+      }
+      break
   }
 }
 </script>

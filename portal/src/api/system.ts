@@ -1,5 +1,5 @@
 import request from './request'
-import type { SystemConfig, SystemCategory } from '@/config/systems'
+import type { SystemConfig, SystemCategory, SystemCredentials } from '@/config/systems'
 
 export interface SystemQueryParams {
   page?: number
@@ -29,6 +29,8 @@ interface RawSystem {
   docs?: string
   downloadPath?: string
   techStack?: string
+  loginUsername?: string
+  loginPassword?: string
   sortOrder: number
 }
 
@@ -53,6 +55,8 @@ function transformSystem(raw: RawSystem): SystemConfig {
     docs,
     downloadPath: raw.downloadPath,
     techStack: raw.techStack,
+    loginUsername: raw.loginUsername,
+    loginPassword: raw.loginPassword,
   }
 }
 
@@ -80,6 +84,13 @@ export function getSystemById(id: string): Promise<SystemConfig> {
   return request.get<any, any>(`/system/${id}`).then(transformSystem)
 }
 
+export function getSystemCredentials(id: string): Promise<SystemCredentials> {
+  return request.get<any, any>(`/system/${id}/credentials`).then((res: any) => ({
+    username: res.username || '',
+    password: res.password || '',
+  }))
+}
+
 export function createSystem(data: Partial<SystemConfig>): Promise<SystemConfig> {
   const payload = {
     name: data.name,
@@ -93,6 +104,8 @@ export function createSystem(data: Partial<SystemConfig>): Promise<SystemConfig>
     docs: data.docs ? JSON.stringify(data.docs) : undefined,
     downloadPath: data.downloadPath,
     techStack: data.techStack,
+    loginUsername: data.loginUsername,
+    loginPassword: data.loginPassword,
     sortOrder: 0,
   }
   return request.post<any, any>('/system', payload).then(transformSystem)
@@ -111,6 +124,8 @@ export function updateSystem(id: string, data: Partial<SystemConfig>): Promise<S
     docs: data.docs ? JSON.stringify(data.docs) : undefined,
     downloadPath: data.downloadPath,
     techStack: data.techStack,
+    loginUsername: data.loginUsername,
+    loginPassword: data.loginPassword,
     sortOrder: data.sortOrder !== undefined ? Number(data.sortOrder) : undefined,
   }
   return request.put<any, any>(`/system/${id}`, payload).then(transformSystem)

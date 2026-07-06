@@ -138,6 +138,17 @@
         <el-form-item label="下载地址" prop="downloadPath">
           <el-input v-model="formData.downloadPath" placeholder="请输入下载地址" />
         </el-form-item>
+        <el-divider content-position="left">登录账密</el-divider>
+        <el-form-item label="登录账号" prop="loginUsername">
+          <el-input v-model="formData.loginUsername" placeholder="请输入登录账号" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="loginPassword">
+          <el-input v-model="formData.loginPassword" placeholder="请输入登录密码，留空则不修改" show-password />
+        </el-form-item>
+        <div class="form-tip">
+          <el-icon class="tip-icon"><InfoFilled /></el-icon>
+          <span>密码将加密存储，仅登录用户可查看</span>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -150,7 +161,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Search, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Search, Edit, Delete, InfoFilled } from '@element-plus/icons-vue'
 import { categoryLabels, type SystemConfig, type SystemCategory } from '@/config/systems'
 import { getSystemList, createSystem, updateSystem, deleteSystem } from '@/api/system'
 
@@ -190,6 +201,8 @@ const formData = reactive<Partial<SystemConfig>>({
   healthCheckUrl: '',
   techStack: '',
   downloadPath: '',
+  loginUsername: '',
+  loginPassword: '',
   docs: []
 })
 
@@ -258,6 +271,8 @@ function handleAdd() {
     healthCheckUrl: '',
     techStack: '',
     downloadPath: '',
+    loginUsername: '',
+    loginPassword: '',
     docs: []
   })
   dialogVisible.value = true
@@ -369,6 +384,19 @@ onMounted(() => {
     display: flex;
     justify-content: flex-end;
     margin-top: 20px;
+  }
+
+  .form-tip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #909399;
+    margin: -10px 0 10px 100px;
+
+    .tip-icon {
+      color: #909399;
+    }
   }
 }
 </style>
