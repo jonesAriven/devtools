@@ -203,9 +203,9 @@ jobs:
           # 先安装到本地（供同一次运行的下游模块使用）
           mvn clean install -DskipTests -B -V -ntp
           
-          # 再发布到 Nexus（供后续 CI 运行使用，跳过测试和源码加速）
-          mvn deploy -DskipTests -B -ntp \
-            -s /dev/stdin <<EOF
+          # 再发布到 Nexus（供后续 CI 运行使用）
+          # 写入临时 settings.xml（GitHub Actions 不支持 /dev/stdin）
+          cat > /tmp/nexus-settings.xml <<EOF
           <settings>
             <servers>
               <server>
@@ -216,6 +216,7 @@ jobs:
             </servers>
           </settings>
           EOF
+          mvn deploy -DskipTests -B -ntp -s /tmp/nexus-settings.xml
           
           cd ../..
           echo "✅ kb-common 已编译 + 发布到 Nexus"
