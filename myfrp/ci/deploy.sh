@@ -5,11 +5,21 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
+# ⚠️ 实际部署位置（基于全链路检查 2026-07-06）:
+#
+#   部署服务器: 内网Debian (192.168.31.182) [推测]
+#   访问路径: tools.marschat.online → FRP:18082 → 内网Debian:18082
+#
+#   ⚠️ 注意: mykng 上未发现此服务（无容器、无端口监听）
+#          推测部署在 内网Debian 或其他服务器
+#
+#   如果实际部署位置不同，请修改此脚本的目标服务器配置
+#
 # 部署信息:
 #   项目名: frp-manager
-#   端口: 18082
+#   端口: 18082 (宿主机和容器相同)
 #   容器名: frp-manager
-#   前端: Vue3 (内置在 JAR 中或独立部署)
+#   前端: Vue3 (可能内置在 JAR 中或独立部署)
 # ============================================================
 
 set -e
@@ -22,6 +32,7 @@ echo "  🌐 myfrp FRP管理面板 — 自动部署"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  Commit: ${COMMIT_SHA}"
 echo "  分支: ${BRANCH}"
+echo "  📍 目标服务器: 待确认 (可能在内网Debian)"
 echo "============================================="
 
 # ======== 配置 ========
@@ -150,4 +161,5 @@ echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 echo "  📊 服务访问:"
 echo "    FRP面板: http://localhost:${APP_PORT}"
+echo "    公网地址: https://tools.marschat.online/frp (通过FRP:18082)"
 echo "============================================="

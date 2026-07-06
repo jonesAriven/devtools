@@ -5,16 +5,30 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# 部署信息（基于实际服务器检查 2026-07-06）:
+# ⚠️ 实际部署位置（基于全链路检查 2026-07-06）:
+#
+#   部署服务器: 内网Debian (192.168.31.182)
+#   访问路径: tools.marschat.online → 腾讯云Nginx → FRP:18080 → 内网Debian:8080
+#
+#   ┌─────────────────────────────────────────────────┐
+#   │  公网用户                                       │
+#   │  ↓                                             │
+#   │  腾讯云2号 Nginx (:443 SSL终结)                 │
+#   │  ↓ tools.marschat.online                       │
+#   │  FRP (:18080 → 内网Debian:8080)                │
+#   │  ↓                                             │
+#   │  内网Debian Docker 容器                         │
+#   │  activecode:18080(宿主机)→8080(容器)            │
+#   │  DB: host.docker.internal:3306/tools            │
+#   └─────────────────────────────────────────────────┘
+#
+# 部署信息:
 #   项目名: activation-code-server
 #   端口: 18080(宿主机) → 8080(容器)
 #   Docker Compose Project: activecode
 #   容器名: activecode
 #   数据库: 宿主机 MySQL (host.docker.internal:3306/tools)
 #   DB凭据: tools / toolsmarschat
-#
-# 部署目标:
-#   mykng-debain (当前运行在此服务器)
 # ============================================================
 
 set -e
@@ -27,6 +41,7 @@ echo "  🔑 active-manager 激活码系统 — 自动部署"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  Commit: ${COMMIT_SHA}"
 echo "  分支: ${BRANCH}"
+echo "  📍 目标服务器: 内网Debian (通过FRP:18080)"
 echo "============================================="
 
 # ======== 配置 ========
@@ -40,7 +55,7 @@ echo ""
 echo ">>> [0/4] 环境检查 <<<"
 
 if [ ! -d /root/devtools ]; then
-  echo "⚠️ 首次部署：/root/devtools 不存在，开始克隆..."
+  echo "⚠️ 首次部署：克隆仓库..."
   git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
 fi
 
@@ -134,4 +149,5 @@ echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 echo "  📊 服务访问:"
 echo "    激活码API: http://localhost:${APP_PORT}"
+echo "    公网地址: https://tools.marschat.online (通过FRP:18080)"
 echo "============================================="
