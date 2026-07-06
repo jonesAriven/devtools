@@ -93,24 +93,57 @@ git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
-# ======== 2. 停止并删除旧容器（仅微服务，保留基础设施）=====
+# ======== 2. 停止并删除旧容器（仅微服务，保留基础设施）+ 全局残留扫描 =====
 echo ""
-echo ">>> [2/5] 停止旧微服务 <<<"
+echo ">>> [2/5] 停止旧微服务 & 清理残留 <<<"
 cd "${COMPOSE_DIR}"
+
+echo "--- [扫描1] 检查当前运行的微服务容器 ---"
+RUNNING_MICRO=$(docker ps --filter "name=kb-gateway\|kb-auth\|kb-file\|kb-knowledge\|kb-intelligence" --format "{{.Names}} {{.Status}}" 2>/dev/null)
+if [ -n "$RUNNING_MICRO" ]; then
+  echo "发现运行中的微服务:"
+  echo "$RUNNING_MICRO"
+fi
+
+echo "--- [扫描2] 检查已停止的僵尸微服务容器 ---"
+ZOMBIE_MICRO=$(docker ps -a --filter "status=exited" --filter "status=dead" --filter "name=kb-deploy\|kb-test\|kb-dev" --format "{{.Names}} {{.Status}}" 2>/dev/null)
+if [ -n "$ZOMBIE_MICRO" ]; then
+  echo "⚠️ 发现僵尸容器（将清理）:"
+  echo "$ZOMBIE_MICRO"
+  docker rm -f $(docker ps -aq --filter "status=exited" --filter "status=dead" --filter "name=kb-deploy\|kb-test\|kb-dev") 2>/dev/null || true
+  echo "✅ 僵尸容器已清理"
+fi
 
 # 注意：只重启微服务，不停止基础设施(mysql/redis/nacos等)
 if docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" ps -q 2>/dev/null | grep -q .; then
-  echo "--- 停止旧微服务容器 ---"
-  # 只停止微服务，不移除基础设施
-  docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" stop \n    kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || true
+  echo "--- 停止并删除旧微服务容器 ---"
+  # 先停止
+  docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" stop \
+    kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || true
   sleep 5
-  echo "✅ 旧微服务已停止（基础设施保留）"
+  
+  # 再删除（重要！防止残留）
+  docker compose -p "${PROJECT_NAME}" --profile "${COMPOSE_PROFILE}" rm -f -s \
+    kb-gateway kb-auth kb-file kb-knowledge kb-intelligence 2>/dev/null || true
+  
+  echo "✅ 旧微服务已停止并删除（基础设施保留）"
 else
-  echo "ℹ️ 没有运行中的微服务容器"
+  echo "ℹ️ 没有通过 compose 管理的微服务容器"
+  
+  # 兜底：强制清理可能存在的残留容器（不管名称）
+  for svc in kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+    if docker ps -a --filter "name=${svc}" --format "{{.Names}}" | grep -q "${svc}"; then
+      echo "⚠️ 发现残留容器 ${svc}，强制清理..."
+      docker stop ${svc} 2>/dev/null || true
+      docker rm -f ${svc} 2>/dev/null || true
+    fi
+  done
 fi
 
-# 清理悬空镜像（可选，节省磁盘）
+# 清理悬空镜像和未使用的资源（节省磁盘）
+echo "--- 清理 Docker 资源 ---"
 docker image prune -f --filter "until=24h" 2>/dev/null || true
+docker system prune -f --volumes 2>/dev/null || true  # 清理未使用的卷（谨慎）
 
 # ======== 3. 构建 Docker 镜像 ========
 echo ""
