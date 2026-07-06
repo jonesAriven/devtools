@@ -40,8 +40,8 @@ pipeline {
     parameters {
         choice(
             name: 'DEPLOY_PROJECT',
-            choices: ['all', 'mykng', 'active-manager'],
-            description: '📦 选择要部署的项目'
+            choices: ['all', 'mykng', 'active-manager', 'kb-ops', 'myfrp', 'portal', 'infra-monitor'],
+            description: '📦 选择要部署的项目（多项目用逗号分隔）'
         )
         choice(
             name: 'DEPLOY_TARGET',
@@ -76,17 +76,44 @@ pipeline {
         // Maven 优化参数
         MAVEN_OPTS = '-Xmx2048m -Dmaven.repo.local=/root/.m2/repository'
         
-        // 项目注册表（Map 格式，方便扩展）
-        // 格式: 项目名: [Maven模块路径, 目标主机, 部署脚本, 内存]
+        // ============================================================
+        // 📋 项目注册表（Projects Registry）— 所有支持 CI/CD 的项目
+        // ============================================================
+        // 新增项目？只需加环境变量 + 复制一个 stage 块即可
+        // 格式: <项目>_MODULE / _HOST / _SCRIPT / _MEMORY
+        // ============================================================
+        
+        // ── 已上线项目 ──
         MYKNG_MODULE = 'mykng/kb-parent'
-        MYKNG_HOST = '100.93.36.113'
+        MYKNG_HOST = '100.93.36.113'       # Tailscale IP
         MYKNG_SCRIPT = 'mykng/ci/deploy.sh'
         MYKNG_MEMORY = '2048m'
         
         ACTIVE_MANAGER_MODULE = 'active-manager/activation-code-server'
-        ACTIVE_MANAGER_HOST = '192.168.31.182'
+        ACTIVE_MANAGER_HOST = '192.168.31.182'  # 内网 Debian
         ACTIVE_MANAGER_SCRIPT = 'active-manager/ci/deploy.sh'
         ACTIVE_MANAGER_MEMORY = '1024m'
+        
+        // ── 待配置项目（需要先创建 ci/deploy.sh）──
+        KB_OPS_MODULE = 'kb-ops'
+        KB_OPS_HOST = '100.93.36.113'         # TODO: 确认部署目标
+        KB_OPS_SCRIPT = 'kb-ops/ci/deploy.sh'   # TODO: 创建此文件
+        KB_OPS_MEMORY = '1024m'
+        
+        MYFRP_MODULE = 'myfrp'
+        MYFRP_HOST = '100.93.36.113'          # TODO: 确认部署目标
+        MYFRP_SCRIPT = 'myfrp/ci/deploy.sh'      # TODO: 创建此文件
+        MYFRP_MEMORY = '512m'
+        
+        PORTAL_MODULE = 'portal/portal-server'
+        PORTAL_HOST = '100.93.36.113'           # TODO: 确认部署目标
+        PORTAL_SCRIPT = 'portal/ci/deploy.sh'    # TODO: 创建此文件
+        PORTAL_MEMORY = '1024m'
+        
+        INFRA_MONITOR_MODULE = 'infra-monitor/infra-monitor-server'
+        INFRA_MONITOR_HOST = '100.93.36.113'     # TODO: 确认部署目标
+        INFRA_MONITOR_SCRIPT = 'infra-monitor/ci/deploy.sh'  # TODO: 创建此文件
+        INFRA_MONITOR_MEMORY = '512m'
     }
     
     // ================================
@@ -258,14 +285,212 @@ pipeline {
         }
         
         // ================================
-        // Stage N: 🚀 快速新增项目模板
+        // Stage 3: kb-ops 运维平台
+        // ================================
+        stage('⚙️ kb-ops 运维平台') {
+            when {
+                anyOf {
+                    expression { return params.DEPLOY_PROJECT == 'all' || params.DEPLOY_PROJECT == 'kb-ops' }
+                }
+            }
+            environment {
+                MAVEN_OPTS = '-Xmx1024m -Dmaven.repo.local=/root/.m2/repository'
+            }
+            steps {
+                echo "=== [kb-ops] 开始构建 ==="
+                milestone(label: 'kb-ops-build')
+                sh '''
+                    echo ">>> [kb-ops] Maven 编译 <<<"
+                    cd kb-ops
+                    mvn clean package -DskipTests -B -V -ntp -Pfast
+                    cd ..
+                    echo "=== 编译产物 ==="
+                    ls -lh kb-ops/target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在"
+                '''
+                milestone(label: 'kb-ops-deploy')
+                sshPublisher(publishers: [sshPublisherDesc(
+                    configName: 'mykng-deploy',
+                    transfers: [sshTransfer(
+                        execCommand: """
+                            if [ -f /root/devtools/kb-ops/ci/deploy.sh ]; then
+                                chmod +x /root/devtools/kb-ops/ci/deploy.sh
+                                bash /root/devtools/kb-ops/ci/deploy.sh "${GIT_COMMIT}" "${params.GIT_BRANCH}" "${params.DEPLOY_TARGET}"
+                            else
+                                echo "⚠️ kb-ops/ci/deploy.sh 不存在，跳过部署"
+                                echo "请先创建部署脚本: kb-ops/ci/deploy.sh"
+                            fi
+                        """,
+                        execTimeout: 600000
+                    )],
+                    verbose: true
+                )])
+            }
+            post {
+                success { echo "✅ kb-ops 部署成功" }
+                failure { echo "❌ kb-ops 构建或部署失败" }
+            }
+        }
+
+        // ================================
+        // Stage 4: myfrp FRP管理面板
+        // ================================
+        stage('🌐 myfrp FRP管理面板') {
+            when {
+                anyOf {
+                    expression { return params.DEPLOY_PROJECT == 'all' || params.DEPLOY_PROJECT == 'myfrp' }
+                }
+            }
+            environment {
+                MAVEN_OPTS = '-Xmx512m -Dmaven.repo.local=/root/.m2/repository'
+            }
+            steps {
+                echo "=== [myfrp] 开始构建 ==="
+                milestone(label: 'myfrp-build')
+                sh '''
+                    echo ">>> [myfrp] Maven 编译 <<<"
+                    cd myfrp
+                    mvn clean package -DskipTests -B -V -ntp -Pfast
+                    cd ..
+                    echo "=== 编译产物 ==="
+                    ls -lh myfrp/target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在"
+                '''
+                milestone(label: 'myfrp-deploy')
+                sshPublisher(publishers: [sshPublisherDesc(
+                    configName: 'mykng-deploy',
+                    transfers: [sshTransfer(
+                        execCommand: """
+                            if [ -f /root/devtools/myfrp/ci/deploy.sh ]; then
+                                chmod +x /root/devtools/myfrp/ci/deploy.sh
+                                bash /root/devtools/myfrp/ci/deploy.sh "${GIT_COMMIT}" "${params.GIT_BRANCH}"
+                            else
+                                echo "⚠️ myfrp/ci/deploy.sh 不存在，跳过部署"
+                            fi
+                        """,
+                        execTimeout: 300000
+                    )],
+                    verbose: true
+                )])
+            }
+            post {
+                success { echo "✅ myfrp 部署成功" }
+                failure { echo "❌ myfrp 构建或部署失败" }
+            }
+        }
+
+        // ================================
+        // Stage 5: portal 门户系统 (Node.js)
+        // ================================
+        stage('🚪 portal 门户系统') {
+            when {
+                anyOf {
+                    expression { return params.DEPLOY_PROJECT == 'all' || params.DEPLOY_PROJECT == 'portal' }
+                }
+            }
+            steps {
+                echo "=== [portal] 开始构建 ==="
+                milestone(label: 'portal-build')
+                sh '''
+                    echo ">>> [portal] Node.js 构建 <<<"
+                    cd portal
+                    
+                    # 检查 node_modules
+                    if [ ! -d "node_modules" ]; then
+                        echo "安装依赖..."
+                        npm ci --registry=https://registry.npmmirror.com
+                    fi
+                    
+                    # 构建
+                    npm run build
+                    
+                    cd ..
+                    echo "=== 构建产物 ==="
+                    ls -lh portal/dist/ 2>/dev/null | head -10 || echo "⚠️ dist 目录不存在"
+                '''
+                milestone(label: 'portal-deploy')
+                sshPublisher(publishers: [sshPublisherDesc(
+                    configName: 'mykng-deploy',
+                    transfers: [sshTransfer(
+                        execCommand: """
+                            if [ -f /root/devtools/portal/ci/deploy.sh ]; then
+                                chmod +x /root/devtools/portal/ci/deploy.sh
+                                bash /root/devtools/portal/ci/deploy.sh "${GIT_COMMIT}" "${params.GIT_BRANCH}"
+                            else
+                                echo "⚠️ portal/ci/deploy.sh 不存在，跳过部署"
+                            fi
+                        """,
+                        execTimeout: 600000
+                    )],
+                    verbose: true
+                )])
+            }
+            post {
+                success { echo "✅ portal 部署成功" }
+                failure { echo "❌ portal 构建或部署失败" }
+            }
+        }
+
+        // ================================
+        // Stage 6: infra-monitor 基础设施监控
+        // ================================
+        stage('📊 infra-monitor 基础设施监控') {
+            when {
+                anyOf {
+                    expression { return params.DEPLOY_PROJECT == 'all' || params.DEPLOY_PROJECT == 'infra-monitor' }
+                }
+            }
+            environment {
+                MAVEN_OPTS = '-Xmx512m -Dmaven.repo.local=/root/.m2/repository'
+            }
+            steps {
+                echo "=== [infra-monitor] 开始构建 ==="
+                milestone(label: 'infra-monitor-build')
+                sh '''
+                    echo ">>> [infra-monitor] Maven 编译 <<<"
+                    cd infra-monitor/infra-monitor-server
+                    mvn clean package -DskipTests -B -V -ntp -Pfast
+                    cd ../../
+                    echo "=== 编译产物 ==="
+                    ls -lh infra-monitor/infra-monitor-server/target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在"
+                '''
+                milestone(label: 'infra-monitor-deploy')
+                sshPublisher(publishers: [sshPublisherDesc(
+                    configName: 'mykng-deploy',
+                    transfers: [sshTransfer(
+                        execCommand: """
+                            if [ -f /root/devtools/infra-monitor/ci/deploy.sh ]; then
+                                chmod +x /root/devtools/infra-monitor/ci/deploy.sh
+                                bash /root/devtools/infra-monitor/ci/deploy.sh "${GIT_COMMIT}" "${params.GIT_BRANCH}"
+                            else
+                                echo "⚠️ infra-monitor/ci/deploy.sh 不存在，跳过部署"
+                            fi
+                        """,
+                        execTimeout: 300000
+                    )],
+                    verbose: true
+                )])
+            }
+            post {
+                success { echo "✅ infra-monitor 部署成功" }
+                failure { echo "❌ infra-monitor 构建或部署失败" }
+            }
+        }
+        
+        // ================================
+        // Stage N+1: 🚀 快速新增项目模板
         // ================================
         // 复制下面的 stage 块，改5个地方即可：
-        //   ① stage 名称
+        //   ① stage 名称和 emoji
         //   ② when 表达式中的项目名
-        //   ③ environment MAVEN_OPTS
-        //   ④ sh 中的 Maven 路径
+        //   ③ environment MAVEN_OPTS（按需）
+        //   ④ sh 中的构建命令（支持 Java/Node.js/Python/Go/.NET）
         //   ⑤ sshPublisher 中的 configName 和 execCommand
+        //
+        // 💡 多语言示例:
+        //   Java:   cd xxx && mvn clean package -DskipTests -B && cd ..
+        //   Node:   cd xxx && npm ci && npm run build && cd ..
+        //   Python: cd xxx && pip install -r requirements.py && python main.py
+        //   Go:     cd xxx && go build -o app ./...
+        //   .NET:   cd xxx && dotnet build -c Release
         //
         // stage('🏷️ <项目名>') {
         //     when {
@@ -278,7 +503,7 @@ pipeline {
         //     }
         //     steps {
         //         sh '''
-        //             cd <Maven模块路径> && mvn clean package -DskipTests -B -V -ntp -Pfast && cd ../..
+        //             cd <项目路径> && <构建命令> && cd ../..
         //         '''
         //         sshPublisher(publishers: [sshPublisherDesc(
         //             configName: '<SSH配置名>',
