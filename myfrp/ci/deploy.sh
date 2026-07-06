@@ -1,19 +1,15 @@
 #!/bin/bash
 # ============================================================
-# active-manager (激活码系统) 部署脚本 — 在目标服务器上执行
+# myfrp (FRP管理面板) 部署脚本 — 在目标服务器上执行
 # ============================================================
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
 # 部署信息:
-#   项目名: activation-code-server
-#   端口: 18080 (映射到容器 8080)
-#   Docker Compose Project: activecode
-#   容器名: activecode
-#   数据库: 宿主机 MySQL (host.docker.internal:3306/tools)
-#
-# 部署目标:
-#   内网Debian (192.168.31.182) 或 mykng
+#   项目名: frp-manager
+#   端口: 18082
+#   容器名: frp-manager
+#   前端: Vue3 (内置在 JAR 中或独立部署)
 # ============================================================
 
 set -e
@@ -22,24 +18,23 @@ COMMIT_SHA="${1:-unknown}"
 BRANCH="${2:-dev}"
 
 echo "============================================="
-echo "  🔑 active-manager 激活码系统 — 自动部署"
+echo "  🌐 myfrp FRP管理面板 — 自动部署"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "  Commit: ${COMMIT_SHA}"
 echo "  分支: ${BRANCH}"
 echo "============================================="
 
 # ======== 配置 ========
-PROJECT_NAME="activecode"
-COMPOSE_DIR="/root/devtools/active-manager/activation-code-server"
-APP_PORT=18080
-CONTAINER_NAME="activecode"
+APP_DIR="/root/devtools/myfrp"
+CONTAINER_NAME="frp-manager"
+APP_PORT=18082
 
 # ======== 0. 环境准备 ========
 echo ""
 echo ">>> [0/4] 环境检查 <<<"
 
 if [ ! -d /root/devtools ]; then
-  echo "⚠️ 首次部署：/root/devtools 不存在，开始克隆..."
+  echo "⚠️ 首次部署：克隆仓库..."
   git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
 fi
 
@@ -47,6 +42,9 @@ fi
 if docker ps -a --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
   echo "ℹ️ 发现旧容器:"
   docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+  
+  OLD_PORT=$(docker port ${CONTAINER_NAME} 2>/dev/null | head -1 | cut -d: -f2 || echo "未知")
+  echo "ℹ️ 旧服务端口: ${OLD_PORT}"
 fi
 
 # ======== 1. 同步代码 ========
@@ -63,54 +61,73 @@ git fetch origin "${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
-# ======== 2. 停止并删除旧容器 ========
+# ======== 2. 检查前端 & 准备 ========
 echo ""
-echo ">>> [2/4] 停止旧服务 <<<"
-cd "${COMPOSE_DIR}"
+echo ">>> [2/4] 部署准备 <<<"
+cd "${APP_DIR}"
 
+# 如果有前端项目，先构建前端
+if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+  echo "--- 构建前端 ---"
+  cd frontend
+  
+  if [ ! -d "node_modules" ]; then
+    npm ci --registry=https://registry.npmmirror.com
+  fi
+  
+  npm run build
+  
+  # 将前端构建产物复制到后端资源目录（如果需要）
+  if [ -d "../src/main/resources/static" ] && [ -d "dist" ]; then
+    rm -rf ../src/main/resources/static/*
+    cp -r dist/* ../src/main/resources/static/
+    echo "✅ 前端资源已复制到后端"
+  fi
+  
+  cd ..
+fi
+
+# ======== 3. 停止旧服务 + 构建启动新服务 ========
+echo ""
+echo ">>> [3/4] 停止旧服务 & 启动新服务 <<<"
+
+# 停止并删除旧容器
 if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
-  echo "--- 停止旧容器 ${CONTAINER_NAME} ---"
-  # 先优雅停止（等待30秒）
+  echo "--- 停止旧容器 ---"
   docker stop ${CONTAINER_NAME} || true
-  sleep 5
-  # 删除旧容器
+  sleep 3
   docker rm -f ${CONTAINER_NAME} || true
   echo "✅ 旧容器已删除"
 else
-  echo "ℹ️ 没有运行中的容器，跳过停止"
+  echo "ℹ️ 无运行中的容器"
 fi
 
-# 清理旧镜像
 docker image prune -f --filter "until=24h" 2>/dev/null || true
 
-# ======== 3. 构建并启动新容器 ========
-echo ""
-echo ">>> [3/4] 构建并启动 <<<"
+# 构建镜像
+echo "--- 构建 frp-manager 镜像 ---"
+ls -lh target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在"
 
-echo "--- jar 包信息 ---"
-ls -lh target/*.jar 2>/dev/null || echo "⚠️ jar 包不存在，需要先编译"
+docker compose build --no-cache 2>&1 | tail -15
 
-# 使用 Docker Compose 构建 + 启动
-echo "--- 构建镜像 ---"
-docker compose -p "${PROJECT_NAME}" build --no-cache 2>&1 | tail -20
+# 启动容器
+echo "--- 启动新容器 ---"
+docker compose up -d --force-recreate 2>&1
 
-echo "--- 启动容器 ---"
-docker compose -p "${PROJECT_NAME}" up -d --force-recreate 2>&1
+sleep 8
 
-sleep 10
-
-echo "✅ 容器已启动"
+echo "✅ 服务已启动"
 docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # ======== 4. 健康检查 ========
 echo ""
 echo ">>> [4/4] 健康检查 <<<"
 
-MAX_RETRIES=10
+MAX_RETRIES=8
 for i in $(seq 1 $MAX_RETRIES); do
-  if curl -sf http://localhost:${APP_PORT}/actuator/health > /dev/null 2>&1 || \
-     curl -sf http://localhost:${APP_PORT}/ > /dev/null 2>&1; then
-    echo "✅ 激活码服务健康! 端口: ${APP_PORT} (尝试 $i/$MAX_RETRIES)"
+  if curl -sf http://localhost:${APP_PORT}/ > /dev/null 2>&1 || \
+     curl -sf http://localhost:${APP_PORT}/actuator/health > /dev/null 2>&1; then
+    echo "✅ FRP管理面板健康! 端口: ${APP_PORT} (尝试 $i/$MAX_RETRIES)"
     break
   fi
   
@@ -127,10 +144,10 @@ done
 
 echo ""
 echo "============================================="
-echo "  🔑 active-manager 部署完成!"
+echo "  🌐 myfrp FRP管理面板 部署完成!"
 echo "  Commit: $(cd /root/devtools && git rev-parse --short HEAD)"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 echo "  📊 服务访问:"
-echo "    激活码API: http://localhost:${APP_PORT}"
+echo "    FRP面板: http://localhost:${APP_PORT}"
 echo "============================================="

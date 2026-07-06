@@ -1,0 +1,124 @@
+// ============================================================
+// Jenkinsfile — 🔑 active-manager 激活码系统
+// ============================================================
+//
+// 项目信息:
+//   名称: active-manager (激活码系统)
+//   语言: Java / Maven
+//   模块: activation-code-server
+//   端口: 18080 (映射容器 8080)
+//   部署目标: 内网Debian (192.168.31.182)
+//   Docker Compose Project: activecode
+//   容器名: activecode
+//
+// 数据库: 宿主机 MySQL (host.docker.internal:3306/tools)
+// ============================================================
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'DEPLOY_TARGET',
+            choices: ['production'],
+            description: '🌍 部署目标环境'
+        )
+    }
+    
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
+    
+    environment {
+        MAVEN_OPTS = '-Xmx1024m -Dmaven.repo.local=/root/.m2/repository'
+    }
+    
+    stages {
+        stage('📋 准备环境') {
+            steps {
+                echo "============================================="
+                echo "  🔑 active-manager 激活码系统"
+                echo "  时间: ${new Date().format('yyyy-MM-dd HH:mm:ss')}"
+                echo "  Commit: ${GIT_COMMIT}"
+                echo "============================================="
+            }
+        }
+        
+        stage('🔨 Maven 编译') {
+            steps {
+                milestone(label: 'active-manager-build')
+                sh '''
+                    echo ">>> [active-manager] Maven 编译 <<<"
+                    cd active-manager/activation-code-server
+                    
+                    mvn clean package -DskipTests -B -V -ntp -Pfast
+                    
+                    cd ../..
+                    
+                    echo "=== 编译产物 ==="
+                    ls -lh active-manager/activation-code-server/target/*.jar | grep -v original || echo "⚠️ jar 不存在"
+                '''
+            }
+        }
+        
+        stage('🚀 部署到内网Debian') {
+            steps {
+                milestone(label: 'active-manager-deploy')
+                sshPublisher(
+                    publishers: [sshPublisherDesc(
+                        configName: 'lan-deploy',
+                        transfers: [sshTransfer(
+                            execCommand: """
+                                chmod +x /root/devtools/active-manager/ci/deploy.sh
+                                bash /root/devtools/active-manager/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
+                            """,
+                            execTimeout: 600000
+                        )],
+                        verbose: true
+                    )]
+                )
+            }
+        }
+        
+        stage('✅ 健康检查') {
+            steps {
+                sshPublisher(
+                    publishers: [sshPublisherDesc(
+                        configName: 'lan-deploy',
+                        transfers: [sshTransfer(
+                            execCommand: """
+                                echo "--- 激活码服务健康检查 (端口 18080) ---"
+                                for i in \$(seq 1 10); do
+                                    if curl -sf http://localhost:18080/ > /dev/null 2>&1; then
+                                        echo "✅ 激活码服务健康! (尝试 \$i)"
+                                        exit 0
+                                    fi
+                                    sleep 8
+                                done
+                                echo "❌ 服务未响应"
+                                exit 1
+                            """,
+                            execTimeout: 120000
+                        )],
+                        verbose: true
+                    )]
+                )
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "============================================="
+            echo "  active-manager 构建结束: ${currentBuild.result ?: 'SUCCESS'}"
+            echo "============================================="
+            cleanWs(cleanWhenNotFailed: false, deleteDirs: true)
+        }
+        success { echo "✅ active-manager 部署成功" }
+        failure { echo "❌ active-manager 失败" }
+    }
+}
