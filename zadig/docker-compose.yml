@@ -1,0 +1,142 @@
+# ============================================================
+# Zadig CI/CD 平台 — Docker Compose 部署配置
+# ============================================================
+#
+# 📌 部署架构:
+#   用户 → https://zadig.marschat.online (腾讯云2号 Nginx:443/SSL)
+#     → 反向代理 → mykng 虚拟机 (100.93.36.113):8080 (Zadig 容器)
+#
+# 📍 部署位置: mykng 虚拟机的 Docker 容器中
+# 🌐 公网访问: https://zadig.marschat.online
+# 🔗 内网访问: http://100.93.36.113:8080 (Tailscale)
+#
+# 🎯 包含组件:
+#   - Zadig Server (主服务，端口 8080)
+#   - MySQL 8.0 (数据存储，端口 3307)
+#   - Redis 7 (缓存，端口 6380)
+#
+# 🔧 使用方法:
+#   1. 在 mykng 服务器上: bash deploy.sh --init && bash deploy.sh --start
+#   2. 在腾讯云2号配置 Nginx 反向代理（见 docs/zadig-nginx.conf）
+#   3. 访问 https://zadig.marschat.online
+#
+# ⚠️ 注意事项:
+#   - 首次启动需要初始化数据库（约 2-3 分钟）
+#   - 默认账号: admin / zadig（请立即修改！）
+#   - 确保 Tailscale 网络连通（腾讯云2号 ↔ mykng）
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ================================
+  # Zadig 主服务
+  # ================================
+  zadig-server:
+    image: koderover/zadig:latest
+    container_name: zadig-server
+    restart: unless-stopped
+    ports:
+      - "8080:80"        # Web UI
+      - "9000:9000"      # gRPC API (可选)
+    environment:
+      # 数据库连接
+      - MYSQL_HOST=zadig-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USERNAME=root
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-zadig2024}
+      
+      # Redis 连接
+      - REDIS_HOST=zadig-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      
+      # Zadig 配置（重要！必须设置为公网域名）
+      - ZADIG_DOMAIN=${ZADIG_DOMAIN:-https://zadig.marschat.online}
+      - ZADIG_SECRET=${ZADIG_SECRET:-your-secret-key-change-me}
+      
+      # 日志级别
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - zadig-data:/data                    # 数据持久化
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket（构建需要）
+      - ${DOCKER_CONFIG_PATH:-~/.docker}:/root/.docker  # Docker config
+    depends_on:
+      zadig-mysql:
+        condition: service_healthy
+      zadig-redis:
+        condition: service_healthy
+    networks:
+      - zadig-network
+
+  # ================================
+  # MySQL 数据库
+  # ================================
+  zadig-mysql:
+    image: mysql:8.0
+    container_name: zadig-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD:-zadig2024}
+      - MYSQL_DATABASE=zadig
+      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
+      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+    volumes:
+      - zadig-mysql-data:/var/lib/mysql
+    ports:
+      - "3307:3306"       # 映射到 3307 避免冲突（可选）
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=1000
+      - --innodb_buffer_pool_size=512M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_PASSWORD:-zadig2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - zadig-network
+
+  # ================================
+  # Redis 缓存
+  # ================================
+  zadig-redis:
+    image: redis:7-alpine
+    container_name: zadig-redis
+    restart: unless-stopped
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 256mb 
+      --maxmemory-policy allkeys-lru
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    volumes:
+      - zadig-redis-data:/data
+    ports:
+      - "6380:6379"       # 映射到 6380 避免冲突（可选）
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zadig-network
+
+# ================================
+# 数据卷（持久化存储）
+# ================================
+volumes:
+  zadig-data:
+    driver: local
+  zadig-mysql-data:
+    driver: local
+  zadig-redis-data:
+    driver: local
+
+# ================================
+# 网络
+# ================================
+networks:
+  zadig-network:
+    driver: bridge

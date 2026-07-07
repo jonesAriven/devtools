@@ -1,0 +1,281 @@
+# ============================================================
+# Zadig CI/CD 流水线 — devtools 仓库（调度中心）
+# ============================================================
+#
+# 📁 从 Drone (.drone.yml) 迁移到 Zadig
+# 🎯 支持多项目：mykng, active-manager, kb-ops, myfrp
+#
+# 🔧 工作流程:
+#   1. 参数选择 → 选择要部署的项目
+#   2. 检查项目 → 验证是否在部署列表中
+#   3. Maven 编译 → 构建各服务 JAR 包
+#   4. SSH 部署 → 通过 SSH 部署到目标服务器
+#   5. 健康检查 → 验证服务是否正常启动
+#
+# 🚀 触发方式:
+#   - 手动触发（推荐测试用）
+#   - Webhook 触发（代码提交自动构建）
+#   - 定时触发（Cron）
+# ============================================================
+
+version: "1.1"
+
+# ================================
+# 全局变量
+# ================================
+variables:
+  # 部署目标环境
+  DEPLOY_TARGET:
+    type: string
+    default: production
+    description: "🌍 部署目标环境 (production/dev/test)"
+  
+  # 选择要部署的项目（支持多选，逗号分隔）
+  DEPLOY_PROJECT:
+    type: string
+    default: all
+    description: "📦 要部署的项目 (all/mykng/active-manager/mykng,active-manager)"
+
+# ================================
+# Stage 1: mykng 知识库微服务
+# ================================
+stages:
+  - name: mykng-cicd
+    displayName: "📘 知识库微服务 (mykng)"
+    strategy: naturally
+    trigger:
+      branch:
+        include:
+          - dev
+          - master
+    
+    steps:
+      # ---- Step 1: 检查是否需要部署此项目 ----
+      - step: shell@1
+        name: 检查部署目标
+        image: alpine:3.19
+        commands: |
+          PROJECT="mykng"
+          echo "=== [$PROJECT] 检查部署目标: DEPLOY_PROJECT=${DEPLOY_PROJECT:-未设置} ==="
+          
+          # 支持多项目选择：逗号分隔
+          if [ "${DEPLOY_PROJECT}" != "" ] && [ "${DEPLOY_PROJECT}" != "all" ]; then
+            MATCH=0
+            IFS=',' read -ra TARGETS <<< "${DEPLOY_PROJECT}"
+            for TARGET in "${TARGETS[@]}"; do
+              TARGET=$(echo "$TARGET" | xargs)
+              if [ "$TARGET" = "$PROJECT" ]; then
+                MATCH=1
+                break
+              fi
+            done
+            if [ "$MATCH" = "0" ]; then
+              echo "⏭️  跳过 $PROJECT（不在部署列表中）"
+              exit 1
+            fi
+          fi
+          echo "✅ 匹配 $PROJECT，继续部署"
+
+      # ---- Step 2: Maven 编译 ----
+      - step: build@1
+        name: Maven 编译 mykng
+        image: maven:3.9-eclipse-temurin-21
+        commands: |
+          echo "=== [mykng] Maven 编译开始 ==="
+          
+          # 设置 Maven 参数
+          export MAVEN_OPTS="-Xmx2048m"
+          
+          # 进入项目目录并编译
+          cd mykng/kb-parent
+          mvn clean package \
+            -DskipTests \
+            -B \
+            -V \
+            -ntp \
+            && cd ../..
+          
+          echo "=== 编译完成，检查产物 ==="
+          ls -lh \
+            mykng/kb-gateway/target/*.jar \
+            mykng/kb-auth/target/*.jar \
+            mykng/kb-file/target/*.jar \
+            mykng/kb-knowledge/target/*.jar \
+            mykng/kb-intelligence/target/*.jar \
+            2>/dev/null || echo "⚠️ 部分 JAR 不存在"
+          
+          echo "✅ Maven 编译完成"
+        
+        # 缓存 Maven 依赖（加速后续构建）
+        caches:
+          - path: /root/.m2/repository
+        
+        # 导出构建产物（供后续步骤使用）
+        artifacts:
+          - name: mykng-jars
+            path: |
+              mykng/kb-gateway/target/*.jar
+              mykng/kb-auth/target/*.jar
+              mykng/kb-file/target/*.jar
+              mykng/kb-knowledge/target/*.jar
+              mykng/kb-intelligence/target/*.jar
+
+      # ---- Step 3: SSH 部署到 mykng 服务器 ----
+      - step: ssh@1
+        name: 部署到 mykng 服务器
+        image: alpine:3.19
+        with:
+          host: ${{DEPLOY_HOST_MYKNG}}
+          user: root
+          password: ${{DEPLOY_PASS_MYKNG}}
+          port: 22
+          command: |
+            echo "=== 开始部署 mykng 到目标服务器 ==="
+            
+            # 确保部署脚本可执行
+            chmod +x /root/devtools/mykng/ci/deploy.sh
+            
+            # 执行部署脚本
+            bash /root/devtools/mykng/ci/deploy.sh \
+              "${GIT_COMMIT}" \
+              "${GIT_BRANCH:-dev}" \
+              "${DEPLOY_TARGET:-production}"
+            
+            echo "✅ mykng 部署完成"
+
+      # ---- Step 4: 健康检查 ----
+      - step: shell@1
+        name: Gateway 健康检查
+        image: curlimages/curl:latest
+        with:
+          host: ${{DEPLOY_HOST_MYKNG}}
+          user: root
+          password: ${{DEPLOY_PASS_MYKNG}}
+          port: 22
+          command: |
+            echo "=== Gateway 健康检查 ==="
+            MAX_RETRIES=6
+            
+            for i in $(seq 1 $MAX_RETRIES); do
+              if curl -sf http://localhost:8090/kb/actuator/health > /dev/null 2>&1; then
+                echo "✅ Gateway 健康! (尝试 $i/$MAX_RETRIES)"
+                exit 0
+              fi
+              
+              if [ $i -eq $MAX_RETRIES ]; then
+                echo "❌ Gateway 健康检查失败!"
+                docker compose -p kb-deploy logs --tail=30 kb-gateway
+                exit 1
+              fi
+              
+              echo "⏳ 等待 Gateway 启动... ($i/$MAX_RETRIES)"
+              sleep 10
+            done
+
+  # ================================
+  # Stage 2: active-manager 激活码系统
+  # ================================
+  - name: active-manager-cicd
+    displayName: "🔑 激活码系统 (active-manager)"
+    strategy: naturally
+    trigger:
+      branch:
+        include:
+          - dev
+          - master
+    
+    steps:
+      # ---- Step 1: 检查是否需要部署此项目 ----
+      - step: shell@1
+        name: 检查部署目标
+        image: alpine:3.19
+        commands: |
+          PROJECT="active-manager"
+          echo "=== [$PROJECT] 检查部署目标: DEPLOY_PROJECT=${DEPLOY_PROJECT:-未设置} ==="
+          
+          if [ "${DEPLOY_PROJECT}" != "" ] && [ "${DEPLOY_PROJECT}" != "all" ]; then
+            MATCH=0
+            IFS=',' read -ra TARGETS <<< "${DEPLOY_PROJECT}"
+            for TARGET in "${TARGETS[@]}"; do
+              TARGET=$(echo "$TARGET" | xargs)
+              if [ "$TARGET" = "$PROJECT" ]; then
+                MATCH=1
+                break
+              fi
+            done
+            if [ "$MATCH" = "0" ]; then
+              echo "⏭️  跳过 $PROJECT（不在部署列表中）"
+              exit 1
+            fi
+          fi
+          echo "✅ 匹配 $PROJECT，继续部署"
+
+      # ---- Step 2: Maven 编译 ----
+      - step: build@1
+        name: Maven 编译 active-manager
+        image: maven:3.9-eclipse-temurin-21
+        commands: |
+          echo "=== [active-manager] Maven 编译开始 ==="
+          
+          export MAVEN_OPTS="-Xmx1024m"
+          
+          cd active-manager/activation-code-server
+          mvn clean package \
+            -DskipTests \
+            -B \
+            -V \
+            -ntp \
+            && cd ../..
+          
+          echo "=== 编译完成 ==="
+          ls -lh active-manager/activation-code-server/target/*.jar
+          
+          echo "✅ Maven 编译完成"
+        
+        caches:
+          - path: /root/.m2/repository
+        
+        artifacts:
+          - name: active-manager-jar
+            path: |
+              active-manager/activation-code-server/target/*.jar
+
+      # ---- Step 3: SSH 部署到内网 Debian ----
+      - step: ssh@1
+        name: 部署到内网 Debian
+        image: alpine:3.19
+        with:
+          host: ${{DEPLOY_HOST_LAN}}
+          user: root
+          password: ${{DEPLOY_PASS_LAN}}
+          port: 22
+          command: |
+            echo "=== 开始部署 active-manager 到内网 Debian ==="
+            
+            chmod +x /root/devtools/active-manager/ci/deploy.sh
+            
+            bash /root/devtools/active-manager/ci/deploy.sh \
+              "${GIT_COMMIT}" \
+              "${GIT_BRANCH:-dev}"
+            
+            echo "✅ active-manager 部署完成"
+
+# ============================================================
+# 📋 环境变量说明（在 Zadig 中配置）
+# ============================================================
+#
+# | 变量名             | 用途           | 示例值                    |
+# |-------------------|---------------|--------------------------|
+# | DEPLOY_HOST_MYKNG | mykng 服务器IP | 100.93.36.113 (Tailscale)|
+# | DEPLOY_PASS_MYKNG | mykng SSH密码  | your_password_here       |
+# | DEPLOY_HOST_LAN   | 内网Debian IP  | 192.168.31.182           |
+# | DEPLOY_PASS_LAN   | 内网SSH密码    | your_password_here       |
+# | MYSQL_PASSWORD    | Zadig数据库密码| zadig2024                |
+# | ZADIG_SECRET      | Zadig加密密钥  | change-me-to-random-string|
+#
+# ⚠️ 安全提示：
+#   - 密码类变量请使用 Zadig 的加密存储功能
+#   - 不要明文写在 YAML 文件中
+#   - 定期轮换密钥和密码
+#
+# ============================================================
