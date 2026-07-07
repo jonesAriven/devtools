@@ -7,6 +7,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import cn.hutool.crypto.digest.BCrypt;
+
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Statement;
@@ -53,7 +55,29 @@ public class DatabaseInitializer implements CommandLineRunner {
         }
     }
 
+    private void initAdminUser() {
+        try {
+            Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND username = 'admin'", Integer.class);
+            if (count != null && count > 0) {
+                log.info("admin 用户已存在，跳过初始化");
+                return;
+            }
+
+            log.info("初始化 admin 默认用户...");
+            String encodedPassword = BCrypt.hashpw("admin123", BCrypt.gensalt());
+            jdbcTemplate.update(
+                    "INSERT INTO sys_user (username, password, nickname, status) VALUES (?, ?, ?, ?)",
+                    "admin", encodedPassword, "管理员", 1
+            );
+            log.info("admin 用户初始化完成（默认密码: admin123）");
+        } catch (Exception e) {
+            log.warn("初始化 admin 用户失败（可能表不存在或已存在）: {}", e.getMessage());
+        }
+    }
+
     private void initData() {
+        initAdminUser();
+
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM portal_system WHERE deleted = 0", Integer.class);
         if (count != null && count > 0) {
             log.info("portal_system 表已有数据，跳过初始化（{}条）", count);

@@ -185,22 +185,51 @@ else
   BACKEND_JAR=""
 fi
 
-# ======== 5. 部署后端（如果有JAR）=====
+# ======== 5. 部署后端（如果有JAR） — 防止孤儿Java进程 ========
 echo ""
 echo ">>> [5/6] 部署后端 <<<"
 
 if [ -n "$BACKEND_JAR" ] && [ -f "$BACKEND_JAR" ]; then
-  # 停止旧进程
-  if [ -n "$OLD_BACKEND_PID" ]; then
+  echo "--- 清理旧后端进程（防止孤儿 Java 进程） ---"
+  
+  # 方法1: 使用记录的 PID
+  if [ -n "$OLD_BACKEND_PID" ] && ps -p ${OLD_BACKEND_PID} > /dev/null 2>&1; then
     echo "--- 停止旧后端进程 (PID: ${OLD_BACKEND_PID}) ---"
     kill ${OLD_BACKEND_PID} 2>/dev/null || true
     sleep 3
+  fi
+  
+  # 方法2: 按端口查找（更可靠，覆盖 PID 变化的情况）
+  if ss -tlnp | grep -q ":${BACKEND_PORT} "; then
+    echo "--- 端口 ${BACKEND_PORT} 仍被占用，按端口清理 ---"
+    # 获取占用端口的进程信息
+    PORT_INFO=$(ss -tlnp | grep ":${BACKEND_PORT} ")
+    echo "  ${PORT_INFO}"
     
-    # 强制清理（如果还在占用端口）
+    # 提取并杀掉所有占用该端口的 PID
+    PORT_PIDS=$(ss -tlnp | grep ":${BACKEND_PORT} " | grep -oP 'pid=\K\d+' | tr '\n' ' ')
+    if [ -n "$PORT_PIDS" ]; then
+      echo "  杀掉进程 PIDs: ${PORT_PIDS}"
+      for pid in $PORT_PIDS; do
+        kill ${pid} 2>/dev/null || true
+      done
+      sleep 3
+    fi
+    
+    # 强制清理（如果还在占用）
     if ss -tlnp | grep -q ":${BACKEND_PORT} "; then
-      echo "--- 强制终止残留进程 ---"
-      fuser -k ${BACKEND_PORT}/tcp 2>/dev/null || true
+      echo "  强制终止残留 (-9)..."
+      fuser -k -9 ${BACKEND_PORT}/tcp 2>/dev/null || true
       sleep 2
+    fi
+    
+    # 最终确认端口释放
+    if ss -tlnp | grep -q ":${BACKEND_PORT} "; then
+      echo "❌ 端口 ${BACKEND_PORT} 无法释放！请手动排查:"
+      ss -tlnp | grep ":${BACKEND_PORT} "
+      # 不退出，让用户知道，但继续部署前端
+    else
+      echo "✅ 端口 ${BACKEND_PORT} 已释放"
     fi
   fi
   

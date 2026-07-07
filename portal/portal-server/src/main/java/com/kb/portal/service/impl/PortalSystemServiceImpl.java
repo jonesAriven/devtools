@@ -24,7 +24,7 @@ public class PortalSystemServiceImpl extends ServiceImpl<PortalSystemMapper, Por
     private final CryptoUtil cryptoUtil;
 
     @Override
-    public PageResult<PortalSystem> list(String keyword, String category, Integer status, int page, int size) {
+    public PageResult<PortalSystem> list(String keyword, String category, Integer status, Boolean hasCredentials, Boolean hasUrl, int page, int size) {
         LambdaQueryWrapper<PortalSystem> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(PortalSystem::getName, keyword)
@@ -36,6 +36,24 @@ public class PortalSystemServiceImpl extends ServiceImpl<PortalSystemMapper, Por
         }
         if (status != null) {
             wrapper.eq(PortalSystem::getStatus, status);
+        }
+        if (hasCredentials != null) {
+            if (hasCredentials) {
+                wrapper.isNotNull(PortalSystem::getLoginUsername)
+                        .ne(PortalSystem::getLoginUsername, "");
+            } else {
+                wrapper.and(w -> w.isNull(PortalSystem::getLoginUsername)
+                        .or().eq(PortalSystem::getLoginUsername, ""));
+            }
+        }
+        if (hasUrl != null) {
+            if (hasUrl) {
+                wrapper.isNotNull(PortalSystem::getUrl)
+                        .ne(PortalSystem::getUrl, "");
+            } else {
+                wrapper.and(w -> w.isNull(PortalSystem::getUrl)
+                        .or().eq(PortalSystem::getUrl, ""));
+            }
         }
         wrapper.orderByAsc(PortalSystem::getSortOrder)
                 .orderByDesc(PortalSystem::getCreatedAt);

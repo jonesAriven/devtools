@@ -72,3 +72,18 @@ SET @sql = IF(@col_exists = 0, 'ALTER TABLE portal_system ADD COLUMN login_passw
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- 用户表
+CREATE TABLE IF NOT EXISTS `sys_user` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT,
+    `username`      VARCHAR(64)  NOT NULL COMMENT '用户名',
+    `password`      VARCHAR(128) NOT NULL COMMENT '密码（BCrypt加密）',
+    `nickname`      VARCHAR(64)  DEFAULT NULL COMMENT '昵称',
+    `status`        INT          DEFAULT 1 COMMENT '1=启用 0=禁用',
+    `deleted`       INT          DEFAULT 0 COMMENT '逻辑删除',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_username` (`username`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';

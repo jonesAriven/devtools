@@ -35,6 +35,10 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item command="changePassword">
+                <el-icon><Key /></el-icon>
+                修改密码
+              </el-dropdown-item>
               <el-dropdown-item command="logout">
                 <el-icon><SwitchButton /></el-icon>
                 退出登录
@@ -44,6 +48,34 @@
         </el-dropdown>
       </div>
     </el-header>
+
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改密码"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码（至少6位）" />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="passwordSubmitting" @click="handlePasswordSubmit">确定</el-button>
+      </template>
+    </el-dialog>
 
     <el-container class="layout-body">
       <el-aside v-if="!isManagePage" width="240px" class="layout-aside">
@@ -97,9 +129,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Search,
   Setting,
@@ -108,12 +140,14 @@ import {
   SwitchButton,
   Menu,
   Star,
-  Back
+  Back,
+  Key
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useSystemStore } from '@/stores/system'
 import { categoryLabels, categoryIcons, type SystemCategory } from '@/config/systems'
+import { changePassword } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -124,6 +158,35 @@ const systemStore = useSystemStore()
 const searchText = ref('')
 const categories: SystemCategory[] = ['web', 'infra', 'tool', 'doc']
 const activeSection = ref<string>('favorites')
+
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+const passwordSubmitting = ref(false)
 
 const isManagePage = computed(() => route.name === 'Manage')
 
@@ -160,7 +223,12 @@ function getCategoryCount(cat: SystemCategory): number {
 }
 
 function handleCommand(command: string) {
-  if (command === 'logout') {
+  if (command === 'changePassword') {
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    passwordDialogVisible.value = true
+  } else if (command === 'logout') {
     ElMessageBox.confirm('确定要退出登录吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
@@ -170,6 +238,28 @@ function handleCommand(command: string) {
       router.push('/login')
     }).catch(() => {})
   }
+}
+
+async function handlePasswordSubmit() {
+  if (!passwordFormRef.value) return
+  await passwordFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    passwordSubmitting.value = true
+    try {
+      await changePassword({
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      })
+      ElMessage.success('密码修改成功，请重新登录')
+      passwordDialogVisible.value = false
+      userStore.logout()
+      router.push('/login')
+    } catch (e: any) {
+      ElMessage.error(e.message || '密码修改失败')
+    } finally {
+      passwordSubmitting.value = false
+    }
+  })
 }
 
 function goBack() {

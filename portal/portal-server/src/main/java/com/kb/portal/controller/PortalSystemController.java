@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/system")
+@RequestMapping("/api/sys/system")
 @RequiredArgsConstructor
 public class PortalSystemController {
 
@@ -24,9 +24,11 @@ public class PortalSystemController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Boolean hasCredentials,
+            @RequestParam(required = false) Boolean hasUrl,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(portalSystemService.list(keyword, category, status, page, size));
+        return Result.ok(portalSystemService.list(keyword, category, status, hasCredentials, hasUrl, page, size));
     }
 
     @GetMapping("/all")

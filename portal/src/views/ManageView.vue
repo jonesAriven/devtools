@@ -19,13 +19,25 @@
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         />
-        <el-select v-model="filterCategory" placeholder="全部分类" clearable class="category-select" @change="handleCategoryChange">
+        <el-select v-model="filterCategory" placeholder="全部分类" clearable class="filter-select" @change="handleFilterChange">
           <el-option
             v-for="(label, key) in categoryLabels"
             :key="key"
             :label="label"
             :value="key"
           />
+        </el-select>
+        <el-select v-model="filterStatus" placeholder="全部状态" clearable class="filter-select" @change="handleFilterChange">
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
+        </el-select>
+        <el-select v-model="filterHasCredentials" placeholder="账密配置" clearable class="filter-select" @change="handleFilterChange">
+          <el-option label="已配置账密" :value="true" />
+          <el-option label="未配置账密" :value="false" />
+        </el-select>
+        <el-select v-model="filterHasUrl" placeholder="访问地址" clearable class="filter-select" @change="handleFilterChange">
+          <el-option label="有访问地址" :value="true" />
+          <el-option label="无访问地址" :value="false" />
         </el-select>
       </div>
 
@@ -171,6 +183,9 @@ const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
 const searchKeyword = ref('')
 const filterCategory = ref<SystemCategory | ''>('')
+const filterStatus = ref<number | ''>('')
+const filterHasCredentials = ref<boolean | ''>('')
+const filterHasUrl = ref<boolean | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -226,6 +241,9 @@ async function fetchList() {
       pageSize: pageSize.value,
       keyword: searchKeyword.value || undefined,
       category: filterCategory.value || undefined,
+      status: filterStatus.value !== '' ? filterStatus.value : undefined,
+      hasCredentials: filterHasCredentials.value !== '' ? filterHasCredentials.value : undefined,
+      hasUrl: filterHasUrl.value !== '' ? filterHasUrl.value : undefined,
     })
     systems.value = data.list
     total.value = data.total
@@ -241,7 +259,7 @@ function handleSearch() {
   fetchList()
 }
 
-function handleCategoryChange() {
+function handleFilterChange() {
   currentPage.value = 1
   fetchList()
 }
@@ -351,16 +369,18 @@ onMounted(() => {
 
   .filter-bar {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 20px;
+    flex-wrap: wrap;
 
     .search-input {
       flex: 1;
+      min-width: 200px;
       max-width: 300px;
     }
 
-    .category-select {
-      width: 160px;
+    .filter-select {
+      width: 140px;
     }
   }
 

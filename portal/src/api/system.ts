@@ -7,6 +7,8 @@ export interface SystemQueryParams {
   category?: SystemCategory
   keyword?: string
   status?: number
+  hasCredentials?: boolean
+  hasUrl?: boolean
 }
 
 export interface SystemPageResult {
@@ -67,6 +69,8 @@ export function getSystemList(params?: SystemQueryParams): Promise<SystemPageRes
     category: params?.category,
     keyword: params?.keyword,
     status: params?.status,
+    hasCredentials: params?.hasCredentials,
+    hasUrl: params?.hasUrl,
   }
   return request.get<any, any>('/system/list', { params: queryParams }).then((res: any) => ({
     list: (res.records || res.list || []).map(transformSystem),

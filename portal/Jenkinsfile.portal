@@ -4,15 +4,18 @@
 //
 // 项目信息:
 //   名称: portal (devtools-portal)
-//   语言: TypeScript / Vue3 / Vite / Element Plus
+//   技术栈: TypeScript / Vue3 / Vite / Element Plus
 //   构建工具: npm / pnpm
-//   端口: 8088 或 Nginx 代理
+//   端口: 8087 (后端API) + Nginx 静态文件 (前端)
 //   部署目标: mykng (100.93.36.113)
-//   部署方式: Nginx 静态文件 或 Docker (Node serve)
+//   部署方式:
+//     - 前端: Nginx 静态文件 (/var/www/portal)
+//     - 后端: Java 直接进程 (:8087, JAR在 /opt/portal-server/)
 //
 // 特点:
-//   - 纯前端项目，构建产物为静态文件
-//   - 无需 Maven 编译
+//   - 前后端分离部署
+//   - 前端 Vue3 构建 → 静态文件
+//   - 后端 Maven 构建 → JAR → nohup 进程
 // ============================================================
 
 pipeline {
@@ -72,13 +75,28 @@ pipeline {
                 sshPublisher(
                     publishers: [sshPublisherDesc(
                         configName: 'mykng-deploy',
-                        transfers: [sshTransfer(
-                            execCommand: """
-                                chmod +x /root/devtools/portal/ci/deploy.sh
-                                bash /root/devtools/portal/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
-                            """,
-                            execTimeout: 600000
-                        )],
+                        transfers: [
+                            // 1. 创建目标目录
+                            sshTransfer(
+                                execCommand: "mkdir -p /root/devtools/portal/dist /root/devtools/portal/portal-server/target",
+                                execTimeout: 30000
+                            ),
+                            // 2. 传输前端构建产物
+                            sshTransfer(
+                                sourceFiles: 'portal/dist/**',
+                                removePrefix: 'portal/dist',
+                                remoteDirectory: '/root/devtools/portal/dist',
+                                execTimeout: 120000
+                            ),
+                            // 3. 执行部署脚本（后端由 deploy.sh 在服务器上 Maven 构建）
+                            sshTransfer(
+                                execCommand: """
+                                    chmod +x /root/devtools/portal/ci/deploy.sh
+                                    bash /root/devtools/portal/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
+                                """,
+                                execTimeout: 600000
+                            )
+                        ],
                         verbose: true
                     )]
                 )

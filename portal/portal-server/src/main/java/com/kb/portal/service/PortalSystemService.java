@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface PortalSystemService {
 
-    PageResult<PortalSystem> list(String keyword, String category, Integer status, int page, int size);
+    PageResult<PortalSystem> list(String keyword, String category, Integer status, Boolean hasCredentials, Boolean hasUrl, int page, int size);
 
     List<PortalSystem> listByCategory(String category);
 
