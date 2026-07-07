@@ -71,13 +71,28 @@ pipeline {
                 sshPublisher(
                     publishers: [sshPublisherDesc(
                         configName: 'lan-deploy',
-                        transfers: [sshTransfer(
-                            execCommand: """
-                                chmod +x /root/devtools/active-manager/ci/deploy.sh
-                                bash /root/devtools/active-manager/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
-                            """,
-                            execTimeout: 600000
-                        )],
+                        transfers: [
+                            // 1. 创建目标目录
+                            sshTransfer(
+                                execCommand: "mkdir -p /root/devtools/active-manager/activation-code-server/target",
+                                execTimeout: 30000
+                            ),
+                            // 2. 传输 JAR 包（Docker build 需要）
+                            sshTransfer(
+                                sourceFiles: 'active-manager/activation-code-server/target/*.jar',
+                                removePrefix: 'active-manager/activation-code-server',
+                                remoteDirectory: '/root/devtools/active-manager/activation-code-server',
+                                execTimeout: 120000
+                            ),
+                            // 3. 执行部署脚本
+                            sshTransfer(
+                                execCommand: """
+                                    chmod +x /root/devtools/active-manager/ci/deploy.sh
+                                    bash /root/devtools/active-manager/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
+                                """,
+                                execTimeout: 600000
+                            )
+                        ],
                         verbose: true
                     )]
                 )

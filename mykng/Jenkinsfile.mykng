@@ -85,13 +85,52 @@ pipeline {
                 sshPublisher(
                     publishers: [sshPublisherDesc(
                         configName: 'mykng-deploy',
-                        transfers: [sshTransfer(
-                            execCommand: """
-                                chmod +x /root/devtools/mykng/ci/deploy.sh
-                                bash /root/devtools/mykng/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}" "${params.DEPLOY_TARGET}"
-                            """,
-                            execTimeout: 900000
-                        )],
+                        transfers: [
+                            // 1. 创建目标目录
+                            sshTransfer(
+                                execCommand: "mkdir -p /root/devtools/mykng/kb-gateway/target /root/devtools/mykng/kb-auth/target /root/devtools/mykng/kb-file/target /root/devtools/mykng/kb-knowledge/target /root/devtools/mykng/kb-intelligence/target",
+                                execTimeout: 30000
+                            ),
+                            // 2. 传输各微服务 JAR 包（Docker build 需要）
+                            sshTransfer(
+                                sourceFiles: 'mykng/kb-gateway/target/*.jar',
+                                removePrefix: 'mykng/kb-gateway',
+                                remoteDirectory: '/root/devtools/mykng/kb-gateway',
+                                execTimeout: 120000
+                            ),
+                            sshTransfer(
+                                sourceFiles: 'mykng/kb-auth/target/*.jar',
+                                removePrefix: 'mykng/kb-auth',
+                                remoteDirectory: '/root/devtools/mykng/kb-auth',
+                                execTimeout: 120000
+                            ),
+                            sshTransfer(
+                                sourceFiles: 'mykng/kb-file/target/*.jar',
+                                removePrefix: 'mykng/kb-file',
+                                remoteDirectory: '/root/devtools/mykng/kb-file',
+                                execTimeout: 120000
+                            ),
+                            sshTransfer(
+                                sourceFiles: 'mykng/kb-knowledge/target/*.jar',
+                                removePrefix: 'mykng/kb-knowledge',
+                                remoteDirectory: '/root/devtools/mykng/kb-knowledge',
+                                execTimeout: 120000
+                            ),
+                            sshTransfer(
+                                sourceFiles: 'mykng/kb-intelligence/target/*.jar',
+                                removePrefix: 'mykng/kb-intelligence',
+                                remoteDirectory: '/root/devtools/mykng/kb-intelligence',
+                                execTimeout: 120000
+                            ),
+                            // 3. 执行部署脚本
+                            sshTransfer(
+                                execCommand: """
+                                    chmod +x /root/devtools/mykng/ci/deploy.sh
+                                    bash /root/devtools/mykng/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}" "${params.DEPLOY_TARGET}"
+                                """,
+                                execTimeout: 900000
+                            )
+                        ],
                         verbose: true
                     )]
                 )

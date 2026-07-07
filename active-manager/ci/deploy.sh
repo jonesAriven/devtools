@@ -108,18 +108,21 @@ else
   echo "⚠️ 未找到登录页，将在构建时确认"
 fi
 
-# ======== 2. 停止并删除旧容器 ========
+# ======== 2. 停止并删除旧容器（包括已停止的僵尸容器） ========
 echo ""
 echo ">>> [2/4] 停止旧服务 <<<"
 cd "${COMPOSE_DIR}"
 
-if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
-  echo "--- 停止旧容器 ${CONTAINER_NAME} ---"
-  # 使用 docker compose 停止（更优雅）
-  docker compose -p "${PROJECT_NAME}" down 2>/dev/null || true
-  sleep 5
+# 检查所有状态的旧容器（运行中 + 已停止 + 僵尸）
+if docker ps -a --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
+  echo "--- 发现旧容器（任何状态） ---"
+  docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
   
-  # 强制清理残留
+  # 使用 docker compose 停止并删除（更优雅，处理所有状态）
+  docker compose -p "${PROJECT_NAME}" down --remove-orphans 2>/dev/null || true
+  sleep 3
+  
+  # 强制清理残留（防止 compose down 没删干净）
   docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
   
   # 确保端口释放
@@ -130,9 +133,9 @@ if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
   
   echo "✅ 旧容器已停止并删除"
 else
-  echo "ℹ️ 没有运行中的容器"
+  echo "ℹ️ 无旧容器（干净环境）"
   
-  # 如果端口被其他进程占用
+  # 如果端口被其他进程占用（可能是非 Docker 进程）
   if ss -tlnp | grep -q ":${APP_PORT} "; then
     echo "⚠️ 端口 ${APP_PORT} 被其他进程占用，尝试清理..."
     fuser -k ${APP_PORT}/tcp 2>/dev/null || true

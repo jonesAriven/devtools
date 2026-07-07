@@ -161,26 +161,40 @@ fi
 echo "✅ 后端构建完成: ${JAR_FILE}"
 ls -lh "${JAR_FILE}"
 
-# ======== 4. 停止旧服务 + 部署新 JAR ========
+# ======== 4. 停止旧服务 + 部署新 JAR（防止孤儿容器和端口冲突） ========
 echo ""
 echo ">>> [4/6] 停止旧服务 & 部署新版本 <<<"
 
-# 停止旧容器
-if docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q .; then
-  echo "--- 停止旧容器 ---"
-  docker stop ${CONTAINER_NAME} || true
+# 检查所有状态的旧容器（运行中 + 已停止 + 僵尸）
+# ⚠️ 必须检查所有状态！因为后面 docker run --name 遇到同名容器会报错冲突
+if docker ps -a --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
+  echo "--- 发现旧容器（任何状态），执行清理 ---"
+  docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Networks}}"
+  
+  # 先尝试优雅停止
+  docker stop ${CONTAINER_NAME} 2>/dev/null || true
   sleep 3
-  docker rm -f ${CONTAINER_NAME} || true
+  
+  # 强制删除（不管当前状态：Running/Exited/Dead）
+  docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
   echo "✅ 旧容器已删除"
 else
-  echo "ℹ️ 无运行中的容器"
+  echo "ℹ️ 无旧容器（干净环境）"
+fi
+
+# 二次确认：如果容器删了但端口还被占用（可能是残留进程或非 Docker 进程）
+if ss -tlnp | grep -q ":${APP_PORT} "; then
+  echo "⚠️ 端口 ${APP_PORT} 仍被占用，尝试清理残留进程..."
+  fuser -k ${APP_PORT}/tcp 2>/dev/null || true
+  sleep 3
   
-  # 如果容器没在运行，但端口被占用（可能是残留进程）
+  # 最终确认
   if ss -tlnp | grep -q ":${APP_PORT} "; then
-    echo "⚠️ 端口 ${APP_PORT} 仍被占用，尝试清理..."
-    fuser -k ${APP_PORT}/tcp 2>/dev/null || true
-    sleep 2
+    echo "❌ 端口 ${APP_PORT} 无法释放！请手动排查:"
+    ss -tlnp | grep ":${APP_PORT} "
+    exit 1
   fi
+  echo "✅ 端口已释放"
 fi
 
 # 备份旧 JAR

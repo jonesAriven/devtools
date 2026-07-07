@@ -6,7 +6,7 @@
 //   名称: infra-monitor (基础设施监控)
 //   后端: Java / Spring Boot (infra-monitor-server)
 //   前端: Vue3 / Vite (infra-monitor-web)
-//   端口: 8085 (默认)
+//   端口: 8088 (host网络模式)
 //   部署目标: mykng (100.93.36.113)
 //   容器名: infra-monitor
 //
@@ -91,13 +91,23 @@ pipeline {
                 sshPublisher(
                     publishers: [sshPublisherDesc(
                         configName: 'mykng-deploy',
-                        transfers: [sshTransfer(
-                            execCommand: """
-                                chmod +x /root/devtools/infra-monitor/ci/deploy.sh
-                                bash /root/devtools/infra-monitor/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
-                            """,
-                            execTimeout: 600000
-                        )],
+                        transfers: [
+                            // 1. 传输前端构建产物（如果存在）
+                            sshTransfer(
+                                execCommand: "mkdir -p /root/devtools/infra-monitor/infra-monitor-web/dist /root/devtools/infra-monitor/infra-monitor-server/target",
+                                execTimeout: 30000
+                            ),
+                            // 注意：infra-monitor 使用服务器端 Maven 构建，JAR 不从 Jenkins 传输
+                            // 前端静态文件由 deploy.sh 在服务器上构建（需要 Node.js 环境）
+                            // 2. 执行部署脚本
+                            sshTransfer(
+                                execCommand: """
+                                    chmod +x /root/devtools/infra-monitor/ci/deploy.sh
+                                    bash /root/devtools/infra-monitor/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
+                                """,
+                                execTimeout: 600000
+                            )
+                        ],
                         verbose: true
                     )]
                 )
@@ -111,10 +121,10 @@ pipeline {
                         configName: 'mykng-deploy',
                         transfers: [sshTransfer(
                             execCommand: """
-                                echo "--- Infra Monitor 健康检查 (端口 8085) ---"
+                                echo "--- Infra Monitor 健康检查 (端口 8088) ---"
                                 for i in \$(seq 1 8); do
-                                    if curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1 || \\
-                                       curl -sf http://localhost:8085/ > /dev/null 2>&1; then
+                                    if curl -sf http://localhost:8088/infra/actuator/health > /dev/null 2>&1 || \\
+                                       curl -sf http://localhost:8088/ > /dev/null 2>&1; then
                                         echo "✅ Infra Monitor 健康! (尝试 \$i)"
                                         exit 0
                                     fi

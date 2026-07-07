@@ -69,13 +69,28 @@ pipeline {
                 sshPublisher(
                     publishers: [sshPublisherDesc(
                         configName: 'mykng-deploy',
-                        transfers: [sshTransfer(
-                            execCommand: """
-                                chmod +x /root/devtools/kb-ops/ci/deploy.sh
-                                bash /root/devtools/kb-ops/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}" "${params.DEPLOY_TARGET}"
-                            """,
-                            execTimeout: 600000
-                        )],
+                        transfers: [
+                            // 1. 创建目标目录
+                            sshTransfer(
+                                execCommand: "mkdir -p /root/devtools/kb-ops/target",
+                                execTimeout: 30000
+                            ),
+                            // 2. 传输 JAR 包（Docker build 需要）
+                            sshTransfer(
+                                sourceFiles: 'kb-ops/target/*.jar',
+                                removePrefix: 'kb-ops',
+                                remoteDirectory: '/root/devtools/kb-ops',
+                                execTimeout: 120000
+                            ),
+                            // 3. 执行部署脚本
+                            sshTransfer(
+                                execCommand: """
+                                    chmod +x /root/devtools/kb-ops/ci/deploy.sh
+                                    bash /root/devtools/kb-ops/ci/deploy.sh "${GIT_COMMIT}" "${env.GIT_BRANCH}"
+                                """,
+                                execTimeout: 600000
+                            )
+                        ],
                         verbose: true
                     )]
                 )
