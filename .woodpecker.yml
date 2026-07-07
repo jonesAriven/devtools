@@ -434,8 +434,8 @@ steps:
 #   前端: /var/www/kb-ops-web (Nginx alias)
 #   ⚠️ 部署时必须: docker stop kb-ops → docker rm -f kb-ops → 构建新镜像 → 启动
 #
-# ⚠️ Service 4: infra-monitor 基础设施监控
-#   公网: https://kb.marschat.online/infra/ (⚠️ 腾讯云2号需添加/infra路由)
+# ✅ Service 4: infra-monitor 基础设施监控
+#   公网: https://monitor.marschat.online (独立域名，已修复✅)
 #   内网: http://100.93.36.113:8088 (host网络模式)
 #   部署: mykng Docker (infra-monitor, host网络)
 #   容器: infra-monitor (:8088 host)
