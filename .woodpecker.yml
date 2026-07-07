@@ -22,8 +22,6 @@ steps:
 
   - name: build
     image: maven:3.9-eclipse-temurin-21
-    volumes:
-      - /root/.m2:/root/.m2/repository
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
@@ -41,6 +39,6 @@ steps:
       port: 22
       script_timeout: 20m
       command_timeout: 5m
-    script:
-      - chmod +x /root/devtools/mykng/ci/deploy.sh
-      - bash /root/devtools/mykng/ci/deploy.sh "${CI_COMMIT_SHA}" "dev" "production"
+      script: |
+        chmod +x /root/devtools/mykng/ci/deploy.sh
+        bash /root/devtools/mykng/ci/deploy.sh "${CI_COMMIT_SHA}" "dev" "production"
