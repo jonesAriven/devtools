@@ -16,7 +16,8 @@
 #   ├── active-manager-cicd → 🔑 激活码系统 (内网Debian:192.168.31.182)
 #   ├── kb-ops-cicd         → ⚙️ 运维平台 (mykng:100.93.36.113)
 #   ├── infra-monitor-cicd  → 📊 基础设施监控 (mykng:100.93.36.113)
-#   └── myfrp-cicd          → 🌐 FRP管理面板 (内网Debian:192.168.31.182)
+#   ├── myfrp-cicd          → 🌐 FRP管理面板 (内网Debian:192.168.31.182)
+#   └── portal-cicd         → 🚪 门户系统 (mykng:100.93.36.113)
 #
 # 🔐 Secrets 配置:
 #   deploy_pass_mykng    → mykng 服务器 SSH 密码 (Hwx@1120930)
@@ -328,6 +329,70 @@ steps:
     script:
       - chmod +x /root/devtools/myfrp/ci/deploy.sh
       - bash /root/devtools/myfrp/ci/deploy.sh "${CI_COMMIT_SHA}" "${BRANCH:-dev}"
+
+---
+# ============================================================
+# Pipeline 6: portal 门户系统
+# ============================================================
+# 服务器检查结果 (2026-07-07):
+#   📍 部署位置: mykng (100.93.36.113)
+#   📁 代码目录: /root/devtools/portal
+#   🔌 端口映射:
+#     前端: Nginx → /var/www/portal (静态文件)
+#     后端: :8087 (Java进程, JAR在 /opt/portal-server/)
+#   🌐 访问地址: https://main.marschat.online/portal/
+#   📦 特点: 前后端分离（前端Vue3+pnpm, 后端Spring Boot独立进程）
+#   💾 内存限制: -Xms128m -Xmx256m
+# ============================================================
+
+when:
+  - event: manual
+    branch: [dev, master]
+
+variables:
+  BRANCH:
+    from_secret: ""
+
+steps:
+  - name: check-env
+    image: alpine:3.19
+    commands:
+      - echo "=== 🚪 portal 门户系统 CI/CD ==="
+      - echo "部署目标: mykng (100.93.36.113)"
+      - echo "分支: ${BRANCH:-dev}"
+
+  - name: build-frontend
+    image: node:20-alpine
+    commands:
+      - echo "=== 构建 portal 前端 ==="
+      - cd portal
+      - if [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --registry=https://registry.npmmirror.com && pnpm build; else npm ci --registry=https://registry.npmmirror.com && npm run build; fi
+      - ls -la dist/ | head -10 || echo "⚠️ dist 不存在"
+
+  - name: build-backend
+    image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - /root/.m2:/root/.m2/repository
+    environment:
+      MAVEN_OPTS: -Xmx512m
+    commands:
+      - echo "=== Maven 编译 portal-server 后端 ==="
+      - cd portal/portal-server && mvn clean package -DskipTests -B -V -ntp && cd ../..
+      - find portal/portal-server/target -name "portal-server*.jar" ! -name "*sources.jar" | head -1 | xargs ls -lh || echo "⚠️ JAR 不存在"
+
+  - name: deploy
+    image: appleboy/drone-ssh
+    settings:
+      host: 100.93.36.113
+      username: root
+      password:
+        from_secret: deploy_pass_mykng
+      port: 22
+      script_timeout: 15m
+      command_timeout: 5m
+    script:
+      - chmod +x /root/devtools/portal/ci/deploy.sh
+      - bash /root/devtools/portal/ci/deploy.sh "${CI_COMMIT_SHA}" "${BRANCH:-dev}"
 
 # ============================================================
 # 📖 Secrets 配置指南
