@@ -25,7 +25,14 @@ steps:
     settings:
       host: 100.93.36.113
       username: root
-      password: Hwx@1120930
+      key: |
+        -----BEGIN OPENSSH PRIVATE KEY-----
+        b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+        QyNTUxOQAAACArq6+5xwBN8u9EzMR5EG2eSYk/TqFdIrvonGyzswEMJgAAAJh/t5QYf7eU
+        GAAAAAtzc2gtZWQyNTUxOQAAACArq6+5xwBN8u9EzMR5EG2eSYk/TqFdIrvonGyzswEMJg
+        AAAEDxpQBplZMOgGe/gN2D4AH5CA14PDDcJfhdRLYNo2X4qSurr7nHAE3y70TMxHkQbZ5J
+        iT9OoV0iu+icbLOzAQwmAAAAEXJvb3RAbXlrbmctZGViYWluAQIDBA==
+        -----END OPENSSH PRIVATE KEY-----
       port: 22
       script_timeout: 20m
     script: |
