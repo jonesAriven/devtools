@@ -1,31 +1,34 @@
 # ============================================================
-# Jenkins CI/CD — Docker Compose 部署
+# Jenkins CI/CD — 独立服务 Docker Compose 部署
 # ============================================================
-# 部署位置: mykng 主机 (100.93.36.113)
-# 端口: 8096 (API + Web UI)
+# 服务名称: Jenkins CI (独立应用，不与 mykng 混合)
+# 公网域名: https://jkci.marschat.online (腾讯云 Nginx SSL 反代)
+# 内网端口: 8097 (Web UI) / 50001 (Agent 连接)
 #
 # 启动: docker compose -f jenkins/docker-compose.yml up -d
-# 停止: docker compose -f jenkins/docker-compose.yml down
+# 停止: docker compose -f jenkins/docker-compose.yml down --remove-orphans
 # 日志: docker compose -f jenkins/docker-compose.yml logs -f
-# 密码: 首次启动后查看 docker logs 或 cat jenkins_admin_password
+# 重置: docker compose -f jenkins/docker-compose.yml down -v (⚠️ 删除所有数据)
 #
 # 特性:
+#   ✅ 独立域名访问 (jkci.marschat.online, 泛证书)
 #   ✅ Maven 缓存持久化（~/.m2 复用，编译飞快）
 #   ✅ Docker in Docker（支持构建镜像）
-#   ✅ Gitee 插件预装
+#   ✅ Gitee 插件预装 + Webhook 触发
 #   ✅ SSH Agent 内置（直接部署内网机器）
-#   ✅ Pipeline as Code（Jenkinsfile 在代码仓库）
+#   ✅ Pipeline as Code（Jenkinsfile 在各项目代码仓库）
+#   ✅ JCasC 配置即代码（jenkins.yaml 自动加载）
 # ============================================================
 
 services:
-  jenkins:
+  jenkins-ci:
     image: jenkins/jenkins:lts-jdk21
-    container_name: kb-jenkins
+    container_name: jenkins-ci
     restart: unless-stopped
     user: root  # 需要 root 权限执行 docker build 和 SSH
     ports:
-      - "8096:8080"    # Web UI
-      - "50000:50000"  # Agent 连接端口
+      - "8097:8080"    # Web UI
+      - "50001:50000"  # Agent 连接端口
     environment:
       # Java 优化参数
       JAVA_OPTS: >
@@ -62,6 +65,9 @@ services:
       - ./maven-settings.xml:/root/.m2/settings.xml:ro
       # 项目源码挂载（可选，用于本地构建模式）
       - ../:/workspace/devtools:ro
+    labels:
+      - "com.jenkins.service=ci-cd"
+      - "com.jenkins.domain=jkci.marschat.online"
     networks:
       - cicd-net
     mem_limit: 3g  # Jenkins 比较吃内存，给够

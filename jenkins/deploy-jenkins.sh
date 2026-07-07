@@ -1,13 +1,17 @@
 #!/bin/bash
 # ============================================================
-# Jenkins 一键部署脚本 — 在 mykng 主机上执行
+# Jenkins CI/CD — 独立服务一键部署脚本
 # ============================================================
+# 服务: Jenkins (独立应用，不与 mykng 混合)
+# 域名: https://jkci.marschat.online (腾讯云 Nginx SSL 反代)
+#
 # 用法:
 #   bash deploy-jenkins.sh              # 交互式（提示输入密码）
 #   bash deploy-jenkins.sh --quick      # 快速模式（使用默认配置）
 #   bash deploy-jenkins.sh --stop       # 停止 Jenkins
 #   bash deploy-jenkins.sh --logs       # 查看日志
-#   bash deploy-jkins.sh --reset        # 重置 Jenkins（⚠️ 删除所有数据）
+#   bash deploy-jenkins.sh --status     # 查看状态
+#   bash deploy-jenkins.sh --reset      # 重置 Jenkins（⚠️ 删除所有数据）
 # ============================================================
 
 set -e
@@ -17,8 +21,8 @@ JENKINS_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEVTOOLS_DIR="$(dirname "$JENKINS_DIR")"
 COMPOSE_FILE="$JENKINS_DIR/docker-compose.yml"
 ENV_FILE="$JENKINS_DIR/.env"
-CONTAINER_NAME="kb-jenkins"
-JENKINS_PORT=8096
+CONTAINER_NAME="jenkins-ci"
+JENKINS_PORT=8097
 JENKINS_URL="http://localhost:${JENKINS_PORT}"
 
 # 颜色输出
@@ -258,30 +262,36 @@ log_info "[6/6] 部署完成！"
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
 echo "║                                                ║"
-echo "║  🎉 Jenkins CI/CD 平台已就绪                    ║"
+echo "║  🎉 Jenkins CI/CD 平台已就绪 (独立服务)          ║"
 echo "║                                                ║"
 echo "╠══════════════════════════════════════════════════╣"
 echo "║                                                ║"
 echo "║  🌐 访问地址:                                   ║"
-echo "║     本地: http://localhost:${JENKINS_PORT}          ║"
+echo "║     ✨ 公网: https://jkci.marschat.online       ║"
 echo "║     内网: http://$(hostname -I | awk '{print $1}'):${JENKINS_PORT}  ║"
-echo "║     Tailscale: http://100.93.36.113:${JENKINS_PORT}     ║"
+echo "║     Tailscale: http://100.93.36.113:${JENKINS_PORT} ║"
+echo "║     本机: http://localhost:${JENKINS_PORT}        ║"
 echo "║                                                ║"
 echo "║  🔐 登录凭据:                                   ║"
 echo "║     用户名: admin                               ║"
-echo "║     密码码: (.env 中 ADMIN_PASSWORD)             ║"
+echo "║     密码: (.env 中 ADMIN_PASSWORD)               ║"
 echo "║                                                ║"
 echo "║  📋 下一步操作:                                 ║"
-echo "║     1. 打开浏览器访问上面的 URL                  ║"
-echo "║     2. 登录 Jenkins                             ║"
-echo "║     3. Configure System → SSH Servers → 添加目标主机 ║"
-echo "║     4. 选择任务 → Build with Parameters → 构建! ║"
+echo "║     1. 浏览器打开 https://jkci.marschat.online    ║"
+echo "║     2. 使用上面凭据登录 Jenkins                 ║"
+echo "║     3. Configure System → SSH Servers           ║"
+echo "║     4. 选择任务 → Build with Parameters         ║"
+echo "║                                                ║"
+echo "║  ⚠️  注意事项:                                   ║"
+echo "║     首次启动需 3-5 分钟安装插件！              ║"
+echo "║     腾讯云 Nginx 需配置反代才能公网访问          ║"
+echo "║     配置文件: jenkins/nginx-jenkins.conf         ║"
 echo "║                                                ║"
 echo "║  🛠️  常用命令:                                  ║"
-echo "║     查看状态: bash $0 --status                   ║"
-echo "║     查看日志: bash $0 --logs                     ║"
-echo "║     停止服务: bash $0 --stop                      ║"
-echo "║     重置系统: bash $0 --reset                     ║"
+echo "║     状态: bash $0 --status                       ║"
+echo "║     日志: bash $0 --logs                         ║"
+echo "║     停止: bash $0 --stop                         ║"
+echo "║     重置: bash $0 --reset                        ║"
 echo "║                                                ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
