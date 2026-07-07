@@ -42,8 +42,11 @@
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   DEPLOY_TARGET: production
@@ -98,8 +101,11 @@ steps:
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   BRANCH: dev
@@ -152,8 +158,11 @@ steps:
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   BRANCH: dev
@@ -215,8 +224,11 @@ steps:
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   BRANCH: dev
@@ -277,8 +289,11 @@ steps:
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   BRANCH: dev
@@ -339,8 +354,11 @@ steps:
 # ============================================================
 
 when:
-  - event: manual
-    branch: [dev, master]
+  event:
+    - manual
+  branch:
+    - dev
+    - master
 
 variables:
   BRANCH: dev
