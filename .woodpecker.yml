@@ -1,7 +1,3 @@
-# ============================================================
-# Pipeline 1: mykng 知识库微服务
-# ============================================================
-
 when:
   event:
     - manual
@@ -13,19 +9,16 @@ steps:
   - name: check-env
     image: alpine:3.19
     commands:
-      - echo "=== Mykng Knowledge Base CI/CD ==="
-      - echo "Deploy Target: production"
+      - echo hello
       - pwd
-      - ls -la
 
   - name: build
     image: maven:3.9-eclipse-temurin-21
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
-      - echo "=== Maven Build mykng ==="
       - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp && cd ../..
-      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar || true
+      - ls target/*.jar || true
 
   - name: deploy
     image: appleboy/drone-ssh
@@ -35,11 +28,8 @@ steps:
       password: Hwx@1120930
       port: 22
       script_timeout: 20m
-      command_timeout: 5m
-      script: |
-        echo "=== Deploying to mykng ==="
-        hostname
-        whoami
-        ls /root/devtools/mykng/ | head -10
-        chmod +x /root/devtools/mykng/ci/deploy.sh
-        bash /root/devtools/mykng/ci/deploy.sh "test" "dev" "production"
+    script: |
+      hostname
+      whoami
+      chmod +x /root/devtools/mykng/ci/deploy.sh
+      bash /root/devtools/mykng/ci/deploy.sh test dev production
