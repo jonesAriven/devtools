@@ -1,10 +1,6 @@
 # ============================================================
 # Pipeline 1: mykng 知识库微服务
 # ============================================================
-# 部署位置: mykng (100.93.36.113)
-# 代码目录: /root/devtools/mykng
-# Docker Compose Project: kb-deploy (production)
-# ============================================================
 
 when:
   event:
@@ -17,8 +13,10 @@ steps:
   - name: check-env
     image: alpine:3.19
     commands:
-      - echo "hello"
+      - echo "=== Mykng Knowledge Base CI/CD ==="
+      - echo "Deploy Target: production"
       - pwd
+      - ls -la
 
   - name: build
     image: maven:3.9-eclipse-temurin-21
@@ -27,18 +25,21 @@ steps:
     commands:
       - echo "=== Maven Build mykng ==="
       - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp && cd ../..
-      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar mykng/kb-file/target/*.jar mykng/kb-knowledge/target/*.jar mykng/kb-intelligence/target/*.jar || true
+      - ls -lh mykng/kb-gateway/target/*.jar mykng/kb-auth/target/*.jar || true
 
   - name: deploy
     image: appleboy/drone-ssh
     settings:
       host: 100.93.36.113
       username: root
-      password:
-        from_secret: deploy_pass_mykng
+      password: Hwx@1120930
       port: 22
       script_timeout: 20m
       command_timeout: 5m
       script: |
+        echo "=== Deploying to mykng ==="
+        hostname
+        whoami
+        ls /root/devtools/mykng/ | head -10
         chmod +x /root/devtools/mykng/ci/deploy.sh
-        bash /root/devtools/mykng/ci/deploy.sh "${CI_COMMIT_SHA}" "dev" "production"
+        bash /root/devtools/mykng/ci/deploy.sh "test" "dev" "production"
