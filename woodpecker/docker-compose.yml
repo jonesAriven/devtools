@@ -1,0 +1,215 @@
+# ============================================================
+# Woodpecker CI — 轻量级 CI/CD 平台（资源优化版）
+# ============================================================
+#
+# 📌 部署架构:
+#   用户 → https://woodci.marschat.online (腾讯云2号 Nginx:443/SSL)
+#     → Tailscale VPN → mykng (100.93.36.113):8000 (Woodpecker)
+#
+# 📍 部署位置: mykng 虚拟机的 Docker 容器中
+# 🌐 公网访问: https://woodci.marschat.online
+# 🔗 内网访问: http://100.93.36.113:8000 (Tailscale)
+#
+# ✨ 资源优化:
+#   - 空闲时内存占用: ~350 MB
+#   - 构建时内存占用: ~1.5-2 GB
+#   - CPU 限制: Server 0.5核 + Agent 2核 = 2.5核 (mykng共3核)
+#
+# 🎯 包含组件:
+#   - Woodpecker Server (主服务，端口 8000/9000)
+#   - Woodpecker Agent (构建代理，自动扩展)
+#   - PostgreSQL 16 (数据存储，端口 5433)
+#
+# 🔧 使用方法:
+#   1. 在 mykng 服务器上: bash deploy.sh --init && bash deploy.sh --start
+#   2. 在腾讯云2号配置 Nginx 反向代理（见 woodpecker-nginx.conf）
+#   3. 访问 https://woodci.marschat.online 进行 OAuth 配置
+#
+# ⚠️ 注意事项:
+#   - 首次启动需要配置 OAuth 应用（Gitee/GitHub/Gitea）
+#   - 默认管理员：通过 OAuth 登录的第一个用户
+#   - 确保 Tailscale 网络连通（腾讯云2号 ↔ mykng）
+#   - 已配置 Docker 镜像加速（Nexus 私有仓库）
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ================================
+  # Woodpecker Server (主服务) - 资源限制版
+  # ================================
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v3
+    container_name: woodpecker-server
+    restart: unless-stopped
+    extra_hosts:
+      - "woodpecker-db:172.24.0.2"  # 手动指定数据库容器的内网 IP（避免 DNS 解析问题）
+    ports:
+      - "8000:8000"        # Web UI 和 API
+      - "9002:9000"        # gRPC API (Agent 通信，改为 9002 避免与 MinIO 9000-9001 冲突)
+    environment:
+      # 数据库连接
+      - WOODPECKER_DATABASE_DRIVER=postgres
+      - WOODPECKER_DATABASE_DATASOURCE=postgres://woodpecker:${WOODPECKER_DB_PASSWORD:-woodpecker2024}@woodpecker-db:5432/woodpecker?sslmode=disable
+      
+      # 服务器配置
+      - WOODPECKER_HOST=${WOODPECKER_HOST:-https://woodci.marschat.online}
+      - WOODPECKER_SERVER_ADDR=:8000
+      - WOODPECKER_GRPC_ADDR=:9000
+      - WOODPECKER_GRPC_SECRET=${WOODPECKER_SECRET:-change-me-to-random-string}
+      
+      # Admin 配置（可选：设置管理员用户，留空则第一个登录用户为管理员）
+      - WOODPECKER_ADMIN=${WOODPECKER_ADMIN:-}
+      
+      # Agent Token（用于 Agent 连接）
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET:-change-me-to-random-string}
+      
+      # Gitee OAuth 配置（推荐用于国内环境）
+      - WOODPECKER_GITEE=${WOODPECKER_GITEE:-true}
+      - WOODPECKER_GITEE_CLIENT=${GITEE_CLIENT_ID:-}
+      - WOODPECKER_GITEE_SECRET=${GITEE_CLIENT_SECRET:-}
+      
+      # GitHub OAuth 配置（备选）
+      - WOODPECKER_GITHUB=${WOODPECKER_GITHUB:-false}
+      - WOODPECKER_GITHUB_CLIENT=${GITHUB_CLIENT_ID:-}
+      - WOODPECKER_GITHUB_SECRET=${GITHUB_CLIENT_SECRET:-}
+      
+      # 安全配置
+      - WOODPECKER_OPEN=true                    # 开放注册（测试用，生产环境建议关闭）
+      
+      # 日志和保留策略（节省磁盘空间）
+      - WOODPECKER_LOG_LEVEL=${LOG_LEVEL:-info}
+      - WOODPECKER_LOGS_RETENTION=7              # 日志只保留 7 天
+      - WOODPECKER_PIPELINE_RETENTION=30         # 构建记录保留 30 天
+      
+      # 性能优化
+      - WOODPECKER_MAX_PROC_LIMIT=-1            # 不限制并发数（由 Agent 控制）
+    volumes:
+      - woodpecker-data:/var/lib/woodpecker      # 数据持久化
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket（Server 需要）
+    depends_on:
+      woodpecker-db:
+        condition: service_healthy
+    networks:
+      - woodpecker-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'        # ⚠️ Server 只需很少 CPU
+          memory: 256M        # ⚠️ 限制内存 256MB
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ================================
+  # Woodpecker Agent (构建代理) - 资源限制版
+  # ================================
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v3
+    container_name: woodpecker-agent
+    restart: unless-stopped
+    environment:
+      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET:-change-me-to-random-string}
+      - WOODPECKER_GRPC_SECURE=false
+      # 后端配置
+      - WOODPECKER_BACKEND=docker
+      - WOODPECKER_BACKEND_DOCKER_NETWORK=woodpecker_woodpecker-network
+      # 并发控制（防止占满 mykng 资源）
+      - WOODPECKER_MAX_PROCS=1   # ⚠️ 关键：同时只跑 1 个构建任务
+      # 资源限制传递给构建容器
+      - WOODPECKER_BACKEND_DOCKER_MEMORY=1024  # 构建容器最多 1GB 内存
+      - WOODPECKER_BACKEND_DOCKER_MEMORY_SWAP=512  # + 512MB swap
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket（构建需要）
+    depends_on:
+      woodpecker-server:
+        condition: service_started
+    networks:
+      - woodpecker-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.00'        # ⚠️ Agent + 构建容器共享 2 核
+          memory: 1536M       # ⚠️ 总内存限制 1.5GB
+        reservations:
+          cpus: '0.50'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ================================
+  # PostgreSQL 数据库 - 轻量级配置
+  # ================================
+  woodpecker-db:
+    image: postgres:16-alpine
+    container_name: woodpecker-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=woodpecker
+      - POSTGRES_PASSWORD=${WOODPECKER_DB_PASSWORD:-woodpecker2024}
+      - POSTGRES_DB=woodpecker
+      # 性能优化（减少资源占用）
+      - POSTGRES_SHARED_BUFFERS=64MB
+      - POSTGRES_WORK_MEM=4MB
+      - POSTGRES_MAINTENANCE_WORK_MEM=64MB
+    volumes:
+      - woodpecker-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"       # 映射到 5433 避免冲突
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=64MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "max_connections=100"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U woodpecker"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - woodpecker-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'        # 数据库只需很少资源
+          memory: 128M        # 限制内存 128MB
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# ================================
+# 数据卷（持久化存储）
+# ================================
+volumes:
+  woodpecker-data:
+    driver: local
+  woodpecker-db-data:
+    driver: local
+
+# ================================
+# 网络
+# ================================
+networks:
+  woodpecker-network:
+    driver: bridge
+    enable_ipv6: false  # 禁用 IPv6 避免 DNS 解析问题
