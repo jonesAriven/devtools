@@ -395,7 +395,7 @@ steps:
       - bash /root/devtools/portal/ci/deploy.sh "${CI_COMMIT_SHA}" "${BRANCH:-dev}"
 
 # ============================================================
-# 📖 Secrets 配置指南
+# 📖 Secrets 配置指南 + 全链路部署信息
 # ============================================================
 # 在 Woodpecker UI 中配置以下 Secrets:
 #
@@ -405,4 +405,65 @@ steps:
 # | deploy_pass_lan    | 内网Debian SSH 密码     | 192.168.31.182 登录 |
 #
 # 配置路径: Woodpecker → Settings → Secrets → Add Secret
+#
+# ============================================================
+# 📋 全链路服务清单（2026-07-07 实际验证）
+# ============================================================
+#
+# ✅ Service 1: mykng 知识库微服务 (5个子服务)
+#   公网: https://kb.marschat.online/kb/
+#   内网: http://100.93.36.113:8090 (Gateway入口)
+#   部署: mykng Docker Compose (kb-deploy)
+#   容器: kb-gateway(:8090) kb-auth(:8081) kb-file(:8082) kb-knowledge(:8083) kb-intelligence(:8086)
+#   基础设施(不在此CI管理): kb-mysql(:3306) kb-redis(:6379) kb-nacos(:8848) kb-mongo(:27017) kb-minio(:9000) kb-meilisearch(:7700)
+#   ⚠️ 部署时必须: 先停旧5个微服务容器 → 删除 → 重新构建 → 按依赖顺序启动
+#
+# ✅ Service 2: active-manager 激活码系统
+#   公网: https://tools.marschat.online/activecode/login.html
+#   内网: http://192.168.31.182:18080 (→容器:8080)
+#   部署: 内网Debian Docker Compose (activecode)
+#   容器: activecode
+#   默认账号: admin / admin123
+#   ⚠️ 部署时必须: docker compose -p activecode down --remove-orphans → rm -f activecode → 重新构建启动
+#
+# ✅ Service 3: kb-ops 运维平台
+#   公网: https://kb.marschat.online/ops/
+#   内网: http://100.93.36.113:8084
+#   部署: mykng Docker (kb-ops)
+#   容器: kb-ops (:8084)
+#   前端: /var/www/kb-ops-web (Nginx alias)
+#   ⚠️ 部署时必须: docker stop kb-ops → docker rm -f kb-ops → 构建新镜像 → 启动
+#
+# ⚠️ Service 4: infra-monitor 基础设施监控
+#   公网: https://kb.marschat.online/infra/ (⚠️ 腾讯云2号需添加/infra路由)
+#   内网: http://100.93.36.113:8088 (host网络模式)
+#   部署: mykng Docker (infra-monitor, host网络)
+#   容器: infra-monitor (:8088 host)
+#   前端: /data/infra-monitor-web
+#   后端JAR: /data/infra-monitor/app.jar
+#   内存: 256m
+#   ⚠️ 部署时必须: docker stop infra-monitor → docker rm -f infra-monitor → 复制新JAR → 重新docker run
+#   ⚠️ 注意: 这是直接Java进程在Docker中运行(非Spring Boot内置Tomcat), 路径为/infra/*
+#
+# ✅ Service 5: portal 门户系统
+#   公网: https://main.marschat.online/portal/
+#   内网: http://100.93.36.113:8087 (独立Java进程, 非Docker)
+#   部署: mykng 直接进程
+#   PID: 2150347 (当前运行)
+#   JAR: /opt/portal-server/portal-server.jar
+#   前端: /var/www/portal (Nginx alias)
+#   内存: -Xms128m -Xmx256m
+#   ⚠️ 部署时必须: kill旧Java进程(:8087) → 备份旧JAR → 复制新JAR → nohup java -jar 启动
+#
+# ❓ Service 6: myfrp FRP管理面板
+#   公网: https://tools.marschat.online/frp (⚠️ 当前重定向到portal, 可能未部署或路由错误)
+#   内网: http://192.168.31.182:18082 (待确认)
+#   部署: 内网Debian? (待确认)
+#   状态: 需要手动验证部署位置和端口
+#
+# 🔴 关键规则（防止孤儿服务）:
+#   1. 每个 deploy.sh 脚本第一步必须是: 检查并删除旧容器/进程
+#   2. Docker 服务: docker stop → docker rm -f → 确认端口释放 → 再创建新容器
+#   3. Java 进程: 按端口找PID → kill → fuser -k 确认端口释放 → 再启动新进程
+#   4. 部署完成后必须做健康检查
 # ============================================================
