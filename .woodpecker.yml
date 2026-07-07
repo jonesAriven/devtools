@@ -46,11 +46,8 @@ when:
     branch: [dev, master]
 
 variables:
-  # ---- 可选参数（手动触发时填写） ----
-  DEPLOY_TARGET:
-    from_secret: ""  # production / dev / test，默认 production
-  BRANCH:
-    from_secret: ""  # 部署的 Git 分支，默认 dev
+  DEPLOY_TARGET: production
+  BRANCH: dev
 
 steps:
   - name: check-env
@@ -105,8 +102,7 @@ when:
     branch: [dev, master]
 
 variables:
-  BRANCH:
-    from_secret: ""
+  BRANCH: dev
 
 steps:
   - name: check-env
@@ -160,8 +156,7 @@ when:
     branch: [dev, master]
 
 variables:
-  BRANCH:
-    from_secret: ""
+  BRANCH: dev
 
 steps:
   - name: check-env
@@ -224,8 +219,7 @@ when:
     branch: [dev, master]
 
 variables:
-  BRANCH:
-    from_secret: ""
+  BRANCH: dev
 
 steps:
   - name: check-env
@@ -287,8 +281,7 @@ when:
     branch: [dev, master]
 
 variables:
-  BRANCH:
-    from_secret: ""
+  BRANCH: dev
 
 steps:
   - name: check-env
@@ -350,8 +343,7 @@ when:
     branch: [dev, master]
 
 variables:
-  BRANCH:
-    from_secret: ""
+  BRANCH: dev
 
 steps:
   - name: check-env
