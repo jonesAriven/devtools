@@ -74,33 +74,45 @@ steps:
   # ==================== active-manager 激活码系统 ====================
   - name: active-manager-build
     image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - /mnt/shared:/mnt/shared  # 挂载共享目录到宿主机
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
       # --- 编译 ---
-      - echo ">>> [1/3] Maven 编译 active-manager <<<"
-      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp && cd ../..
+      - echo ">>> [1/4] Maven 编译 active-manager <<<"
+      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp
+      - cd ../..
+
+      # --- 验证 jar 存在 ---
+      - echo ">>> [2/4] 验证构建产物 <<<"
+      - ls -lh active-manager/activation-code-server/target/activation-code-server-*.jar
+      - JAR_COUNT=$(ls active-manager/activation-code-server/target/activation-code-server-*.jar 2>/dev/null | wc -l)
+      - if [ "$JAR_COUNT" -eq 0 ]; then echo "❌ 未找到 jar 文件"; exit 1; fi
+      - echo "✅ 找到 ${JAR_COUNT} 个 jar 文件"
 
       # --- 收集 jar ---
-      - echo ">>> [2/3] 收集构建产物 <<<"
+      - echo ">>> [3/4] 收集构建产物 <<<"
       - mkdir -p publish/active-manager
       - cp active-manager/activation-code-server/target/activation-code-server-*.jar publish/active-manager/
       - ls -lh publish/active-manager/
 
-      # --- 打包 tar.gz (带时间戳 + .latest 标记) ---
-      - echo ">>> [3/4] 打包发布产物 <<<"
+      # --- 打包 tar.gz ---
+      - echo ">>> [4/4] 打包并推送到共享目录 <<<"
       - TIMESTAMP=$(date +%Y%m%d-%H%M)
       - tar czf "publish/active-manager-${TIMESTAMP}.tar.gz" -C publish/active-manager .
       - cp "publish/active-manager-${TIMESTAMP}.tar.gz" publish/active-manager-latest.tar.gz
 
-      # --- 推送到共享目录 (Woodpecker在mykng上，需scp到内网Debian) ---
-      - echo ">>> [4/4] 推送到共享目录 <<<"
+      # 推送到共享目录（容器内 /mnt/shared 挂载到宿主机）
       - mkdir -p /mnt/shared/devtools/publish
       - cp "publish/active-manager-${TIMESTAMP}.tar.gz" /mnt/shared/devtools/publish/
       - cp "publish/active-manager-latest.tar.gz" /mnt/shared/devtools/publish/
-      - echo "✅ 已推送到共享目录:"
-      - ls -lh /mnt/shared/devtools/publish/active-manager-*.tar.gz | tail -5
-      - echo "BUILD_OK=active-manager-${TIMESTAMP}.tar.gz ($(ls -lh publish/active-manager-latest.tar.gz | awk '{print $5}'))"
+
+      # 验证推送成功
+      - echo ">>> 验证共享目录产物 <<<"
+      - ls -lh /mnt/shared/devtools/publish/active-manager-*.tar.gz
+      - if [ ! -f "/mnt/shared/devtools/publish/active-manager-latest.tar.gz" ]; then echo "❌ 产物未写入共享目录"; exit 1; fi
+      - echo "BUILD_OK=active-manager-${TIMESTAMP}.tar.gz"
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
@@ -111,7 +123,20 @@ steps:
         from_secret: ssh_key_debian
       port: 22
       script_timeout: 20m
+      debug: true
     commands:
-      - hostname && whoami && date
+      - set -x
+      - echo "=== 开始部署 active-manager ==="
+      - date
+      - whoami
+      - hostname
+
+      # 检查产物是否存在
+      - if [ ! -f "/mnt/shared/devtools/publish/active-manager-latest.tar.gz" ]; then echo "❌ 产物不存在"; exit 1; fi
+      - ls -lh /mnt/shared/devtools/publish/active-manager-latest.tar.gz
+
+      # 执行部署
       - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
-      - DEPLOY_EXIT=$?; echo "DEPLOY_EXIT=${DEPLOY_EXIT}"; exit ${DEPLOY_EXIT}
+      - DEPLOY_EXIT=$?
+      - echo "=== 部署脚本退出码: ${DEPLOY_EXIT} ==="
+      - exit ${DEPLOY_EXIT}
