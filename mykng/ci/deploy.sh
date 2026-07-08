@@ -84,13 +84,20 @@ echo ""
 echo ">>> [1/5] 同步代码 <<<"
 cd /root/devtools
 
+# 使用已有的 remote URL（不强制修改）
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-if [ "$REMOTE_URL" != "https://gitee.com/jonesAriven/devtools.git" ]; then
-  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
-fi
+echo "ℹ️ 当前 Remote: ${REMOTE_URL}"
 
-git fetch origin "${BRANCH}"
-git reset --hard "origin/${BRANCH}"
+# 尝试 fetch，如果失败则尝试切换 URL
+if ! git fetch origin "${BRANCH}" 2>/dev/null; then
+  echo "⚠️ 原始 URL fetch 失败，尝试 HTTPS..."
+  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
+  git fetch origin "${BRANCH}" || {
+    echo "❌ Git fetch 失败，跳过代码同步（使用本地代码）"
+    # 不退出，继续使用本地已有代码
+  }
+fi
+git reset --hard "origin/${BRANCH}" 2>/dev/null || echo "⚠️ Git reset 失败，使用本地代码"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
 # 检查 JAR 文件（由 Jenkins 编译后通过 SSH 传输）
