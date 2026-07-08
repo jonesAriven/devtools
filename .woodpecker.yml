@@ -17,6 +17,7 @@
 when:
   event:
     - manual
+    - push
   branch:
     - dev
 
