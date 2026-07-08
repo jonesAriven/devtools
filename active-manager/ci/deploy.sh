@@ -80,9 +80,20 @@ echo "ℹ️ 部署目录: ${COMPOSE_DIR}"
 echo ""
 echo ">>> [0/4] 环境检查 <<<"
 
-if [ ! -d /root/devtools ]; then
-  echo "⚠️ 首次部署：克隆仓库..."
-  git clone https://gitee.com/jonesAriven/devtools.git /root/devtools
+# 检测合适的克隆目录
+if [ -w "/root" ]; then
+  CLONE_DIR="/root/devtools"
+elif [ -w "/home/root01" ]; then
+  CLONE_DIR="/home/root01/devtools"
+else
+  CLONE_DIR="${HOME}/devtools"
+fi
+
+if [ ! -d "${CLONE_DIR}" ]; then
+  echo "⚠️ 首次部署：克隆仓库到 ${CLONE_DIR}..."
+  git clone https://gitee.com/jonesAriven/devtools.git "${CLONE_DIR}" || {
+    echo "❌ 克隆失败，将使用当前目录"
+  }
 fi
 
 # 检查旧容器
