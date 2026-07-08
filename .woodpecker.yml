@@ -44,9 +44,9 @@ steps:
     image: appleboy/drone-ssh
     settings:
       host: 100.105.196.63
-      username: root
-      password:
-        from_secret: deploy_pass_lan
+      username: root01
+      key:
+        from_secret: ssh_key_mykng
       port: 22
       script_timeout: 20m
     script: |
