@@ -57,10 +57,24 @@ echo "============================================="
 
 # ======== 配置 ========
 PROJECT_NAME="activecode"
-COMPOSE_DIR="/root/devtools/active-manager/activation-code-server"
+# 自动检测部署目录（支持 root 和 root01 用户）
+if [ -d "/root/devtools/active-manager/activation-code-server" ]; then
+  COMPOSE_DIR="/root/devtools/active-manager/activation-code-server"
+  DEPLOY_MODE="git"
+elif [ -d "/home/root01/active-manager/activation-code-server" ]; then
+  COMPOSE_DIR="/home/root01/active-manager/activation-code-server"
+  DEPLOY_MODE="git"
+else
+  # 默认使用当前目录（适用于 standalone 部署）
+  COMPOSE_DIR="$(pwd)"
+  DEPLOY_MODE="standalone"
+fi
 APP_PORT=18080              # 宿主机端口
 CONTAINER_PORT=8080          # 容器内部端口
 CONTAINER_NAME="activecode"
+
+echo "ℹ️ 部署模式: ${DEPLOY_MODE}"
+echo "ℹ️ 部署目录: ${COMPOSE_DIR}"
 
 # ======== 0. 环境准备 ========
 echo ""
@@ -85,34 +99,38 @@ if ss -tlnp | grep -q ":${APP_PORT} "; then
   ss -tlnp | grep ":${APP_PORT} "
 fi
 
-# ======== 1. 同步代码 ========
+# ======== 1. 同步代码（仅 git 模式） ========
 echo ""
-echo ">>> [1/4] 同步代码 <<<"
-cd /root/devtools
-
-# 使用已有的 remote URL（不强制修改）
-REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-echo "ℹ️ 当前 Remote: ${REMOTE_URL}"
-
-# 尝试 fetch，如果失败则尝试切换 URL
-if ! git fetch origin "${BRANCH}" 2>/dev/null; then
-  echo "⚠️ 原始 URL fetch 失败，尝试 HTTPS..."
-  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
-  git fetch origin "${BRANCH}" || {
-    echo "❌ Git fetch 失败，跳过代码同步（使用本地代码）"
-    # 不退出，继续使用本地已有代码
-  }
-fi
-git reset --hard "origin/${BRANCH}" 2>/dev/null || echo "⚠️ Git reset 失败，使用本地代码"
-echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
-
-# 显示前端文件确认存在
-echo ""
-echo "--- 确认前端静态文件 ---"
-if [ -f "${COMPOSE_DIR}/src/main/resources/static/activecode/login.html" ]; then
-  echo "✅ 登录页存在: src/main/resources/static/activecode/login.html"
+if [ "${DEPLOY_MODE}" = "git" ]; then
+  echo ">>> [1/4] 同步代码 <<<"
+  cd /root/devtools 2>/dev/null || cd /home/root01 2>/dev/null || cd "${COMPOSE_DIR}"
+  
+  # 使用已有的 remote URL（不强制修改）
+  REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+  echo "ℹ️ 当前 Remote: ${REMOTE_URL}"
+  
+  # 尝试 fetch，如果失败则尝试切换 URL
+  if ! git fetch origin "${BRANCH}" 2>/dev/null; then
+    echo "⚠️ 原始 URL fetch 失败，尝试 HTTPS..."
+    git remote set-url origin https://gitee.com/jonesAriven/devtools.git
+    git fetch origin "${BRANCH}" || {
+      echo "❌ Git fetch 失败，跳过代码同步（使用本地代码）"
+    }
+  fi
+  git reset --hard "origin/${BRANCH}" 2>/dev/null || echo "⚠️ Git reset 失败，使用本地代码"
+  echo "✅ 代码已同步到 $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+  
+  # 显示前端文件确认存在
+  echo ""
+  echo "--- 确认前端静态文件 ---"
+  if [ -f "${COMPOSE_DIR}/src/main/resources/static/activecode/login.html" ]; then
+    echo "✅ 登录页存在: src/main/resources/static/activecode/login.html"
+  else
+    echo "⚠️ 未找到登录页，将在构建时确认"
+  fi
 else
-  echo "⚠️ 未找到登录页，将在构建时确认"
+  echo ">>> [1/4] 同步代码 (跳过 - Standalone 模式) <<<"
+  echo "ℹ️ 使用本地文件，跳过 git 同步"
 fi
 
 # ======== 2. 停止并删除旧容器（包括已停止的僵尸容器） ========
