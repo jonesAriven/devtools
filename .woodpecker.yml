@@ -1,56 +1,116 @@
+# ============================================================
+# Woodpecker CI — devtools 自动化构建与部署
+# ============================================================
+# 架构:
+#   Build Step:  Maven 编译 → 收集 jar → 打包 tar.gz (带时间戳) → /mnt/shared
+#   Deploy Step: SSH 到目标服务器 → 从共享目录取包 → 解压 → docker compose 部署
+#
+# 项目映射:
+#   mykng          → 部署到 mykng (120.26.66.182:3385)
+#   active-manager  → 部署到内网Debian (192.168.31.182)
+#
+# 域名访问:
+#   mykng:         公网 IP 直连各端口
+#   active-manager: https://tools.marschat.online/activecode/
+# ============================================================
+
 when:
   event:
     - manual
-    - push
   branch:
     - dev
-    - master
 
 steps:
-  # ========== mykng 知识库部署 ==========
+  # ==================== mykng 知识库微服务 ====================
   - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
+      # --- 编译所有模块 ---
+      - echo ">>> [1/3] Maven 编译 mykng <<<"
       - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp && cd ../..
-      - ls target/*.jar || true
+
+      # --- 收集所有 jar 到发布目录 ---
+      - echo ">>> [2/3] 收集构建产物 <<<"
+      - mkdir -p publish/mykng
+      - cp mykng/kb-gateway/target/kb-gateway.jar publish/mykng/ 2>/dev/null && echo "  ✅ kb-gateway" || echo "  ❌ kb-gateway"
+      - cp mykng/kb-auth/target/kb-auth.jar publish/mykng/ 2>/dev/null && echo "  ✅ kb-auth" || echo "  ❌ kb-auth"
+      - cp mykng/kb-file/target/kb-file.jar publish/mykng/ 2>/dev/null && echo "  ✅ kb-file" || echo "  ⏭️  kb-file (skip, test/prod only)"
+      - cp mykng/kb-knowledge/target/kb-knowledge.jar publish/mykng/ 2>/dev/null && echo "  ✅ kb-knowledge" || echo "  ❌ kb-knowledge"
+      - cp mykng/kb-intelligence/target/kb-intelligence.jar publish/mykng/ 2>/dev/null && echo "  ✅ kb-intelligence" || echo "  ⏭️  kb-intelligence (skip, test/prod only)"
+      - ls -lh publish/mykng/
+
+      # --- 打包 tar.gz (带时间戳 + .latest 标记) ---
+      - echo ">>> [3/4] 打包发布产物 <<<"
+      - TIMESTAMP=$(date +%Y%m%d-%H%M)
+      - tar czf "publish/mykng-${TIMESTAMP}.tar.gz" -C publish/mykng .
+      - cp "publish/mykng-${TIMESTAMP}.tar.gz" publish/mykng-latest.tar.gz
+
+      # --- 推送到共享目录 /mnt/shared/devtools/publish/ (Deploy步骤从这里取) ---
+      - echo ">>> [4/4] 推送到共享目录 <<<"
+      - mkdir -p /mnt/shared/devtools/publish
+      - cp "publish/mykng-${TIMESTAMP}.tar.gz" /mnt/shared/devtools/publish/
+      - cp "publish/mykng-latest.tar.gz" /mnt/shared/devtools/publish/
+      - echo "✅ 已推送到共享目录:"
+      - ls -lh /mnt/shared/devtools/publish/mykng-*.tar.gz | tail -5
+      - echo "BUILD_OK=mykng-${TIMESTAMP}.tar.gz ($(ls -lh publish/mykng-latest.tar.gz | awk '{print $5}'))"
 
   - name: mykng-deploy
     image: appleboy/drone-ssh
     settings:
-      host: 100.93.36.113
+      host: 120.26.66.182
       username: root
       key:
         from_secret: ssh_key_mykng
-      port: 22
-      script_timeout: 20m
-    script: |
-      hostname
-      whoami
-      chmod +x /root/devtools/mykng/ci/deploy.sh
-      bash /root/devtools/mykng/ci/deploy.sh test dev production
+      port: 3385
+      script_timeout: 30m
+    commands:
+      - hostname && whoami && date
+      - bash /mnt/shared/devtools/ci/deploy-mykng.sh mykng-latest.tar.gz
+      - DEPLOY_EXIT=$?; echo "DEPLOY_EXIT=${DEPLOY_EXIT}"; exit ${DEPLOY_EXIT}
 
-  # ========== active-manager 激活码系统部署 ==========
+  # ==================== active-manager 激活码系统 ====================
   - name: active-manager-build
     image: maven:3.9-eclipse-temurin-21
     environment:
       MAVEN_OPTS: -Xmx2048m
     commands:
+      # --- 编译 ---
+      - echo ">>> [1/3] Maven 编译 active-manager <<<"
       - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp && cd ../..
-      - ls active-manager/activation-code-server/target/*.jar || true
+
+      # --- 收集 jar ---
+      - echo ">>> [2/3] 收集构建产物 <<<"
+      - mkdir -p publish/active-manager
+      - cp active-manager/activation-code-server/target/activation-code-server-*.jar publish/active-manager/
+      - ls -lh publish/active-manager/
+
+      # --- 打包 tar.gz (带时间戳 + .latest 标记) ---
+      - echo ">>> [3/4] 打包发布产物 <<<"
+      - TIMESTAMP=$(date +%Y%m%d-%H%M)
+      - tar czf "publish/active-manager-${TIMESTAMP}.tar.gz" -C publish/active-manager .
+      - cp "publish/active-manager-${TIMESTAMP}.tar.gz" publish/active-manager-latest.tar.gz
+
+      # --- 推送到共享目录 (Woodpecker在mykng上，需scp到内网Debian) ---
+      - echo ">>> [4/4] 推送到共享目录 <<<"
+      - mkdir -p /mnt/shared/devtools/publish
+      - cp "publish/active-manager-${TIMESTAMP}.tar.gz" /mnt/shared/devtools/publish/
+      - cp "publish/active-manager-latest.tar.gz" /mnt/shared/devtools/publish/
+      - echo "✅ 已推送到共享目录:"
+      - ls -lh /mnt/shared/devtools/publish/active-manager-*.tar.gz | tail -5
+      - echo "BUILD_OK=active-manager-${TIMESTAMP}.tar.gz ($(ls -lh publish/active-manager-latest.tar.gz | awk '{print $5}'))"
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
     settings:
-      host: 100.105.196.63
-      username: root01
+      host: 192.168.31.182
+      username: root
       key:
-        from_secret: ssh_key_mykng
+        from_secret: ssh_key_debian
       port: 22
       script_timeout: 20m
-    script: |
-      hostname
-      whoami
-      chmod +x /root/devtools/active-manager/ci/deploy.sh
-      bash /root/devtools/active-manager/ci/deploy.sh $(git rev-parse --short HEAD) dev
+    commands:
+      - hostname && whoami && date
+      - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
+      - DEPLOY_EXIT=$?; echo "DEPLOY_EXIT=${DEPLOY_EXIT}"; exit ${DEPLOY_EXIT}
