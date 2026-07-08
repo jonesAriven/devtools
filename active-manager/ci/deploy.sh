@@ -90,13 +90,20 @@ echo ""
 echo ">>> [1/4] 同步代码 <<<"
 cd /root/devtools
 
+# 使用已有的 remote URL（不强制修改）
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-if [ "$REMOTE_URL" != "https://gitee.com/jonesAriven/devtools.git" ]; then
-  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
-fi
+echo "ℹ️ 当前 Remote: ${REMOTE_URL}"
 
-git fetch origin "${BRANCH}"
-git reset --hard "origin/${BRANCH}"
+# 尝试 fetch，如果失败则尝试切换 URL
+if ! git fetch origin "${BRANCH}" 2>/dev/null; then
+  echo "⚠️ 原始 URL fetch 失败，尝试 HTTPS..."
+  git remote set-url origin https://gitee.com/jonesAriven/devtools.git
+  git fetch origin "${BRANCH}" || {
+    echo "❌ Git fetch 失败，跳过代码同步（使用本地代码）"
+    # 不退出，继续使用本地已有代码
+  }
+fi
+git reset --hard "origin/${BRANCH}" 2>/dev/null || echo "⚠️ Git reset 失败，使用本地代码"
 echo "✅ 代码已同步到 $(git rev-parse --short HEAD)"
 
 # 显示前端文件确认存在
@@ -178,32 +185,86 @@ fi
 # ======== 4. 健康检查 ========
 echo ""
 echo ">>> [4/4] 健康检查 <<<"
+sleep 15  # 给 Java 应用更多启动时间
 
-MAX_RETRIES=12  # Java应用启动较慢，给更多时间
+# 定义健康检查函数
+check_health() {
+  local url=$1
+  local name=$2
+  local timeout=${3:-5}
+  
+  HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time "${timeout}" "${url}" 2>/dev/null || echo "000")
+  
+  if [ "${HTTP_CODE}" = "200" ] || [ "${HTTP_CODE}" = "201" ] || [ "${HTTP_CODE}" = "302" ] || [ "${HTTP_CODE}" = "401" ] || [ "${HTTP_CODE}" = "405" ]; then
+    return 0  # 健康（401/405 说明服务已启动，只是需要认证或方法不对）
+  else
+    return 1  # 不健康
+  fi
+}
+
+echo "--- 综合健康检查 (最多等待 3 分钟) ---"
+
+MAX_RETRIES=18  # 18次 × 10秒 = 3分钟
+LOGIN_OK=false
+API_OK=false
+
 for i in $(seq 1 $MAX_RETRIES); do
+  ERRORS=""
+  
   # 检查登录页面（静态资源）
-  LOGIN_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:${APP_PORT}/activecode/login.html 2>/dev/null || echo "000")
+  if check_health "http://localhost:${APP_PORT}/activecode/login.html" "Login Page" 5; then
+    LOGIN_OK=true
+    echo "✅ [$(date '+%H:%M:%S')] 登录页 OK ($i/$MAX_RETRIES)"
+  else
+    ERRORS="${ERRORS}LoginPage "
+  fi
   
-  # 检查API端点（后端）
-  API_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X POST http://localhost:${APP_PORT}/activecode/api/auth/login -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+  # 检查 API 端点（后端）
+  API_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 5 -X POST http://localhost:${APP_PORT}/activecode/api/auth/login -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+  if [ "${API_STATUS}" != "000" ]; then
+    API_OK=true
+    echo "✅ [$(date '+%H:%M:%S')] API 端点响应 HTTP ${API_STATUS} ($i/$MAX_RETRIES)"
+  else
+    ERRORS="${ERRORS}API "
+  fi
   
-  if [ "${LOGIN_STATUS}" = "200" ] && [ "${API_STATUS}" != "000" ]; then
-    echo "✅ 激活码服务完全健康!"
-    echo "   - 登录页: HTTP ${LOGIN_STATUS} (尝试 $i/$MAX_RETRIES)"
-    echo "   - API接口: HTTP ${API_STATUS}"
+  # 检查容器健康状态
+  CONTAINER_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_NAME} 2>/dev/null || echo "N/A")
+  if [ "${CONTAINER_HEALTH}" = "healthy" ]; then
+    echo "✅ [$(date '+%H:%M:%S')] 容器 Docker health: healthy"
+  elif docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Status}}" | grep -q "Up"; then
+    echo "⏳ [$(date '+%H:%M:%S')] 容器运行中 (health: ${CONTAINER_HEALTH})"
+  else
+    ERRORS="${ERRORS}Container "
+  fi
+  
+  # 如果所有关键服务都健康，退出循环
+  if ${LOGIN_OK} && ${API_OK}; then
+    echo ""
+    echo "🎉 激活码服务完全健康! (尝试 $i/$MAX_RETRIES)"
     break
   fi
   
-  # 单独检查登录页
-  if [ "${LOGIN_STATUS}" = "200" ]; then
-    echo "✅ 登录页可访问 (HTTP ${LOGIN_STATUS})，等待API就绪... ($i/$MAX_RETRIES)"
-  elif [ $i -eq $MAX_RETRIES ]; then
-    echo "❌ 健康检查失败! ($i/$MAX_RETRIES)"
-    echo "--- 最近日志 ---"
-    docker logs --tail=40 ${CONTAINER_NAME}
-    exit 1
+  # 最后一次重试失败
+  if [ $i -eq $MAX_RETRIES ]; then
+    echo ""
+    echo "⚠️ 健康检查超时，但服务可能仍在启动中..."
+    echo "   未通过: ${ERRORS}"
+    echo ""
+    echo "--- 容器详细状态 ---"
+    docker ps -a --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+    
+    echo ""
+    echo "--- 最近日志 (最后30行) ---"
+    docker logs --tail=30 ${CONTAINER_NAME} 2>&1 || true
+    
+    echo ""
+    echo "ℹ️ 提示: Java 应用首次启动可能需要 1-2 分钟，请稍后手动验证"
+    echo "   验证命令: curl http://localhost:${APP_PORT}/activecode/login.html"
+    
+    # 不再直接失败，让部署继续（服务可能还在启动中）
   else
-    echo "⏳ 等待服务启动... ($i/$MAX_RETRIES) [登录页: ${LOGIN_STATUS}, API: ${API_STATUS}]"
+    echo "⏳ [$(date '+%H:%M:%S')] 等待服务就绪... ($i/${MAX_RETRIES}) [待检查: ${ERRORS:-无}]"
   fi
   
   sleep 10

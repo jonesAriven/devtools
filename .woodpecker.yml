@@ -1,18 +1,14 @@
 when:
   event:
     - manual
+    - push
   branch:
     - dev
     - master
 
 steps:
-  - name: check-env
-    image: alpine:3.19
-    commands:
-      - echo hello
-      - pwd
-
-  - name: build
+  # ========== mykng 知识库部署 ==========
+  - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
     environment:
       MAVEN_OPTS: -Xmx2048m
@@ -20,19 +16,13 @@ steps:
       - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp && cd ../..
       - ls target/*.jar || true
 
-  - name: deploy
+  - name: mykng-deploy
     image: appleboy/drone-ssh
     settings:
       host: 100.93.36.113
       username: root
-      key: |
-        -----BEGIN OPENSSH PRIVATE KEY-----
-        b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-        QyNTUxOQAAACArq6+5xwBN8u9EzMR5EG2eSYk/TqFdIrvonGyzswEMJgAAAJh/t5QYf7eU
-        GAAAAAtzc2gtZWQyNTUxOQAAACArq6+5xwBN8u9EzMR5EG2eSYk/TqFdIrvonGyzswEMJg
-        AAAEDxpQBplZMOgGe/gN2D4AH5CA14PDDcJfhdRLYNo2X4qSurr7nHAE3y70TMxHkQbZ5J
-        iT9OoV0iu+icbLOzAQwmAAAAEXJvb3RAbXlrbmctZGViYWluAQIDBA==
-        -----END OPENSSH PRIVATE KEY-----
+      key:
+        from_secret: ssh_key_mykng
       port: 22
       script_timeout: 20m
     script: |
@@ -40,3 +30,27 @@ steps:
       whoami
       chmod +x /root/devtools/mykng/ci/deploy.sh
       bash /root/devtools/mykng/ci/deploy.sh test dev production
+
+  # ========== active-manager 激活码系统部署 ==========
+  - name: active-manager-build
+    image: maven:3.9-eclipse-temurin-21
+    environment:
+      MAVEN_OPTS: -Xmx2048m
+    commands:
+      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp && cd ../..
+      - ls active-manager/activation-code-server/target/*.jar || true
+
+  - name: active-manager-deploy
+    image: appleboy/drone-ssh
+    settings:
+      host: 100.105.196.63
+      username: root
+      password:
+        from_secret: deploy_pass_lan
+      port: 22
+      script_timeout: 20m
+    script: |
+      hostname
+      whoami
+      chmod +x /root/devtools/active-manager/ci/deploy.sh
+      bash /root/devtools/active-manager/ci/deploy.sh $(git rev-parse --short HEAD) dev

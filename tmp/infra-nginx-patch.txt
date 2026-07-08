@@ -1,0 +1,11 @@
+
+    # infra-monitor 基础设施监控（反代到 mykng:80）
+    location /infra/ {
+        proxy_pass http://100.93.36.113:80/infra/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
