@@ -78,7 +78,7 @@ jobs:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           echo "🔄 Adding Gitee as remote..."
-          git remote add gitee https://${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git || git remote set-url gitee https://${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git
+          git remote add gitee https://jonesAriven:${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git || git remote set-url gitee https://jonesAriven:${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git
           git remote -v
 
       # ----------------------------------------------------------
