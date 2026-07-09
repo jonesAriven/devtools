@@ -1,0 +1,30 @@
+# ============================================================
+# infra-monitor (基础设施监控) Docker Compose
+# ============================================================
+# 用法:
+#   docker compose -p infra-monitor up -d --build
+#   docker compose -p infra-monitor down
+#   docker compose -p infra-monitor logs -f
+#
+# 网络模式: host (直接使用宿主机网络, MongoDB 在 127.0.0.1:27017)
+# 端口: 8088 (后端 API, Nginx 反代 /infra/api/ -> :8088/infra/)
+# ============================================================
+
+services:
+  infra-monitor:
+    build: .
+    image: infra-monitor:latest
+    container_name: infra-monitor
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATA_MONGODB_URI=mongodb://kb:***@127.0.0.1:27017/infra_monitor?authSource=admin
+      - JWT_SECRET=YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!
+      - CRYPTO_AES_KEY=YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=
+      - INFRA_ADMIN_USER=admin
+      - INFRA_ADMIN_PASS=admin123
+    volumes:
+      - /data/infra-monitor/logs:/app/logs
+    mem_limit: 256m

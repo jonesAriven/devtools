@@ -141,3 +141,55 @@ steps:
         - test -f /mnt/shared/devtools/publish/active-manager-latest.tar.gz || { echo "❌ 产物不存在"; exit 1; }
         - ls -lh /mnt/shared/devtools/publish/active-manager-latest.tar.gz
         - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
+
+  # ==================== infra-monitor 基础设施监控 ====================
+  - name: infra-monitor-build
+    image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - /mnt/shared:/mnt/shared
+    environment:
+      MAVEN_OPTS: -Xmx2048m
+    depends_on: [sync-ci-scripts]
+    commands:
+      - set -e
+      - echo ">>> [1/4] Maven 编译 infra-monitor <<<"
+      - cd infra-monitor/infra-monitor-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/mnt/shared/.m2/repository
+      - cd ../..
+      - echo ">>> [2/4] 验证构建产物 <<<"
+      - ls -lh infra-monitor/infra-monitor-server/target/infra-monitor.jar
+      - test -f infra-monitor/infra-monitor-server/target/infra-monitor.jar || { echo "❌ 未找到 jar 文件"; exit 1; }
+      - echo ">>> [3/4] 收集构建产物 <<<"
+      - mkdir -p publish/infra-monitor
+      - cp infra-monitor/infra-monitor-server/target/infra-monitor.jar publish/infra-monitor/
+      - ls -lh publish/infra-monitor/
+      - echo ">>> [4/4] 打包并推送到共享目录 <<<"
+      - TIMESTAMP=$(date +%Y%m%d-%H%M)
+      - tar czf "publish/infra-monitor-${TIMESTAMP}.tar.gz" -C publish/infra-monitor .
+      - cp "publish/infra-monitor-${TIMESTAMP}.tar.gz" publish/infra-monitor-latest.tar.gz
+      - mkdir -p /mnt/shared/devtools/publish
+      - cp "publish/infra-monitor-${TIMESTAMP}.tar.gz" /mnt/shared/devtools/publish/
+      - cp "publish/infra-monitor-latest.tar.gz" /mnt/shared/devtools/publish/
+      - echo ">>> 验证共享目录产物 <<<"
+      - ls -lh /mnt/shared/devtools/publish/infra-monitor-*.tar.gz
+      - test -f /mnt/shared/devtools/publish/infra-monitor-latest.tar.gz || { echo "❌ 产物未写入共享目录"; exit 1; }
+      - echo "BUILD_OK=infra-monitor-${TIMESTAMP}.tar.gz"
+
+  - name: infra-monitor-deploy
+    image: appleboy/drone-ssh
+    depends_on: [infra-monitor-build]
+    settings:
+      host: 120.26.66.182
+      username: root
+      key:
+        from_secret: ssh_key_mykng
+      port: 3385
+      script_stop: true
+      command_timeout: 20m
+      debug: true
+      script:
+        - set -e
+        - echo "=== 开始部署 infra-monitor ==="
+        - date && whoami && hostname
+        - test -f /mnt/shared/devtools/publish/infra-monitor-latest.tar.gz || { echo "❌ 产物不存在"; exit 1; }
+        - ls -lh /mnt/shared/devtools/publish/infra-monitor-latest.tar.gz
+        - bash /mnt/shared/devtools/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
