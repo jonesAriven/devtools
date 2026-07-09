@@ -87,7 +87,7 @@ jobs:
       - name: Fetch from Gitee
         run: |
           echo "📥 Fetching all branches from Gitee..."
-          git fetch gitee --all --prune
+          git fetch gitee --prune
           echo "✅ Fetch completed"
 
           # 显示 Gitee 的所有分支
