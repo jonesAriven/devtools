@@ -76,7 +76,7 @@ if ss -tlnp | grep -q ":${APP_PORT} "; then
   ss -tlnp | grep ":${APP_PORT} "
 else
   echo "✅ 端口 ${APP_PORT} 可用（首次部署）"
-fi"
+fi
 
 # ======================== [1] 取包 & 解压 ========================
 echo ""
