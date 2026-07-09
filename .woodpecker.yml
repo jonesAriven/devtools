@@ -2,16 +2,16 @@
 # Woodpecker CI - devtools 自动化构建与部署
 # ============================================================
 # 架构:
-#   Build Step:  Maven 编译 -> 收集 jar -> 打包 tar.gz (带时间戳) -> /mnt/shared
-#   Deploy Step: SSH 到目标服务器 -> 从共享目录取包 -> 解压 -> docker compose 部署
+#   Build Step:  Maven 编译 -> 收集 jar -> 打包 tar.gz -> /mnt/shared
+#   Deploy Step: SSH 到目标服务器 -> 从共享目录取包 -> docker compose 部署
 #
-# 项目映射:
-#   mykng          -> 部署到 mykng (120.26.66.182:3385)
-#   active-manager  -> 部署到内网Debian (192.168.31.182)
+# 并行策略:
+#   mykng-build ──> mykng-deploy
+#   active-build ──> active-deploy
+#   两条链并行执行，互不阻塞
 #
-# 域名访问:
-#   mykng:         公网 IP 直连各端口
-#   active-manager: https://tools.marschat.online/activecode/
+# Maven 缓存:
+#   /mnt/shared/.m2 挂载到容器内，依赖只下载一次
 # ============================================================
 
 when:
@@ -29,10 +29,11 @@ steps:
       - /mnt/shared:/mnt/shared
     environment:
       MAVEN_OPTS: -Xmx2048m
+      MAVEN_CONFIG: -Dmaven.repo.local=/mnt/shared/.m2/repository
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 mykng <<<"
-      - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp
+      - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/mnt/shared/.m2/repository
       - cd ../..
       - echo ">>> [2/4] 收集构建产物 <<<"
       - mkdir -p publish/mykng
@@ -84,7 +85,7 @@ steps:
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 active-manager <<<"
-      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp
+      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp -Dmaven.repo.local=/mnt/shared/.m2/repository
       - cd ../..
       - echo ">>> [2/4] 验证构建产物 <<<"
       - ls -lh active-manager/activation-code-server/target/activation-code-server-*.jar
