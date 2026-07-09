@@ -1,0 +1,248 @@
+# ============================================================
+# mykng 知识库微服务 - Gitee → GitHub 双向镜像同步
+# ============================================================
+# 功能：定时从 Gitee 主仓库同步代码到 GitHub 镜像仓库
+# 触发：
+#   1. 手动触发 (workflow_dispatch)
+#   2. 定时任务（每 5 分钟检查一次）
+#   3. 外部 webhook 触发（可选）
+# ============================================================
+
+name: Sync from Gitee
+
+on:
+  # 手动触发（用于首次同步或紧急同步）
+  workflow_dispatch:
+    inputs:
+      force_push:
+        description: '强制推送（覆盖 GitHub 历史记录）'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+  # 定时同步（每 5 分钟检查一次，Cron 表达式使用 UTC 时间）
+  schedule:
+    # 北京时间每 5 分钟：*/5 * * * * (UTC)
+    - cron: '*/5 * * * *'
+
+  # 可选：通过 repository_dispatch 从外部触发
+  repository_dispatch:
+    types: [gitee-sync-trigger]
+
+# 并发控制：同一时间只运行一个同步任务
+concurrency:
+  group: sync-from-gitee
+  cancel-in-progress: false
+
+env:
+  # Gitee 仓库配置（需要配置 Personal Access Token）
+  GITEE_REPO: 'https://gitee.com/jonesAriven/devtools.git'
+  # 同步的分支列表
+  SYNC_BRANCHES: 'main,develop,dev'
+
+jobs:
+  # ============================================================
+  # Job 1: 同步代码从 Gitee 到 GitHub
+  # ============================================================
+  sync:
+    name: Sync from Gitee to GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ----------------------------------------------------------
+      # Step 1: Checkout GitHub 仓库
+      # ----------------------------------------------------------
+      - name: Checkout GitHub Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史记录
+
+      # ----------------------------------------------------------
+      # Step 2: 配置 Git 用户信息
+      # ----------------------------------------------------------
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Sync Bot"
+          git config --global user.email "sync-bot@users.noreply.github.com"
+          git config --global init.defaultBranch main
+
+      # ----------------------------------------------------------
+      # Step 3: 添加 Gitee 远程仓库
+      # ----------------------------------------------------------
+      - name: Add Gitee Remote
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          echo "🔄 Adding Gitee as remote..."
+          git remote add gitee https://${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git || git remote set-url gitee https://${GITEE_TOKEN}@gitee.com/jonesAriven/devtools.git
+          git remote -v
+
+      # ----------------------------------------------------------
+      # Step 4: 从 Gitee 获取最新代码
+      # ----------------------------------------------------------
+      - name: Fetch from Gitee
+        run: |
+          echo "📥 Fetching all branches from Gitee..."
+          git fetch gitee --all --prune
+          echo "✅ Fetch completed"
+
+          # 显示 Gitee 的所有分支
+          echo "📋 Branches on Gitee:"
+          git branch -r | grep gitee/ | sed 's/gitee\///' | sort -u
+
+      # ----------------------------------------------------------
+      # Step 5: 同步各个分支
+      # ----------------------------------------------------------
+      - name: Sync Branches
+        env:
+          FORCE_PUSH: ${{ github.event.inputs.force_push || 'false' }}
+        run: |
+          echo "🚀 Starting branch synchronization..."
+          
+          # 要同步的分支列表
+          BRANCHES="main develop dev"
+          SYNCED=0
+          SKIPPED=0
+          FAILED=0
+          
+          for BRANCH in $BRANCHES; do
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📌 Processing branch: $BRANCH"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # 检查 Gitee 是否存在该分支
+            if git show-ref --verify --quiet "refs/remotes/gitee/$BRANCH"; then
+              echo "✅ Found branch '$BRANCH' on Gitee"
+              
+              # 检查本地是否已存在该分支
+              if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+                echo "📝 Local branch '$BRANCH' exists, checking for updates..."
+                
+                # 比较本地和远程的 commit hash
+                LOCAL_HASH=$(git rev-parse origin/$BRANCH 2>/dev/null || echo "none")
+                GITEE_HASH=$(git rev-parse gitee/$BRANCH)
+                
+                if [ "$LOCAL_HASH" = "$GITEE_HASH" ]; then
+                  echo "⏭️ Branch '$BRANCH' is up-to-date (skipping)"
+                  SKIPPED=$((SKIPPED + 1))
+                else
+                  echo "🔄 Updates detected for branch '$BRANCH'"
+                  echo "   Local:  $LOCAL_HASH"
+                  echo "   Gitee:  $GITEE_HASH"
+                  
+                  # 强制推送或正常合并
+                  if [ "$FORCE_PUSH" = "true" ]; then
+                    echo "⚠️ Force pushing branch '$BRANCH'..."
+                    git push origin "gitee/$BRANCH:$BRANCH" --force
+                  else
+                    echo "🔄 Fast-forward pushing branch '$BRANCH'..."
+                    git push origin "gitee/$BRANCH:$BRANCH" || {
+                      echo "⚠️ Fast-forward failed, attempting force push..."
+                      git push origin "gitee/$BRANCH:$BRANCH" --force
+                    }
+                  fi
+                  
+                  if [ $? -eq 0 ]; then
+                    echo "✅ Successfully synced branch '$BRANCH'"
+                    SYNCED=$((SYNCED + 1))
+                  else
+                    echo "❌ Failed to sync branch '$BRANCH'"
+                    FAILED=$((FAILED + 1))
+                  fi
+                fi
+              else
+                # 本地不存在该分支，创建新分支
+                echo "➕ Creating new branch '$BRANCH' from Gitee..."
+                git push origin "gitee/$BRANCH:$BRANCH"
+                
+                if [ $? -eq 0 ]; then
+                  echo "✅ Successfully created branch '$BRANCH'"
+                  SYNCED=$((SYNCED + 1))
+                else
+                  echo "❌ Failed to create branch '$BRANCH'"
+                  FAILED=$((FAILED + 1))
+                fi
+              fi
+            else
+              echo "⏭️ Branch '$BRANCH' not found on Gitee (skipping)"
+              SKIPPED=$((SKIPPED + 1))
+            fi
+          done
+          
+          echo ""
+          echo "═════════════════════════════════════════"
+          echo "📊 Sync Summary:"
+          echo "   ✅ Synced:  $SYNCED branches"
+          echo "   ⏭️ Skipped: $SKIPPED branches"
+          echo "   ❌ Failed:  $FAILED branches"
+          echo "═════════════════════════════════════════"
+
+      # ----------------------------------------------------------
+      # Step 6: 同步 Tags
+      # ----------------------------------------------------------
+      - name: Sync Tags
+        run: |
+          echo "🏷️ Synchronizing tags..."
+          
+          # 获取 Gitee 的所有 tags
+          GITEE_TAGS=$(git ls-remote --tags gitee | awk -F'tags/' '{print $2}' | awk -F'^' '{print $1}' | sort -u)
+          SYNCED_TAGS=0
+          
+          for TAG in $GITEE_TAGS; do
+            # 检查 tag 是否已存在于 GitHub
+            if ! git ls-remote --tags origin | grep -q "tags/$TAG^"; then
+              echo "🔄 Pushing tag: $TAG"
+              git push origin "gitee/$TAG" "refs/tags/$TAG"
+              if [ $? -eq 0 ]; then
+                SYNCED_TAGS=$((SYNCED_TAGS + 1))
+              fi
+            fi
+          done
+          
+          echo "✅ Tag sync completed. New tags pushed: $SYNCED_TAGS"
+
+      # ----------------------------------------------------------
+      # Step 7: 输出同步结果摘要
+      # ----------------------------------------------------------
+      - name: Sync Summary
+        if: always()
+        run: |
+          echo "## 📋 Sync Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Source** | Gitee ($GITEE_REPO) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Destination** | GitHub ($GITHUB_REPOSITORY) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Force Push** | ${{ github.event.inputs.force_push || 'false' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔄 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "After sync completes, the following workflows will be triggered:" >> $GITHUB_STEP_SUMMARY
+          echo "- **CI Pipeline** (.github/workflows/ci.yml) - Build & Test" >> $GITHUB_STEP_SUMMARY
+          echo "- **CD Pipeline** (.github/workflows/cd.yml) - Deploy" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # Job 2: 同步完成后通知（可选）
+  # ============================================================
+  notify:
+    name: Send Notification
+    needs: sync
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack/WeChat Notification (Optional)
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        env:
+          JOB_STATUS: ${{ needs.sync.result }}
+        run: |
+          # 这里可以添加 Slack/企业微信通知逻辑
+          echo "Sync job completed with status: $JOB_STATUS"
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data "{\"text\":\"Gitee→GitHub Sync: $JOB_STATUS\"}" \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
