@@ -22,6 +22,18 @@ when:
     - dev
 
 steps:
+  # ==================== 同步 CI 脚本到共享目录 ====================
+  - name: sync-ci-scripts
+    image: alpine
+    volumes:
+      - /mnt/shared:/mnt/shared
+    commands:
+      - mkdir -p /mnt/shared/devtools/ci
+      - cp -f ci/*.sh /mnt/shared/devtools/ci/
+      - chmod +x /mnt/shared/devtools/ci/*.sh
+      - echo "✅ CI 脚本已同步到共享目录"
+      - ls -la /mnt/shared/devtools/ci/
+
   # ==================== mykng 知识库微服务 ====================
   - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
@@ -30,6 +42,7 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx2048m
       MAVEN_CONFIG: -Dmaven.repo.local=/mnt/shared/.m2/repository
+    depends_on: [sync-ci-scripts]
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 mykng <<<"
@@ -82,6 +95,7 @@ steps:
       - /mnt/shared:/mnt/shared
     environment:
       MAVEN_OPTS: -Xmx2048m
+    depends_on: [sync-ci-scripts]
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 active-manager <<<"
