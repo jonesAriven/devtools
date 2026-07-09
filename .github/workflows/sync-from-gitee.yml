@@ -26,7 +26,7 @@ on:
   # 定时同步（每 5 分钟检查一次，Cron 表达式使用 UTC 时间）
   schedule:
     # 北京时间每 5 分钟：*/5 * * * * (UTC)
-    - cron: '*/5 * * * *'
+    - cron: '*/3 * * * *'
 
   # 可选：通过 repository_dispatch 从外部触发
   repository_dispatch:
