@@ -237,12 +237,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack/WeChat Notification (Optional)
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         env:
           JOB_STATUS: ${{ needs.sync.result }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          # 这里可以添加 Slack/企业微信通知逻辑
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "No Slack webhook configured, skipping notification"
+            exit 0
+          fi
           echo "Sync job completed with status: $JOB_STATUS"
           # curl -X POST -H 'Content-type: application/json' \
-          #   --data "{\"text\":\"Gitee→GitHub Sync: $JOB_STATUS\"}" \
-          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+          #   --data "{\"text\":\"Gitee->GitHub Sync: $JOB_STATUS\"}" \
+          #   "$SLACK_WEBHOOK"
