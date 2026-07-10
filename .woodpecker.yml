@@ -39,14 +39,15 @@ steps:
     image: maven:3.9-eclipse-temurin-21
     volumes:
       - /mnt/shared:/mnt/shared
+      - /root/.m2:/root/.m2
     environment:
       MAVEN_OPTS: -Xmx2048m
-      MAVEN_CONFIG: -Dmaven.repo.local=/mnt/shared/.m2/repository
+      MAVEN_CONFIG: -Dmaven.repo.local=/root/.m2/repository
     depends_on: [sync-ci-scripts]
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 mykng <<<"
-      - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp -T 2C -Djacoco.skip=true -Dmaven.repo.local=/mnt/shared/.m2/repository
+      - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp -T 2C -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
       - echo ">>> [2/4] 收集构建产物 <<<"
       - mkdir -p publish/mykng
@@ -93,13 +94,14 @@ steps:
     image: maven:3.9-eclipse-temurin-21
     volumes:
       - /mnt/shared:/mnt/shared
+      - /root/.m2:/root/.m2
     environment:
       MAVEN_OPTS: -Xmx2048m
     depends_on: [sync-ci-scripts]
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 active-manager <<<"
-      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/mnt/shared/.m2/repository
+      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
       - echo ">>> [2/4] 验证构建产物 <<<"
       - ls -lh active-manager/activation-code-server/target/activation-code-server-*.jar
@@ -147,13 +149,14 @@ steps:
     image: maven:3.9-eclipse-temurin-21
     volumes:
       - /mnt/shared:/mnt/shared
+      - /root/.m2:/root/.m2
     environment:
       MAVEN_OPTS: -Xmx2048m
     depends_on: [sync-ci-scripts]
     commands:
       - set -e
       - echo ">>> [1/4] Maven 编译 infra-monitor <<<"
-      - cd infra-monitor/infra-monitor-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/mnt/shared/.m2/repository
+      - cd infra-monitor/infra-monitor-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
       - cd ../..
       - echo ">>> [2/4] 验证构建产物 <<<"
       - ls -lh infra-monitor/infra-monitor-server/target/infra-monitor.jar
