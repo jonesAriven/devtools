@@ -158,11 +158,10 @@ echo ">>> [4/6] 构建并启动新服务 <<<"
 echo "--- Compose Project: ${COMPOSE_PROJECT}, Profile: ${COMPOSE_PROFILE} ---"
 
 # 使用 --remove-orphans 再次确保无孤儿容器
-# 不使用 --build：jar 通过 volume 挂载，force-recreate 即可生效
 heartbeat "docker compose up 启动服务" &
 HB_PID=$!
 docker compose -p "${COMPOSE_PROJECT}" --profile "${COMPOSE_PROFILE}" \
-  up -d --force-recreate --remove-orphans 2>&1
+  up -d --build --force-recreate --remove-orphans 2>&1
 kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
 
 echo ""

@@ -220,11 +220,10 @@ echo ""
 echo ">>> [5/7] 构建并启动新服务 <<<"
 echo "--- Compose Project: ${COMPOSE_PROJECT} ---"
 
-# 不使用 --build：jar 通过 volume 挂载，force-recreate 即可生效
 heartbeat "docker compose up 启动服务" &
 HB_PID=$!
 docker compose -p "${COMPOSE_PROJECT}" \
-  up -d --force-recreate --remove-orphans 2>&1
+  up -d --build --force-recreate --remove-orphans 2>&1
 kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
 
 echo ""
