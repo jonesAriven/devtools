@@ -5,8 +5,8 @@ LABEL maintainer="kb-team"
 
 WORKDIR /app
 
-# 复制构建产物
-COPY target/kb-gateway.jar /app/kb-gateway.jar
+# jar 通过 docker-compose volume 挂载，无需 COPY（更新 jar 后 force-recreate 即可生效）
+# COPY target/kb-gateway.jar /app/kb-gateway.jar
 
 # 时区设置（直接复制时区文件，无需安装 tzdata 包）
 ENV TZ=Asia/Shanghai

@@ -27,4 +27,5 @@ services:
       - INFRA_ADMIN_PASS=admin123
     volumes:
       - /data/infra-monitor/logs:/app/logs
+      - ./target/infra-monitor.jar:/app/app.jar:ro
     mem_limit: 256m

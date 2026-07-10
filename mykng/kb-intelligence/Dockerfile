@@ -5,7 +5,8 @@ LABEL maintainer="kb-team"
 
 WORKDIR /app
 
-COPY target/kb-intelligence.jar /app/kb-intelligence.jar
+# jar 通过 docker-compose volume 挂载，无需 COPY（更新 jar 后 force-recreate 即可生效）
+# COPY target/kb-intelligence.jar /app/kb-intelligence.jar
 
 # 时区设置（直接复制时区文件，无需安装 tzdata 包）
 ENV TZ=Asia/Shanghai

@@ -183,6 +183,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./kb-gateway/target/kb-gateway.jar:/app/kb-gateway.jar:ro
     depends_on:
       kb-auth:
         condition: service_healthy
@@ -219,6 +221,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./kb-auth/target/kb-auth.jar:/app/kb-auth.jar:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -265,6 +269,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./kb-file/target/kb-file.jar:/app/kb-file.jar:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -316,6 +322,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./kb-knowledge/target/kb-knowledge.jar:/app/kb-knowledge.jar:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -367,6 +375,7 @@ services:
     volumes:
       - ${IMPORT_SOURCE_DIR:-/data/import}:/data/import:ro
       - /root/openclaw-work-space:/root/openclaw-work-space:ro
+      - ./kb-intelligence/target/kb-intelligence.jar:/app/kb-intelligence.jar:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8086/actuator/health"]
       interval: 30s

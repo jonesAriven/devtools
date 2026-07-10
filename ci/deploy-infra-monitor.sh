@@ -23,10 +23,19 @@
 
 set -euo pipefail
 
+# ======================== 心跳函数 ========================
+# 防止 SSH 长时间无输出导致 FRP 隧道断连
+heartbeat() {
+  local msg="${1:-操作进行中}"
+  while true; do
+    echo "  ⏳ $(date '+%H:%M:%S') ${msg}..."
+    sleep 15
+  done
+}
+
 # 日志记录
 LOG_FILE="/var/log/infra-monitor-deploy-$(date +%Y%m%d-%H%M%S).log"
-exec 1> >(tee -a "$LOG_FILE")
-exec 2>&1
+echo "  日志: $LOG_FILE"
 
 echo "============================================="
 echo "  📊 infra-monitor 基础设施监控 - 自动部署"
@@ -175,7 +184,10 @@ cd "${BACKEND_DIR}"
 # ---- 4a. 主路径：docker compose down ----
 if docker compose -p "${COMPOSE_PROJECT}" ps -q 2>/dev/null | grep -q .; then
   echo "--- docker compose -p ${COMPOSE_PROJECT} down --remove-orphans ---"
+  heartbeat "docker compose down 停止容器" &
+  HB_PID=$!
   docker compose -p "${COMPOSE_PROJECT}" down --remove-orphans --timeout 30 2>&1 || true
+  kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
   echo "✅ compose down 完成"
   sleep 3
 else
@@ -208,8 +220,12 @@ echo ""
 echo ">>> [5/7] 构建并启动新服务 <<<"
 echo "--- Compose Project: ${COMPOSE_PROJECT} ---"
 
+# 不使用 --build：jar 通过 volume 挂载，force-recreate 即可生效
+heartbeat "docker compose up 启动服务" &
+HB_PID=$!
 docker compose -p "${COMPOSE_PROJECT}" \
-  up -d --build --force-recreate --remove-orphans 2>&1 | tail -30
+  up -d --force-recreate --remove-orphans 2>&1
+kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
 
 echo ""
 echo "✅ 服务启动命令执行完成"

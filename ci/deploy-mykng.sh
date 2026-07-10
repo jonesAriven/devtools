@@ -26,6 +26,16 @@
 
 set -e
 
+# ======================== 心跳函数 ========================
+# 防止 SSH 长时间无输出导致 FRP 隧道断连
+heartbeat() {
+  local msg="${1:-操作进行中}"
+  while true; do
+    echo "  ⏳ $(date '+%H:%M:%S') ${msg}..."
+    sleep 15
+  done
+}
+
 # ======================== 参数 ========================
 TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
 
@@ -111,7 +121,10 @@ cd "${DEPLOY_BASE}"
 # ---- 3a. 主路径：docker compose down（唯一标准入口） ----
 if docker compose -p "${COMPOSE_PROJECT}" ps -q 2>/dev/null | grep -q .; then
   echo "--- docker compose -p ${COMPOSE_PROJECT} down --remove-orphans ---"
+  heartbeat "docker compose down 停止容器" &
+  HB_PID=$!
   docker compose -p "${COMPOSE_PROJECT}" down --remove-orphans --timeout 30 2>&1 || true
+  kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
   echo "✅ compose down 完成"
   sleep 5
 else
@@ -145,8 +158,12 @@ echo ">>> [4/6] 构建并启动新服务 <<<"
 echo "--- Compose Project: ${COMPOSE_PROJECT}, Profile: ${COMPOSE_PROFILE} ---"
 
 # 使用 --remove-orphans 再次确保无孤儿容器
+# 不使用 --build：jar 通过 volume 挂载，force-recreate 即可生效
+heartbeat "docker compose up 启动服务" &
+HB_PID=$!
 docker compose -p "${COMPOSE_PROJECT}" --profile "${COMPOSE_PROFILE}" \
-  up -d --build --force-recreate --remove-orphans 2>&1 | tail -35
+  up -d --force-recreate --remove-orphans 2>&1
+kill ${HB_PID} 2>/dev/null; wait ${HB_PID} 2>/dev/null
 
 echo ""
 echo "✅ 服务启动命令执行完成"

@@ -7,7 +7,8 @@
 
 FROM docker.m.daocloud.io/library/eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY target/infra-monitor.jar app.jar
+# jar 通过 docker-compose volume 挂载，无需 COPY（更新 jar 后 force-recreate 即可生效）
+# COPY target/infra-monitor.jar app.jar
 EXPOSE 8088
 
 ENV TZ=Asia/Shanghai
