@@ -2,6 +2,12 @@
 # ============================================================
 # lib-deploy.sh — 标准化部署公共函数库
 # ============================================================
+
+# ====== 信号处理: 防止 SSH 断连时被 SIGTERM 杀掉 ======
+# Woodpecker CI (drone-ssh) 可能在 script 执行期间发送 SIGTERM
+# trap TERM 忽略该信号，让脚本完整执行完毕
+trap '' TERM
+trap 'echo "\n[WARN] 收到 EXIT 信号，正在清理..."; _heartbeat_stop 2>/dev/null; exit 1' EXIT
 # 被所有 deploy-*.sh 通过 source 引入，提供统一的部署原语。
 # 设计原则:
 #   1. 每个函数只做一件事
@@ -296,9 +302,14 @@ compose_up_services() {
   _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \
     up -d --build --force-recreate "${services[@]}" 2>&1
+  local COMPOSE_EXIT=$?
   _heartbeat_stop
 
   echo ""
+  if [ ${COMPOSE_EXIT} -ne 0 ]; then
+    log_err "docker compose up 失败 (exit code: ${COMPOSE_EXIT})"
+    return 1
+  fi
   log_ok "服务启动完成"
   docker compose -p "${project}" -f "${compose_file}" ps 2>/dev/null || \
     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
