@@ -87,11 +87,11 @@ echo ""
 echo ">>> [3/4] 启动基础设施服务 <<<"
 cd "${SCRIPT_DIR}"
 
-# 先创建网络（如果不存在）
-if ! docker network ls --format '{{.Name}}' | grep -q '^platform-net$'; then
-  docker network create platform-net 2>/dev/null || true
-  log_ok "已创建 network: platform-net"
-fi
+# 注意：不要手动 docker network create platform-net！
+# compose 文件已声明 external: true + name: platform-net
+# 手动创建的裸网络没有 compose label，会导致后续 compose up 报错：
+#   "network platform-net was found but has incorrect label"
+# 让 compose 自己管理网络即可
 
 docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" up -d 2>&1
 
