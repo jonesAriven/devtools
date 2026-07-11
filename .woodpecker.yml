@@ -124,7 +124,7 @@ steps:
     failure: ignore
     commands:
       - npm install -g pnpm
-      - pnpm config set registry http://127.0.0.1:8081/repository/npm-public/
+      - pnpm config set registry http://192.168.31.105:8081/repository/npm-public/
       - pnpm config set fetch-retries 5
       - pnpm config set fetch-retry-factor 2
       - pnpm config set fetch-retry-mintimeout 20000
