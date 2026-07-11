@@ -34,18 +34,23 @@ when:
 
 steps:
   # ==================== 共享: 同步CI脚本 ====================
-  - name: sync-ci-scripts
-    image: alpine
-    volumes:
-      - /mnt/shared:/mnt/shared
-    commands:
-      - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
-      # 用 sed 删除可能的 Windows CRLF (\r)，避免 bash 解析 EOF 错误
-      - for f in ci/*.sh; do sed 's/\r$//' "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
-      - chmod +x /mnt/shared/devtools/ci/*.sh
-      - echo "✅ CI 脚本已同步到共享目录 (CRLF已清理)"
-      # 验证: 输出文件列表和行数，确保文件完整
-      - ls -la /mnt/shared/devtools/ci/ && wc -l /mnt/shared/devtools/ci/*.sh
+- name: sync-ci-scripts
+  image: alpine
+  volumes:
+    - /mnt/shared:/mnt/shared
+  commands:
+    - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
+    # 用 sed 删除 Windows CRLF (\r)，避免 bash 解析 EOF 错误
+    - for f in ci/*.sh; do sed 's/\r$//' "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
+    - chmod +x /mnt/shared/devtools/ci/*.sh
+    # 二次清理：确保目标文件也没有残留 \r
+    - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
+    - echo "CI scripts synced"
+    # 验证文件完整性
+    - ls -la /mnt/shared/devtools/ci/
+    - wc -l /mnt/shared/devtools/ci/*.sh
+    # 关键验证：检查是否还有残留 CRLF
+    - if grep -Pl '\r' /mnt/shared/devtools/ci/*.sh; then echo "ERROR: CRLF still present!"; exit 1; else echo "OK: No CRLF found"; fi
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
