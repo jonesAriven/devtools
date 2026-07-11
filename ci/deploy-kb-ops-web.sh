@@ -31,10 +31,19 @@ verify_artifact "${TAR_FILE}"
 log_step 2 5 "解压 & 分发前端产物"
 mkdir -p "${DEPLOY_BASE}/kb-ops-web/dist" "${DEPLOY_BASE}/web-tmp"
 extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/web-tmp"
-rm -rf "${DEPLOY_BASE}/kb-ops-web/dist"/*
-cp -r "${DEPLOY_BASE}/web-tmp/"* "${DEPLOY_BASE}/kb-ops-web/dist/"
+# 先清空目标目录，再用 rsync/cp -a 安全复制（保留子目录结构）
+rm -rf "${DEPLOY_BASE}/kb-ops-web/dist/"
+mkdir -p "${DEPLOY_BASE}/kb-ops-web/dist"
+cp -a "${DEPLOY_BASE}/web-tmp"/. "${DEPLOY_BASE}/kb-ops-web/dist/"
 rm -rf "${DEPLOY_BASE}/web-tmp"
-log_ok "kb-ops-web dist 已更新"
+# 验证复制结果
+local file_count=$(find "${DEPLOY_BASE}/kb-ops-web/dist" -type f | wc -l)
+if [ "${file_count}" -eq 0 ]; then
+  log_err "dist 目录为空! 解压可能失败"
+  ls -laR "${DEPLOY_BASE}/web-tmp/" 2>/dev/null || true
+  exit 1
+fi
+log_ok "kb-ops-web dist 已更新 (${file_count} 个文件)"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
