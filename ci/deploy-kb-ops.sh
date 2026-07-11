@@ -14,7 +14,8 @@ set -euo pipefail
 source /mnt/shared/devtools/ci/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
+TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>>"
+APP_DIR="${GIT_REPO}/kb-ops"
 COMPOSE_PROJECT="kb-app"
 COMPOSE_FILE="docker-compose.app.yml"
 SERVICES=("kb-ops")
@@ -29,18 +30,8 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 JAR ======
 log_step 2 6 "解压 & 分发 JAR"
-mkdir -p "${DEPLOY_BASE}/jars"
-extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/jars"
-
-target_dir="${GIT_REPO}/kb-ops/target"
-mkdir -p "${target_dir}"
-if [ -f "${DEPLOY_BASE}/jars/kb-ops.jar" ]; then
-  cp "${DEPLOY_BASE}/jars/kb-ops.jar" "${target_dir}/"
-  log_ok "kb-ops ← kb-ops.jar"
-else
-  log_err "kb-ops.jar 不存在"
-  exit 1
-fi
+mkdir -p "${APP_DIR}/target"
+extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 
 # ====== Step 3: 同步 compose 文件 & 检查网络 ======
 log_step 3 6 "环境准备"
@@ -49,11 +40,11 @@ ensure_infra_network
 
 # ====== Step 4: 停止旧服务 (只停 kb-ops，不影响其他) ======
 log_step 4 6 "停止旧服务"
-compose_stop_services "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动新服务"
-compose_up_services "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"

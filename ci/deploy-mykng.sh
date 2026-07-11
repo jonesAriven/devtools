@@ -38,12 +38,12 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 JAR ======
 log_step 2 6 "解压 & 分发 JAR"
-mkdir -p "${DEPLOY_BASE}/jars"
-extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/jars"
+mkdir -p "${DEPLOY_BASE}/jars-mykng"
+extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/jars-mykng"
 
 for module in "${!JAR_MAP[@]}"; do
   jar_file="${JAR_MAP[${module}]}"
-  src="${DEPLOY_BASE}/jars/${jar_file}"
+  src="${DEPLOY_BASE}/jars-mykng/${jar_file}"
   target_dir="${GIT_REPO}/mykng/${module}/target"
   if [ -f "${src}" ]; then
     mkdir -p "${target_dir}"
@@ -61,11 +61,11 @@ ensure_infra_network
 
 # ====== Step 4: 停止旧服务 (只停这5个，不影响其他) ======
 log_step 4 6 "停止旧服务"
-compose_stop_services "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动新服务"
-compose_up_services "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"

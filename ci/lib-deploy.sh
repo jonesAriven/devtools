@@ -81,13 +81,13 @@ verify_artifact() {
 
 # ====== 解压产物 ======
 # 用法: extract_artifact <tar文件名> <目标目录>
+# 说明: tar 解压自动覆盖同名文件，无需 rm
 extract_artifact() {
   local tar_file="$1"
   local target_dir="$2"
   local tar_path="${SHARED_DIR}/${tar_file}"
 
   mkdir -p "${target_dir}"
-  rm -f "${target_dir}/"*.jar "${target_dir}/"*.tar.gz 2>/dev/null || true
   tar xzf "${tar_path}" -C "${target_dir}"
   local count=$(find "${target_dir}" -maxdepth 1 -type f | wc -l)
   log_ok "解压到 ${target_dir}: ${count} 个文件"
@@ -121,28 +121,32 @@ ensure_infra_network() {
 }
 
 # ====== 停止旧服务 (仅指定服务，不影响其他) ======
-# 用法: compose_stop_services <project> <compose_file> <service1> [service2...]
+# 用法: compose_stop_services <work_dir> <project> <compose_file> <service1> [service2...]
 compose_stop_services() {
+  local work_dir="$1"; shift
   local project="$1"; shift
   local compose_file="$1"; shift
   local services=("$@")
 
-  cd "${DEPLOY_BASE}"
+  cd "${work_dir}"
   for svc in "${services[@]}"; do
     if docker ps -a --filter "name=${svc}" -q 2>/dev/null | grep -q .; then
       docker rm -f "${svc}" 2>/dev/null || true
       log_ok "已停止并移除旧容器: ${svc}"
+      # 等待端口释放
+      sleep 2
     fi
   done
 }
 
 # ====== 停止整个 compose project ======
-# 用法: compose_down_all <project> <compose_file>
+# 用法: compose_down_all <work_dir> <project> <compose_file>
 compose_down_all() {
-  local project="$1"
-  local compose_file="$2"
+  local work_dir="$1"
+  local project="$2"
+  local compose_file="$3"
 
-  cd "${DEPLOY_BASE}"
+  cd "${work_dir}"
   if docker compose -p "${project}" -f "${compose_file}" ps -q 2>/dev/null | grep -q .; then
     _heartbeat_start "docker compose down 停止容器" &
     _HB_PID=$!
@@ -172,13 +176,14 @@ cleanup_orphans() {
 }
 
 # ====== 构建并启动指定服务 (不影响其他服务) ======
-# 用法: compose_up_services <project> <compose_file> <service1> [service2...]
+# 用法: compose_up_services <work_dir> <project> <compose_file> <service1> [service2...]
 compose_up_services() {
+  local work_dir="$1"; shift
   local project="$1"; shift
   local compose_file="$1"; shift
   local services=("$@")
 
-  cd "${DEPLOY_BASE}"
+  cd "${work_dir}"
   _heartbeat_start "docker compose up 启动服务" &
   _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \
@@ -192,12 +197,13 @@ compose_up_services() {
 }
 
 # ====== 构建并启动全部服务 ======
-# 用法: compose_up_all <project> <compose_file>
+# 用法: compose_up_all <work_dir> <project> <compose_file>
 compose_up_all() {
-  local project="$1"
-  local compose_file="$2"
+  local work_dir="$1"
+  local project="$2"
+  local compose_file="$3"
 
-  cd "${DEPLOY_BASE}"
+  cd "${work_dir}"
   _heartbeat_start "docker compose up 启动服务" &
   _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \

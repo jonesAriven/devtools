@@ -110,11 +110,11 @@ ensure_nginx_config "infra-monitor-web"   "http://host.docker.internal:8088/infr
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
-compose_down_all "${COMPOSE_PROJECT}" "${COMPOSE_FILE}"
+compose_down_all "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}"
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动前端容器"
-compose_up_all "${COMPOSE_PROJECT}" "${COMPOSE_FILE}"
+compose_up_all "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}"
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"

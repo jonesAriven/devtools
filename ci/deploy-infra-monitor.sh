@@ -43,31 +43,11 @@ log_ok "compose 文件就绪: ${COMPOSE_FILE}"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
-cd "${APP_DIR}"
-if docker compose -p "${COMPOSE_PROJECT}" ps -q 2>/dev/null | grep -q .; then
-  _heartbeat_start "docker compose down" &
-  _HB_PID=$!
-  docker compose -p "${COMPOSE_PROJECT}" down --remove-orphans --timeout 30 2>&1 || true
-  _heartbeat_stop
-  log_ok "已停止旧服务"
-  sleep 3
-else
-  log_info "无正在运行的服务"
-fi
+compose_stop_services "${APP_DIR}" "${COMPOSE_PROJECT}" "$(basename ${COMPOSE_FILE})" "${SERVICES[@]}"
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动"
-cd "${APP_DIR}"
-_heartbeat_start "docker compose up" &
-_HB_PID=$!
-docker compose -p "${COMPOSE_PROJECT}" \
-  up -d --build --force-recreate --remove-orphans 2>&1
-_heartbeat_stop
-
-echo ""
-log_ok "服务启动完成"
-docker compose -p "${COMPOSE_PROJECT}" ps 2>/dev/null || \
-  docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+compose_up_services "${APP_DIR}" "${COMPOSE_PROJECT}" "$(basename ${COMPOSE_FILE})" "${SERVICES[@]}"
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"
