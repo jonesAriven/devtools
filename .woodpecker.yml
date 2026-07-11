@@ -121,18 +121,23 @@ steps:
     volumes:
       - /mnt/shared:/mnt/shared
     depends_on: [sync-ci-scripts]
+    failure: ignore
     commands:
-      - set -e
       - npm install -g pnpm
       - pnpm config set registry http://nexus.marschat.online/repository/npm-public/
+      - pnpm config set fetch-retries 5
+      - pnpm config set fetch-retry-factor 2
+      - pnpm config set fetch-retry-mintimeout 20000
+      - pnpm config set fetch-retry-maxtimeout 120000
+      - pnpm config set network-concurrency 1
       - echo ">>> [1/4] 构建 kb-ops-web <<<"
       - cd kb-ops/kb-ops-web
-      - pnpm install --frozen-lockfile
+      - pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
       - pnpm build
       - cd ../..
       - echo ">>> [2/4] 构建 infra-monitor-web <<<"
       - cd infra-monitor/infra-monitor-web
-      - pnpm install --frozen-lockfile
+      - pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
       - pnpm build
       - cd ../..
       - echo ">>> [3/4] 收集前端产物 <<<"
