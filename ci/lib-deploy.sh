@@ -141,12 +141,20 @@ compose_stop_services() {
     fi
   done
 
-  # 兜底: 按容器名前缀清理可能残留的容器 (project-service 格式)
+  # 兜底: 清理可能残留的容器 (project-service 格式 和 裸服务名格式)
   for svc in "${services[@]}"; do
+    # 尝试 project-service 格式 (如 kb-app-kb-file)
     local containers=$(docker ps -a --filter "name=${project}-${svc}" -q 2>/dev/null)
     if [ -n "${containers}" ]; then
       docker rm -f ${containers} 2>/dev/null || true
       log_ok "兜底清理残留容器: ${project}-${svc}"
+      sleep 2
+    fi
+    # 尝试裸服务名 (如 kb-file)
+    containers=$(docker ps -a --filter "name=^${svc}$" -q 2>/dev/null)
+    if [ -n "${containers}" ]; then
+      docker rm -f ${containers} 2>/dev/null || true
+      log_ok "兜底清理残留容器: ${svc}"
       sleep 2
     fi
   done
@@ -170,6 +178,20 @@ compose_down_all() {
   else
     log_info "无正在运行的 compose project (首次部署或已清理)"
   fi
+
+  # 兜底: 清理不属于任何 compose project 的裸名容器
+  local orphan_names=$(docker ps -a --format '{{.Names}}' 2>/dev/null)
+  for name in ${orphan_names}; do
+    # 检查容器名是否以 project 开头 (如 kb-web-kb-ops-web 或裸名如 kb-web)
+    if echo "${name}" | grep -qE "^${project}-|^[a-z].*-web$|^kb-"; then
+      # 只清理属于当前 project 的容器
+      if docker inspect "${name}" 2>/dev/null | grep -q "\"com.docker.compose.project\":\"${project}\"" 2>/dev/null; then
+        docker rm -f "${name}" 2>/dev/null || true
+        log_ok "兜底清理残留容器: ${name}"
+        sleep 2
+      fi
+    fi
+  done
 }
 
 # ====== 清理孤儿容器 ======
