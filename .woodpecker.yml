@@ -40,13 +40,13 @@ steps:
       - /mnt/shared:/mnt/shared
     commands:
       - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
-      - cp ci/*.sh /mnt/shared/devtools/ci/
+      - for f in ci/*.sh; do cat "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
       - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
       - chmod +x /mnt/shared/devtools/ci/*.sh
       - echo "CI scripts synced"
       - ls -la /mnt/shared/devtools/ci/
       - wc -l /mnt/shared/devtools/ci/*.sh
-      - grep -n "log_footer" /mnt/shared/devtools/ci/lib-deploy.sh
+      - head -55 /mnt/shared/devtools/ci/lib-deploy.sh | tail -8
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
