@@ -84,7 +84,7 @@ log_step 0 6 "前置检查"
 
 # 0a. 磁盘空间检查
 log_info "检查磁盘空间..."
-disk_free=$(df / --output=avail -B 2>/dev/null | tail -1 | tr -d ' ')
+disk_free=$(df / --output=avail -B1 2>/dev/null | tail -1 | tr -d ' ')
 disk_free_gb=$((disk_free / 1024 / 1024 / 1024))
 log_info "磁盘可用: ${disk_free_gb}GB"
 
