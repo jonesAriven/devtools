@@ -1,5 +1,5 @@
 # 用 DaoCloud 镜像源，无需登录
-FROM docker.m.daocloud.io/library/eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /activecode
 COPY target/activation-code-server-1.0.0.jar activation-code-server-1.0.0.jar
 EXPOSE 8080
