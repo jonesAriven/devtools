@@ -124,7 +124,7 @@ modules:
   - name: kb-auth
     type: service
     profile: core
-    port: 8081
+    port: 8085
     host-port: null        # 不映射宿主机端口
     health-path: /actuator/health
     depends-on: []         # 不依赖其他业务服务
@@ -136,7 +136,7 @@ modules:
   - name: kb-file
     type: service
     profile: file
-    port: 8082
+    port: 8089
     host-port: null
     health-path: /actuator/health
     depends-on: [kb-auth]
@@ -148,7 +148,7 @@ modules:
   - name: kb-knowledge
     type: service
     profile: knowledge
-    port: 8083
+    port: 8092
     host-port: null
     health-path: /actuator/health
     depends-on: [kb-auth, kb-file]

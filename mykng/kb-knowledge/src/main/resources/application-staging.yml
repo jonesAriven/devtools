@@ -1,5 +1,5 @@
 server:
-  port: 8083
+  port: 8092
   servlet:
     context-path: ${KB_CONTEXT:/kb}
 
@@ -31,9 +31,9 @@ jwt:
 
 kb:
   auth:
-    host: ${KB_AUTH_HOST:http://kb-auth:8081}
+    host: ${KB_AUTH_HOST:http://kb-auth:8085}
   file:
-    host: ${KB_FILE_HOST:http://kb-file:8082}
+    host: ${KB_FILE_HOST:http://kb-file:8089}
 
 logging:
   level:

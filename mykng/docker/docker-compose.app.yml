@@ -40,7 +40,7 @@ services:
     container_name: kb-auth
     restart: on-failure:5
     ports:
-      - "8081:8081"
+      - "8085:8085"
     environment:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
@@ -68,7 +68,7 @@ services:
     container_name: kb-file
     restart: on-failure:5
     ports:
-      - "8082:8082"
+      - "8089:8089"
     environment:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
@@ -97,7 +97,7 @@ services:
     container_name: kb-knowledge
     restart: on-failure:5
     ports:
-      - "8083:8083"
+      - "8092:8092"
     environment:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod

@@ -171,9 +171,9 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
       - KB_CONTEXT=${KB_CONTEXT:-/kb}
-      - KB_AUTH_HOST=kb-auth:8081
-      - KB_FILE_HOST=kb-file:8082
-      - KB_KNOWLEDGE_HOST=kb-knowledge:8083
+      - KB_AUTH_HOST=kb-auth:8085
+      - KB_FILE_HOST=kb-file:8089
+      - KB_KNOWLEDGE_HOST=kb-knowledge:8092
       - KB_INTELLIGENCE_HOST=kb-intelligence:8086
       - NACOS_HOST=nacos
       - NACOS_PORT=8848
@@ -214,7 +214,7 @@ services:
       - NACOS_HOST=nacos
       - NACOS_PORT=8848
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8085/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -260,7 +260,7 @@ services:
       - NACOS_HOST=nacos
       - NACOS_PORT=8848
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8089/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -311,7 +311,7 @@ services:
       - NACOS_HOST=nacos
       - NACOS_PORT=8848
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/actuator/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8092/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3

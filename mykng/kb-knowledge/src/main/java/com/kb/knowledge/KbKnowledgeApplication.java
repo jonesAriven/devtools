@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * kb-knowledge 知识库微服务启动类
  * <p>
  * 通过 @Import 引入 kb-common 的全局异常处理器、TraceId 链路追踪、事件总线。
- * 端口 8083，无 context-path。
+ * 端口 8092，无 context-path。
  * 包含目录/笔记/网页/搜索/分享/标签/空间/回收站/版本全部功能。
  */
 @SpringBootApplication

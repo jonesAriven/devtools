@@ -27,8 +27,8 @@ kb:
   event:
     channel: kb:events
   feign:
-    auth-url: http://localhost:8081
-    file-url: http://localhost:8082
+    auth-url: http://localhost:8085
+    file-url: http://localhost:8089
 
 server:
   port: 0
