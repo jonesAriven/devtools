@@ -74,11 +74,11 @@ steps:
     image: appleboy/drone-ssh
     depends_on: [mykng-build]
     settings:
-      host: 120.26.66.182
+      host: 192.168.31.105   # LAN直连，避免FRP回环依赖
       username: root
       key:
         from_secret: ssh_key_mykng
-      port: 3385
+      port: 22
       script_stop: true
       command_timeout: 30m
       debug: true
@@ -181,11 +181,11 @@ steps:
     image: appleboy/drone-ssh
     depends_on: [infra-monitor-build]
     settings:
-      host: 120.26.66.182
+      host: 192.168.31.105   # LAN直连，避免FRP回环依赖
       username: root
       key:
         from_secret: ssh_key_mykng
-      port: 3385
+      port: 22
       script_stop: true
       command_timeout: 20m
       debug: true
