@@ -62,9 +62,51 @@ fi
 # 清理解压临时目录
 rm -rf "${DEPLOY_BASE}/web-tmp"
 
-# ====== Step 3: 同步 compose 文件 ======
+# ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 6 "环境准备"
 sync_compose_files
+
+# 确保各前端目录有 dist
+for web_dir in kb-web kb-ops-web infra-monitor-web; do
+  mkdir -p "${DEPLOY_BASE}/${web_dir}/dist"
+  touch "${DEPLOY_BASE}/${web_dir}/dist/.keep"
+done
+
+# 创建默认 nginx.conf (如果不存在)
+ensure_nginx_config() {
+  local web_dir="$1"
+  local proxy_target="$2"
+  local conf_file="${DEPLOY_BASE}/${web_dir}/nginx.conf"
+  if [ ! -f "${conf_file}" ]; then
+    mkdir -p "${DEPLOY_BASE}/${web_dir}"
+    cat > "${conf_file}" << 'NGINXEOF'
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 100m;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass PROXY_TARGET;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+NGINXEOF
+    sed -i "s|PROXY_TARGET|${proxy_target}|" "${conf_file}"
+    log_ok "创建默认 nginx.conf: ${web_dir} -> ${proxy_target}"
+  fi
+}
+
+ensure_nginx_config "kb-web"              "http://host.docker.internal:8090/"
+ensure_nginx_config "kb-ops-web"          "http://host.docker.internal:8084/kb-ops/"
+ensure_nginx_config "infra-monitor-web"   "http://host.docker.internal:8088/infra/"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
