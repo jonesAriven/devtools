@@ -60,6 +60,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-kb123456}
     volumes:
       - kb-mongo-data:/data/db
+    command: --wiredTigerCacheSizeGB=0.25
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
