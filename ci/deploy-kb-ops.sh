@@ -11,9 +11,6 @@
 # 隔离性:     只重建 kb-ops，不影响 mykng 5个微服务和前端容器
 # ============================================================
 set -euo pipefail
-# 调试: 先检查 lib-deploy.sh 语法
-bash -n /mnt/shared/devtools/ci/lib-deploy.sh 2>&1 || { echo "lib-deploy.sh syntax error"; exit 1; }
-bash -n "$0" 2>&1 || { echo "$0 syntax error"; exit 1; }
 source /mnt/shared/devtools/ci/lib-deploy.sh
 
 # ====== 配置 ======
