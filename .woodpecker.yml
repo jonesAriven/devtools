@@ -90,7 +90,7 @@ steps:
       key:
         from_secret: ssh_key_mykng
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-mykng.sh mykng-latest.tar.gz
@@ -136,7 +136,7 @@ steps:
       key:
         from_secret: ssh_key_mykng
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-kb-ops.sh kb-ops-latest.tar.gz
@@ -188,7 +188,7 @@ steps:
       key:
         from_secret: ssh_key_mykng
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
@@ -240,7 +240,7 @@ steps:
       key:
         from_secret: ssh_key_mykng
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
@@ -286,7 +286,7 @@ steps:
       key:
         from_secret: ssh_key_mykng
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
@@ -332,7 +332,7 @@ steps:
       key:
         from_secret: ssh_key_debian
       port: 22
-      script_stop: true
+      script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
