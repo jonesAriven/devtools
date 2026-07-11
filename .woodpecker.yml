@@ -30,7 +30,8 @@ steps:
       - /mnt/shared:/mnt/shared
     commands:
       - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
-      - cp -f ci/*.sh /mnt/shared/devtools/ci/
+      - rm -f /mnt/shared/devtools/ci/*.sh
+      - cp ci/*.sh /mnt/shared/devtools/ci/
       - chmod +x /mnt/shared/devtools/ci/*.sh
       - echo "✅ CI 脚本已同步到共享目录"
       - ls -la /mnt/shared/devtools/ci/
