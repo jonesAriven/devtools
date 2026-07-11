@@ -13,6 +13,16 @@
 #
 # 用法: bash migrate-to-platform.sh
 #       bash migrate-to-platform.sh --dry-run   # 仅预览不执行
+#
+# ⚠️  执行顺序（绝对不能反）:
+#   1. git pull 拉取最新代码
+#   2. bash platform/migrate-to-platform.sh    # 先迁移（本脚本）
+#   3. bash platform/start-platform.sh          # 再启动新基础设施
+#   4. 触发流水线或手动重新部署应用层容器     # 最后部署应用
+#
+# ⚠️  前置条件:
+#   - 磁盘可用空间 >= 当前 kb-* 卷总大小 x2（迁移期间新旧卷共存）
+#   - 建议先手动备份 MySQL: docker exec kb-mysql mysqldump ...
 # ============================================================
 set -euo pipefail
 
@@ -70,7 +80,44 @@ fi
 echo "============================================================="
 
 # ====== Step 0: 前置检查 ======
-log_step 0 5 "前置检查"
+log_step 0 6 "前置检查"
+
+# 0a. 磁盘空间检查
+log_info "检查磁盘空间..."
+disk_free=$(df / --output=avail -B 2>/dev/null | tail -1 | tr -d ' ')
+disk_free_gb=$((disk_free / 1024 / 1024 / 1024))
+log_info "磁盘可用: ${disk_free_gb}GB"
+
+# 计算旧卷总大小
+old_vol_size=0
+for old_vol in "${!VOLUME_MAP[@]}"; do
+  if docker volume ls --format '{{.Name}}' | grep -q "^${old_vol}$"; then
+    vol_size=$(docker volume inspect "$old_vol" --format='{{.UsageSize}}' 2>/dev/null || echo "0b")
+    # 解析大小 (如 123MB, 1.2GB)
+    vol_bytes=$(echo "$vol_size" | grep -oE '[0-9]+' | head -1)
+    vol_unit=$(echo "$vol_size" | grep -oE '[KMGTP]?B' | head -1)
+    case "$vol_unit" in
+      KB|kB) vol_bytes=$((vol_bytes * 1024)) ;;
+      MB|mB) vol_bytes=$((vol_bytes * 1024 * 1024)) ;;
+      GB|gB) vol_bytes=$((vol_bytes * 1024 * 1024 * 1024)) ;;
+      TB|tB) vol_bytes=$((vol_bytes * 1024 * 1024 * 1024 * 1024)) ;;
+      *) vol_bytes=${vol_bytes:-0} ;;
+    esac
+    old_vol_size=$((old_vol_size + vol_bytes))
+  fi
+done
+old_vol_gb=$((old_vol_size / 1024 / 1024 / 1024))
+log_info "旧卷总大小约: ${old_vol_gb}GB"
+required_gb=$((old_vol_gb * 2))
+if [ "$disk_free_gb" -lt "$required_gb" ] 2>/dev/null; then
+  log_err "磁盘空间不足! 需要 ~${required_gb}GB (新旧卷共存), 可用 ${disk_free_gb}GB"
+  log_info "建议先清理空间或删除不需要的旧卷后再执行"
+  if ! $DRY_RUN; then
+    exit 1
+  fi
+else
+  log_ok "磁盘空间充足 (${disk_free_gb}GB 可用, 需要约 ${old_vol_gb}GB x2)"
+fi
 
 # 检查新容器是否已经在运行
 new_running=0
@@ -168,19 +215,26 @@ for old_vol in "${!VOLUME_MAP[@]}"; do
     
     # 用临时容器复制数据
     case "$old_vol" in
-      *mysql-data|*mongo-data)
-        # 数据库卷：直接 cp 文件
+      *mysql-data)
+        # MySQL 数据库卷：cp + 修复文件权限
         docker run --rm \
           -v "${old_vol}:/src" \
           -v "${new_vol}:/dst" \
-          alpine sh -c "cp -a /src/. /dst/ && echo 'OK'"
+          alpine sh -c "cp -a /src/. /dst/ && chown -R 999:999 /dst/ && chmod 750 /dst && echo 'OK'"
+        ;;
+      *mongo-data)
+        # MongoDB 数据卷：cp + 修复权限
+        docker run --rm \
+          -v "${old_vol}:/src" \
+          -v "${new_vol}:/dst" \
+          alpine sh -c "cp -a /src/. /dst/ && chown -R 999:999 /dst/ && chmod 750 /dst && echo 'OK'"
         ;;
       *redis-data)
-        # Redis: 可能有 RDB/AOF 文件
+        # Redis: RDB/AOF 文件
         docker run --rm \
           -v "${old_vol}:/src" \
           -v "${new_vol}:/dst" \
-          alpine sh -c "cp -a /src/. /dst/ && echo 'OK'"
+          alpine sh -c "cp -a /src/. /dst/ && chown -R 999:999 /dst/ && echo 'OK'"
         ;;
       *minio-data|*meili-data|*nacos*)
         # 对象存储/索引/日志
@@ -288,6 +342,17 @@ if $DRY_RUN; then
   echo "  确认无误后执行: bash migrate-to-platform.sh（不带 --dry-run）"
 else
   echo "  ✅ 迁移完成!"
-  echo "  下一步: bash start-platform.sh"
+  echo ""
+  echo "  📋 后续步骤（按顺序执行）："
+  echo "    Step 1: bash platform/start-platform.sh          # 启动新基础设施"
+  echo "    Step 2: 等待所有 platform-* 容器 healthy"
+  echo "    Step 3: 重新部署应用层（流水线或手动）："
+  echo "            cd /root/kb-deploy"
+  echo "            docker compose -p kb-app -f docker-compose.app.yml up -d --force-recreate"
+  echo "            # 或触发 Woodpecker CI 流水线"
+  echo ""
+  echo "  💡 提示："
+  echo "    - 旧卷未自动删除，确认新服务正常运行后可手动清理："
+  echo "      docker volume rm kb-mysql-data kb-redis-data kb-mongo-data kb-minio-data kb-meili-data kb-nacos-data kb-nacos-logs"
 fi
 echo "============================================================="
