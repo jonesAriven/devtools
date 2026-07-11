@@ -80,5 +80,4 @@ compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${S
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" \
-  "  infra-monitor-web: http://localhost:8094"
+log_footer "${APP_NAME}" "${TAR_FILE}" "  infra-monitor-web: http://localhost:8094"
