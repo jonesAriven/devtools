@@ -1,14 +1,14 @@
 #!/bin/bash
 # ============================================================
-# deploy-mykng.sh — mykng 知识库微服务部署 (5个Java微服务)
+# deploy-kb-ops.sh — kb-ops 运维平台部署 (独立应用)
 # ============================================================
-# 用法: bash deploy-mykng.sh <tar.gz文件名>
-# 示例: bash deploy-mykng.sh mykng-latest.tar.gz
+# 用法: bash deploy-kb-ops.sh <tar.gz文件名>
+# 示例: bash deploy-kb-ops.sh kb-ops-latest.tar.gz
 #
-# 部署的服务: kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence
-# Compose:    docker-compose.app.yml (project: kb-app)
+# 部署的服务: kb-ops
+# Compose:    docker-compose.app.yml (project: kb-app, 复用同一个compose文件)
 # 前置条件:   kb-infra 基础设施层已启动
-# 隔离性:     只重建这5个服务，不影响 kb-ops 和前端容器
+# 隔离性:     只重建 kb-ops，不影响 mykng 5个微服务和前端容器
 # ============================================================
 set -euo pipefail
 source /mnt/shared/devtools/ci/lib-deploy.sh
@@ -17,18 +17,9 @@ source /mnt/shared/devtools/ci/lib-deploy.sh
 TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
 COMPOSE_PROJECT="kb-app"
 COMPOSE_FILE="docker-compose.app.yml"
-SERVICES=("kb-gateway" "kb-auth" "kb-file" "kb-knowledge" "kb-intelligence")
-HEALTH_URL="http://localhost:8090/actuator/health"
-APP_NAME="📘 mykng 知识库微服务"
-
-# JAR 文件名映射
-declare -A JAR_MAP=(
-  ["kb-gateway"]="kb-gateway.jar"
-  ["kb-auth"]="kb-auth.jar"
-  ["kb-file"]="kb-file.jar"
-  ["kb-knowledge"]="kb-knowledge.jar"
-  ["kb-intelligence"]="kb-intelligence.jar"
-)
+SERVICES=("kb-ops")
+HEALTH_URL="http://localhost:8084/actuator/health"
+APP_NAME="⚙️ kb-ops 运维平台"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 
@@ -41,25 +32,22 @@ log_step 2 6 "解压 & 分发 JAR"
 mkdir -p "${DEPLOY_BASE}/jars"
 extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/jars"
 
-for module in "${!JAR_MAP[@]}"; do
-  jar_file="${JAR_MAP[${module}]}"
-  src="${DEPLOY_BASE}/jars/${jar_file}"
-  target_dir="${GIT_REPO}/mykng/${module}/target"
-  if [ -f "${src}" ]; then
-    mkdir -p "${target_dir}"
-    cp "${src}" "${target_dir}/"
-    log_ok "${module} ← ${jar_file}"
-  else
-    log_warn "${module}: ${jar_file} 不存在"
-  fi
-done
+target_dir="${GIT_REPO}/kb-ops/target"
+mkdir -p "${target_dir}"
+if [ -f "${DEPLOY_BASE}/jars/kb-ops.jar" ]; then
+  cp "${DEPLOY_BASE}/jars/kb-ops.jar" "${target_dir}/"
+  log_ok "kb-ops ← kb-ops.jar"
+else
+  log_err "kb-ops.jar 不存在"
+  exit 1
+fi
 
 # ====== Step 3: 同步 compose 文件 & 检查网络 ======
 log_step 3 6 "环境准备"
 sync_compose_files
 ensure_infra_network
 
-# ====== Step 4: 停止旧服务 (只停这5个，不影响其他) ======
+# ====== Step 4: 停止旧服务 (只停 kb-ops，不影响其他) ======
 log_step 4 6 "停止旧服务"
 compose_stop_services "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
@@ -73,4 +61,4 @@ health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
 log_footer "${APP_NAME}" "${TAR_FILE}" \
-  "  Gateway: http://localhost:8090"
+  "  后端: http://localhost:8084"

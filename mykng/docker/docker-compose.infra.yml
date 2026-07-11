@@ -1,0 +1,133 @@
+# ============================================================
+# docker-compose.infra.yml — 基础设施层
+# ============================================================
+# 服务: MySQL, Redis, MongoDB, MinIO, MeiliSearch
+# 网络: kb-infra-net (其他层通过 external 引入)
+# 启动: docker compose -p kb-infra -f docker-compose.infra.yml up -d
+# 停止: docker compose -p kb-infra -f docker-compose.infra.yml down
+# ============================================================
+
+services:
+  # ========== MySQL ==========
+  kb-mysql:
+    image: mysql:8.0
+    container_name: kb-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - kb-mysql-data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-kb123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kb-infra-net
+    mem_limit: 512m
+
+  # ========== Redis ==========
+  kb-redis:
+    image: redis:7-alpine
+    container_name: kb-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - kb-redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - kb-infra-net
+
+  # ========== MongoDB ==========
+  kb-mongo:
+    image: mongo:7.0
+    container_name: kb-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-kb}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-kb123456}
+    volumes:
+      - kb-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-infra-net
+    mem_limit: 512m
+
+  # ========== MinIO ==========
+  kb-minio:
+    image: minio/minio:latest
+    container_name: kb-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - kb-minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-infra-net
+    mem_limit: 512m
+
+  # ========== MeiliSearch ==========
+  kb-meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: kb-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
+      MEILI_ENV: production
+    volumes:
+      - kb-meili-data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kb-infra-net
+    mem_limit: 256m
+
+# ========== 数据卷 ==========
+volumes:
+  kb-mysql-data:
+    driver: local
+  kb-redis-data:
+    driver: local
+  kb-mongo-data:
+    driver: local
+  kb-minio-data:
+    driver: local
+  kb-meili-data:
+    driver: local
+
+# ========== 网络 ==========
+networks:
+  kb-infra-net:
+    name: kb-infra-net
+    driver: bridge
