@@ -15,7 +15,7 @@ services:
     build: .
     image: infra-monitor:latest
     container_name: infra-monitor
-    restart: unless-stopped
+    restart: on-failure:5
     network_mode: host
     environment:
       - TZ=Asia/Shanghai

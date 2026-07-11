@@ -254,6 +254,8 @@ steps:
       command_timeout: 5m
       script:
         - docker volume ls -q | grep '^wp_' | xargs -r docker volume rm 2>/dev/null || true
+        - docker container prune -f 2>/dev/null || true
+        - docker volume prune -f 2>/dev/null || true
         - docker builder prune -f 2>/dev/null || true
         - docker image prune -f 2>/dev/null || true
         - echo "✅ 清理完成"

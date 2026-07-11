@@ -15,7 +15,7 @@ services:
   kb-web:
     image: nginx:alpine
     container_name: kb-web
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "8091:80"
     volumes:
@@ -31,7 +31,7 @@ services:
   kb-ops-web:
     image: nginx:alpine
     container_name: kb-ops-web
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "8093:80"
     volumes:
@@ -47,7 +47,7 @@ services:
   infra-monitor-web:
     image: nginx:alpine
     container_name: infra-monitor-web
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "8094:80"
     volumes:
