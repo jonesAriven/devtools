@@ -239,3 +239,21 @@ steps:
       command_timeout: 30m
       script:
         - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
+
+  # ==================== 清理: 删除残留Volume+构建缓存 ====================
+  - name: cleanup
+    image: appleboy/drone-ssh
+    depends_on: [mykng-deploy, kb-ops-deploy, web-deploy, infra-monitor-deploy, active-manager-deploy]
+    settings:
+      host: 192.168.31.105
+      username: root
+      key:
+        from_secret: ssh_key_mykng
+      port: 22
+      script_stop: false
+      command_timeout: 5m
+      script:
+        - docker volume ls -q | grep '^wp_' | xargs -r docker volume rm 2>/dev/null || true
+        - docker builder prune -f 2>/dev/null || true
+        - docker image prune -f 2>/dev/null || true
+        - echo "✅ 清理完成"
