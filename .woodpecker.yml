@@ -44,8 +44,8 @@ steps:
       - for f in ci/*.sh; do sed 's/\r$//' "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
       - chmod +x /mnt/shared/devtools/ci/*.sh
       - echo "✅ CI 脚本已同步到共享目录 (CRLF已清理)"
-      # 验证: 输出每个文件的行数和 md5，确保文件完整
-      - for f in /mnt/shared/devtools/ci/*.sh; do echo "$(basename $f): $(wc -l < "$f") lines, $(md5sum "$f" | cut -d' ' -f1)"; done
+      # 验证: 输出文件列表和行数，确保文件完整
+      - ls -la /mnt/shared/devtools/ci/ && wc -l /mnt/shared/devtools/ci/*.sh
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
