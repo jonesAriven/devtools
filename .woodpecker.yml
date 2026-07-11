@@ -46,6 +46,8 @@ steps:
       - echo "CI scripts synced"
       - ls -la /mnt/shared/devtools/ci/
       - wc -l /mnt/shared/devtools/ci/*.sh
+      - echo "=== DEBUG: lib-deploy.sh line 48-52 ==="
+      - sed -n '48,52p' /mnt/shared/devtools/ci/lib-deploy.sh | cat -A
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
