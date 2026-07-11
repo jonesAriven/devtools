@@ -122,6 +122,7 @@ ensure_infra_network() {
 
 # ====== 停止旧服务 (仅指定服务，不影响其他) ======
 # 用法: compose_stop_services <work_dir> <project> <compose_file> <service1> [service2...]
+# 说明: 用 docker compose stop/rm 按服务名停止，避免容器名前缀不匹配问题
 compose_stop_services() {
   local work_dir="$1"; shift
   local project="$1"; shift
@@ -129,11 +130,23 @@ compose_stop_services() {
   local services=("$@")
 
   cd "${work_dir}"
+
+  # 先用 docker compose stop/rm 按服务名精确停止
   for svc in "${services[@]}"; do
-    if docker ps -a --filter "name=${svc}" -q 2>/dev/null | grep -q .; then
-      docker rm -f "${svc}" 2>/dev/null || true
+    if docker compose -p "${project}" -f "${compose_file}" ps --services 2>/dev/null | grep -q "^${svc}$"; then
+      docker compose -p "${project}" -f "${compose_file}" stop -t 10 "${svc}" 2>/dev/null || true
+      docker compose -p "${project}" -f "${compose_file}" rm -f "${svc}" 2>/dev/null || true
       log_ok "已停止并移除旧容器: ${svc}"
-      # 等待端口释放
+      sleep 2
+    fi
+  done
+
+  # 兜底: 按容器名前缀清理可能残留的容器 (project-service 格式)
+  for svc in "${services[@]}"; do
+    local containers=$(docker ps -a --filter "name=${project}-${svc}" -q 2>/dev/null)
+    if [ -n "${containers}" ]; then
+      docker rm -f ${containers} 2>/dev/null || true
+      log_ok "兜底清理残留容器: ${project}-${svc}"
       sleep 2
     fi
   done
