@@ -5,7 +5,7 @@
 # 用法: bash deploy-infra-monitor.sh <tar.gz文件名>
 # 示例: bash deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 #
-# 部署的服务: infra-monitor-server
+# 部署的服务: infra-monitor
 # Compose:    项目自带 docker-compose.yml (project: infra-monitor)
 # 前置条件:   无 (独立项目，自带MySQL连接)
 # 隔离性:     完全独立，不影响其他应用
@@ -18,7 +18,7 @@ TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
 APP_DIR="${GIT_REPO}/infra-monitor/infra-monitor-server"
 COMPOSE_PROJECT="infra-monitor"
 COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
-SERVICES=("infra-monitor-server")
+SERVICES=("infra-monitor")
 HEALTH_URL="http://localhost:8088/infra/actuator/health"
 APP_NAME="📊 基础设施监控系统"
 
