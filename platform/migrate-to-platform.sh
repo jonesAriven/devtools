@@ -299,7 +299,7 @@ for old_net in "kb-infra-net" "kb-net"; do
     fi
   else
     log_info "${old_net}: 不存在"
-  done
+  fi
 done
 
 # ====== Step 5: 验证 ======
