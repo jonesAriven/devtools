@@ -26,6 +26,8 @@ services:
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
+      - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -47,6 +49,8 @@ services:
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
+      - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
@@ -75,6 +79,8 @@ services:
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
+      - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -104,6 +110,8 @@ services:
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
+      - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -137,6 +145,8 @@ services:
       - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
+      - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root

@@ -15,6 +15,8 @@ spring:
         server-addr: ${NACOS_HOST:platform-nacos}:${NACOS_PORT:8848}
         namespace: ${NACOS_NAMESPACE:public}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

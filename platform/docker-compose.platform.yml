@@ -16,7 +16,7 @@ services:
   platform-mysql:
     image: mysql:8.0
     container_name: platform-mysql
-    restart: unless-stopped
+    restart: on-failure:5
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
       TZ: Asia/Shanghai
@@ -38,7 +38,7 @@ services:
   platform-redis:
     image: redis:7-alpine
     container_name: platform-redis
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "6379:6379"
     volumes:
@@ -56,7 +56,7 @@ services:
   platform-mongo:
     image: mongo:7.0
     container_name: platform-mongo
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "27017:27017"
     environment:
@@ -78,7 +78,7 @@ services:
   platform-minio:
     image: minio/minio:latest
     container_name: platform-minio
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -101,7 +101,7 @@ services:
   platform-meilisearch:
     image: getmeili/meilisearch:v1.12
     container_name: platform-meilisearch
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "7700:7700"
     environment:
@@ -122,7 +122,7 @@ services:
   platform-nacos:
     image: nacos/nacos-server:v2.4.3
     container_name: platform-nacos
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "8848:8848"
       - "9848:9848"

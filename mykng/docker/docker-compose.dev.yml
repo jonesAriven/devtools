@@ -120,7 +120,7 @@ services:
   nacos:
     image: nacos/nacos-server:v2.4.3
     container_name: platform-nacos
-    restart: unless-stopped
+    restart: on-failure:5
     ports:
       - "8848:8848"
       - "9848:9848"
