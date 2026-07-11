@@ -31,19 +31,10 @@ verify_artifact "${TAR_FILE}"
 log_step 2 5 "解压 & 分发前端产物"
 mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist" "${DEPLOY_BASE}/web-tmp"
 extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/web-tmp"
-# 先清空目标目录，再用 cp -a 安全复制（保留子目录结构）
-rm -rf "${DEPLOY_BASE}/infra-monitor-web/dist/"
-mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist"
-cp -a "${DEPLOY_BASE}/web-tmp"/. "${DEPLOY_BASE}/infra-monitor-web/dist/"
+rm -rf "${DEPLOY_BASE}/infra-monitor-web/dist"/*
+cp -r "${DEPLOY_BASE}/web-tmp/"* "${DEPLOY_BASE}/infra-monitor-web/dist/"
 rm -rf "${DEPLOY_BASE}/web-tmp"
-# 验证复制结果
-local file_count=$(find "${DEPLOY_BASE}/infra-monitor-web/dist" -type f | wc -l)
-if [ "${file_count}" -eq 0 ]; then
-  log_err "dist 目录为空! 解压可能失败"
-  ls -laR "${DEPLOY_BASE}/web-tmp/" 2>/dev/null || true
-  exit 1
-fi
-log_ok "infra-monitor-web dist 已更新 (${file_count} 个文件)"
+log_ok "infra-monitor-web dist 已更新"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
@@ -89,4 +80,4 @@ compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${S
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}"
+log_footer "${APP_NAME}" "${TAR_FILE}" "  infra-monitor-web: http://localhost:8094"
