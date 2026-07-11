@@ -89,4 +89,4 @@ compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${S
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" "  kb-ops-web: http://localhost:8093"
+log_footer "${APP_NAME}" "${TAR_FILE}"

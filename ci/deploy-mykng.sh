@@ -72,4 +72,4 @@ log_step 6 6 "健康检查 & 清理"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" "  Gateway: http://localhost:8090"
+log_footer "${APP_NAME}" "${TAR_FILE}"

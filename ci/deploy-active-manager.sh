@@ -54,4 +54,4 @@ log_step 6 6 "健康检查 & 清理"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" "  激活码: http://localhost:18080/activecode/login.html"
+log_footer "${APP_NAME}" "${TAR_FILE}"
