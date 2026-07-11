@@ -27,7 +27,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -50,7 +50,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
@@ -80,7 +80,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -111,7 +111,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -146,7 +146,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root

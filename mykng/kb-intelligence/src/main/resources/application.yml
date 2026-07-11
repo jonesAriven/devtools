@@ -16,7 +16,7 @@ spring:
         namespace: ${NACOS_NAMESPACE:public}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
         username: ${NACOS_USERNAME:nacos}
-        password: ${NACOS_PASSWORD:nacos}
+        password: ${NACOS_PASSWORD:nacos123}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
