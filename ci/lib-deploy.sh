@@ -7,7 +7,16 @@
 # Woodpecker CI (drone-ssh) 可能在 script 执行期间发送 SIGTERM
 # trap TERM 忽略该信号，让脚本完整执行完毕
 trap '' TERM
-trap 'echo "\n[WARN] 收到 EXIT 信号，正在清理..."; _heartbeat_stop 2>/dev/null; exit 1' EXIT
+
+# EXIT 清理函数（独立定义，避免 trap 中嵌套引号导致 EOF 解析错误）
+_cleanup() {
+  echo ""
+  echo "[WARN] 收到 EXIT 信号，正在清理..."
+  _heartbeat_stop 2>/dev/null
+  exit 1
+}
+trap _cleanup EXIT
+
 # 被所有 deploy-*.sh 通过 source 引入，提供统一的部署原语。
 # 设计原则:
 #   1. 每个函数只做一件事
@@ -46,7 +55,7 @@ log_footer() {
   echo "  $1 部署完成!"
   echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
   echo "  产物: $2"
-  ${3:+echo "$3"}
+  if [ -n "${3:-}" ]; then echo "$3"; fi
   echo "============================================="
 }
 
