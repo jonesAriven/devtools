@@ -26,7 +26,7 @@ global:
   context-path: ${KB_CONTEXT:/kb}
   java-version: 21
   spring-boot-version: 3.2.5
-  network: kb-net
+  network: platform-net
   version: 1.0.0
 
 # ====================================================================
@@ -39,7 +39,7 @@ infrastructure:
     profile: core          # core=所有环境必启
     health-check: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
     volumes:
-      - kb-mysql-data:/var/lib/mysql
+      - platform-mysql-data:/var/lib/mysql
       - ./init-sql:/docker-entrypoint-initdb.d
     mem-limit: 512m
     description: MySQL 数据库
@@ -50,7 +50,7 @@ infrastructure:
     profile: core
     health-check: ["CMD", "redis-cli", "ping"]
     volumes:
-      - kb-redis-data:/data
+      - platform-redis-data:/data
     mem-limit: 256m
     description: Redis 缓存 + 事件流（Streams）
 
@@ -60,7 +60,7 @@ infrastructure:
     profile: storage       # 仅 file/knowledge 模块启动时才需要
     health-check: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
     volumes:
-      - kb-minio-data:/data
+      - platform-minio-data:/data
     mem-limit: 512m
     description: MinIO 对象存储
 
@@ -70,7 +70,7 @@ infrastructure:
     profile: search
     health-check: ["CMD", "curl", "-f", "http://localhost:7700/health"]
     volumes:
-      - kb-meili-data:/meili_data
+      - platform-meili-data:/meili_data
     mem-limit: 256m
     description: MeiliSearch 全文搜索引擎
 
@@ -80,7 +80,7 @@ infrastructure:
     profile: storage
     health-check: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
     volumes:
-      - kb-mongo-data:/data/db
+      - platform-mongo-data:/data/db
     mem-limit: 512m
     description: MongoDB 文档存储
 

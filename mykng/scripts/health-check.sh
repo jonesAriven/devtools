@@ -49,7 +49,7 @@ SERVICES=(
 )
 
 # 基础设施: name=container_name
-INFRA_CONTAINERS=("kb-mysql" "kb-redis" "kb-mongo" "kb-minio" "kb-meilisearch")
+INFRA_CONTAINERS=("platform-mysql" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch")
 
 # 从 .env 读取密码
 MYSQL_PASS="${MYSQL_ROOT_PASSWORD:-kb123456}"
@@ -125,10 +125,10 @@ check_actuator() {
 # ---------- MySQL 连通性 ----------
 check_mysql() {
     info "检查 MySQL 连通性..."
-    if docker exec kb-mysql mysqladmin -uroot -p"$MYSQL_PASS" ping 2>/dev/null | grep -q "mysqld is alive"; then
+    if docker exec platform-mysql mysqladmin -uroot -p"$MYSQL_PASS" ping 2>/dev/null | grep -q "mysqld is alive"; then
         ok "MySQL ping 成功"
         local db_count
-        db_count=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
+        db_count=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
         if [ "$db_count" = "5" ]; then
             ok "MySQL kb_* 数据库数量 = 5"
         else
@@ -143,7 +143,7 @@ check_mysql() {
 check_redis() {
     info "检查 Redis 连通性..."
     local result
-    result=$(docker exec kb-redis redis-cli ping 2>/dev/null || echo "FAILED")
+    result=$(docker exec platform-redis redis-cli ping 2>/dev/null || echo "FAILED")
     if [ "$result" = "PONG" ]; then
         ok "Redis PING = PONG"
     else
@@ -155,7 +155,7 @@ check_redis() {
 check_mongodb() {
     info "检查 MongoDB 连通性..."
     local result
-    result=$(docker exec kb-mongo mongosh --quiet --eval "db.adminCommand('ping').ok" 2>/dev/null || echo "FAILED")
+    result=$(docker exec platform-mongo mongosh --quiet --eval "db.adminCommand('ping').ok" 2>/dev/null || echo "FAILED")
     if [ "$result" = "1" ]; then
         ok "MongoDB ping = 1"
     else
@@ -167,7 +167,7 @@ check_mongodb() {
 check_minio() {
     info "检查 MinIO 连通性..."
     local code
-    code=$(docker exec kb-minio wget --spider --server-response "http://localhost:9000/minio/health/live" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
+    code=$(docker exec platform-minio wget --spider --server-response "http://localhost:9000/minio/health/live" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
     if [ "$code" = "200" ]; then
         ok "MinIO /minio/health/live = 200"
     else
@@ -179,7 +179,7 @@ check_minio() {
 check_meilisearch() {
     info "检查 MeiliSearch 连通性..."
     local code
-    code=$(docker exec kb-meilisearch wget --spider --server-response "http://localhost:7700/health" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
+    code=$(docker exec platform-meilisearch wget --spider --server-response "http://localhost:7700/health" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
     if [ "$code" = "200" ]; then
         ok "MeiliSearch /health = 200"
     else

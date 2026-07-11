@@ -7,7 +7,7 @@
 #
 # 部署的服务: kb-ops
 # Compose:    docker-compose.app.yml (project: kb-app, 复用同一个compose文件)
-# 前置条件:   kb-infra 基础设施层已启动
+# 前置条件:   platform 全局基础设施层已启动
 # 隔离性:     只重建 kb-ops，不影响 mykng 5个微服务和前端容器
 # ============================================================
 set -euo pipefail
@@ -36,7 +36,7 @@ extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 # ====== Step 3: 同步 compose 文件 & 检查网络 ======
 log_step 3 6 "环境准备"
 sync_compose_files
-ensure_infra_network
+ensure_platform
 
 # ====== Step 4: 停止旧服务 (只停 kb-ops，不影响其他) ======
 log_step 4 6 "停止旧服务"

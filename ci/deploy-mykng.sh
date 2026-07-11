@@ -7,7 +7,7 @@
 #
 # 部署的服务: kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence
 # Compose:    docker-compose.app.yml (project: kb-app)
-# 前置条件:   kb-infra 基础设施层已启动
+# 前置条件:   platform 全局基础设施层已启动
 # 隔离性:     只重建这5个服务，不影响 kb-ops 和前端容器
 # ============================================================
 set -euo pipefail
@@ -57,7 +57,7 @@ done
 # ====== Step 3: 同步 compose 文件 & 检查网络 ======
 log_step 3 6 "环境准备"
 sync_compose_files
-ensure_infra_network
+ensure_platform
 
 # ====== Step 4: 停止旧服务 (只停这5个，不影响其他) ======
 log_step 4 6 "停止旧服务"

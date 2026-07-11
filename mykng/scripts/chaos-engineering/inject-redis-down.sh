@@ -9,7 +9,7 @@
 #   bash inject-redis-down.sh -help                 # 显示帮助
 #
 # 故障效果:
-#   - kb-redis 容器被停止
+#   - platform-redis 容器被停止
 #   - 微服务缓存失效，JWT 黑名单失效
 #   - 验证缓存降级策略
 # ============================================================
@@ -32,7 +32,7 @@ info() { echo -e "${BLUE}[INFO ]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN ]${NC} $1"; }
 err()  { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-CONTAINER="kb-redis"
+CONTAINER="platform-redis"
 DURATION=30
 NO_RECOVER=false
 

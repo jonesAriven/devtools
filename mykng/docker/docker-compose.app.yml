@@ -2,8 +2,8 @@
 # docker-compose.app.yml — 应用层 (mykng 5微服务 + kb-ops)
 # ============================================================
 # 服务: kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence, kb-ops
-# 网络: kb-app-net (内部通信), kb-infra-net (外部引入, 连接基础设施)
-# 前置: kb-infra 基础设施层已启动 (kb-infra-net 网络存在)
+# 网络: kb-app-net (内部通信), platform-net (外部引入, 连接全局基础设施)
+# 前置: platform 基础设施层已启动 (platform-net 网络存在)
 #
 # 隔离性:
 #   - 无 depends_on, 每个服务可独立部署
@@ -24,14 +24,14 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=kb-nacos
+      - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 384m
 
   # ========== 认证服务 ==========
@@ -45,21 +45,21 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=kb-nacos
+      - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
-      - MYSQL_HOST=kb-mysql
+      - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=kb_auth
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      - REDIS_HOST=kb-redis
+      - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 384m
 
   # ========== 文件服务 ==========
@@ -73,22 +73,22 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=kb-nacos
+      - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
-      - MYSQL_HOST=kb-mysql
+      - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      - REDIS_HOST=kb-redis
+      - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
-      - MINIO_ENDPOINT=http://kb-minio:9000
+      - MINIO_ENDPOINT=http://platform-minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 384m
 
   # ========== 知识库服务 ==========
@@ -102,26 +102,26 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=kb-nacos
+      - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
-      - MYSQL_HOST=kb-mysql
+      - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      - REDIS_HOST=kb-redis
+      - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
-      - MONGO_HOST=kb-mongo
+      - MONGO_HOST=platform-mongo
       - MONGO_PORT=27017
       - MONGO_USER=${MONGO_ROOT_USER:-kb}
       - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
-      - MEILI_HOST=kb-meilisearch
+      - MEILI_HOST=platform-meilisearch
       - MEILI_PORT=7700
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-kbMeiliKey2026!!Secure}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 384m
 
   # ========== 知识引擎服务 ==========
@@ -135,15 +135,15 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=kb-nacos
+      - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
-      - MYSQL_HOST=kb-mysql
+      - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      - REDIS_HOST=kb-redis
+      - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
-      - MONGO_HOST=kb-mongo
+      - MONGO_HOST=platform-mongo
       - MONGO_PORT=27017
       - MONGO_USER=${MONGO_ROOT_USER:-kb}
       - MONGO_PASSWORD=${MONGO_ROOT_PASSWORD:-kb123456}
@@ -151,7 +151,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 640m
 
   # ========== 运维平台 (独立部署, 不影响其他服务) ==========
@@ -165,7 +165,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - SPRING_DATASOURCE_URL=jdbc:mysql://kb-mysql:3306/kb_ops?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://platform-mysql:3306/kb_ops?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
@@ -174,7 +174,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - kb-app-net
-      - kb-infra-net
+      - platform-net
     mem_limit: 384m
 
 # ========== 网络 ==========
@@ -182,6 +182,6 @@ networks:
   kb-app-net:
     name: kb-app-net
     driver: bridge
-  kb-infra-net:
+  platform-net:
     external: true
-    name: kb-infra-net
+    name: platform-net

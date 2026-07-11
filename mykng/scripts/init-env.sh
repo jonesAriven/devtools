@@ -152,20 +152,20 @@ init_database() {
     step "初始化 MySQL 数据库..."
 
     # 先启动 mysql 容器（如果未启动）
-    if ! docker ps --format '{{.Names}}' | grep -q '^kb-mysql$'; then
-        info "  kb-mysql 未运行，先启动 mysql 容器..."
+    if ! docker ps --format '{{.Names}}' | grep -q '^platform-mysql$'; then
+        info "  platform-mysql 未运行，先启动 mysql 容器..."
         docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql
         # 等待健康
         local elapsed=0
         while [ $elapsed -lt 60 ]; do
-            if docker inspect --format='{{.State.Health.Status}}' kb-mysql 2>/dev/null | grep -q "healthy"; then
+            if docker inspect --format='{{.State.Health.Status}}' platform-mysql 2>/dev/null | grep -q "healthy"; then
                 break
             fi
             sleep 3
             elapsed=$((elapsed + 3))
         done
     fi
-    ok "kb-mysql 容器就绪"
+    ok "platform-mysql 容器就绪"
 
     if [ ! -d "$INIT_SQL_DIR" ]; then
         err "未找到 init-sql 目录: $INIT_SQL_DIR"
@@ -179,7 +179,7 @@ init_database() {
         local name
         name=$(basename "$sql")
         info "  执行: $name"
-        if docker exec -i kb-mysql mysql -uroot -p"$MYSQL_PASS" < "$sql" 2>/dev/null; then
+        if docker exec -i platform-mysql mysql -uroot -p"$MYSQL_PASS" < "$sql" 2>/dev/null; then
             ok "    ✓ $name"
             sql_count=$((sql_count + 1))
         else
@@ -190,7 +190,7 @@ init_database() {
     # 验证数据库
     info "  验证数据库创建结果..."
     local db_count
-    db_count=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
+    db_count=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
     if [ "$db_count" = "5" ]; then
         ok "MySQL kb_* 数据库数量 = 5"
     else
@@ -199,7 +199,7 @@ init_database() {
 
     for db in kb_auth kb_file kb_knowledge kb_ops kb_intelligence; do
         local table_count
-        table_count=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db';" 2>/dev/null)
+        table_count=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db';" 2>/dev/null)
         info "    $db: ${table_count:-0} 张表"
     done
 }

@@ -96,28 +96,101 @@ extract_artifact() {
 # ====== 同步 compose 文件到部署目录 ======
 # 用法: sync_compose_files
 sync_compose_files() {
-  local src="${GIT_REPO}/mykng/docker"
+  local app_src="${GIT_REPO}/mykng/docker"
+  local platform_src="${GIT_REPO}/platform"
   local dst="${DEPLOY_BASE}"
 
-  if [ ! -d "${src}" ]; then
-    log_warn "git仓库中无 mykng/docker/ 目录，跳过同步"
-    return 0
-  fi
-
   mkdir -p "${dst}"
-  cp -f "${src}"/docker-compose.*.yml "${dst}/" 2>/dev/null || true
+  
+  # 同步应用层 compose 文件
+  if [ -d "${app_src}" ]; then
+    cp -f "${app_src}"/docker-compose.*.yml "${dst}/" 2>/dev/null || true
+  fi
+  
+  # 同步基础设施层 compose 文件
+  if [ -d "${platform_src}" ]; then
+    cp -f "${platform_src}"/docker-compose.*.yml "${dst}/" 2>/dev/null || true
+  fi
+  
   log_ok "compose 文件已同步到 ${dst}"
 }
 
-# ====== 确保基础设施网络存在 ======
-# 用法: ensure_infra_network
-ensure_infra_network() {
-  if ! docker network ls --format '{{.Name}}' | grep -q '^kb-infra-net$'; then
-    log_warn "kb-infra-net 网络不存在，请先启动基础设施层"
-    log_info "执行: docker compose -p kb-infra -f ${DEPLOY_BASE}/docker-compose.infra.yml up -d"
-    exit 1
+# ====== 确保全局基础设施层就绪 ======
+# 用法: ensure_platform
+# 检查所有 platform 容器是否在运行，缺失则自动启动
+PLATFORM_SERVICES=("platform-mysql" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
+PLATFORM_COMPOSE_FILE="${GIT_REPO}/platform/docker-compose.platform.yml"
+PLATFORM_PROJECT="platform"
+
+ensure_platform() {
+  local missing=()
+  local unhealthy=()
+  
+  # 检查网络是否存在
+  if ! docker network ls --format '{{.Name}}' | grep -q '^platform-net$'; then
+    log_warn "platform-net 网络不存在，正在启动基础设施层..."
+    _start_platform
+    return
   fi
-  log_ok "kb-infra-net 网络就绪"
+  
+  # 检查每个容器状态
+  for svc in "${PLATFORM_SERVICES[@]}"; do
+    local status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
+    
+    if [ "$status" = "not-found" ]; then
+      missing+=("$svc")
+    elif [ "$status" != "running" ]; then
+      unhealthy+=("$svc ($status)")
+    fi
+  done
+  
+  if [ ${#missing[@]} -gt 0 ] || [ ${#unhealthy[@]} -gt 0 ]; then
+    log_warn "基础设施异常: 缺失=[${missing[*]:-无}] 异常=[${unhealthy[*]:-无}]"
+    log_info "正在启动/恢复基础设施层..."
+    _start_platform
+  else
+    log_ok "全局基础设施层就绪 (${#PLATFORM_SERVICES[@]}/${#PLATFORM_SERVICES[@]} 服务运行中)"
+  fi
+}
+
+# ====== 内部: 启动平台基础设施 ======
+_start_platform() {
+  local compose_dir=$(dirname "${PLATFORM_COMPOSE_FILE}")
+  
+  # 先清理同名残留容器
+  for svc in "${PLATFORM_SERVICES[@]}"; do
+    local orphan=$(docker ps -a --filter "name=^${svc}$" -q 2>/dev/null || true)
+    if [ -n "$orphan" ]; then
+      local is_compose=$(docker inspect "$svc" 2>/dev/null | grep -q '"com.docker.compose.project":"${PLATFORM_PROJECT}"' && echo "yes" || echo "no")
+      if [ "$is_compose" = "no" ]; then
+        log_warn "清理残留容器: ${svc}"
+        docker rm -f "$orphan" 2>/dev/null || true
+      fi
+    fi
+  done
+  
+  cd "${compose_dir}"
+  docker compose -p "${PLATFORM_PROJECT}" -f "${PLATFORM_COMPOSE_FILE}" up -d 2>&1
+  
+  # 等待关键服务就绪 (最多 60s)
+  local max_wait=12
+  for i in $(seq 1 $max_wait); do
+    local all_ok=true
+    for svc in "${PLATFORM_SERVICES[@]}"; do
+      local st=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
+      if [ "$st" != "running" ]; then
+        all_ok=false
+        break
+      fi
+    done
+    if $all_ok; then
+      log_ok "基础设施层已恢复运行"
+      return 0
+    fi
+    sleep 5
+  done
+  
+  log_warn "基础设施层启动超时，部分服务可能仍在启动中"
 }
 
 # ====== 停止旧服务 (仅指定服务，不影响其他) ======

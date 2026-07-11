@@ -67,19 +67,19 @@ EOF
 
 # ---------- 容器检查 ----------
 ensure_mysql_running() {
-    if ! docker ps --format '{{.Names}}' | grep -q '^kb-mysql$'; then
-        warn "kb-mysql 未运行，尝试启动..."
+    if ! docker ps --format '{{.Names}}' | grep -q '^platform-mysql$'; then
+        warn "platform-mysql 未运行，尝试启动..."
         docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d mysql
         local elapsed=0
         while [ $elapsed -lt 60 ]; do
-            if docker inspect --format='{{.State.Health.Status}}' kb-mysql 2>/dev/null | grep -q "healthy"; then
-                ok "kb-mysql 健康"
+            if docker inspect --format='{{.State.Health.Status}}' platform-mysql 2>/dev/null | grep -q "healthy"; then
+                ok "platform-mysql 健康"
                 return 0
             fi
             sleep 3
             elapsed=$((elapsed + 3))
         done
-        err "kb-mysql 启动超时"
+        err "platform-mysql 启动超时"
         exit 1
     fi
 }
@@ -101,7 +101,7 @@ run_init_sql() {
         local name
         name=$(basename "$sql")
         info "  执行: $name"
-        if docker exec -i kb-mysql mysql -uroot -p"$MYSQL_PASS" < "$sql" 2>&1 | grep -v "Using a password" ; then
+        if docker exec -i platform-mysql mysql -uroot -p"$MYSQL_PASS" < "$sql" 2>&1 | grep -v "Using a password" ; then
             ok "    ✓ $name"
             success=$((success + 1))
         else
@@ -120,7 +120,7 @@ verify_databases() {
     info "  [1] 检查 5 个数据库存在性..."
     for db in $EXPECTED_DBS; do
         local exists
-        exists=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='$db';" 2>/dev/null)
+        exists=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='$db';" 2>/dev/null)
         if [ "$exists" = "1" ]; then
             ok "数据库 $db 存在"
         else
@@ -131,7 +131,7 @@ verify_databases() {
     # 2. 字符集
     info "  [2] 检查字符集（utf8mb4_unicode_ci）..."
     local cs_result
-    cs_result=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
+    cs_result=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'kb_%';" 2>/dev/null)
     echo "$cs_result" | while IFS=$'\t' read -r name cs coll; do
         if [ "$cs" = "utf8mb4" ] && [ "$coll" = "utf8mb4_unicode_ci" ]; then
             ok "$name: $cs / $coll"
@@ -145,7 +145,7 @@ verify_databases() {
     local total_tables=0
     for db in $EXPECTED_DBS; do
         local cnt
-        cnt=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db' AND TABLE_TYPE='BASE TABLE';" 2>/dev/null)
+        cnt=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db' AND TABLE_TYPE='BASE TABLE';" 2>/dev/null)
         info "    $db: ${cnt:-0} 张表"
         if [ -n "$cnt" ] && [ "$cnt" -gt 0 ]; then
             total_tables=$((total_tables + cnt))
@@ -155,7 +155,7 @@ verify_databases() {
 
     # 4. 列出所有表
     info "  [4] 表清单:"
-    docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -e "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA LIKE 'kb_%' AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME;" 2>/dev/null
+    docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -e "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA LIKE 'kb_%' AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME;" 2>/dev/null
 }
 
 # ---------- 创建管理员 ----------
@@ -167,7 +167,7 @@ create_admin() {
 INSERT IGNORE INTO user (id, username, password, phone, status, created_at, updated_at)
 VALUES (1, 'admin', '\$2a\$10\$N.ZMy8s5L3NjQzjvF6YnHeSRJaQgSPzGe5O8C8v1b3a3b3b3b3b3', NULL, 1, NOW(), NOW());
 SELECT id, username, status FROM user WHERE username='admin';"
-    if docker exec -i kb-mysql mysql -uroot -p"$MYSQL_PASS" -e "$sql" 2>&1 | grep -v "Using a password"; then
+    if docker exec -i platform-mysql mysql -uroot -p"$MYSQL_PASS" -e "$sql" 2>&1 | grep -v "Using a password"; then
         ok "管理员用户已确保存在（admin/admin123）"
     else
         bad "管理员创建失败（可能表结构未初始化）"

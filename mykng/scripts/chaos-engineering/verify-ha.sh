@@ -95,7 +95,7 @@ health_check() {
     local label="$1"
     info "[$label] 健康检查..."
     local all_ok=true
-    for svc in kb-mysql kb-redis kb-mongo kb-minio kb-meilisearch kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+    for svc in platform-mysql platform-redis platform-mongo platform-minio platform-meilisearch kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
         local status health
         status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
         health=$(docker inspect --format='{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "no-healthcheck")
@@ -119,7 +119,7 @@ health_check() {
 recover_all() {
     warn ">>> 恢复所有服务..."
     # 启动所有停止的容器
-    for svc in kb-mysql kb-redis kb-mongo kb-minio kb-meilisearch kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
+    for svc in platform-mysql platform-redis platform-mongo platform-minio platform-meilisearch kb-gateway kb-auth kb-file kb-knowledge kb-intelligence; do
         local status
         status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
         if [ "$status" != "running" ]; then

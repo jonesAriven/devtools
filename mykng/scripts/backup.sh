@@ -88,12 +88,12 @@ EOF
 
 # ---------- 容器存在性检查 ----------
 check_containers() {
-    if ! docker ps --format '{{.Names}}' | grep -q '^kb-mysql$'; then
-        err "kb-mysql 容器未运行，无法备份"
+    if ! docker ps --format '{{.Names}}' | grep -q '^platform-mysql$'; then
+        err "platform-mysql 容器未运行，无法备份"
         exit 1
     fi
-    if ! docker ps --format '{{.Names}}' | grep -q '^kb-mongo$'; then
-        warn "kb-mongo 容器未运行，将跳过 MongoDB 备份"
+    if ! docker ps --format '{{.Names}}' | grep -q '^platform-mongo$'; then
+        warn "platform-mongo 容器未运行，将跳过 MongoDB 备份"
         return 1
     fi
     return 0
@@ -111,7 +111,7 @@ backup_mysql() {
     for db in $MYSQL_DBS; do
         local file="$backup_dir/${db}.sql"
         info "  导出 $db → ${file}"
-        if docker exec kb-mysql mysqldump -uroot -p"$MYSQL_PASS" \
+        if docker exec platform-mysql mysqldump -uroot -p"$MYSQL_PASS" \
             --single-transaction --routines --triggers --events \
             --default-character-set=utf8mb4 "$db" > "$file" 2>/dev/null; then
             local size
@@ -134,7 +134,7 @@ backup_time=$ts
 databases=$MYSQL_DBS
 ok_count=$ok_count
 fail_count=$fail_count
-mysql_host=kb-mysql:3306
+mysql_host=platform-mysql:3306
 EOF
 
     info "MySQL 备份结束: 成功 $ok_count / 失败 $fail_count"
@@ -149,7 +149,7 @@ backup_mongodb() {
     local file="$backup_dir/mongodb.archive"
 
     info "=== MongoDB 备份开始 ==="
-    if docker exec kb-mongo mongodump --quiet \
+    if docker exec platform-mongo mongodump --quiet \
         --uri="mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" \
         --archive > "$file" 2>/dev/null; then
         local size
@@ -192,7 +192,7 @@ verify_latest() {
             fi
         done
         # 通过 mysql 解析验证
-        if docker exec -i kb-mysql mysql -uroot -p"$MYSQL_PASS" -e "SELECT 1;" >/dev/null 2>&1; then
+        if docker exec -i platform-mysql mysql -uroot -p"$MYSQL_PASS" -e "SELECT 1;" >/dev/null 2>&1; then
             info "  ✓ MySQL 服务可用，可恢复"
         fi
     fi

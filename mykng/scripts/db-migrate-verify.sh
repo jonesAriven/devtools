@@ -82,8 +82,8 @@ EOF
 
 # ---------- 容器检查 ----------
 check_mysql() {
-    if ! docker ps --format '{{.Names}}' | grep -q '^kb-mysql$'; then
-        err "kb-mysql 容器未运行"
+    if ! docker ps --format '{{.Names}}' | grep -q '^platform-mysql$'; then
+        err "platform-mysql 容器未运行"
         exit 1
     fi
 }
@@ -114,7 +114,7 @@ run_verify_sql() {
         name=$(basename "$sql")
         info "执行: $name"
         echo ">>> $name" | tee -a "$report_file"
-        if docker exec -i kb-mysql mysql -uroot -p"$MYSQL_PASS" --table < "$sql" 2>&1 | tee -a "$report_file"; then
+        if docker exec -i platform-mysql mysql -uroot -p"$MYSQL_PASS" --table < "$sql" 2>&1 | tee -a "$report_file"; then
             ok "$name 执行成功"
             verify_count=$((verify_count + 1))
         else
@@ -152,10 +152,10 @@ take_snapshot() {
         info "  扫描 $db ..."
         # 获取该库所有表
         local tables
-        tables=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db' AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME;" 2>/dev/null)
+        tables=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db' AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME;" 2>/dev/null)
         for tbl in $tables; do
             local cnt
-            cnt=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM \`$db\`.\`$tbl\`;" 2>/dev/null || echo "ERROR")
+            cnt=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM \`$db\`.\`$tbl\`;" 2>/dev/null || echo "ERROR")
             echo "${db}.${tbl} ${cnt}" >> "$counts_file"
             info "    ${db}.${tbl} = ${cnt}"
         done
@@ -164,7 +164,7 @@ take_snapshot() {
     # 同时备份数据库
     info "  同时备份数据库..."
     for db in $MYSQL_DBS; do
-        docker exec kb-mysql mysqldump -uroot -p"$MYSQL_PASS" --single-transaction "$db" > "$snap_dir/${db}.sql" 2>/dev/null
+        docker exec platform-mysql mysqldump -uroot -p"$MYSQL_PASS" --single-transaction "$db" > "$snap_dir/${db}.sql" 2>/dev/null
     done
 
     ok "快照完成: $counts_file"
@@ -202,7 +202,7 @@ compare_snapshot() {
         tbl="${key#*.}"
 
         local actual
-        actual=$(docker exec kb-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM \`$db\`.\`$tbl\`;" 2>/dev/null || echo "ERROR")
+        actual=$(docker exec platform-mysql mysql -uroot -p"$MYSQL_PASS" -N -e "SELECT COUNT(*) FROM \`$db\`.\`$tbl\`;" 2>/dev/null || echo "ERROR")
 
         if [ "$actual" = "$expected" ]; then
             ok "$key: $actual (一致)"

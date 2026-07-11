@@ -86,7 +86,7 @@ backup_db() {
     local backup_file="$backup_dir/${db_name}.sql"
 
     log "备份数据库 $db_name → $backup_file ..."
-    if docker exec kb-mysql mysqldump -uroot -p"$MYSQL_PASS" --single-transaction "$db_name" > "$backup_file" 2>/dev/null; then
+    if docker exec platform-mysql mysqldump -uroot -p"$MYSQL_PASS" --single-transaction "$db_name" > "$backup_file" 2>/dev/null; then
         local size
         size=$(du -h "$backup_file" | cut -f1)
         log "  ✓ 备份完成 ($size)"

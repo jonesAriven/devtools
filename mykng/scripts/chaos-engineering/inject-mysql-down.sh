@@ -9,7 +9,7 @@
 #   bash inject-mysql-down.sh -help                 # 显示帮助
 #
 # 故障效果:
-#   - kb-mysql 容器被停止
+#   - platform-mysql 容器被停止
 #   - 微服务的数据库操作将失败（连接池报错）
 #   - 验证微服务是否能优雅降级 / 自动重连
 # ============================================================
@@ -34,7 +34,7 @@ info() { echo -e "${BLUE}[INFO ]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN ]${NC} $1"; }
 err()  { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-CONTAINER="kb-mysql"
+CONTAINER="platform-mysql"
 DURATION=30
 NO_RECOVER=false
 
