@@ -49,8 +49,8 @@ steps:
     # 验证文件完整性
     - ls -la /mnt/shared/devtools/ci/
     - wc -l /mnt/shared/devtools/ci/*.sh
-    # 关键验证：检查是否还有残留 CRLF
-    - if grep -Pl '\r' /mnt/shared/devtools/ci/*.sh; then echo "ERROR: CRLF still present!"; exit 1; else echo "OK: No CRLF found"; fi
+    # 关键验证: 检查是否还有残留 CRLF
+    - grep -rPl '\r' /mnt/shared/devtools/ci/ && echo "WARN: CRLF detected" && exit 1 || echo "OK: No CRLF"
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
