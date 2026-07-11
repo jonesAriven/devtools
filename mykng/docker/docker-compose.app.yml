@@ -24,7 +24,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=host.docker.internal
+      - NACOS_HOST=kb-nacos
       - NACOS_PORT=8848
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
     extra_hosts:
@@ -45,7 +45,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=host.docker.internal
+      - NACOS_HOST=kb-nacos
       - NACOS_PORT=8848
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       - MYSQL_HOST=kb-mysql
@@ -73,7 +73,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=host.docker.internal
+      - NACOS_HOST=kb-nacos
       - NACOS_PORT=8848
       - MYSQL_HOST=kb-mysql
       - MYSQL_PORT=3306
@@ -102,7 +102,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=host.docker.internal
+      - NACOS_HOST=kb-nacos
       - NACOS_PORT=8848
       - MYSQL_HOST=kb-mysql
       - MYSQL_PORT=3306
@@ -135,7 +135,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - NACOS_HOST=host.docker.internal
+      - NACOS_HOST=kb-nacos
       - NACOS_PORT=8848
       - MYSQL_HOST=kb-mysql
       - MYSQL_PORT=3306
