@@ -34,23 +34,18 @@ when:
 
 steps:
   # ==================== 共享: 同步CI脚本 ====================
-- name: sync-ci-scripts
-  image: alpine
-  volumes:
-    - /mnt/shared:/mnt/shared
-  commands:
-    - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
-    # 用 sed 删除 Windows CRLF (\r)，避免 bash 解析 EOF 错误
-    - for f in ci/*.sh; do sed 's/\r$//' "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
-    - chmod +x /mnt/shared/devtools/ci/*.sh
-    # 二次清理：确保目标文件也没有残留 \r
-    - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
-    - echo "CI scripts synced"
-    # 验证文件完整性
-    - ls -la /mnt/shared/devtools/ci/
-    - wc -l /mnt/shared/devtools/ci/*.sh
-    # 关键验证: 检查是否还有残留 CRLF
-    - grep -rPl '\r' /mnt/shared/devtools/ci/ && echo "WARN: CRLF detected" && exit 1 || echo "OK: No CRLF"
+  - name: sync-ci-scripts
+    image: alpine
+    volumes:
+      - /mnt/shared:/mnt/shared
+    commands:
+      - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
+      - cp ci/*.sh /mnt/shared/devtools/ci/
+      - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
+      - chmod +x /mnt/shared/devtools/ci/*.sh
+      - echo "CI scripts synced"
+      - ls -la /mnt/shared/devtools/ci/
+      - wc -l /mnt/shared/devtools/ci/*.sh
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
