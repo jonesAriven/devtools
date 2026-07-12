@@ -5,8 +5,8 @@
 # ============================================================
 
 # ====== 路径 ======
-readonly SHARED_DIR="/mnt/shared/woodDeploy/publish"
-readonly CI_DIR="/mnt/shared/woodDeploy/ci"
+readonly SHARED_DIR="/mnt/shared/woodScript/publish"
+readonly CI_DIR="/mnt/shared/woodScript/cd"
 readonly DEPLOY_BASE="/root/kb-deploy"
 readonly GIT_REPO="/root/devtools"
 

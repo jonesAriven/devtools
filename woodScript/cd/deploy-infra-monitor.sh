@@ -1,26 +1,26 @@
 #!/bin/bash
 # ============================================================
-# deploy-active-manager.sh �?激活码管理系统部署
+# deploy-infra-monitor.sh �?基础设施监控系统部署
 # ============================================================
-# 用法: bash deploy-active-manager.sh <tar.gz文件�?
-# 示例: bash deploy-active-manager.sh active-manager-latest.tar.gz
+# 用法: bash deploy-infra-monitor.sh <tar.gz文件�?
+# 示例: bash deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 #
-# 部署的服�? activation-code-server
-# Compose:    项目自带 docker-compose.yml (project: activecode)
-# 目标主机:   内网 Debian (192.168.31.182)
+# 部署的服�? infra-monitor
+# Compose:    项目自带 docker-compose.yml (project: infra-monitor)
+# 前置条件:   �?(独立项目，自带MySQL连接)
 # 隔离�?     完全独立，不影响其他应用
 # ============================================================
 set -euo pipefail
-source /mnt/shared/woodDeploy/woodScript/lib-deploy.sh
+source /mnt/shared/woodScript/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?missing param: usage deploy-active-manager.sh tar.gz}"
-APP_DIR="${GIT_REPO}/active-manager/activation-code-server"
-COMPOSE_PROJECT="activecode"
+TAR_FILE="${1:?missing param: usage deploy-infra-monitor.sh tar.gz}"
+APP_DIR="${GIT_REPO}/infra-monitor/infra-monitor-server"
+COMPOSE_PROJECT="infra-monitor"
 COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
-SERVICES=("activation-code-server")
-HEALTH_URL="http://localhost:18080/activecode/login.html"
-APP_NAME="active-manager"
+SERVICES=("infra-monitor")
+HEALTH_URL="http://localhost:8088/infra/actuator/health"
+APP_NAME="infra-monitor"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 
@@ -54,4 +54,4 @@ log_step 6 6 "健康检�?& 清理"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" "  激活码: http://localhost:18080/activecode/login.html"
+log_footer "${APP_NAME}" "${TAR_FILE}" "  监控: http://localhost:8088/infra"

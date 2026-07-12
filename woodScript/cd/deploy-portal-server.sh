@@ -11,7 +11,7 @@
 # 隔离�?     只重�?portal-server，不影响其他服务
 # ============================================================
 set -euo pipefail
-source /mnt/shared/woodDeploy/woodScript/lib-deploy.sh
+source /mnt/shared/woodScript/lib-deploy.sh
 
 # ====== 配置 ======
 TAR_FILE="${1:?missing param: usage deploy-portal-server.sh tar.gz}"

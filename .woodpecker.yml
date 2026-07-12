@@ -14,7 +14,7 @@
 # ============================================================
 
 when:
-  event: [manual]
+  event: [manual, push]
   branch: [dev]
 
 steps:
@@ -24,12 +24,12 @@ steps:
     volumes:
       - /mnt/shared:/mnt/shared
     commands:
-      - mkdir -p /mnt/shared/woodDeploy/publish /mnt/shared/woodDeploy/woodScript
-      - find /mnt/shared/woodDeploy/woodScript -mindepth 1 -delete 2>/dev/null || true
-      - find woodScript -name '*.sh' | while read f; do dst="/mnt/shared/woodDeploy/$f"; mkdir -p "$(dirname "$dst")"; sed 's/\r$//' "$f" > "$dst"; done
-      - find /mnt/shared/woodDeploy/woodScript -name '*.sh' -exec chmod +x {} +
+      - mkdir -p /mnt/shared/woodScript/publish /mnt/shared/woodScript/ci /mnt/shared/woodScript/cd
+      - find /mnt/shared/woodScript -mindepth 1 -delete 2>/dev/null || true
+      - find woodScript -name '*.sh' | while read f; do dst="/mnt/shared/$f"; mkdir -p "$(dirname "$dst")"; sed 's/\r$//' "$f" > "$dst"; done
+      - find /mnt/shared/woodScript -name '*.sh' -exec chmod +x {} +
       - echo "=== Syntax check ==="
-      - find /mnt/shared/woodDeploy/woodScript -name '*.sh' -exec bash -n {} \; -print
+      - find /mnt/shared/woodScript -name '*.sh' -exec bash -n {} \; -print
 
   # ==================== mykng (5个Java微服�? ====================
   - name: mykng-build
@@ -42,7 +42,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"' }]
     commands:
-      - bash woodScript/build/build-mykng.sh
+      - bash woodScript/ci/build-mykng.sh
 
   - name: mykng-deploy
     image: appleboy/drone-ssh
@@ -56,7 +56,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-mykng.sh mykng-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-mykng.sh mykng-latest.tar.gz
 
   # ==================== kb-ops (运维平台后端) ====================
   - name: kb-ops-build
@@ -69,7 +69,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"' }]
     commands:
-      - bash woodScript/build/build-kb-ops.sh
+      - bash woodScript/ci/build-kb-ops.sh
 
   - name: kb-ops-deploy
     image: appleboy/drone-ssh
@@ -83,7 +83,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-kb-ops.sh kb-ops-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-kb-ops.sh kb-ops-latest.tar.gz
 
   # ==================== kb-ops-web (运维平台前端) ====================
   - name: kb-ops-web-build
@@ -93,7 +93,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"' }]
     commands:
-      - bash woodScript/build/build-kb-ops-web.sh
+      - bash woodScript/ci/build-kb-ops-web.sh
 
   - name: kb-ops-web-deploy
     image: appleboy/drone-ssh
@@ -107,7 +107,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
 
   # ==================== infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
@@ -117,7 +117,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     commands:
-      - bash woodScript/build/build-infra-monitor-web.sh
+      - bash woodScript/ci/build-infra-monitor-web.sh
 
   - name: infra-monitor-web-deploy
     image: appleboy/drone-ssh
@@ -131,7 +131,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 
   # ==================== infra-monitor (监控后端) ====================
   - name: infra-monitor-build
@@ -144,7 +144,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"' }]
     commands:
-      - bash woodScript/build/build-infra-monitor.sh
+      - bash woodScript/ci/build-infra-monitor.sh
 
   - name: infra-monitor-deploy
     image: appleboy/drone-ssh
@@ -158,7 +158,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 
   # ==================== active-manager (激活码系统) ====================
   - name: active-manager-build
@@ -171,7 +171,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"' }]
     commands:
-      - bash woodScript/build/build-active-manager.sh
+      - bash woodScript/ci/build-active-manager.sh
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
@@ -185,7 +185,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-active-manager.sh active-manager-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-active-manager.sh active-manager-latest.tar.gz
 
   # ==================== portal-web (门户前端) ====================
   - name: portal-web-build
@@ -195,7 +195,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-web"' }]
     commands:
-      - bash woodScript/build/build-portal-web.sh
+      - bash woodScript/ci/build-portal-web.sh
 
   - name: portal-web-deploy
     image: appleboy/drone-ssh
@@ -209,7 +209,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-portal-web.sh portal-web-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-portal-web.sh portal-web-latest.tar.gz
 
   # ==================== portal-server (门户后端) ====================
   - name: portal-server-build
@@ -222,7 +222,7 @@ steps:
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-server"' }]
     commands:
-      - bash woodScript/build/build-portal-server.sh
+      - bash woodScript/ci/build-portal-server.sh
 
   - name: portal-server-deploy
     image: appleboy/drone-ssh
@@ -236,7 +236,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/woodScript/deploy/deploy-portal-server.sh portal-server-latest.tar.gz
+        - bash /mnt/shared/woodScript/cd/deploy-portal-server.sh portal-server-latest.tar.gz
 
   # ==================== cleanup ====================
   - name: cleanup

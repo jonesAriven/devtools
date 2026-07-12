@@ -10,7 +10,7 @@
 # 前置条件:   platform 全局基础设施层已启动
 # 隔离�?     只重�?kb-ops，不影响 mykng 5个微服务和前端容�?# ============================================================
 set -euo pipefail
-source /mnt/shared/woodDeploy/woodScript/lib-deploy.sh
+source /mnt/shared/woodScript/lib-deploy.sh
 
 # ====== 配置 ======
 TAR_FILE="${1:?missing param: usage deploy-kb-ops.sh tar.gz}"
