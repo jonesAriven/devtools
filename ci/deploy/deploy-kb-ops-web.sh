@@ -44,10 +44,9 @@ sync_compose_files
 mkdir -p "${DEPLOY_BASE}/kb-ops-web/dist"
 touch "${DEPLOY_BASE}/kb-ops-web/dist/.keep"
 
-# 创建默认 nginx.conf (如果不存在)
+# 每次都覆盖 nginx.conf (确保 host.docker.internal 不残留)
 NGINX_CONF="${DEPLOY_BASE}/kb-ops-web/nginx.conf"
-if [ ! -f "${NGINX_CONF}" ]; then
-  cat > "${NGINX_CONF}" << 'NGINXEOF'
+cat > "${NGINX_CONF}" << 'NGINXEOF'
 server {
     listen 80;
     server_name _;
@@ -60,15 +59,14 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://host.docker.internal:8084/kb-ops/;
+        proxy_pass http://172.17.0.1:8084/kb-ops/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 NGINXEOF
-  log_ok "创建默认 nginx.conf: kb-ops-web"
-fi
+log_ok "nginx.conf 已更新: kb-ops-web"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 5 "停止旧服务"
