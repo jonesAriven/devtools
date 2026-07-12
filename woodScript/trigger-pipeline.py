@@ -6,12 +6,12 @@ trigger-pipeline.py - 触发 Woodpecker CI 流水线
 通用脚本，所有项目共用。触发后返回流水线编号，供 check-pipeline.py 查询。
 
 用法:
-    python trigger-pipeline.py <项目名> [分支] [--note 备注]
+    python trigger-pipeline.py <项目名> [分支] [--note 备注] [--wait]
 
 示例:
-    python trigger-pipeline.py active-manager           # 触发激活码部署
-    python trigger-pipeline.py active-manager dev       # 指定分支
-    python trigger-pipeline.py kb-ops --note "修复bug"  # 带备注
+    python trigger-pipeline.py active-manager              # 触发
+    python trigger-pipeline.py active-manager --wait        # 触发+自动监控到结束
+    python trigger-pipeline.py kb-ops --note "修复bug"      # 带备注触发
 
 支持项目:
     mykng, kb-ops, kb-ops-web, infra-monitor,
@@ -25,6 +25,7 @@ trigger-pipeline.py - 触发 Woodpecker CI 流水线
 import os
 import sys
 import json
+import subprocess
 import urllib.request
 from datetime import datetime
 
@@ -78,16 +79,22 @@ def api_post(path, data=None):
 def main():
     args = sys.argv[1:]
 
-    if len(args) < 1 or args[0].startswith("-"):
-        print(__doc__)
-        print("项目列表:")
-        for key, display in PROJECT_DISPLAY.items():
-            print(f"  {key:<22s} {display}")
-        sys.exit(1)
+    if len(args) < 1 or (not args[0].startswith("-") and args[0] not in PROJECT_MAP):
+        # 检查是否是 -- 开头的标志位（如 --wait 单独使用）
+        if len(args) >= 1 and args[0].startswith("--"):
+            print(__doc__)
+            sys.exit(1)
+        if len(args) < 1:
+            print(__doc__)
+            print("项目列表:")
+            for key, display in PROJECT_DISPLAY.items():
+                print(f"  {key:<22s} {display}")
+            sys.exit(1)
 
     project = args[0]
     branch = "dev"
     note = None
+    do_wait = False
 
     i = 1
     while i < len(args):
@@ -95,6 +102,8 @@ def main():
             branch = args[i + 1]; i += 2
         elif args[i] in ("--note", "-n", "-m") and i + 1 < len(args):
             note = args[i + 1]; i += 2
+        elif args[i] == "--wait":
+            do_wait = True; i += 1
         elif not args[i].startswith("-"):
             branch = args[i]; i += 1
         else:
@@ -127,9 +136,24 @@ def main():
     print(f"  时间:   {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*56}")
     print(f"  查看:   {get_url()}/repos/{REPO_ID}/pipeline/{pipeline_num}")
-    print(f"\n  查状态+日志:")
+
+    # --wait 模式：触发后自动进入监控
+    if do_wait:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        check_script = os.path.join(script_dir, "check-pipeline.py")
+        print(f"\n{'='*56}")
+        print(f"  自动监控 #{pipeline_num} (Ctrl+C 停止)")
+        print(f"{'='*56}")
+        ret = subprocess.call([sys.executable, check_script, str(pipeline_num), "--watch"])
+        sys.exit(ret)
+
+    # 默认模式：只提示如何查询
+    print(f"\n  继续查询:")
     print(f"    python woodScript/check-pipeline.py {pipeline_num}")
-    print()
+    print(f"  或一键监控:")
+    print(f"    python woodScript/trigger-pipeline.py {project} --wait\n")
+
+    return pipeline_num
 
 
 if __name__ == "__main__":
