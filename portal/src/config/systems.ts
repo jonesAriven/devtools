@@ -62,6 +62,16 @@ export const systems: SystemConfig[] = [
     ],
   },
   {
+    id: 'activation-code-usage',
+    name: '激活码使用页面',
+    description: '激活码在线解析与验证工具，无需登录即可使用',
+    category: 'web',
+    url: 'https://tools.marschat.online/activecode/index.html',
+    icon: 'Promotion',
+    color: '#e6a23c',
+    techStack: '激活码解析与验证（无需登录）',
+  },
+  {
     id: 'nexus',
     name: 'Nexus 私服',
     description: '统一包管理仓库：npm / Maven / pip / Docker 全栈制品管理',
