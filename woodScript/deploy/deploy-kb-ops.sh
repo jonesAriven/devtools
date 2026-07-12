@@ -1,17 +1,16 @@
 #!/bin/bash
 # ============================================================
-# deploy-kb-ops.sh — kb-ops 运维平台部署 (独立应用)
+# deploy-kb-ops.sh �?kb-ops 运维平台部署 (独立应用)
 # ============================================================
-# 用法: bash deploy-kb-ops.sh <tar.gz文件名>
+# 用法: bash deploy-kb-ops.sh <tar.gz文件�?
 # 示例: bash deploy-kb-ops.sh kb-ops-latest.tar.gz
 #
-# 部署的服务: kb-ops
+# 部署的服�? kb-ops
 # Compose:    docker-compose.app.yml (project: kb-app, 复用同一个compose文件)
 # 前置条件:   platform 全局基础设施层已启动
-# 隔离性:     只重建 kb-ops，不影响 mykng 5个微服务和前端容器
-# ============================================================
+# 隔离�?     只重�?kb-ops，不影响 mykng 5个微服务和前端容�?# ============================================================
 set -euo pipefail
-source /mnt/shared/woodDeploy/ci/lib-deploy.sh
+source /mnt/shared/woodDeploy/woodScript/lib-deploy.sh
 
 # ====== 配置 ======
 TAR_FILE="${1:?missing param: usage deploy-kb-ops.sh tar.gz}"
@@ -33,21 +32,21 @@ log_step 2 6 "解压 & 分发 JAR"
 mkdir -p "${APP_DIR}/target"
 extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 
-# ====== Step 3: 同步 compose 文件 & 检查网络 ======
+# ====== Step 3: 同步 compose 文件 & 检查网�?======
 log_step 3 6 "环境准备"
 sync_compose_files
 ensure_platform
 
-# ====== Step 4: 停止旧服务 (只停 kb-ops，不影响其他) ======
-log_step 4 6 "停止旧服务"
+# ====== Step 4: 停止旧服�?(只停 kb-ops，不影响其他) ======
+log_step 4 6 "停止旧服�?
 compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
-# ====== Step 5: 构建并启动 ======
+# ====== Step 5: 构建并启�?======
 log_step 5 6 "构建并启动新服务"
 compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
-# ====== Step 6: 健康检查 & 清理 ======
-log_step 6 6 "健康检查 & 清理"
+# ====== Step 6: 健康检�?& 清理 ======
+log_step 6 6 "健康检�?& 清理"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
