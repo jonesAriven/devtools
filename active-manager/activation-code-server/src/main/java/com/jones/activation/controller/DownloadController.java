@@ -41,7 +41,7 @@ public class DownloadController {
     public Map<String, Object> listVersions() {
         Map<String, Object> result = new HashMap<>();
         try {
-            File dir = new Path(baseDir).normalize().toAbsolutePath().toFile();
+            File dir = Paths.get(baseDir).normalize().toAbsolutePath().toFile();
             if (!dir.exists() || !dir.isDirectory()) {
                 result.put("success", false);
                 result.put("message", "下载目录不存在: " + baseDir);
