@@ -59,6 +59,22 @@ services:
       - kb-web-net
     mem_limit: 64m
 
+  # ========== portal-web 门户前端 ==========
+  portal-web:
+    image: nginx:alpine
+    container_name: portal-web
+    restart: on-failure:5
+    ports:
+      - "8095:80"
+    volumes:
+      - ${DEPLOY_BASE:-/root/kb-deploy}/portal-web/dist:/usr/share/nginx/html:ro
+      - ${DEPLOY_BASE:-/root/kb-deploy}/portal-web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - kb-web-net
+    mem_limit: 64m
+
 # ========== 网络 ==========
 networks:
   kb-web-net:

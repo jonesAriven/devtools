@@ -15,7 +15,7 @@
 #                                                        ↓  ↓
 #                                                     cleanup
 #
-# DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager
+# DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager / portal-web / portal-server
 # ============================================================
 
 when:
@@ -192,10 +192,61 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-active-manager.sh active-manager-latest.tar.gz
 
+  # ==================== portal-web (门户前端) ====================
+  - name: portal-web-build
+    image: node:20-slim
+    volumes:
+      - /mnt/shared:/mnt/shared
+    depends_on: [sync-ci-scripts]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-web"' }]
+    commands:
+      - bash ci/build/build-portal-web.sh
+
+  - name: portal-web-deploy
+    image: appleboy/drone-ssh
+    depends_on: [portal-web-build]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-web"' }]
+    settings:
+      host: 192.168.31.105
+      username: root
+      key: { from_secret: ssh_key_mykng }
+      port: 22
+      script_stop: false
+      command_timeout: 30m
+      script:
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-portal-web.sh portal-web-latest.tar.gz
+
+  # ==================== portal-server (门户后端) ====================
+  - name: portal-server-build
+    image: maven:3.9-eclipse-temurin-21
+    volumes:
+      - /mnt/shared:/mnt/shared
+      - /root/.m2:/root/.m2
+    environment:
+      MAVEN_OPTS: -Xmx1024m
+    depends_on: [sync-ci-scripts]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-server"' }]
+    commands:
+      - bash ci/build/build-portal-server.sh
+
+  - name: portal-server-deploy
+    image: appleboy/drone-ssh
+    depends_on: [portal-server-build]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-server"' }]
+    settings:
+      host: 192.168.31.105
+      username: root
+      key: { from_secret: ssh_key_mykng }
+      port: 22
+      script_stop: false
+      command_timeout: 30m
+      script:
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-portal-server.sh portal-server-latest.tar.gz
+
   # ==================== cleanup ====================
   - name: cleanup
     image: appleboy/drone-ssh
-    depends_on: [kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy]
+    depends_on: [kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy, portal-web-deploy, portal-server-deploy]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all"' }]
     settings:
       host: 192.168.31.105

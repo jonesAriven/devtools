@@ -191,6 +191,29 @@ services:
       - platform-net
     mem_limit: 384m
 
+  # ========== Portal 门户后端 (独立部署) ==========
+  portal-server:
+    build: /root/devtools/portal/portal-server
+    container_name: portal-server
+    restart: on-failure:5
+    ports:
+      - "8087:8087"
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
+      - MYSQL_HOST=platform-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=tools
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - kb-app-net
+      - platform-net
+    mem_limit: 384m
+
 # ========== 网络 ==========
 networks:
   kb-app-net:
