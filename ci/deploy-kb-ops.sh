@@ -11,16 +11,16 @@
 # 隔离性:     只重建 kb-ops，不影响 mykng 5个微服务和前端容器
 # ============================================================
 set -euo pipefail
-source /mnt/shared/devtools/ci/lib-deploy.sh
+source /mnt/shared/woodDeploy/ci/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>>"
+TAR_FILE="${1:?missing param: usage deploy-kb-ops.sh tar.gz}"
 APP_DIR="${GIT_REPO}/kb-ops"
 COMPOSE_PROJECT="kb-app"
 COMPOSE_FILE="docker-compose.app.yml"
 SERVICES=("kb-ops")
 HEALTH_URL="http://localhost:8084/actuator/health"
-APP_NAME="⚙️ kb-ops 运维平台"
+APP_NAME="kb-ops"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 

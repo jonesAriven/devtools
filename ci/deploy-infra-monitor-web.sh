@@ -11,7 +11,7 @@
 # 隔离性:     只影响 infra-monitor-web 容器，不影响其他前端
 # ============================================================
 set -euo pipefail
-source /mnt/shared/devtools/ci/lib-deploy.sh
+source /mnt/shared/woodDeploy/ci/lib-deploy.sh
 
 # ====== 配置 ======
 TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
