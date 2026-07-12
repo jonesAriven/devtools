@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal
+setlocal enabledelayedexpansion
 
 echo ========================================
 echo   QRCodeTool C++ Build Script
@@ -22,7 +22,7 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 set SHARED_DIR=D:\huliang\java\ideaworkspace\www\download\QRCodeTools
 if not exist %SHARED_DIR% mkdir %SHARED_DIR%
 
-echo [1/3] Configuring with CMake...
+echo [1/4] Configuring with CMake...
 %CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (
     echo [INFO] VS 2026 generator failed, trying with v143 toolset...
@@ -36,7 +36,7 @@ if %errorlevel% neq 0 (
     )
 )
 
-echo [2/3] Building Release...
+echo [2/4] Building Release...
 %CMAKE% --build %BUILD_DIR% --config Release --parallel
 if %errorlevel% neq 0 (
     echo [ERROR] Build failed!
@@ -46,13 +46,9 @@ if %errorlevel% neq 0 (
 
 echo [3/4] Build complete!
 echo.
-echo Output: %BUILD_DIR%\bin\Release\QRCodeTool.exe
-echo.
-
-if exist %BUILD_DIR%\bin\Release\QRCodeTool.exe (
-    for %%A in (%BUILD_DIR%\bin\Release\QRCodeTool.exe) do (
-        echo Size: %%~zA bytes
-    )
+for %%F in (%BUILD_DIR%\bin\Release\QRCodeTool-*.exe) do (
+    echo Output: %%F
+    echo Size: %%~zF bytes
 )
 
 echo.
