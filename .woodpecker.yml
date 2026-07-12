@@ -24,8 +24,10 @@ steps:
     volumes:
       - /mnt/shared:/mnt/shared
     commands:
-      - mkdir -p /mnt/shared/woodScript/publish /mnt/shared/woodScript/ci /mnt/shared/woodScript/cd
+      # 清空旧文件（保留目录结构）
       - find /mnt/shared/woodScript -mindepth 1 -delete 2>/dev/null || true
+      # 确保目标目录存在（必须在 delete 之后）
+      - mkdir -p /mnt/shared/woodScript/publish /mnt/shared/woodScript/ci /mnt/shared/woodScript/cd
       # 同步 CI 脚本 (woodScript/*.sh)
       - find woodScript -name '*.sh' | while read f; do dst="/mnt/shared/$f"; mkdir -p "$(dirname "$dst")"; sed 's/\r$//' "$f" > "$dst"; done
       # 同步所有项目的 docker-compose.yml 到 /mnt/shared（统一配置入口）
