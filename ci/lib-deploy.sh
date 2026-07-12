@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # lib-deploy.sh — 标准化部署公共函数库
-# 最后更新: 2026-07-12 (trap修复+log_footer修复)
+# 最后更新: 2026-07-12 (路径迁移到 /mnt/shared/woodDeploy 独立目录)
 # ============================================================
 
 # ====== 信号处理: 防止 SSH 断连时被 SIGTERM 杀掉 ======
@@ -33,8 +33,8 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # ====== 常量 ======
-readonly SHARED_DIR="/mnt/shared/devtools/publish"
-readonly CI_DIR="/mnt/shared/devtools/ci"
+readonly SHARED_DIR="/mnt/shared/woodDeploy/publish"
+readonly CI_DIR="/mnt/shared/woodDeploy/ci"
 readonly DEPLOY_BASE="/root/kb-deploy"
 readonly GIT_REPO="/root/devtools"
 readonly HEALTH_MAX_RETRIES=24

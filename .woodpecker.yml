@@ -35,23 +35,22 @@ when:
 steps:
   # ==================== 共享: 同步CI脚本 ====================
   - name: sync-ci-scripts
-    image: alpine
+    image: bash:5.2
     volumes:
       - /mnt/shared:/mnt/shared
     commands:
-      - mkdir -p /mnt/shared/devtools/ci /mnt/shared/devtools/publish
-      - rm -f /mnt/shared/devtools/ci/*.sh
-      - for f in ci/*.sh; do cat "$f" > "/mnt/shared/devtools/ci/$(basename "$f")"; done
-      - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
-      - chmod +x /mnt/shared/devtools/ci/*.sh
+      - mkdir -p /mnt/shared/woodDeploy/ci /mnt/shared/woodDeploy/publish
+      - rm -f /mnt/shared/woodDeploy/ci/*.sh
+      - for f in ci/*.sh; do cat "$f" > "/mnt/shared/woodDeploy/ci/$(basename "$f")"; done
+      - sed -i 's/\r$//' /mnt/shared/woodDeploy/ci/*.sh
+      - chmod +x /mnt/shared/woodDeploy/ci/*.sh
       - echo "=== Syntax check ==="
-      - 'bash -n /mnt/shared/devtools/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"'
-      - 'bash -n /mnt/shared/devtools/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"'
-      - 'bash -n /mnt/shared/devtools/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"'
-      - echo "CI scripts synced"
-      - ls -la /mnt/shared/devtools/ci/
-      - wc -l /mnt/shared/devtools/ci/*.sh
-      - head -60 /mnt/shared/devtools/ci/deploy-kb-ops.sh | tail -10
+      - bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"
+      - bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"
+      - bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"
+      - echo "CI scripts synced to woodDeploy"
+      - ls -la /mnt/shared/woodDeploy/ci/
+      - wc -l /mnt/shared/woodDeploy/ci/*.sh
 
   # ==================== 1. mykng 知识库 (5个Java微服务) ====================
   - name: mykng-build
@@ -81,8 +80,8 @@ steps:
       - ls -lh publish/mykng/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/mykng-latest.tar.gz -C publish/mykng .
-      - cp publish/mykng-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/mykng-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/mykng-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/mykng-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ mykng 构建完成"
 
   - name: mykng-deploy
@@ -101,7 +100,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-mykng.sh mykng-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-mykng.sh mykng-latest.tar.gz
 
   # ==================== 2. kb-ops 运维平台 (独立Java微服务) ====================
   - name: kb-ops-build
@@ -127,8 +126,8 @@ steps:
       - ls -lh publish/kb-ops/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/kb-ops-latest.tar.gz -C publish/kb-ops .
-      - cp publish/kb-ops-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/kb-ops-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/kb-ops-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/kb-ops-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ kb-ops 构建完成"
 
   - name: kb-ops-deploy
@@ -147,7 +146,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-kb-ops.sh kb-ops-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh kb-ops-latest.tar.gz
 
   # ==================== 3. kb-ops-web 运维平台前端 ====================
   - name: kb-ops-web-build
@@ -179,8 +178,8 @@ steps:
       - ls -lh publish/kb-ops-web/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/kb-ops-web-latest.tar.gz -C publish/kb-ops-web .
-      - cp publish/kb-ops-web-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/kb-ops-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/kb-ops-web-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/kb-ops-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ kb-ops-web 构建完成"
 
   - name: kb-ops-web-deploy
@@ -199,7 +198,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
 
   # ==================== 4. infra-monitor-web 监控前端 ====================
   - name: infra-monitor-web-build
@@ -231,8 +230,8 @@ steps:
       - ls -lh publish/infra-monitor-web/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/infra-monitor-web-latest.tar.gz -C publish/infra-monitor-web .
-      - cp publish/infra-monitor-web-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/infra-monitor-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/infra-monitor-web-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/infra-monitor-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ infra-monitor-web 构建完成"
 
   - name: infra-monitor-web-deploy
@@ -251,7 +250,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 
   # ==================== 5. infra-monitor 基础设施监控 ====================
   - name: infra-monitor-build
@@ -277,8 +276,8 @@ steps:
       - ls -lh publish/infra-monitor/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/infra-monitor-latest.tar.gz -C publish/infra-monitor .
-      - cp publish/infra-monitor-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/infra-monitor-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/infra-monitor-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/infra-monitor-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ infra-monitor 构建完成"
 
   - name: infra-monitor-deploy
@@ -297,7 +296,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 
   # ==================== 6. active-manager 激活码系统 ====================
   - name: active-manager-build
@@ -323,8 +322,8 @@ steps:
       - ls -lh publish/active-manager/
       - echo ">>> [3/3] 打包并推送到共享目录 <<<"
       - tar czf publish/active-manager-latest.tar.gz -C publish/active-manager .
-      - cp publish/active-manager-latest.tar.gz /mnt/shared/devtools/publish/
-      - test -f /mnt/shared/devtools/publish/active-manager-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
+      - cp publish/active-manager-latest.tar.gz /mnt/shared/woodDeploy/publish/
+      - test -f /mnt/shared/woodDeploy/publish/active-manager-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
       - echo "✅ active-manager 构建完成"
 
   - name: active-manager-deploy
@@ -343,7 +342,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/devtools/ci/deploy-active-manager.sh active-manager-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy-active-manager.sh active-manager-latest.tar.gz
 
   # ==================== 清理: 删除残留Volume+构建缓存 (仅全量部署时) ====================
   - name: cleanup
