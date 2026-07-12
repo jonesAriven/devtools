@@ -35,3 +35,6 @@ activation:
     private-key-path: rsa_keys/private_key.pem
     public-key-path: rsa_keys/public_key.pem
     key-size: 2048
+
+download:
+  base-dir: /app/downloads

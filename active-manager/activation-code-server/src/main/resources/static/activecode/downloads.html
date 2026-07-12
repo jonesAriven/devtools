@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>工具下载 - QRCodeTool 二维码工具</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea'/%3E%3Cstop offset='100%25' style='stop-color:%23764ba2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .container { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 720px; width: 100%; overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 28px 36px; color: #fff; display: flex; align-items: center; gap: 14px; }
+        .header-icon { width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .header h1 { font-size: 20px; font-weight: 700; }
+        .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+        .body { padding: 28px 36px; }
+
+        /* 工具介绍卡片 */
+        .tool-intro { background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%); border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; border-left: 4px solid #667eea; }
+        .tool-intro h2 { font-size: 15px; color: #333; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .tool-intro h2 .badge { font-size: 11px; background: #667eea; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+        .tool-intro p { font-size: 13px; color: #666; line-height: 1.6; }
+        .feature-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: #fff; color: #667eea; border: 1px solid #c7d2fe; }
+
+        /* 版本列表 */
+        .section-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .version-list { display: flex; flex-direction: column; gap: 10px; }
+        .version-item { display: flex; align-items: center; padding: 14px 18px; background: #fafbff; border: 1px solid #e8e8f0; border-radius: 10px; transition: all 0.2s; }
+        .version-item:hover { border-color: #667eea; background: #f0f4ff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.1); }
+        .version-item.latest { border-color: #52c41a; background: #f6ffed; }
+        .version-item.latest:hover { border-color: #52c41a; background: #ecfecc; box-shadow: 0 4px 12px rgba(82,196,26,0.1); }
+        .ver-info { flex: 1; min-width: 0; }
+        .ver-name { font-size: 14px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ver-meta { font-size: 12px; color: #888; margin-top: 3px; display: flex; gap: 12px; }
+        .ver-meta span { display: flex; align-items: center; gap: 3px; }
+        .btn-download { padding: 8px 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; white-space: nowrap; }
+        .btn-download:hover { opacity: 0.9; transform: scale(1.02); }
+        .latest-badge { font-size: 10px; background: #52c41a; color: #fff; padding: 2px 8px; border-radius: 8px; font-weight: 600; margin-left: 8px; }
+
+        /* 空状态 */
+        .empty { text-align: center; padding: 50px 20px; color: #aaa; }
+        .empty .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty p { font-size: 14px; }
+
+        /* 加载状态 */
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #e8e8f0; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 错误 */
+        .error-box { text-align: center; padding: 30px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; color: #dc2626; font-size: 13px; }
+
+        /* 返回链接 */
+        .back-link { display: inline-block; margin-bottom: 16px; font-size: 13px; color: #667eea; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">📥</div>
+            <div>
+                <h1>工具下载</h1>
+                <p>QRCodeTool 二维码扫描与生成工具</p>
+            </div>
+        </div>
+
+        <div class="body">
+            <!-- 返回入口 -->
+            <a class="back-link" href="#" onclick="history.back(); return false;">← 返回</a>
+
+            <!-- 工具介绍 -->
+            <div class="tool-intro">
+                <h2>QRCodeTool <span class="badge">v3.x C++ 版</span></h2>
+                <p>轻量级 Windows 二维码生成与识别工具，纯 Win32 API 开发，零运行时依赖，单文件仅 ~1.4MB。</p>
+                <div class="feature-tags">
+                    <span class="tag">📷 截图识别</span>
+                    <span class="tag">📁 图片识别</span>
+                    <span class="tag">✨ 文字转二维码</span>
+                    <span class="tag">📑 多页二维码</span>
+                    <span class="tag">🔐 激活码验证</span>
+                    <span class="tag">⌨️ 全局快捷键</span>
+                    <span class="tag">🗜️ 仅 1.4MB</span>
+                </div>
+            </div>
+
+            <!-- 版本列表 -->
+            <div class="section-title">📦 可下载版本</div>
+            <div id="versionList" class="version-list">
+                <div class="loading"><div class="spinner"></div><br>加载版本列表...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadVersions() {
+            const container = document.getElementById('versionList');
+            try {
+                const resp = await fetch('/activecode/api/download/list');
+                const data = await resp.json();
+
+                if (!data.success || !data.data || data.data.length === 0) {
+                    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>' + (data.message || '暂无可下载的版本') + '</p></div>';
+                    return;
+                }
+
+                const versions = data.data;
+                container.innerHTML = versions.map((v, i) => {
+                    const isLatest = i === 0;
+                    const dateStr = new Date(v.lastModified).toLocaleString('zh-CN', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    return `
+                        <div class="version-item ${isLatest ? 'latest' : ''}">
+                            <div class="ver-info">
+                                <div class="ver-name">
+                                    📌 ${v.filename}
+                                    ${isLatest ? '<span class="latest-badge">最新版</span>' : ''}
+                                </div>
+                                <div class="ver-meta">
+                                    <span>📦 ${v.sizeFormatted}</span>
+                                    <span>🕐 ${dateStr}</span>
+                                </div>
+                            </div>
+                            <a class="btn-download" href="/activecode/api/download/${encodeURIComponent(v.filename)}" onclick="handleDownload(event, this)">
+                                ⬇ 下载
+                            </a>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="error-box">加载失败: ' + e.message + '</div>';
+            }
+        }
+
+        function handleDownload(e, btn) {
+            // 显示下载中状态
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 准备中...';
+            btn.style.pointerEvents = 'none';
+
+            // 恢复按钮（即使下载失败也恢复）
+            setTimeout(() => {
+                if (btn.textContent === '⏳ 准备中...') {
+                    btn.textContent = originalText;
+                    btn.style.pointerEvents = '';
+                }
+            }, 5000);
+        }
+
+        // 页面加载时获取版本列表
+        loadVersions();
+    </script>
+</body>
+</html>

@@ -20,6 +20,8 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=tools
       - SPRING_DATASOURCE_PASSWORD=toolsmarschat
+    volumes:
+      - "D:\\huliang\\java\\ideaworkspace\\www\\download\\QRCodeTools:/app/downloads:ro"
     networks:
       - activecode-net
 

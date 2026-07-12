@@ -42,6 +42,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/activation/verify",
                         "/activecode/api/activation/generate",
                         "/activecode/index.html",
+                        "/activecode/downloads.html",
+                        "/activecode/api/download/**",
                         "/favicon.ico"
                 );
     }

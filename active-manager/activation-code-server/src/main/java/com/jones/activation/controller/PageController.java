@@ -37,6 +37,11 @@ public class PageController {
         return readStaticFile("activecode/index.html");
     }
 
+    @GetMapping("/activecode/downloads.html")
+    public ResponseEntity<String> downloadsPage() throws IOException {
+        return readStaticFile("activecode/downloads.html");
+    }
+
     private ResponseEntity<String> readStaticFile(String path) throws IOException {
         ClassPathResource resource = new ClassPathResource("static/" + path);
         String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);

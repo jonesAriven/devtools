@@ -19,6 +19,9 @@ if not exist %CMAKE% (
 set BUILD_DIR=build
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 
+set SHARED_DIR=D:\huliang\java\ideaworkspace\www\download\QRCodeTools
+if not exist %SHARED_DIR% mkdir %SHARED_DIR%
+
 echo [1/3] Configuring with CMake...
 %CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (
@@ -41,7 +44,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [3/3] Build complete!
+echo [3/4] Build complete!
 echo.
 echo Output: %BUILD_DIR%\bin\Release\QRCodeTool.exe
 echo.
@@ -51,5 +54,18 @@ if exist %BUILD_DIR%\bin\Release\QRCodeTool.exe (
         echo Size: %%~zA bytes
     )
 )
+
+echo.
+echo [4/4] Copying to shared download directory...
+for %%F in (%BUILD_DIR%\bin\Release\QRCodeTool-*.exe) do (
+    copy /Y "%%F" "%SHARED_DIR%\" >nul
+    if !errorlevel! equ 0 (
+        echo   OK  Copied: %%~nxF → %SHARED_DIR%
+    ) else (
+        echo   FAIL Copy to %SHARED_DIR% failed!
+    )
+)
+echo   Shared dir: %SHARED_DIR%
+echo.
 
 pause
