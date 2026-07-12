@@ -7,12 +7,14 @@ check-pipeline.py - 查询 Woodpecker CI 流水线状态
     python check-pipeline.py [流水线编号]
     python check-pipeline.py --recent [N]    查看最近 N 条触发记录
     python check-pipeline.py --watch [编号]  持续监控（每10秒刷新）
+    python check-pipeline.py --alias <别名>  用别名查询
 
 示例:
-    python check-pipeline.py 166             查询指定流水线
+    python check-pipeline.py 168             查询指定流水线
     python check-pipeline.py                 查询最近一条
     python check-pipeline.py --recent 5      查看最近5条触发记录
-    python check-pipeline.py --watch 166     持续监控 #166
+    python check-pipeline.py --watch 168     持续监控 #168
+    python check-pipeline.py --alias active-manager  用别名查询
 
 环境变量:
     WOODPECKER_TOKEN - Woodpecker API Token
@@ -33,6 +35,7 @@ REPO_ID = 1
 WOODPECKER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoidXNlciIsInVzZXItaWQiOiIxIn0.471qau5gcvZNQnxV4KfpE5VMnZ_9Q16IzNMESLfdmE4"
 
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pipeline-history.json")
+ALIAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pipeline-aliases.json")
 
 STATUS_ICONS = {
     "pending": "⏳",
@@ -262,6 +265,16 @@ def watch_pipeline(pipeline_num=None, interval=10):
         print("\n[监控] 已停止\n")
 
 
+def load_aliases():
+    if os.path.exists(ALIAS_FILE):
+        try:
+            with open(ALIAS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
 def main():
     args = sys.argv[1:]
     
@@ -281,6 +294,29 @@ def main():
             if a == "--watch" and i + 1 < len(args) and args[i+1].isdigit():
                 num = int(args[i+1])
         watch_pipeline(num)
+        return
+    
+    # --alias: 用别名查询
+    if "--alias" in args:
+        idx = args.index("--alias")
+        if idx + 1 >= len(args):
+            print("[错误] --alias 需要指定别名")
+            print("  示例: python check-pipeline.py --alias active-manager")
+            sys.exit(1)
+        
+        alias_name = args[idx + 1]
+        aliases = load_aliases()
+        base_num = aliases.get(alias_name)
+        
+        if not base_num:
+            print(f"[错误] 别名 '{alias_name}' 尚未注册")
+            print("  已注册的别名:")
+            for a, n in sorted(aliases.items()):
+                print(f"    {a} -> #{n}")
+            sys.exit(1)
+        
+        # 查询该别名的基准编号
+        query_pipeline(int(base_num))
         return
     
     # 默认：查询流水线
