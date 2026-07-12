@@ -267,10 +267,7 @@ compose_down_all() {
 
   cd "${work_dir}"
   if docker compose -p "${project}" -f "${compose_file}" ps -q 2>/dev/null | grep -q .; then
-    _heartbeat_start "docker compose down 停止容器" &
-    _HB_PID=$!
     docker compose -p "${project}" -f "${compose_file}" down --remove-orphans --timeout 30 2>&1 || true
-    _heartbeat_stop
     log_ok "compose down 完成"
     sleep 3
   else
@@ -317,16 +314,15 @@ compose_up_services() {
   local services=("$@")
 
   cd "${work_dir}"
-  _heartbeat_start "docker compose up 启动服务" &
-  _HB_PID=$!
+  log_info "等待 Docker 构建锁..."
   # flock 互斥锁: 防止多个 deploy 并行构建争抢 Docker 资源
   (
     flock -x 9
+    echo "  🔓 获取锁，开始构建: ${services[*]}"
     docker compose -p "${project}" -f "${compose_file}" \
       up -d --build --force-recreate --no-deps "${services[@]}" 2>&1
   ) 9>/tmp/docker-build.lock
   local COMPOSE_EXIT=$?
-  _heartbeat_stop
 
   echo ""
   if [ ${COMPOSE_EXIT} -ne 0 ]; then
@@ -346,11 +342,8 @@ compose_up_all() {
   local compose_file="$3"
 
   cd "${work_dir}"
-  _heartbeat_start "docker compose up 启动服务" &
-  _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \
     up -d --build --force-recreate --no-deps --remove-orphans 2>&1
-  _heartbeat_stop
 
   echo ""
   log_ok "服务启动完成"
