@@ -37,8 +37,9 @@ NC='\033[0m'
 # ====== 加载公共变量 ======
 # env.sh 定义 SHARED_DIR/CI_DIR/DEPLOY_BASE/GIT_REPO 等常量
 # 兼容处理：如果 env.sh 不在同目录，手动定义
-if [ -f "$(dirname "${BASH_SOURCE[0]}")/env.sh" ]; then
-  source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+_env_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "${_env_dir}/env.sh" ]; then
+  source "${_env_dir}/env.sh"
 else
   readonly SHARED_DIR="/mnt/shared/woodScript/publish"
   readonly CI_DIR="/mnt/shared/woodScript/cd"
