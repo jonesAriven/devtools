@@ -12,9 +12,10 @@ trap '' TERM
 # EXIT 清理函数（独立定义，避免 trap 中嵌套引号导致 EOF 解析错误）
 _cleanup() {
   local _exit_code=$?
+  set +e  # trap 中禁用 set -e，防止清理函数内的失败导致脚本异常退出
   echo ""
   echo "[WARN] 收到 EXIT 信号，正在清理..."
-  _heartbeat_stop 2>/dev/null || true
+  _heartbeat_stop 2>/dev/null
   exit ${_exit_code}
 }
 trap _cleanup EXIT
@@ -84,9 +85,10 @@ _heartbeat_start() {
 
 _heartbeat_stop() {
   # 杀整个进程组（包括 sleep 子进程），防止孤儿 sleep
-  pkill -P ${_HB_PID} 2>/dev/null
-  kill ${_HB_PID} 2>/dev/null
-  wait ${_HB_PID} 2>/dev/null
+  # 注意: 不用 set -e 兼容的方式，pkill/kill/wait 失败是正常的
+  pkill -P ${_HB_PID} 2>/dev/null || true
+  kill ${_HB_PID} 2>/dev/null || true
+  wait ${_HB_PID} 2>/dev/null || true
 }
 
 # ====== 验证产物 ======
