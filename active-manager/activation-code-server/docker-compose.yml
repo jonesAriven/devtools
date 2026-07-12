@@ -27,8 +27,8 @@ services:
     #   Windows本地开发: D:\huliang\java\ideaworkspace\www\download\QRCodeTools
     #   内网Debian(通过SMB挂载): /mnt/smb/www/download/QRCodeTools
     #   如目录不存在可注释掉此行，下载功能将返回空列表
-    # volumes:
-    #   - "/path/to/www/download/QRCodeTools:/app/downloads:ro"
+    volumes:
+      - "/mnt/shared/www/download/QRCodeTools:/app/downloads:ro"
     networks:
       - activecode-net
 
