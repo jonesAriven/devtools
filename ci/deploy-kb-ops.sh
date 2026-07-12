@@ -51,4 +51,4 @@ log_step 6 6 "健康检查 & 清理"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
 
-log_footer "${APP_NAME}" "${TAR_FILE}" "  后端: http://localhost:8084"
+log_footer "${APP_NAME}" "${TAR_FILE}" "Backend: http://localhost:8084"
