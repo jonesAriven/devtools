@@ -82,7 +82,10 @@ _heartbeat_start() {
 }
 
 _heartbeat_stop() {
-  kill ${_HB_PID} 2>/dev/null; wait ${_HB_PID} 2>/dev/null
+  # 杀整个进程组（包括 sleep 子进程），防止孤儿 sleep
+  pkill -P ${_HB_PID} 2>/dev/null
+  kill ${_HB_PID} 2>/dev/null
+  wait ${_HB_PID} 2>/dev/null
 }
 
 # ====== 验证产物 ======
