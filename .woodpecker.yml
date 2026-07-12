@@ -45,9 +45,9 @@ steps:
       - sed -i 's/\r$//' /mnt/shared/devtools/ci/*.sh
       - chmod +x /mnt/shared/devtools/ci/*.sh
       - echo "=== Syntax check ==="
-      - bash -n /mnt/shared/devtools/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"
-      - bash -n /mnt/shared/devtools/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"
-      - bash -n /mnt/shared/devtools/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"
+      - 'bash -n /mnt/shared/devtools/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"'
+      - 'bash -n /mnt/shared/devtools/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"'
+      - 'bash -n /mnt/shared/devtools/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"'
       - echo "CI scripts synced"
       - ls -la /mnt/shared/devtools/ci/
       - wc -l /mnt/shared/devtools/ci/*.sh
