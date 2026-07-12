@@ -175,9 +175,13 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
-      - SPRING_DATASOURCE_URL=jdbc:mysql://platform-mysql:3306/kb_ops?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - MYSQL_HOST=platform-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=kb_ops
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
+      - REDIS_HOST=platform-redis
+      - REDIS_PORT=6379
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
       - KB_GATEWAY_URL=http://kb-gateway:8080
     extra_hosts:

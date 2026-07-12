@@ -19,7 +19,7 @@ APP_DIR="${GIT_REPO}/kb-ops"
 COMPOSE_PROJECT="kb-app"
 COMPOSE_FILE="docker-compose.app.yml"
 SERVICES=("kb-ops")
-HEALTH_URL="http://localhost:8084/actuator/health"
+HEALTH_URL="http://localhost:8084/kb-ops/actuator/health"
 APP_NAME="kb-ops"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
