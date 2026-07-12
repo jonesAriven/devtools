@@ -92,7 +92,7 @@ steps:
 
   # ==================== kb-ops-web (运维平台前端) ====================
   - name: kb-ops-web-build
-    image: node:20-alpine
+    image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
     depends_on: [sync-ci-scripts]
@@ -116,7 +116,7 @@ steps:
 
   # ==================== infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
-    image: node:20-alpine
+    image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
     depends_on: [sync-ci-scripts]
