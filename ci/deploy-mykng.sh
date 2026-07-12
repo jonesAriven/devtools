@@ -14,12 +14,12 @@ set -euo pipefail
 source /mnt/shared/woodDeploy/ci/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
+TAR_FILE="${1:?missing param: usage deploy-mykng.sh tar.gz}"
 COMPOSE_PROJECT="kb-app"
 COMPOSE_FILE="docker-compose.app.yml"
 SERVICES=("kb-gateway" "kb-auth" "kb-file" "kb-knowledge" "kb-intelligence")
 HEALTH_URL="http://localhost:8090/actuator/health"
-APP_NAME="📘 mykng 知识库微服务"
+APP_NAME="mykng"
 
 # JAR 文件名映射
 declare -A JAR_MAP=(

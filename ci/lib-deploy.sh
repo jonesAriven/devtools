@@ -32,13 +32,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# ====== 常量 ======
-readonly SHARED_DIR="/mnt/shared/woodDeploy/publish"
-readonly CI_DIR="/mnt/shared/woodDeploy/ci"
-readonly DEPLOY_BASE="/root/kb-deploy"
-readonly GIT_REPO="/root/devtools"
-readonly HEALTH_MAX_RETRIES=24
-readonly HEALTH_INTERVAL=10
+# ====== 加载公共变量 ======
+# env.sh 定义 SHARED_DIR/CI_DIR/DEPLOY_BASE/GIT_REPO 等常量
+# 兼容处理：如果 env.sh 不在同目录，手动定义
+if [ -f "$(dirname "${BASH_SOURCE[0]}")/env.sh" ]; then
+  source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+else
+  readonly SHARED_DIR="/mnt/shared/woodDeploy/publish"
+  readonly CI_DIR="/mnt/shared/woodDeploy/ci"
+  readonly DEPLOY_BASE="/root/kb-deploy"
+  readonly GIT_REPO="/root/devtools"
+  readonly HEALTH_MAX_RETRIES=24
+  readonly HEALTH_INTERVAL=10
+fi
 
 # ====== 日志函数 ======
 log_header() {
@@ -311,7 +317,7 @@ compose_up_services() {
   _heartbeat_start "docker compose up 启动服务" &
   _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \
-    up -d --build --force-recreate "${services[@]}" 2>&1
+    up -d --build --force-recreate --no-deps "${services[@]}" 2>&1
   local COMPOSE_EXIT=$?
   _heartbeat_stop
 
@@ -336,7 +342,7 @@ compose_up_all() {
   _heartbeat_start "docker compose up 启动服务" &
   _HB_PID=$!
   docker compose -p "${project}" -f "${compose_file}" \
-    up -d --build --force-recreate --remove-orphans 2>&1
+    up -d --build --force-recreate --no-deps --remove-orphans 2>&1
   _heartbeat_stop
 
   echo ""

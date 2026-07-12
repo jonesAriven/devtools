@@ -1,28 +1,29 @@
 # ============================================================
 # Woodpecker CI — devtools 统一流水线
 # ============================================================
-# 架构: 6条独立 CI→CD 链，完全并行，互不依赖
+# 架构: 6条 build→deploy 链，depends_on 控制串并行
 #
-#   sync-ci-scripts (共享第一步)
-#     ├── mykng-build → mykng-deploy                        (5个Java微服务)
-#     ├── kb-ops-build → kb-ops-deploy                       (1个Java微服务)
-#     ├── kb-ops-web-build → kb-ops-web-deploy               (1个前端)
-#     ├── infra-monitor-web-build → infra-monitor-web-deploy  (1个前端)
-#     ├── infra-monitor-build → infra-monitor-deploy          (1个Java)
-#     └── active-manager-build → active-manager-deploy        (1个Java)
-#                                                            ↓
-#                                                         cleanup
+# 串并行规则:
+#   - 6个 build 全并行 (各自独立 CI 容器)
+#   - 同 compose project 的 deploy 串行 (depends_on 控制)
+#   - 不同 compose project 的 deploy 并行
+#   - 改串并行只需动 depends_on，不用改脚本
 #
-# 参数化 (手动触发时设置 DEPLOY_TARGET 变量):
-#   all (默认)          → 部署全部 6 个项目
-#   mykng               → 仅部署 mykng (5个微服务)
-#   kb-ops              → 仅部署 kb-ops
-#   kb-ops-web          → 仅部署 kb-ops-web 前端
-#   infra-monitor-web   → 仅部署 infra-monitor-web 前端
-#   infra-monitor       → 仅部署 infra-monitor
-#   active-manager      → 仅部署 active-manager
+# 依赖图:
 #
-# push 事件: 自动部署全部
+#   sync-ci-scripts
+#     ├── mykng-build ─────→ mykng-deploy ──────────────────┐
+#     ├── kb-ops-build ────→ kb-ops-deploy (after mykng)    │ kb-app 串行
+#     ├── kb-ops-web-build → kb-ops-web-deploy ──────────┐   │
+#     ├── infra-web-build → infra-web-deploy (after ops-web) │ kb-web 串行
+#     ├── infra-mon-build → infra-mon-deploy             │   │ 独立并行
+#     └── active-mgr-build → active-mgr-deploy           │   │ 独立并行
+#                                                         ↓   ↓
+#                                                      cleanup
+#
+# 参数化 (手动触发时设置 DEPLOY_TARGET):
+#   all (默认)          → 全部
+#   mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager
 # ============================================================
 
 when:
@@ -45,14 +46,25 @@ steps:
       - sed -i 's/\r$//' /mnt/shared/woodDeploy/ci/*.sh
       - chmod +x /mnt/shared/woodDeploy/ci/*.sh
       - echo "=== Syntax check ==="
-      - 'bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"'
-      - echo "CI scripts synced to woodDeploy"
+      - 'bash -n /mnt/shared/woodDeploy/ci/env.sh && echo "env.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/lib-build.sh && echo "lib-build.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-mykng.sh && echo "build-mykng.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-kb-ops.sh && echo "build-kb-ops.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-kb-ops-web.sh && echo "build-kb-ops-web.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-infra-monitor-web.sh && echo "build-infra-monitor-web.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-infra-monitor.sh && echo "build-infra-monitor.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/build-active-manager.sh && echo "build-active-manager.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops-web.sh && echo "deploy-kb-ops-web.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-infra-monitor-web.sh && echo "deploy-infra-monitor-web.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-infra-monitor.sh && echo "deploy-infra-monitor.sh: OK"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-active-manager.sh && echo "deploy-active-manager.sh: OK"'
+      - echo "=== CI scripts synced ==="
       - ls -la /mnt/shared/woodDeploy/ci/
-      - wc -l /mnt/shared/woodDeploy/ci/*.sh
 
-  # ==================== 1. mykng 知识库 (5个Java微服务) ====================
+  # ==================== 1. mykng (5个Java微服务) ====================
   - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -66,23 +78,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"'
     commands:
-      - set -e
-      - echo ">>> [1/3] Maven 编译 mykng (5个微服务) <<<"
-      - cd mykng/kb-parent && mvn clean package -DskipTests -B -V -ntp -T 2C -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
-      - cd ../..
-      - echo ">>> [2/3] 收集构建产物 <<<"
-      - mkdir -p publish/mykng
-      - cp mykng/kb-gateway/target/kb-gateway.jar publish/mykng/ && echo "  ✅ kb-gateway"
-      - cp mykng/kb-auth/target/kb-auth.jar publish/mykng/ && echo "  ✅ kb-auth"
-      - cp mykng/kb-file/target/kb-file.jar publish/mykng/ && echo "  ✅ kb-file"
-      - cp mykng/kb-knowledge/target/kb-knowledge.jar publish/mykng/ && echo "  ✅ kb-knowledge"
-      - cp mykng/kb-intelligence/target/kb-intelligence.jar publish/mykng/ && echo "  ✅ kb-intelligence"
-      - ls -lh publish/mykng/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/mykng-latest.tar.gz -C publish/mykng .
-      - cp publish/mykng-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/mykng-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ mykng 构建完成"
+      - bash ci/build-mykng.sh
 
   - name: mykng-deploy
     image: appleboy/drone-ssh
@@ -102,7 +98,7 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-mykng.sh mykng-latest.tar.gz
 
-  # ==================== 2. kb-ops 运维平台 (独立Java微服务) ====================
+  # ==================== 2. kb-ops (运维平台后端) ====================
   - name: kb-ops-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -116,23 +112,11 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"'
     commands:
-      - set -e
-      - echo ">>> [1/3] Maven 编译 kb-ops <<<"
-      - cd kb-ops && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
-      - cd ..
-      - echo ">>> [2/3] 收集构建产物 <<<"
-      - mkdir -p publish/kb-ops
-      - cp kb-ops/target/kb-ops.jar publish/kb-ops/
-      - ls -lh publish/kb-ops/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/kb-ops-latest.tar.gz -C publish/kb-ops .
-      - cp publish/kb-ops-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/kb-ops-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ kb-ops 构建完成"
+      - bash ci/build-kb-ops.sh
 
   - name: kb-ops-deploy
     image: appleboy/drone-ssh
-    depends_on: [kb-ops-build]
+    depends_on: [kb-ops-build, mykng-deploy]
     when:
       - event: push
       - event: manual
@@ -148,7 +132,7 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh kb-ops-latest.tar.gz
 
-  # ==================== 3. kb-ops-web 运维平台前端 ====================
+  # ==================== 3. kb-ops-web (运维平台前端) ====================
   - name: kb-ops-web-build
     image: node:20-alpine
     volumes:
@@ -159,28 +143,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"'
     commands:
-      - set -e
-      - npm install -g pnpm
-      - pnpm config set registry http://192.168.31.105:8081/repository/npm-public/
-      - pnpm config set fetch-retries 5
-      - pnpm config set fetch-retry-factor 2
-      - pnpm config set fetch-retry-mintimeout 20000
-      - pnpm config set fetch-retry-maxtimeout 120000
-      - pnpm config set network-concurrency 1
-      - echo ">>> [1/3] 构建 kb-ops-web <<<"
-      - cd kb-ops/kb-ops-web
-      - pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
-      - pnpm build
-      - cd ../..
-      - echo ">>> [2/3] 收集前端产物 <<<"
-      - mkdir -p publish/kb-ops-web
-      - cp -r kb-ops/kb-ops-web/dist/* publish/kb-ops-web/
-      - ls -lh publish/kb-ops-web/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/kb-ops-web-latest.tar.gz -C publish/kb-ops-web .
-      - cp publish/kb-ops-web-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/kb-ops-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ kb-ops-web 构建完成"
+      - bash ci/build-kb-ops-web.sh
 
   - name: kb-ops-web-deploy
     image: appleboy/drone-ssh
@@ -200,7 +163,7 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
 
-  # ==================== 4. infra-monitor-web 监控前端 ====================
+  # ==================== 4. infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
     image: node:20-alpine
     volumes:
@@ -211,32 +174,11 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"'
     commands:
-      - set -e
-      - npm install -g pnpm
-      - pnpm config set registry http://192.168.31.105:8081/repository/npm-public/
-      - pnpm config set fetch-retries 5
-      - pnpm config set fetch-retry-factor 2
-      - pnpm config set fetch-retry-mintimeout 20000
-      - pnpm config set fetch-retry-maxtimeout 120000
-      - pnpm config set network-concurrency 1
-      - echo ">>> [1/3] 构建 infra-monitor-web <<<"
-      - cd infra-monitor/infra-monitor-web
-      - pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
-      - pnpm build
-      - cd ../..
-      - echo ">>> [2/3] 收集前端产物 <<<"
-      - mkdir -p publish/infra-monitor-web
-      - cp -r infra-monitor/infra-monitor-web/dist/* publish/infra-monitor-web/
-      - ls -lh publish/infra-monitor-web/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/infra-monitor-web-latest.tar.gz -C publish/infra-monitor-web .
-      - cp publish/infra-monitor-web-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/infra-monitor-web-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ infra-monitor-web 构建完成"
+      - bash ci/build-infra-monitor-web.sh
 
   - name: infra-monitor-web-deploy
     image: appleboy/drone-ssh
-    depends_on: [infra-monitor-web-build]
+    depends_on: [infra-monitor-web-build, kb-ops-web-deploy]
     when:
       - event: push
       - event: manual
@@ -252,7 +194,7 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 
-  # ==================== 5. infra-monitor 基础设施监控 ====================
+  # ==================== 5. infra-monitor (监控后端) ====================
   - name: infra-monitor-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -266,19 +208,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"'
     commands:
-      - set -e
-      - echo ">>> [1/3] Maven 编译 infra-monitor <<<"
-      - cd infra-monitor/infra-monitor-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
-      - cd ../..
-      - echo ">>> [2/3] 收集构建产物 <<<"
-      - mkdir -p publish/infra-monitor
-      - cp infra-monitor/infra-monitor-server/target/infra-monitor.jar publish/infra-monitor/
-      - ls -lh publish/infra-monitor/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/infra-monitor-latest.tar.gz -C publish/infra-monitor .
-      - cp publish/infra-monitor-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/infra-monitor-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ infra-monitor 构建完成"
+      - bash ci/build-infra-monitor.sh
 
   - name: infra-monitor-deploy
     image: appleboy/drone-ssh
@@ -298,7 +228,7 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 
-  # ==================== 6. active-manager 激活码系统 ====================
+  # ==================== 6. active-manager (激活码系统) ====================
   - name: active-manager-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -312,19 +242,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"'
     commands:
-      - set -e
-      - echo ">>> [1/3] Maven 编译 active-manager <<<"
-      - cd active-manager/activation-code-server && mvn clean package -DskipTests -B -V -ntp -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository
-      - cd ../..
-      - echo ">>> [2/3] 收集构建产物 <<<"
-      - mkdir -p publish/active-manager
-      - cp active-manager/activation-code-server/target/activation-code-server-*.jar publish/active-manager/
-      - ls -lh publish/active-manager/
-      - echo ">>> [3/3] 打包并推送到共享目录 <<<"
-      - tar czf publish/active-manager-latest.tar.gz -C publish/active-manager .
-      - cp publish/active-manager-latest.tar.gz /mnt/shared/woodDeploy/publish/
-      - test -f /mnt/shared/woodDeploy/publish/active-manager-latest.tar.gz || { echo "❌ 产物未写入"; exit 1; }
-      - echo "✅ active-manager 构建完成"
+      - bash ci/build-active-manager.sh
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
@@ -344,10 +262,14 @@ steps:
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy-active-manager.sh active-manager-latest.tar.gz
 
-  # ==================== 清理: 删除残留Volume+构建缓存 (仅全量部署时) ====================
+  # ==================== 清理 ====================
   - name: cleanup
     image: appleboy/drone-ssh
-    depends_on: [mykng-deploy, kb-ops-deploy, kb-ops-web-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy]
+    depends_on:
+      - kb-ops-deploy
+      - infra-monitor-web-deploy
+      - infra-monitor-deploy
+      - active-manager-deploy
     when:
       - event: push
       - event: manual
@@ -361,9 +283,7 @@ steps:
       script_stop: false
       command_timeout: 5m
       script:
-        - docker volume ls -q | grep '^wp_' | xargs -r docker volume rm 2>/dev/null || true
         - docker container prune -f 2>/dev/null || true
-        - docker volume prune -f 2>/dev/null || true
-        - docker builder prune -f 2>/dev/null || true
         - docker image prune -f 2>/dev/null || true
-        - echo "✅ 清理完成"
+        - docker builder prune -f 2>/dev/null || true
+        - echo "cleanup done"

@@ -14,13 +14,13 @@ set -euo pipefail
 source /mnt/shared/woodDeploy/ci/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
+TAR_FILE="${1:?missing param: usage deploy-infra-monitor.sh tar.gz}"
 APP_DIR="${GIT_REPO}/infra-monitor/infra-monitor-server"
 COMPOSE_PROJECT="infra-monitor"
 COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
 SERVICES=("infra-monitor")
 HEALTH_URL="http://localhost:8088/infra/actuator/health"
-APP_NAME="📊 基础设施监控系统"
+APP_NAME="infra-monitor"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 

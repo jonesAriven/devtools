@@ -14,13 +14,13 @@ set -euo pipefail
 source /mnt/shared/woodDeploy/ci/lib-deploy.sh
 
 # ====== 配置 ======
-TAR_FILE="${1:?❌ 缺少参数! 用法: $0 <tar.gz文件名>}"
+TAR_FILE="${1:?missing param: usage deploy-active-manager.sh tar.gz}"
 APP_DIR="${GIT_REPO}/active-manager/activation-code-server"
 COMPOSE_PROJECT="activecode"
 COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
 SERVICES=("activation-code-server")
 HEALTH_URL="http://localhost:18080/activecode/login.html"
-APP_NAME="🔑 激活码管理系统"
+APP_NAME="active-manager"
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 
