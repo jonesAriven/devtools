@@ -11,10 +11,11 @@ trap '' TERM
 
 # EXIT 清理函数（独立定义，避免 trap 中嵌套引号导致 EOF 解析错误）
 _cleanup() {
+  local _exit_code=$?
   echo ""
   echo "[WARN] 收到 EXIT 信号，正在清理..."
-  _heartbeat_stop 2>/dev/null
-  exit 1
+  _heartbeat_stop 2>/dev/null || true
+  exit ${_exit_code}
 }
 trap _cleanup EXIT
 
