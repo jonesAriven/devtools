@@ -41,28 +41,14 @@ steps:
       - /mnt/shared:/mnt/shared
     commands:
       - mkdir -p /mnt/shared/woodDeploy/ci /mnt/shared/woodDeploy/publish
-      - rm -f /mnt/shared/woodDeploy/ci/*.sh
-      - for f in ci/*.sh; do cat "$f" > "/mnt/shared/woodDeploy/ci/$(basename "$f")"; done
-      - sed -i 's/\r$//' /mnt/shared/woodDeploy/ci/*.sh
-      - chmod +x /mnt/shared/woodDeploy/ci/*.sh
+      - rm -rf /mnt/shared/woodDeploy/ci
+      - find ci -name '*.sh' | while read f; do dst="/mnt/shared/woodDeploy/$f"; mkdir -p "$(dirname "$dst")"; cat "$f" > "$dst"; done
+      - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec sed -i 's/\r$//' {} +
+      - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec chmod +x {} +
       - echo "=== Syntax check ==="
-      - 'bash -n /mnt/shared/woodDeploy/ci/env.sh && echo "env.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/lib-build.sh && echo "lib-build.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-mykng.sh && echo "build-mykng.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-kb-ops.sh && echo "build-kb-ops.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-kb-ops-web.sh && echo "build-kb-ops-web.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-infra-monitor-web.sh && echo "build-infra-monitor-web.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-infra-monitor.sh && echo "build-infra-monitor.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/build-active-manager.sh && echo "build-active-manager.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops-web.sh && echo "deploy-kb-ops-web.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-infra-monitor-web.sh && echo "deploy-infra-monitor-web.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-infra-monitor.sh && echo "deploy-infra-monitor.sh: OK"'
-      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-active-manager.sh && echo "deploy-active-manager.sh: OK"'
+      - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec bash -n {} \; -print
       - echo "=== CI scripts synced ==="
-      - ls -la /mnt/shared/woodDeploy/ci/
+      - find /mnt/shared/woodDeploy/ci -type f | sort
 
   # ==================== 1. mykng (5个Java微服务) ====================
   - name: mykng-build
@@ -78,7 +64,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"'
     commands:
-      - bash ci/build-mykng.sh
+      - bash ci/build/build-mykng.sh
 
   - name: mykng-deploy
     image: appleboy/drone-ssh
@@ -96,7 +82,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-mykng.sh mykng-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-mykng.sh mykng-latest.tar.gz
 
   # ==================== 2. kb-ops (运维平台后端) ====================
   - name: kb-ops-build
@@ -112,7 +98,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"'
     commands:
-      - bash ci/build-kb-ops.sh
+      - bash ci/build/build-kb-ops.sh
 
   - name: kb-ops-deploy
     image: appleboy/drone-ssh
@@ -130,7 +116,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh kb-ops-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-kb-ops.sh kb-ops-latest.tar.gz
 
   # ==================== 3. kb-ops-web (运维平台前端) ====================
   - name: kb-ops-web-build
@@ -143,7 +129,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"'
     commands:
-      - bash ci/build-kb-ops-web.sh
+      - bash ci/build/build-kb-ops-web.sh
 
   - name: kb-ops-web-deploy
     image: appleboy/drone-ssh
@@ -161,7 +147,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
 
   # ==================== 4. infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
@@ -174,7 +160,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"'
     commands:
-      - bash ci/build-infra-monitor-web.sh
+      - bash ci/build/build-infra-monitor-web.sh
 
   - name: infra-monitor-web-deploy
     image: appleboy/drone-ssh
@@ -192,7 +178,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 
   # ==================== 5. infra-monitor (监控后端) ====================
   - name: infra-monitor-build
@@ -208,7 +194,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"'
     commands:
-      - bash ci/build-infra-monitor.sh
+      - bash ci/build/build-infra-monitor.sh
 
   - name: infra-monitor-deploy
     image: appleboy/drone-ssh
@@ -226,7 +212,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 
   # ==================== 6. active-manager (激活码系统) ====================
   - name: active-manager-build
@@ -242,7 +228,7 @@ steps:
       - event: manual
         evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"'
     commands:
-      - bash ci/build-active-manager.sh
+      - bash ci/build/build-active-manager.sh
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
@@ -260,7 +246,7 @@ steps:
       script_stop: false
       command_timeout: 30m
       script:
-        - bash /mnt/shared/woodDeploy/ci/deploy-active-manager.sh active-manager-latest.tar.gz
+        - bash /mnt/shared/woodDeploy/ci/deploy/deploy-active-manager.sh active-manager-latest.tar.gz
 
   # ==================== 清理 ====================
   - name: cleanup
