@@ -1,32 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-check-pipeline.py - 查询 Woodpecker CI 流水线状态
+check-pipeline.py - Woodpecker CI 流水线状态查询 & 日志查看
+
+通用脚本，所有项目共用。
 
 用法:
-    python check-pipeline.py [流水线编号]
-    python check-pipeline.py --recent [N]    查看最近 N 条触发记录
-    python check-pipeline.py --watch [编号]  持续监控（每10秒刷新）
-    python check-pipeline.py --alias <别名>  用别名查询
+    python check-pipeline.py [编号]              查询状态 + 所有步骤日志
+    python check-pipeline.py --log <编号>        只看所有步骤日志（不含头部信息）
+    python check-pipeline.py --watch [编号]      持续监控（每15秒刷新）
+    python check-pipeline.py --recent [N]        最近 N 条本地记录
 
 示例:
-    python check-pipeline.py 168             查询指定流水线
-    python check-pipeline.py                 查询最近一条
-    python check-pipeline.py --recent 5      查看最近5条触发记录
-    python check-pipeline.py --watch 168     持续监控 #168
-    python check-pipeline.py --alias active-manager  用别名查询
+    python check-pipeline.py 179                 # 完整查询：状态+所有步骤日志
+    python check-pipeline.py --log 179           # 纯日志模式
+    python check-pipeline.py --watch 179         # 持续监控到结束
+    python check-pipeline.py                    # 不给编号查最新一条
 
 环境变量:
-    WOODPECKER_TOKEN - Woodpecker API Token
-    WOODPECKER_URL   - Woodpecker 地址 (默认: https://woodci.marschat.online)
+    WOODPECKER_TOKEN - API Token (可选，脚本内置默认值)
+    WOODPECKER_URL   - Woodpecker 地址 (可选)
 """
 
 import os
 import sys
 import json
 import time
+import base64
 import urllib.request
-import urllib.error
 from datetime import datetime
 
 DEFAULT_URL = "https://woodci.marschat.online"
@@ -34,43 +35,22 @@ REPO_ID = 1
 
 WOODPECKER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoidXNlciIsInVzZXItaWQiOiIxIn0.471qau5gcvZNQnxV4KfpE5VMnZ_9Q16IzNMESLfdmE4"
 
-HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pipeline-history.json")
-ALIAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pipeline-aliases.json")
-
 STATUS_ICONS = {
-    "pending": "⏳",
-    "running": "🔄",
-    "success": "✅",
-    "failure": "❌",
-    "error": "💥",
-    "killed": "🔪",
-    "skipped": "⏭️",
-    "declined": "🚫",
-}
-
-STATE_ICONS = {
-    "pending": "⏳",
-    "running": "🔄",
-    "success": "✅",
-    "failure": "❌",
-    "error": "💥",
-    "killed": "🔪",
-    "skipped": "⏭️",
-    "declined": "🚫",
+    "pending": "⏳", "running": "🔄", "success": "✅",
+    "failure": "❌", "error": "💥", "killed": "🔪",
+    "skipped": "⏭️", "declined": "🚫",
 }
 
 PROJECT_DISPLAY = {
-    "mykng": "知识库(mykng)",
-    "kb-ops": "运维后台(kb-ops)",
-    "kb-ops-web": "运维前端(kb-ops-web)",
-    "infra-monitor": "监控(infra-monitor)",
-    "infra-monitor-web": "监控前端(im-web)",
-    "active-manager": "激活码(active-mgr)",
-    "portal-web": "门户前端(portal-web)",
-    "portal-server": "门户后端(portal-svr)",
+    "mykng": "知识库(mykng)", "kb-ops": "运维后台(kb-ops)",
+    "kb-ops-web": "运维前端(kb-ops-web)", "infra-monitor": "监控(infra-mon)",
+    "infra-monitor-web": "监控前端(im-web)", "active-manager": "激活码(active-mgr)",
+    "portal-web": "门户前端(portal-web)", "portal-server": "门户后端(portal-svr)",
     "all": "全量(all)",
 }
 
+
+# ==================== API ====================
 
 def get_token():
     return os.environ.get("WOODPECKER_TOKEN", WOODPECKER_TOKEN)
@@ -81,37 +61,74 @@ def get_url():
 
 
 def api_get(path):
-    """发送 GET 请求到 Woodpecker API"""
-    token = get_token()
-    base = get_url()
+    """GET 请求"""
     req = urllib.request.Request(
-        f"{base}{path}",
-        headers={"Authorization": f"Bearer {token}"}
+        f"{get_url()}{path}",
+        headers={"Authorization": f"Bearer {get_token()}"}
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def query_pipeline(pipeline_num=None):
-    """查询指定或最近的流水线状态"""
-    if pipeline_num:
-        path = f"/api/repos/{REPO_ID}/pipelines/{pipeline_num}"
-        data = api_get(path)
-        print_pipeline_detail(data)
-        return data
-    else:
-        # 查询最近一条
-        path = f"/api/repos/{REPO_ID}/pipelines?per_page=1&page=1&sort=-number"
-        result_list = api_get(path)
-        if not result_list:
-            print("[信息] 未找到任何流水线")
-            return None
-        print_pipeline_detail(result_list[0])
-        return result_list[0]
+# ==================== 日志 ====================
+
+def get_step_logs(pipeline_num, step_id, tail=30):
+    """获取步骤日志，Base64解码，返回行列表"""
+    try:
+        logs = api_get(f"/api/repos/{REPO_ID}/logs/{pipeline_num}/{step_id}")
+        lines = []
+        for entry in logs:
+            data_b64 = entry.get("data", "")
+            try:
+                decoded = base64.b64decode(data_b64).decode("utf-8", errors="replace")
+            except Exception:
+                decoded = data_b64
+            lines.append(decoded.rstrip())
+        if len(lines) > tail:
+            lines = lines[-tail:]
+        return lines
+    except Exception as e:
+        return [f"  [日志获取失败: {e}]"]
 
 
-def print_pipeline_detail(data):
-    """打印流水线详细信息"""
+def print_all_logs(pipeline_num, tail=30):
+    """打印流水线所有步骤的日志"""
+    data = api_get(f"/api/repos/{REPO_ID}/pipelines/{pipeline_num}")
+    num = data.get("number", "?")
+    
+    workflows = data.get("workflows", [])
+    if not workflows:
+        print("[信息] 无步骤信息")
+        return
+    
+    children = workflows[0].get("children", [])
+    if not children:
+        print("[信息] 无步骤")
+        return
+    
+    for step in children:
+        step_id = step.get("id")
+        name = step.get("name", "?")
+        state = step.get("state", "?")
+        icon = STATUS_ICONS.get(state, "❓")
+        
+        print(f"\n{'='*60}")
+        print(f"  #{num} → {name}  {icon} {state}")
+        print(f"{'='*60}")
+        
+        lines = get_step_logs(pipeline_num, step_id, tail)
+        if lines and not all(l.startswith("  [日志获取失败:") for l in lines):
+            for line in lines:
+                print(f"  {line}")
+        else:
+            print("  (无日志)")
+    print()
+
+
+# ==================== 状态详情 ====================
+
+def print_pipeline_detail(data, show_all_logs=True, log_tail=30):
+    """打印完整流水线信息 + 所有步骤日志"""
     num = data.get("number", "?")
     status = data.get("status", "?")
     event = data.get("event", "?")
@@ -124,23 +141,15 @@ def print_pipeline_detail(data):
     variables = data.get("variables", {})
 
     icon = STATUS_ICONS.get(status, "❓")
-    
-    # 尝试从本地历史获取备注
-    note = ""
-    history = load_history()
-    for h in history:
-        if h.get("number") == num:
-            note = h.get("note", "")
-            break
 
     created_dt = datetime.fromtimestamp(created_ts) if created_ts else None
     started_dt = datetime.fromtimestamp(started_ts) if started_ts else None
     finished_dt = datetime.fromtimestamp(finished_ts) if finished_ts else None
-    
-    # 计算目标项目显示名
+
     target = variables.get("DEPLOY_TARGET", "")
     target_display = PROJECT_DISPLAY.get(target, target) if target else "(全量)"
 
+    # ---- 头部信息 ----
     print(f"\n{'='*60}")
     print(f"  流水线 #{num}  {icon} {status.upper()}")
     print(f"{'='*60}")
@@ -156,137 +165,96 @@ def print_pipeline_detail(data):
         print(f"  完成时间: {finished_dt.strftime('%Y-%m-%d %H:%M:%S')}")
         duration = (finished_dt - started_dt).total_seconds() if started_dt else 0
         print(f"  耗时:     {duration:.0f}秒")
-    if note:
-        print(f"  备注:     {note}")
 
-    # 打印各步骤状态
+    # ---- 步骤摘要 ----
     workflows = data.get("workflows", [])
-    if workflows:
-        wf = workflows[0]
-        children = wf.get("children", [])
-        if children:
-            print(f"\n  步骤详情:")
-            print(f"  {'-'*56}")
-            for step in children:
-                name = step.get("name", "?")
-                state = step.get("state", "?")
-                s_icon = STATE_ICONS.get(state, "❓")
-                step_started = step.get("started", 0)
-                step_finished = step.get("finished", 0)
-                dur = ""
-                if step_started and step_finished:
-                    dur = f" ({step_finished - step_started}s)"
-                elif step_started and not step_finished:
-                    dur = " (运行中...)"
-                print(f"    {s_icon} {name:<30s} {state:<10s}{dur}")
-
-    base = get_url()
-    print(f"\n  查看: {base}/repos/{REPO_ID}/pipeline/{num}")
-    print()
-
-
-def load_history():
-    """加载触发历史"""
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return []
-
-
-def show_recent(count=10):
-    """显示最近的触发历史"""
-    history = load_history()
-    if not history:
-        print("[信息] 暂无触发历史记录")
-        print("       提示: 使用 trigger-pipeline.py 触发时会自动记录")
-        return
+    children = workflows[0].get("children", []) if workflows else []
     
-    recent = history[-count:] if count > 0 else history
-    
-    print(f"\n{'='*72}")
-    print(f"  最近 {len(recent)} 条流水线触发记录")
-    print(f"{'='*72}")
-    print(f"  {'编号':<8s} {'目标':<20s} {'分支':<6s} {'状态':<10s} {'时间':<18s} {'备注'}")
-    print(f"  {'-'*70}")
-    
-    for r in recent:
-        proj_display = PROJECT_DISPLAY.get(r.get("project", ""), r.get("project", ""))
-        note = r.get("note", "") or "-"
-        num_str = f"#{r.get('number','?')}"
-        print(f"  {num_str:<8s} {proj_display:<20s} {r.get('branch',''):<6s} {r.get('status','?'):<10s} {r.get('time',''):<18s} {note}")
-    
-    print(f"{'='*72}\n")
+    if children:
+        print(f"\n  步骤:")
+        print(f"  {'-'*56}")
+        for step in children:
+            name = step.get("name", "?")
+            state = step.get("state", "?")
+            s_icon = STATUS_ICONS.get(state, "❓")
+            step_started = step.get("started", 0)
+            step_finished = step.get("finished", 0)
+            dur = ""
+            if step_started and step_finished:
+                dur = f" ({step_finished - step_started}s)"
+            elif step_started and not step_finished:
+                dur = " (运行中...)"
+            print(f"    {s_icon} {name:<28s} {state:<10s}{dur}")
+
+    print(f"\n  查看: {get_url()}/repos/{REPO_ID}/pipeline/{num}")
+
+    # ---- 所有步骤日志 ----
+    if show_all_logs and children:
+        print(f"\n  {'╔'*20} 日志 {'╗'*20}")
+        for step in children:
+            step_id = step.get("id")
+            name = step.get("name", "?")
+            state = step.get("state", "?")
+            s_icon = STATUS_ICONS.get(state, "❓")
+            
+            print(f"\n  ┌─ {s_icon} {name} {'─'*max(0, 40-len(name)-4)}┐")
+            
+            lines = get_step_logs(num, step_id, tail=log_tail)
+            if lines and not all("[日志获取失败:" in l for l in lines):
+                for line in lines:
+                    print(f"  │ {line}")
+            else:
+                print(f"  │ (无日志)")
+            print(f"  └{'─'*56}┘")
+        print()
 
 
-def watch_pipeline(pipeline_num=None, interval=10):
-    """持续监控流水线状态"""
+# ==================== 监控 ====================
+
+def watch_pipeline(pipeline_num=None, interval=15):
+    """持续监控直到终态"""
     num = pipeline_num
     if not num:
-        # 获取最新一条
-        path = f"/api/repos/{REPO_ID}/pipelines?per_page=1&page=1&sort=-number"
-        result_list = api_get(path)
+        result_list = api_get(f"/api/repos/{REPO_ID}/pipelines?per_page=1&page=1&sort=-number")
         if result_list:
             num = result_list[0].get("number")
             print(f"[监控] 自动选择最新流水线 #{num}\n")
-    
+
     if not num:
         print("[错误] 无可监控的流水线")
         sys.exit(1)
-    
-    print(f"[监控] 每 {interval} 秒刷新流水线 #{num} 状态 (Ctrl+C 停止)\n")
-    
-    try:
-        while True:
-            try:
-                path = f"/api/repos/{REPO_ID}/pipelines/{num}"
-                data = api_get(path)
-                status = data.get("status", "?")
-                
-                # 清屏效果（用空行分隔）
-                print(f"\033[2J\033[H", end="")
-                print_pipeline_detail(data)
-                
-                # 终态则停止监控
-                if status in ("success", "failure", "error", "killed", "declined"):
-                    print(f"\n[监控] 流水线已结束 ({status})，监控停止\n")
-                    break
-                
-                time.sleep(interval)
-            except KeyboardInterrupt:
-                print("\n\n[监控] 用户中断\n")
-                break
-            except Exception as e:
-                print(f"[警告] 查询失败: {e}，{interval}秒后重试...")
-                time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\n[监控] 已停止\n")
 
+    print(f"[监控] 每 {interval}s 刷新 #{num} (Ctrl+C 停止)\n")
 
-def load_aliases():
-    if os.path.exists(ALIAS_FILE):
+    while True:
         try:
-            with open(ALIAS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+            data = api_get(f"/api/repos/{REPO_ID}/pipelines/{num}")
+            status = data.get("status", "?")
 
+            print("\033[2J\033[H", end="")
+            print_pipeline_detail(data, show_all_logs=True)
+
+            if status in ("success", "failure", "error", "killed", "declined"):
+                print(f"[监控] ══════════════════════════════")
+                print(f"[监控] 最终结果: {status.upper()}")
+                print(f"[监控] ══════════════════════════════\n")
+                break
+
+            print(f"[监控] {datetime.now().strftime('%H:%M:%S')} 下次: {interval}s后...\n")
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            print("\n[监控] 已停止\n")
+            break
+        except Exception as e:
+            print(f"[警告] 失败: {e}, {interval}s后重试...\n")
+            time.sleep(interval)
+
+
+# ==================== 主入口 ====================
 
 def main():
     args = sys.argv[1:]
-    
-    # --history / --recent: 显示触发历史
-    if "--history" in args or "--recent" in args:
-        count = 10
-        for i, a in enumerate(args):
-            if a in ("--history", "--recent") and i + 1 < len(args) and args[i+1].lstrip("-").isdigit():
-                count = int(args[i+1])
-        show_recent(count)
-        return
-    
+
     # --watch: 持续监控
     if "--watch" in args:
         num = None
@@ -295,38 +263,33 @@ def main():
                 num = int(args[i+1])
         watch_pipeline(num)
         return
-    
-    # --alias: 用别名查询
-    if "--alias" in args:
-        idx = args.index("--alias")
-        if idx + 1 >= len(args):
-            print("[错误] --alias 需要指定别名")
-            print("  示例: python check-pipeline.py --alias active-manager")
+
+    # --log: 纯日志模式
+    if "--log" in args:
+        idx = args.index("--log")
+        if idx + 1 >= len(args) or not args[idx+1].lstrip("-").isdigit():
+            print("用法: python check-pipeline.py --log <编号>")
             sys.exit(1)
-        
-        alias_name = args[idx + 1]
-        aliases = load_aliases()
-        base_num = aliases.get(alias_name)
-        
-        if not base_num:
-            print(f"[错误] 别名 '{alias_name}' 尚未注册")
-            print("  已注册的别名:")
-            for a, n in sorted(aliases.items()):
-                print(f"    {a} -> #{n}")
-            sys.exit(1)
-        
-        # 查询该别名的基准编号
-        query_pipeline(int(base_num))
+        print_all_logs(int(args[idx+1]))
         return
-    
-    # 默认：查询流水线
+
+    # 默认: 查询状态+日志
     pipeline_num = None
     for a in args:
-        if a.isdigit():
-            pipeline_num = int(a)
+        if a.lstrip("-").isdigit():
+            pipeline_num = int(a.lstrip("-"))
             break
-    
-    query_pipeline(pipeline_num)
+
+    if pipeline_num:
+        data = api_get(f"/api/repos/{REPO_ID}/pipelines/{pipeline_num}")
+        print_pipeline_detail(data, show_all_logs=True)
+    else:
+        # 无编号 → 查最新一条
+        result_list = api_get(f"/api/repos/{REPO_ID}/pipelines?per_page=1&page=1&sort=-number")
+        if result_list:
+            print_pipeline_detail(result_list[0], show_all_logs=True)
+        else:
+            print("[信息] 未找到任何流水线")
 
 
 if __name__ == "__main__":
