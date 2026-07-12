@@ -45,9 +45,9 @@ steps:
       - sed -i 's/\r$//' /mnt/shared/woodDeploy/ci/*.sh
       - chmod +x /mnt/shared/woodDeploy/ci/*.sh
       - echo "=== Syntax check ==="
-      - bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"
-      - bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"
-      - bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"
+      - 'bash -n /mnt/shared/woodDeploy/ci/lib-deploy.sh && echo "lib-deploy.sh: OK" || echo "lib-deploy.sh: SYNTAX ERROR"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-kb-ops.sh && echo "deploy-kb-ops.sh: OK" || echo "deploy-kb-ops.sh: SYNTAX ERROR"'
+      - 'bash -n /mnt/shared/woodDeploy/ci/deploy-mykng.sh && echo "deploy-mykng.sh: OK" || echo "deploy-mykng.sh: SYNTAX ERROR"'
       - echo "CI scripts synced to woodDeploy"
       - ls -la /mnt/shared/woodDeploy/ci/
       - wc -l /mnt/shared/woodDeploy/ci/*.sh
