@@ -1,37 +1,26 @@
 # ============================================================
 # Woodpecker CI — devtools 统一流水线
 # ============================================================
-# 架构: 6条 build→deploy 链，depends_on 控制串并行
-#
-# 串并行规则:
-#   - 6个 build 全并行 (各自独立 CI 容器)
-#   - 同 compose project 的 deploy 串行 (depends_on 控制)
-#   - 不同 compose project 的 deploy 并行
-#   - 改串并行只需动 depends_on，不用改脚本
+# 6条 build→deploy 链，depends_on 控制串并行
+# 改串并行只需动 depends_on，不用改脚本
 #
 # 依赖图:
-#
 #   sync-ci-scripts
-#     ├── mykng-build ─────→ mykng-deploy ──────────────────┐
-#     ├── kb-ops-build ────→ kb-ops-deploy (after mykng)    │ kb-app 串行
-#     ├── kb-ops-web-build → kb-ops-web-deploy ──────────┐   │
-#     ├── infra-web-build → infra-web-deploy (after ops-web) │ kb-web 串行
-#     ├── infra-mon-build → infra-mon-deploy             │   │ 独立并行
-#     └── active-mgr-build → active-mgr-deploy           │   │ 独立并行
-#                                                         ↓   ↓
-#                                                      cleanup
+#     ├── mykng-build ──→ mykng-deploy ─────────────────────┐
+#     ├── kb-ops-build ─→ kb-ops-deploy (after mykng)       │ kb-app 串行
+#     ├── kb-ops-web ──→ kb-ops-web-deploy ──────────────┐  │
+#     ├── infra-web ──→ infra-web-deploy (after ops-web) │  │ kb-web 串行
+#     ├── infra-mon ──→ infra-mon-deploy                │  │ 独立并行
+#     └── active-mgr ─→ active-mgr-deploy                │  │ 独立并行
+#                                                        ↓  ↓
+#                                                     cleanup
 #
-# 参数化 (手动触发时设置 DEPLOY_TARGET):
-#   all (默认)          → 全部
-#   mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager
+# DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager
 # ============================================================
 
 when:
-  event:
-    - manual
-    - push
-  branch:
-    - dev
+  event: [manual, push]
+  branch: [dev]
 
 steps:
   # ==================== 共享: 同步CI脚本 ====================
@@ -40,17 +29,15 @@ steps:
     volumes:
       - /mnt/shared:/mnt/shared
     commands:
-      - mkdir -p /mnt/shared/woodDeploy/ci /mnt/shared/woodDeploy/publish
+      - mkdir -p /mnt/shared/woodDeploy/publish
       - rm -rf /mnt/shared/woodDeploy/ci
       - find ci -name '*.sh' | while read f; do dst="/mnt/shared/woodDeploy/$f"; mkdir -p "$(dirname "$dst")"; cat "$f" > "$dst"; done
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec sed -i 's/\r$//' {} +
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec chmod +x {} +
       - echo "=== Syntax check ==="
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec bash -n {} \; -print
-      - echo "=== CI scripts synced ==="
-      - find /mnt/shared/woodDeploy/ci -type f | sort
 
-  # ==================== 1. mykng (5个Java微服务) ====================
+  # ==================== mykng (5个Java微服务) ====================
   - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -59,32 +46,25 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx2048m
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"' }]
     commands:
       - bash ci/build/build-mykng.sh
 
   - name: mykng-deploy
     image: appleboy/drone-ssh
     depends_on: [mykng-build]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "mykng"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-mykng.sh mykng-latest.tar.gz
 
-  # ==================== 2. kb-ops (运维平台后端) ====================
+  # ==================== kb-ops (运维平台后端) ====================
   - name: kb-ops-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -93,94 +73,73 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx1024m
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"' }]
     commands:
       - bash ci/build/build-kb-ops.sh
 
   - name: kb-ops-deploy
     image: appleboy/drone-ssh
     depends_on: [kb-ops-build, mykng-deploy]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-kb-ops.sh kb-ops-latest.tar.gz
 
-  # ==================== 3. kb-ops-web (运维平台前端) ====================
+  # ==================== kb-ops-web (运维平台前端) ====================
   - name: kb-ops-web-build
     image: node:20-alpine
     volumes:
       - /mnt/shared:/mnt/shared
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"' }]
     commands:
       - bash ci/build/build-kb-ops-web.sh
 
   - name: kb-ops-web-deploy
     image: appleboy/drone-ssh
     depends_on: [kb-ops-web-build]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
 
-  # ==================== 4. infra-monitor-web (监控前端) ====================
+  # ==================== infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
     image: node:20-alpine
     volumes:
       - /mnt/shared:/mnt/shared
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     commands:
       - bash ci/build/build-infra-monitor-web.sh
 
   - name: infra-monitor-web-deploy
     image: appleboy/drone-ssh
     depends_on: [infra-monitor-web-build, kb-ops-web-deploy]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 
-  # ==================== 5. infra-monitor (监控后端) ====================
+  # ==================== infra-monitor (监控后端) ====================
   - name: infra-monitor-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -189,32 +148,25 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx1024m
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"' }]
     commands:
       - bash ci/build/build-infra-monitor.sh
 
   - name: infra-monitor-deploy
     image: appleboy/drone-ssh
     depends_on: [infra-monitor-build]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-infra-monitor.sh infra-monitor-latest.tar.gz
 
-  # ==================== 6. active-manager (激活码系统) ====================
+  # ==================== active-manager (激活码系统) ====================
   - name: active-manager-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
@@ -223,48 +175,33 @@ steps:
     environment:
       MAVEN_OPTS: -Xmx1024m
     depends_on: [sync-ci-scripts]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"' }]
     commands:
       - bash ci/build/build-active-manager.sh
 
   - name: active-manager-deploy
     image: appleboy/drone-ssh
     depends_on: [active-manager-build]
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"'
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "active-manager"' }]
     settings:
       host: 192.168.31.182
       username: root
-      key:
-        from_secret: ssh_key_debian
+      key: { from_secret: ssh_key_debian }
       port: 22
       script_stop: false
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodDeploy/ci/deploy/deploy-active-manager.sh active-manager-latest.tar.gz
 
-  # ==================== 清理 ====================
+  # ==================== cleanup ====================
   - name: cleanup
     image: appleboy/drone-ssh
-    depends_on:
-      - kb-ops-deploy
-      - infra-monitor-web-deploy
-      - infra-monitor-deploy
-      - active-manager-deploy
-    when:
-      - event: push
-      - event: manual
-        evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all"'
+    depends_on: [kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all"' }]
     settings:
       host: 192.168.31.105
       username: root
-      key:
-        from_secret: ssh_key_mykng
+      key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
       command_timeout: 5m
