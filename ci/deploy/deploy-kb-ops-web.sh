@@ -29,11 +29,11 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 dist ======
 log_step 2 5 "解压 & 分发前端产物"
-mkdir -p "${DEPLOY_BASE}/kb-ops-web/dist" "${DEPLOY_BASE}/web-tmp"
-extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/web-tmp"
+mkdir -p "${DEPLOY_BASE}/kb-ops-web/dist" "${DEPLOY_BASE}/tmp-kb-ops-web"
+extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/tmp-kb-ops-web"
 rm -rf "${DEPLOY_BASE}/kb-ops-web/dist"/*
-cp -r "${DEPLOY_BASE}/web-tmp/"* "${DEPLOY_BASE}/kb-ops-web/dist/"
-rm -rf "${DEPLOY_BASE}/web-tmp"
+cp -r "${DEPLOY_BASE}/tmp-kb-ops-web/"* "${DEPLOY_BASE}/kb-ops-web/dist/"
+rm -rf "${DEPLOY_BASE}/tmp-kb-ops-web"
 log_ok "kb-ops-web dist 已更新"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======

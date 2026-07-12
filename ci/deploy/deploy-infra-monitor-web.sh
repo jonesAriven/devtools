@@ -29,11 +29,11 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 dist ======
 log_step 2 5 "解压 & 分发前端产物"
-mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist" "${DEPLOY_BASE}/web-tmp"
-extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/web-tmp"
+mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist" "${DEPLOY_BASE}/tmp-infra-monitor-web"
+extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/tmp-infra-monitor-web"
 rm -rf "${DEPLOY_BASE}/infra-monitor-web/dist"/*
-cp -r "${DEPLOY_BASE}/web-tmp/"* "${DEPLOY_BASE}/infra-monitor-web/dist/"
-rm -rf "${DEPLOY_BASE}/web-tmp"
+cp -r "${DEPLOY_BASE}/tmp-infra-monitor-web/"* "${DEPLOY_BASE}/infra-monitor-web/dist/"
+rm -rf "${DEPLOY_BASE}/tmp-infra-monitor-web"
 log_ok "infra-monitor-web dist 已更新"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
