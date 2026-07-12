@@ -29,8 +29,8 @@ steps:
     volumes:
       - /mnt/shared:/mnt/shared
     commands:
-      - mkdir -p /mnt/shared/woodDeploy/publish
-      - rm -rf /mnt/shared/woodDeploy/ci
+      - mkdir -p /mnt/shared/woodDeploy/publish /mnt/shared/woodDeploy/ci
+      - find /mnt/shared/woodDeploy/ci -mindepth 1 -delete 2>/dev/null || true
       - find ci -name '*.sh' | while read f; do dst="/mnt/shared/woodDeploy/$f"; mkdir -p "$(dirname "$dst")"; cat "$f" > "$dst"; done
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec sed -i 's/\r$//' {} +
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec chmod +x {} +
