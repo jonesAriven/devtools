@@ -17,7 +17,8 @@ source /mnt/shared/woodScript/lib-deploy.sh
 TAR_FILE="${1:?missing param: usage deploy-portal-server.sh tar.gz}"
 APP_DIR="${GIT_REPO}/portal/portal-server"
 COMPOSE_PROJECT="kb-app"
-COMPOSE_FILE="docker-compose.app.yml"
+# compose 文件由 sync-ci-scripts 统一同步到 /mnt/shared
+COMPOSE_FILE="/mnt/shared/mykng/docker/docker-compose.app.yml"
 SERVICES=("portal-server")
 HEALTH_URL="http://localhost:8087/portal/actuator/health"
 APP_NAME="portal-server"
@@ -35,7 +36,6 @@ extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 
 # ====== Step 3: 同步 compose 文件 & 检查网络 ======
 log_step 3 6 "环境准备"
-sync_compose_files
 ensure_platform
 
 # ====== Step 4: 停止旧服务 ======

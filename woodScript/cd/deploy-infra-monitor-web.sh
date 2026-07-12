@@ -16,7 +16,8 @@ source /mnt/shared/woodScript/lib-deploy.sh
 # ====== 配置 ======
 TAR_FILE="${1:?missing param: usage deploy-infra-monitor-web.sh tar.gz}"
 COMPOSE_PROJECT="kb-web"
-COMPOSE_FILE="docker-compose.web.yml"
+# compose 文件由 sync-ci-scripts 统一同步到 /mnt/shared
+COMPOSE_FILE="/mnt/shared/mykng/docker/docker-compose.web.yml"
 SERVICES=("infra-monitor-web")
 HEALTH_URL="http://localhost:8094/health"
 APP_NAME="infra-monitor-web"
@@ -38,7 +39,7 @@ log_ok "infra-monitor-web dist 已更新"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
-sync_compose_files
+ensure_platform
 
 # 确保目录存在
 mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist"

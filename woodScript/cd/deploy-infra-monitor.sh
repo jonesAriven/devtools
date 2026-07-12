@@ -17,7 +17,8 @@ source /mnt/shared/woodScript/lib-deploy.sh
 TAR_FILE="${1:?missing param: usage deploy-infra-monitor.sh tar.gz}"
 APP_DIR="${GIT_REPO}/infra-monitor/infra-monitor-server"
 COMPOSE_PROJECT="infra-monitor"
-COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
+# compose 文件由 sync-ci-scripts 统一同步到 /mnt/shared
+COMPOSE_FILE="/mnt/shared/infra-monitor/infra-monitor-server/docker-compose.yml"
 SERVICES=("infra-monitor")
 HEALTH_URL="http://localhost:8088/infra/actuator/health"
 APP_NAME="infra-monitor"

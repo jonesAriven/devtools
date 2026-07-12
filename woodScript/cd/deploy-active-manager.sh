@@ -17,7 +17,8 @@ source /mnt/shared/woodScript/lib-deploy.sh
 TAR_FILE="${1:?missing param: usage deploy-active-manager.sh tar.gz}"
 APP_DIR="${GIT_REPO}/active-manager/activation-code-server"
 COMPOSE_PROJECT="activecode"
-COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
+# compose 文件由 sync-ci-scripts 统一同步到 /mnt/shared
+COMPOSE_FILE="/mnt/shared/active-manager/activation-code-server/docker-compose.yml"
 SERVICES=("activation-code-server")
 HEALTH_URL="http://localhost:18080/activecode/login.html"
 APP_NAME="active-manager"

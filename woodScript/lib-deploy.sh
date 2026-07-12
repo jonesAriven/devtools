@@ -122,33 +122,11 @@ extract_artifact() {
   log_ok "解压到 ${target_dir}: ${count} 个文件"
 }
 
-# ====== 同步 compose 文件到部署目录 ======
-# 用法: sync_compose_files
-sync_compose_files() {
-  local app_src="${GIT_REPO}/mykng/docker"
-  local platform_src="${GIT_REPO}/platform"
-  local dst="${DEPLOY_BASE}"
-
-  mkdir -p "${dst}"
-  
-  # 同步应用层 compose 文件
-  if [ -d "${app_src}" ]; then
-    cp -f "${app_src}"/docker-compose.*.yml "${dst}/" 2>/dev/null || true
-  fi
-  
-  # 同步基础设施层 compose 文件
-  if [ -d "${platform_src}" ]; then
-    cp -f "${platform_src}"/docker-compose.*.yml "${dst}/" 2>/dev/null || true
-  fi
-  
-  log_ok "compose 文件已同步到 ${dst}"
-}
-
 # ====== 确保全局基础设施层就绪 ======
 # 用法: ensure_platform
 # 检查所有 platform 容器是否在运行，缺失则自动启动
 PLATFORM_SERVICES=("platform-mysql" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
-PLATFORM_COMPOSE_FILE="${GIT_REPO}/platform/docker-compose.platform.yml"
+PLATFORM_COMPOSE_FILE="/mnt/shared/platform/docker-compose.platform.yml"
 PLATFORM_PROJECT="platform"
 
 ensure_platform() {
