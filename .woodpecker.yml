@@ -74,7 +74,7 @@ steps:
 
   - name: kb-ops-deploy
     image: appleboy/drone-ssh
-    depends_on: [kb-ops-build, mykng-deploy]
+    depends_on: [kb-ops-build]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops"' }]
     settings:
       host: 192.168.31.105
@@ -122,7 +122,7 @@ steps:
 
   - name: infra-monitor-web-deploy
     image: appleboy/drone-ssh
-    depends_on: [infra-monitor-web-build, kb-ops-web-deploy]
+    depends_on: [infra-monitor-web-build]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     settings:
       host: 192.168.31.105
@@ -242,7 +242,7 @@ steps:
   # ==================== cleanup ====================
   - name: cleanup
     image: appleboy/drone-ssh
-    depends_on: [kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy, portal-web-deploy, portal-server-deploy]
+    depends_on: [mykng-deploy, kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy, portal-web-deploy, portal-server-deploy]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all"' }]
     settings:
       host: 192.168.31.105

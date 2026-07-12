@@ -29,6 +29,10 @@ import urllib.error
 DEFAULT_URL = "https://woodci.marschat.online"
 REPO_ID = 1  # devtools 仓库 ID
 
+# Woodpecker API Token (从 UI -> 用户设置 -> CLI & API 获取)
+# 注意: 此 Token 具有触发流水线权限，请勿泄露
+WOODPECKER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoidXNlciIsInVzZXItaWQiOiIxIn0.471qau5gcvZNQnxV4KfpE5VMnZ_9Q16IzNMESLfdmE4"
+
 # 项目到 DEPLOY_TARGET 的映射
 PROJECT_MAP = {
     "mykng": "mykng",
@@ -44,13 +48,13 @@ PROJECT_MAP = {
 
 
 def get_token():
-    """从环境变量获取 Token"""
+    """获取 Woodpecker API Token"""
+    # 优先从环境变量读取（方便临时覆盖）
     token = os.environ.get("WOODPECKER_TOKEN")
-    if not token:
-        print("[错误] 请设置环境变量 WOODPECKER_TOKEN")
-        print("  获取方式: Woodpecker UI -> 用户设置 -> API Token")
-        sys.exit(1)
-    return token
+    if token:
+        return token
+    # 使用内置 Token
+    return WOODPECKER_TOKEN
 
 
 def get_url():
