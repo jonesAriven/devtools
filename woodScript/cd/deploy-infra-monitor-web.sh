@@ -1,14 +1,14 @@
 #!/bin/bash
 # ============================================================
-# deploy-infra-monitor-web.sh �?监控前端部署
+# deploy-infra-monitor-web.sh - 监控前端部署
 # ============================================================
-# 用法: bash deploy-infra-monitor-web.sh <tar.gz文件�?
+# 用法: bash deploy-infra-monitor-web.sh <tar.gz文件名>
 # 示例: bash deploy-infra-monitor-web.sh infra-monitor-web-latest.tar.gz
 #
-# 部署的服�? infra-monitor-web
+# 部署的服务: infra-monitor-web
 # Compose:    docker-compose.web.yml (project: kb-web)
-# 前置条件:   �?(前端容器独立运行)
-# 隔离�?     只影�?infra-monitor-web 容器，不影响其他前端
+# 前置条件:   (前端容器独立运行)
+# 隔离性:     只影响 infra-monitor-web 容器，不影响其他前端
 # ============================================================
 set -euo pipefail
 source /mnt/shared/woodScript/lib-deploy.sh
@@ -34,7 +34,7 @@ extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/tmp-infra-monitor-web"
 rm -rf "${DEPLOY_BASE}/infra-monitor-web/dist"/*
 cp -r "${DEPLOY_BASE}/tmp-infra-monitor-web/"* "${DEPLOY_BASE}/infra-monitor-web/dist/"
 rm -rf "${DEPLOY_BASE}/tmp-infra-monitor-web"
-log_ok "infra-monitor-web dist 已更�?
+log_ok "infra-monitor-web dist 已更新"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
@@ -44,7 +44,7 @@ sync_compose_files
 mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist"
 touch "${DEPLOY_BASE}/infra-monitor-web/dist/.keep"
 
-# 每次都覆�?nginx.conf (确保 host.docker.internal 不残�?
+# 每次都覆盖 nginx.conf (确保 host.docker.internal 不残留)
 NGINX_CONF="${DEPLOY_BASE}/infra-monitor-web/nginx.conf"
 cat > "${NGINX_CONF}" << 'NGINXEOF'
 server {
@@ -66,14 +66,14 @@ server {
     }
 }
 NGINXEOF
-log_ok "nginx.conf 已更�? infra-monitor-web"
+log_ok "nginx.conf 已更新: infra-monitor-web"
 
-# ====== Step 4: 停止旧服�?======
-log_step 4 5 "停止旧服�?
+# ====== Step 4: 停止旧服务 ======
+log_step 4 5 "停止旧服务"
 compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
-# ====== Step 5: 构建并启�?======
-log_step 5 5 "构建并启�?
+# ====== Step 5: 构建并启动 ======
+log_step 5 5 "构建并启动"
 compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 health_check "${HEALTH_URL}" "${SERVICES[@]}"
 prune_images
