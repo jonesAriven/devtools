@@ -20,8 +20,13 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=tools
       - SPRING_DATASOURCE_PASSWORD=toolsmarschat
-    volumes:
-      - "D:\\huliang\\java\\ideaworkspace\\www\\download\\QRCodeTools:/app/downloads:ro"
+    # volume 挂载共享下载目录 (QRCodeTools exe 文件)
+    # 宿主机路径需根据实际部署环境调整:
+    #   Windows本地开发: D:\huliang\java\ideaworkspace\www\download\QRCodeTools
+    #   内网Debian(通过SMB挂载): /mnt/smb/www/download/QRCodeTools
+    #   如目录不存在可注释掉此行，下载功能将返回空列表
+    # volumes:
+    #   - "/path/to/www/download/QRCodeTools:/app/downloads:ro"
     networks:
       - activecode-net
 
