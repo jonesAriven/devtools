@@ -7,10 +7,9 @@ WORKDIR /app
 
 COPY target/portal-server.jar /app/portal-server.jar
 
-RUN apk add --no-cache tzdata && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone && \
-    apk del tzdata
+# 时区设置（直接链接时区文件，无需安装 tzdata 包）
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 EXPOSE 8087
 
