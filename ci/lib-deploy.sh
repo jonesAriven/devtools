@@ -319,8 +319,12 @@ compose_up_services() {
   cd "${work_dir}"
   _heartbeat_start "docker compose up 启动服务" &
   _HB_PID=$!
-  docker compose -p "${project}" -f "${compose_file}" \
-    up -d --build --force-recreate --no-deps "${services[@]}" 2>&1
+  # flock 互斥锁: 防止多个 deploy 并行构建争抢 Docker 资源
+  (
+    flock -x 9
+    docker compose -p "${project}" -f "${compose_file}" \
+      up -d --build --force-recreate --no-deps "${services[@]}" 2>&1
+  ) 9>/tmp/docker-build.lock
   local COMPOSE_EXIT=$?
   _heartbeat_stop
 
