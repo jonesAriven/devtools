@@ -1,20 +1,20 @@
 # ============================================================
-# Woodpecker CI �?devtools 统一流水�?# ============================================================
-# 6�?build→deploy 链，depends_on 控制串并�?# 改串并行只需�?depends_on，不用改脚本
+# Woodpecker CI �?devtools 统一流水�?# ============================================================
+# 6�?build→deploy 链，depends_on 控制串并�?# 改串并行只需�?depends_on，不用改脚本
 #
-# 依赖�?
+# 依赖�?
 #   sync-ci-scripts
-#     ├── mykng-build ──�?mykng-deploy ─────────────────────�?#     ├── kb-ops-build ─�?kb-ops-deploy (after mykng)       �?kb-app 串行
-#     ├── kb-ops-web ──�?kb-ops-web-deploy ──────────────�? �?#     ├── infra-web ──�?infra-web-deploy (after ops-web) �? �?kb-web 串行
-#     ├── infra-mon ──�?infra-mon-deploy                �? �?独立并行
-#     └── active-mgr ─�?active-mgr-deploy                �? �?独立并行
-#                                                        �? �?#                                                     cleanup
+#     ├── mykng-build ──�?mykng-deploy ─────────────────────�?#     ├── kb-ops-build ─�?kb-ops-deploy (after mykng)       �?kb-app 串行
+#     ├── kb-ops-web ──�?kb-ops-web-deploy ──────────────�? �?#     ├── infra-web ──�?infra-web-deploy (after ops-web) �? �?kb-web 串行
+#     ├── infra-mon ──�?infra-mon-deploy                �? �?独立并行
+#     └── active-mgr ─�?active-mgr-deploy                �? �?独立并行
+#                                                        �? �?#                                                     cleanup
 #
 # DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager / portal-web / portal-server
 # ============================================================
 
 when:
-  event: [manual, push]
+  event: [manual]
   branch: [dev]
 
 steps:
@@ -31,7 +31,7 @@ steps:
       - echo "=== Syntax check ==="
       - find /mnt/shared/woodDeploy/ci -name '*.sh' -exec bash -n {} \; -print
 
-  # ==================== mykng (5个Java微服�? ====================
+  # ==================== mykng (5个Java微服�? ====================
   - name: mykng-build
     image: maven:3.9-eclipse-temurin-21
     volumes:
