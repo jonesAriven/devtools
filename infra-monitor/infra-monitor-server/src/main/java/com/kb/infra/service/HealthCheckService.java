@@ -50,7 +50,10 @@ public class HealthCheckService {
                 .stream()
                 .filter(s -> {
                     Object enabled = s.getExtra() != null ? s.getExtra().get("enabled") : null;
-                    return enabled == null || (Boolean) enabled || (Integer) enabled == 1;
+                    if (enabled == null) return true;
+                    if (enabled instanceof Boolean) return (Boolean) enabled;
+                    if (enabled instanceof Number) return ((Number) enabled).intValue() == 1;
+                    return false;
                 })
                 .toList();
 
