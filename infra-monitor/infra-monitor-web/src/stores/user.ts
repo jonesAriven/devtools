@@ -15,8 +15,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = ref(!!getToken())
 
   async function login(usernameVal: string, password: string) {
-    const res = await request.post('/auth/login', { username: usernameVal, password })
-    const data = (res.data?.data || res.data) as LoginResponse
+    const data = await request.post('/auth/login', { username: usernameVal, password }) as unknown as LoginResponse
     token.value = data.token
     username.value = data.username
     isLoggedIn.value = true

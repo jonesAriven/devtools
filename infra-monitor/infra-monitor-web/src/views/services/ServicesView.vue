@@ -323,7 +323,7 @@ function updateSummary() {
 async function fetchList() {
   loading.value = true
   try {
-    const res = await request.get('/items/list', {
+    const data = await request.get('/items/list', {
       params: {
         type: 'service',
         keyword: searchForm.keyword,
@@ -331,7 +331,6 @@ async function fetchList() {
         size: pagination.size,
       },
     })
-    const data = res.data?.data || res.data
     if (data) {
       tableData.value = (data.list || []).map((item: any) => ({
         ...item,
@@ -382,10 +381,9 @@ function resetForm() {
 
 async function fetchHostList() {
   try {
-    const res = await request.get('/items/all', {
+    const data = await request.get('/items/all', {
       params: { type: 'host' },
     })
-    const data = res.data?.data || res.data
     hostList.value = data || []
   } catch (e) {
     console.error('获取主机列表失败', e)
@@ -394,8 +392,7 @@ async function fetchHostList() {
 
 async function fetchCredentialList() {
   try {
-    const res = await request.get('/credentials/all')
-    const data = res.data?.data || res.data
+    const data = await request.get('/credentials/all')
     credentialList.value = data || []
   } catch (e) {
     console.error('获取凭据列表失败', e)
@@ -441,8 +438,7 @@ async function handleEdit(row: any) {
 async function handleCheck(row: any) {
   row._checking = true
   try {
-    const res = await request.post(`/health/check/${row.id}`)
-    const data = res.data?.data || res.data
+    const data = await request.post(`/health/check/${row.id}`)
     if (data) {
       row.extra.status = data.status
       row.extra.latencyMs = data.latencyMs
@@ -464,8 +460,7 @@ async function handleCheck(row: any) {
 async function handleCheckAll() {
   checkingAll.value = true
   try {
-    const res = await request.post('/health/check-all')
-    const data = res.data?.data || res.data
+    const data = await request.post('/health/check-all')
     if (data && data.results) {
       data.results.forEach((result: HealthCheckResult) => {
         const item = tableData.value.find(i => i.id === result.id)

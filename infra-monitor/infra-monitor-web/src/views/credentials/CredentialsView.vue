@@ -249,7 +249,7 @@ function getCredentialTagType(type: string): 'primary' | 'success' | 'warning' |
 async function fetchList() {
   loading.value = true
   try {
-    const res = await request.get('/credentials/list', {
+    const data = await request.get('/credentials/list', {
       params: {
         keyword: searchForm.keyword,
         category: searchForm.category || undefined,
@@ -257,7 +257,6 @@ async function fetchList() {
         size: pagination.size,
       },
     })
-    const data = res.data?.data || res.data
     if (data) {
       tableData.value = data.list || []
       pagination.total = data.total || 0
@@ -330,8 +329,7 @@ async function handleEdit(row: any) {
 
 async function handleViewPassword(row: any) {
   try {
-    const res = await request.get(`/credentials/${row.id}`)
-    const data = res.data?.data || res.data
+    const data = await request.get(`/credentials/${row.id}`)
     viewData.value = data || row
     viewPassword.value = data?.extra?.password || data?.password || ''
     viewDialogVisible.value = true

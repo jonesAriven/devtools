@@ -459,7 +459,7 @@ watch(() => formData.configType, (newType, oldType) => {
 async function fetchList() {
   loading.value = true
   try {
-    const res = await request.get('/items/list', {
+    const data = await request.get('/items/list', {
       params: {
         type: 'config',
         keyword: searchForm.keyword,
@@ -468,7 +468,6 @@ async function fetchList() {
         size: pagination.size,
       },
     })
-    const data = res.data?.data || res.data
     if (data) {
       tableData.value = data.list || []
       pagination.total = data.total || 0

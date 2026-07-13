@@ -136,8 +136,7 @@ const summary = reactive<DashboardSummary>({
 
 async function fetchSummary() {
   try {
-    const res = await request.get('/dashboard/summary')
-    const data = res.data?.data || res.data
+    const data = await request.get('/dashboard/summary')
     if (data) {
       Object.assign(summary, data)
     }
