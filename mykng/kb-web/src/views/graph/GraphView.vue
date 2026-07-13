@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { Search, Refresh, ZoomIn, ZoomOut, RefreshRight, Connection, Close } from '@element-plus/icons-vue'
@@ -90,10 +90,11 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 })
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   if (resizeObserver) {
     resizeObserver.disconnect()
+    resizeObserver = null
   }
   if (chartInstance) {
     chartInstance.dispose()

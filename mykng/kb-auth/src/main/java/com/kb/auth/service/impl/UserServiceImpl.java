@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -62,5 +64,13 @@ public class UserServiceImpl implements UserService {
         }
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
+    }
+
+    @Override
+    public List<User> listAll() {
+        List<User> users = userMapper.selectList(
+                new LambdaQueryWrapper<User>().eq(User::getStatus, 1));
+        users.forEach(u -> u.setPassword(null));
+        return users;
     }
 }

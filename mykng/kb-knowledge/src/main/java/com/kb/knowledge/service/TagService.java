@@ -4,10 +4,13 @@ import com.kb.knowledge.dto.tag.TagBindRequest;
 import com.kb.knowledge.entity.Tag;
 
 import java.util.List;
+import java.util.Map;
 
 public interface TagService {
 
     List<Tag> listByUserId(Long userId);
+
+    List<Map<String, Object>> getTagStats(Long userId);
 
     Tag create(Long userId, String name, String color);
 

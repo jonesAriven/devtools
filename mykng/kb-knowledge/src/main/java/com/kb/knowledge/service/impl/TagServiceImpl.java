@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +31,30 @@ public class TagServiceImpl implements TagService {
                 new LambdaQueryWrapper<Tag>()
                         .eq(Tag::getUserId, userId)
                         .orderByDesc(Tag::getCreatedAt));
+    }
+
+    @Override
+    public List<Map<String, Object>> getTagStats(Long userId) {
+        List<Tag> tags = tagMapper.selectList(
+                new LambdaQueryWrapper<Tag>().eq(Tag::getUserId, userId));
+        if (tags.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<Long> tagIds = tags.stream().map(Tag::getId).toList();
+        List<ResourceTag> rts = resourceTagMapper.selectList(
+                new LambdaQueryWrapper<ResourceTag>().in(ResourceTag::getTagId, tagIds));
+        Map<Long, Integer> countMap = new HashMap<>();
+        for (ResourceTag rt : rts) {
+            countMap.merge(rt.getTagId(), 1, Integer::sum);
+        }
+        return tags.stream().map(tag -> {
+            Map<String, Object> stat = new HashMap<>();
+            stat.put("id", tag.getId());
+            stat.put("name", tag.getName());
+            stat.put("color", tag.getColor());
+            stat.put("count", countMap.getOrDefault(tag.getId(), 0));
+            return stat;
+        }).toList();
     }
 
     @Override

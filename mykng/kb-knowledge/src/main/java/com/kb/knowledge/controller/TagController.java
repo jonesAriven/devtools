@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/tag")
@@ -23,6 +24,11 @@ public class TagController {
     @GetMapping("/list")
     public Result<List<Tag>> list() {
         return Result.ok(tagService.listByUserId(getCurrentUserId()));
+    }
+
+    @GetMapping("/stats")
+    public Result<List<Map<String, Object>>> stats() {
+        return Result.ok(tagService.getTagStats(getCurrentUserId()));
     }
 
     @PostMapping

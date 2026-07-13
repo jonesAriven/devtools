@@ -103,6 +103,9 @@ public abstract class AbstractEventConsumer {
 
     /**
      * 创建消费者组（如不存在，自动创建 Stream）
+     * <p>
+     * Redis 不允许在不存在的 Stream 上创建消费者组，
+     * 所以当 Stream 不存在时先添加一条初始消息创建 Stream，再创建组。
      */
     private void createGroupIfNotExists() {
         try {
@@ -113,8 +116,23 @@ public abstract class AbstractEventConsumer {
             if (msg.contains("BUSYGROUP") || msg.contains("already exists")) {
                 log.debug("消费者组已存在 stream={} group={}", getStream(), getGroup());
             } else {
-                log.warn("创建消费者组失败 stream={} group={} err={}",
+                log.warn("创建消费者组失败，尝试创建Stream后重试 stream={} group={} err={}",
                         getStream(), getGroup(), msg);
+                try {
+                    // 通过添加一条初始消息来创建 Stream
+                    redisTemplate.opsForStream().add(getStream(), java.util.Map.of("_init", "1"));
+                    // 重试创建消费者组
+                    redisTemplate.opsForStream().createGroup(getStream(), ReadOffset.from("0"), getGroup());
+                    log.info("创建消费者组成功（重试） stream={} group={}", getStream(), getGroup());
+                } catch (Exception retryEx) {
+                    String retryMsg = retryEx.getMessage() != null ? retryEx.getMessage() : "";
+                    if (retryMsg.contains("BUSYGROUP") || retryMsg.contains("already exists")) {
+                        log.debug("消费者组已存在 stream={} group={}", getStream(), getGroup());
+                    } else {
+                        log.error("创建消费者组最终失败 stream={} group={} err={}",
+                                getStream(), getGroup(), retryMsg);
+                    }
+                }
             }
         }
     }

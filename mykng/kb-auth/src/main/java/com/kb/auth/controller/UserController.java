@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
@@ -18,6 +20,11 @@ public class UserController {
     @GetMapping("/profile")
     public Result<User> getProfile() {
         return Result.ok(userService.getProfile(SecurityUtils.getCurrentUserId()));
+    }
+
+    @GetMapping("/list")
+    public Result<List<User>> list() {
+        return Result.ok(userService.listAll());
     }
 
     @PutMapping("/profile")
