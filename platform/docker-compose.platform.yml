@@ -125,11 +125,27 @@ services:
       - platform-net
     mem_limit: 256m
 
+  # ========== Nacos 用户初始化 (一次性容器) ==========
+  # Nacos v2.4.3 standalone 不会自动创建默认用户，此容器在 Nacos 启动前检查并插入
+  # 幂等: 标记文件 + SELECT 双重检查，已有用户时自动跳过
+  nacos-init:
+    image: nacos/nacos-server:v2.4.3
+    container_name: nacos-init
+    entrypoint: ["bash", "/init-nacos.sh"]
+    volumes:
+      - platform-nacos-data:/home/nacos/data
+      - ./nacos/init-nacos.sh:/init-nacos.sh:ro
+    restart: "no"
+    mem_limit: 128m
+
   # ========== Nacos ========== # 基础设施, 不归流水线管, 持久运行 # 微服务通过平台网络直连注册/发现
   platform-nacos:
     image: nacos/nacos-server:v2.4.3
     container_name: platform-nacos
     restart: on-failure:5
+    depends_on:
+      nacos-init:
+        condition: service_completed_successfully
     ports:
       - "8848:8848"
       - "9848:9848"

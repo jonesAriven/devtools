@@ -80,7 +80,7 @@ public class DownloadController {
      * 下载指定文件
      * 路径遍历防护：只允许 .exe 结尾，且必须在 baseDir 内
      */
-    @GetMapping("/{filename:.+\\.exe")
+    @GetMapping("/{filename:.+\\.exe}")
     public ResponseEntity<Resource> download(@PathVariable String filename,
                                            HttpServletResponse response) throws IOException {
         // 安全校验：防止路径遍历
