@@ -97,11 +97,6 @@ public class CryptoUtil {
             signature.update(payloadBytes);
             byte[] signatureBytes = signature.sign();
 
-            // 反转签名字节序，兼容客户端 CryptoAPI 验证
-            // 客户端 ActivationVerifier.cpp:217 做了 std::reverse()
-            // 服务端先反转，客户端再反转 → 还原为原始正确签名 → 验证通过
-            reverseByteArray(signatureBytes);
-
             String payloadBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadBytes);
             String signatureBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
 
@@ -135,9 +130,6 @@ public class CryptoUtil {
 
             payloadBytes = Base64.getUrlDecoder().decode(parts[0]);
             signatureBytes = Base64.getUrlDecoder().decode(parts[1]);
-
-            // 反转签名字节序（服务端生成时已反转，验证时需先还原）
-            reverseByteArray(signatureBytes);
 
             String payload = new String(payloadBytes, StandardCharsets.UTF_8);
             String[] payloadParts = payload.split("\\" + PAYLOAD_SEPARATOR);
