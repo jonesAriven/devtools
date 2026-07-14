@@ -97,8 +97,9 @@ public class CryptoUtil {
             signature.update(payloadBytes);
             byte[] signatureBytes = signature.sign();
 
-            // 注意：客户端EXE分析显示没有 std::reverse
-            // 所以服务端不反转，使用标准签名格式
+            // 为了兼容旧客户端（有std::reverse），服务端需要反转签名
+            reverseByteArray(signatureBytes);
+            
             String payloadBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadBytes);
             String signatureBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
 
