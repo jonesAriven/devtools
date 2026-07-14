@@ -28,7 +28,10 @@ target/
 
 # Spring Boot
 logs/
+# 忽略根目录和项目根目录的 rsa_keys，但保留 src/main/resources/rsa_keys
 rsa_keys/
+!*/src/main/resources/rsa_keys/
+!*/src/main/resources/rsa_keys/*
 
 # .NET / C#
 bin/
