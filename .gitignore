@@ -44,6 +44,7 @@ obj/
 
 # npm node_modules  
 node_modules/
+node_modules.old/
 dist/
 # Database init scripts (temp)
 init_db.py
@@ -146,4 +147,3 @@ test_*.py
 
 # 根目录临时调试脚本
 debug_*.py
-
