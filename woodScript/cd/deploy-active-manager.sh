@@ -44,6 +44,8 @@ log_ok "compose 文件就绪: ${COMPOSE_FILE}"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
+# 兜底: 直接按容器名清理（处理非 compose 创建的残留容器）
+docker rm -f activecode 2>/dev/null || true
 compose_stop_services "${APP_DIR}" "${COMPOSE_PROJECT}" "$(basename ${COMPOSE_FILE})" "${SERVICES[@]}"
 
 # ====== Step 5: 构建并启动 ======
