@@ -36,6 +36,17 @@ public class CryptoUtil {
         }
     }
 
+    /**
+     * 字节数组转十六进制字符串
+     */
+    private static String bytesToHex(byte[] bytes, int maxLen) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < Math.min(bytes.length, maxLen); i++) {
+            sb.append(String.format("%02X", bytes[i]));
+        }
+        return sb.toString();
+    }
+
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
 
@@ -158,6 +169,9 @@ public class CryptoUtil {
                 return ActivationCodeParseResult.fail("激活码过期时间格式无效");
             }
 
+            // 服务端生成时反转了签名，验证时需要反转回来
+            reverseByteArray(signatureBytes);
+            
             Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
             signature.initVerify(publicKey);
             signature.update(payloadBytes);
