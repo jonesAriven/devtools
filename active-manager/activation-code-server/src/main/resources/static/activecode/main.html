@@ -114,6 +114,49 @@
     </div>
 
     <div id="toolTab" class="tab-content active">
+        <!-- 版本限制设置 -->
+        <div class="section" id="versionCheckSection">
+            <h3>🔒 版本限制设置</h3>
+            <p style="font-size:12px;color:#888;margin-bottom:14px;">控制客户端版本校验策略，可强制用户更新到指定版本</p>
+            <div class="form-group">
+                <label>启用版本校验</label>
+                <div style="display:flex;gap:12px;align-items:center;margin-top:6px;">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
+                        <input type="radio" name="vcEnabled" value="false" checked onchange="onVcEnabledChange(false)"> 关闭
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
+                        <input type="radio" name="vcEnabled" value="true" onchange="onVcEnabledChange(true)"> 开启
+                    </label>
+                </div>
+            </div>
+            <div id="vcOptions" style="display:none;">
+                <div class="form-group">
+                    <label>校验模式</label>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeNone">
+                            <input type="radio" name="vcMode" value="none" checked onchange="onVcModeChange()"> 不校验 — 允许所有客户端生成激活码
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeRequired">
+                            <input type="radio" name="vcMode" value="required" onchange="onVcModeChange()"> 必须传版本号 — 客户端未传版本号时拒绝生成
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeMinimum">
+                            <input type="radio" name="vcMode" value="minimum" onchange="onVcModeChange()"> 最低版本要求 — 版本号低于设定值时拒绝生成
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="vcMinVersionGroup" style="display:none;">
+                    <label>最低版本号</label>
+                    <input type="text" id="vcMinVersion" placeholder="例如：V202607152217 或 3.1.0" style="font-family:'Consolas',monospace;">
+                </div>
+                <div class="form-group">
+                    <label>下载链接（版本过低时提示用户）</label>
+                    <input type="text" id="vcDownloadUrl" placeholder="https://tools.marschat.online/activecode/downloads.html">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="saveVersionCheckConfig()" style="margin-top:8px;">保存版本限制配置</button>
+            <div id="vcResult" class="result-box"></div>
+        </div>
+
         <div class="section">
             <h3>生成激活码</h3>
             <div class="form-group">
@@ -640,6 +683,78 @@
             return days + '天' + (rh > 0 ? rh + '小时' : '');
         }
 
+        // ==================== 版本限制设置 ====================
+
+        let vcConfigCache = null;
+
+        function onVcEnabledChange(enabled) {
+            document.getElementById('vcOptions').style.display = enabled ? 'block' : 'none';
+        }
+
+        function onVcModeChange() {
+            const mode = document.querySelector('input[name="vcMode"]:checked').value;
+            document.getElementById('vcMinVersionGroup').style.display = (mode === 'minimum') ? 'block' : 'none';
+            // 高亮选中项
+            ['None', 'Required', 'Minimum'].forEach(m => {
+                const el = document.getElementById('vcMode' + m);
+                el.style.borderColor = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#667eea' : '#e8e8e8';
+                el.style.background = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#f8f9ff' : '#fff';
+            });
+        }
+
+        async function loadVersionCheckConfig() {
+            try {
+                const resp = await fetch('/activecode/api/activation/version-check');
+                const data = await resp.json();
+                if (data.success) {
+                    vcConfigCache = data;
+                    // 填充表单
+                    document.querySelectorAll('input[name="vcEnabled"]').forEach(r => {
+                        r.checked = (r.value === String(data.enabled));
+                    });
+                    onVcEnabledChange(data.enabled);
+                    document.querySelectorAll('input[name="vcMode"]').forEach(r => {
+                        r.checked = (r.value === data.mode);
+                    });
+                    onVcModeChange();
+                    document.getElementById('vcMinVersion').value = data.minVersion || '';
+                    document.getElementById('vcDownloadUrl').value = data.downloadUrl || '';
+                }
+            } catch (e) { console.error('加载版本配置失败', e); }
+        }
+
+        async function saveVersionCheckConfig() {
+            const enabled = document.querySelector('input[name="vcEnabled"]:checked').value;
+            const mode = document.querySelector('input[name="vcMode"]:checked').value;
+            const minVersion = document.getElementById('vcMinVersion').value.trim();
+            const downloadUrl = document.getElementById('vcDownloadUrl').value.trim();
+            const resultDiv = document.getElementById('vcResult');
+
+            try {
+                const resp = await fetch('/activecode/api/activation/version-check', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        'version-check.enabled': enabled,
+                        'version-check.mode': mode,
+                        'version-check.min-version': minVersion,
+                        'version-check.download-url': downloadUrl
+                    })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showResult(resultDiv, true, '<p style="color:#16a34a;">✅ 版本限制配置保存成功</p>');
+                    vcConfigCache = data;
+                } else {
+                    showResult(resultDiv, false, '<p style="color:#dc2626;">❌ 保存失败</p>');
+                }
+            } catch (e) {
+                showResult(resultDiv, false, '<p style="color:#dc2626;">请求失败: ' + e.message + '</p>');
+            }
+        }
+
+        // ==================== 原有功能 ====================
+
         // 登录状态检查
         async function checkSession() {
             try {
@@ -674,6 +789,7 @@
         };
 
         checkSession();
+        loadVersionCheckConfig();
     </script>
 </body>
 </html>

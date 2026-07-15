@@ -78,7 +78,18 @@ public class DatabaseInitializer implements CommandLineRunner {
             "    last_login_time DATETIME DEFAULT NULL COMMENT '最后登录时间'," +
             "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
             "    UNIQUE KEY uk_username (username)" +
-            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员用户表'"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员用户表'",
+            "CREATE TABLE IF NOT EXISTS sys_config (" +
+            "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+            "    config_key VARCHAR(128) NOT NULL COMMENT '配置键'," +
+            "    config_value TEXT DEFAULT NULL COMMENT '配置值'," +
+            "    config_group VARCHAR(64) DEFAULT 'default' COMMENT '配置分组'," +
+            "    remark VARCHAR(256) DEFAULT NULL COMMENT '备注'," +
+            "    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
+            "    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'," +
+            "    UNIQUE KEY uk_config_key (config_key)," +
+            "    INDEX idx_config_group (config_group)" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表'"
         };
 
         // 兼容已有数据库：如果表已存在但缺少 device_alias 列，则自动添加
@@ -142,5 +153,43 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         // 初始化默认管理员账号
         authController.initDefaultAdmin();
+
+        // 初始化版本校验默认配置（如果不存在）
+        initDefaultVersionConfig(stmt);
+    }
+
+    /**
+     * 初始化版本校验的默认配置项
+     * 只有当配置不存在时才插入，已存在则跳过
+     */
+    private void initDefaultVersionConfig(Statement stmt) {
+        try {
+            String[][] defaultConfigs = {
+                {"version-check.enabled", "false", "version-check", "是否启用版本校验"},
+                {"version-check.mode", "none", "version-check", "校验模式: none=不校验, required=必须传版本号, minimum=最低版本号"},
+                {"version-check.min-version", "0.0.0", "version-check", "最低版本号（mode=minimum时生效）"},
+                {"version-check.download-url", "https://tools.marschat.online/activecode/downloads.html", "version-check", "版本过低时的下载提示链接"}
+            };
+
+            for (String[] cfg : defaultConfigs) {
+                String key = cfg[0];
+                String value = cfg[1];
+                String group = cfg[2];
+                String remark = cfg[3];
+
+                var rs = stmt.executeQuery("SELECT COUNT(*) FROM sys_config WHERE config_key = '" + key + "'");
+                rs.next();
+                if (rs.getInt(1) == 0) {
+                    String insertSql = "INSERT INTO sys_config (config_key, config_value, config_group, remark) VALUES ('" + key + "', '" + value + "', '" + group + "', '" + remark + "')";
+                    stmt.execute(insertSql);
+                    log.info("初始化默认配置: {} = {}", key, value);
+                } else {
+                    log.info("配置 {} 已存在，跳过初始化", key);
+                }
+                rs.close();
+            }
+        } catch (Exception e) {
+            log.warn("初始化版本校验配置异常: {}", e.getMessage());
+        }
     }
 }

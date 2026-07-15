@@ -8,8 +8,10 @@ import com.jones.activation.dto.VerifyRequest;
 import com.jones.activation.dto.VerifyResponse;
 import com.jones.activation.entity.ActivationLog;
 import com.jones.activation.entity.ActivationRecord;
+import com.jones.activation.entity.SysConfig;
 import com.jones.activation.mapper.ActivationLogMapper;
 import com.jones.activation.mapper.ActivationRecordMapper;
+import com.jones.activation.mapper.SysConfigMapper;
 import com.jones.activation.util.CryptoUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -30,12 +32,14 @@ public class ActivationService {
     private final CryptoUtil cryptoUtil;
     private final ActivationRecordMapper activationRecordMapper;
     private final ActivationLogMapper activationLogMapper;
+    private final SysConfigMapper sysConfigMapper;
 
     public ActivationService(CryptoUtil cryptoUtil, ActivationRecordMapper activationRecordMapper,
-                             ActivationLogMapper activationLogMapper) {
+                             ActivationLogMapper activationLogMapper, SysConfigMapper sysConfigMapper) {
         this.cryptoUtil = cryptoUtil;
         this.activationRecordMapper = activationRecordMapper;
         this.activationLogMapper = activationLogMapper;
+        this.sysConfigMapper = sysConfigMapper;
     }
 
     public GenerateResponse generateActivationCode(GenerateRequest request) {
@@ -46,6 +50,12 @@ public class ActivationService {
                     .success(false)
                     .message("序列号不能为空")
                     .build();
+        }
+
+        // ========== 版本校验 ==========
+        GenerateResponse versionCheck = checkVersionRestriction(request.getClientVersion());
+        if (versionCheck != null) {
+            return versionCheck;
         }
 
         String deviceId = request.getDeviceId();
@@ -456,6 +466,183 @@ public class ActivationService {
                                        String eventType, String eventMessage) {
         saveLogBySerialNumber(serialNumber, deviceId, eventType, eventMessage, 0);
     }
+
+    // ==================== 版本校验逻辑 ====================
+
+    /**
+     * 版本限制校验
+     * @param clientVersion 客户端传来的版本号（可能为null）
+     * @return 如果校验不通过返回错误Response，如果通过返回null继续执行
+     */
+    private GenerateResponse checkVersionRestriction(String clientVersion) {
+        String enabled = getConfigValue("version-check.enabled", "false");
+        if (!"true".equalsIgnoreCase(enabled)) {
+            return null; // 未启用版本校验，直接放行
+        }
+
+        String mode = getConfigValue("version-check.mode", "none");
+
+        switch (mode) {
+            case "required":
+                // 必须传版本号，没传就拒绝
+                if (clientVersion == null || clientVersion.trim().isEmpty()) {
+                    log.warn("版本校验失败: 客户端未传版本号 (mode=required)");
+                    return buildVersionRejectResponse(
+                        "客户端版本信息缺失，请下载最新版本工具",
+                        null, clientVersion);
+                }
+                log.info("版本校验通过: version={}, mode=required", clientVersion);
+                return null;
+
+            case "minimum":
+                // 最低版本号要求
+                String minVersion = getConfigValue("version-check.min-version", "0.0.0");
+                if (clientVersion == null || clientVersion.trim().isEmpty()) {
+                    // 没传版本号也视为版本过低
+                    log.warn("版本校验失败: 客户端未传版本号 (mode=minimum, min={})", minVersion);
+                    return buildVersionRejectResponse(
+                        "无法识别客户端版本，请下载最新版本工具",
+                        minVersion, null);
+                }
+                if (compareVersions(clientVersion, minVersion) < 0) {
+                    log.warn("版本校验失败: 客户端版本 {} 低于最低要求 {}", clientVersion, minVersion);
+                    return buildVersionRejectResponse(
+                        "当前版本过低，请下载最新版本工具后重试",
+                        minVersion, clientVersion);
+                }
+                log.info("版本校验通过: version={}, min={}, mode=minimum", clientVersion, minVersion);
+                return null;
+
+            case "none":
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 构建版本校验拒绝的响应
+     */
+    private GenerateResponse buildVersionRejectResponse(String message, String minVersion, String clientVersion) {
+        String downloadUrl = getConfigValue("version-check.download-url", "");
+        saveLog(null, "", "", "VERSION_REJECTED",
+                "版本校验拒绝: " + message + ", clientVersion=" + (clientVersion != null ? clientVersion : "空") + ", minVersion=" + (minVersion != null ? minVersion : "未设置"),
+                getClientIp());
+        return GenerateResponse.builder()
+                .success(false)
+                .message(message)
+                .downloadUrl(downloadUrl)
+                .clientVersion(clientVersion)
+                .build();
+    }
+
+    /**
+     * 比较两个版本号
+     * @return v1 > v2 返回正数, v1 < v2 返回负数, 相等返回0
+     * 支持格式: "1.2.3", "202607152217" (纯数字按字符串比较), "V202607152217"
+     */
+    private int compareVersions(String v1, String v2) {
+        String n1 = normalizeVersion(v1);
+        String n2 = normalizeVersion(v2);
+
+        // 尝试按点分版本号比较
+        String[] parts1 = n1.split("\\.");
+        String[] parts2 = n2.split("\\.");
+        int maxLen = Math.max(parts1.length, parts2.length);
+
+        for (int i = 0; i < maxLen; i++) {
+            String p1 = i < parts1.length ? parts1[i] : "0";
+            String p2 = i < parts2.length ? parts2[i] : "0";
+            try {
+                long num1 = Long.parseLong(p1);
+                long num2 = Long.parseLong(p2);
+                if (num1 != num2) return Long.compare(num1, num2);
+            } catch (NumberFormatException e) {
+                // 非数字部分按字符串比较
+                int cmp = p1.compareTo(p2);
+                if (cmp != 0) return cmp;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 标准化版本号：去掉前缀 V/v
+     */
+    private String normalizeVersion(String version) {
+        if (version == null) return "0";
+        return version.replaceFirst("^[Vv]", "");
+    }
+
+    /**
+     * 从数据库读取配置值
+     */
+    private String getConfigValue(String key, String defaultValue) {
+        try {
+            LambdaQueryWrapper<SysConfig> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(SysConfig::getConfigKey, key);
+            SysConfig config = sysConfigMapper.selectOne(queryWrapper);
+            if (config != null && config.getConfigValue() != null) {
+                return config.getConfigValue();
+            }
+        } catch (Exception e) {
+            log.warn("读取配置 {} 异常: {}, 使用默认值: {}", key, e.getMessage(), defaultValue);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * 获取版本校验配置（供API返回）
+     */
+    public Map<String, Object> getVersionCheckConfig() {
+        Map<String, Object> config = new java.util.LinkedHashMap<>();
+        config.put("enabled", "true".equals(getConfigValue("version-check.enabled", "false")));
+        config.put("mode", getConfigValue("version-check.mode", "none"));
+        config.put("minVersion", getConfigValue("version-check.min-version", "0.0.0"));
+        config.put("downloadUrl", getConfigValue("version-check.download-url", ""));
+        config.put("success", true);
+        return config;
+    }
+
+    /**
+     * 更新版本校验配置
+     */
+    public Map<String, Object> updateVersionCheckConfig(Map<String, String> body) {
+        java.util.List<String> updatableKeys = java.util.Arrays.asList(
+            "version-check.enabled", "version-check.mode", "version-check.min-version", "version-check.download-url"
+        );
+
+        for (String key : updatableKeys) {
+            if (body.containsKey(key)) {
+                String value = body.get(key);
+                updateConfigValue(key, value);
+                log.info("更新配置: {} = {}", key, value);
+            }
+        }
+
+        return getVersionCheckConfig();
+    }
+
+    /**
+     * 更新单个配置值（upsert）
+     */
+    private void updateConfigValue(String key, String value) {
+        LambdaQueryWrapper<SysConfig> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysConfig::getConfigKey, key);
+        SysConfig config = sysConfigMapper.selectOne(queryWrapper);
+        if (config != null) {
+            config.setConfigValue(value);
+            config.setUpdateTime(LocalDateTime.now());
+            sysConfigMapper.updateById(config);
+        } else {
+            config = new SysConfig();
+            config.setConfigKey(key);
+            config.setConfigValue(value);
+            config.setConfigGroup("version-check");
+            sysConfigMapper.insert(config);
+        }
+    }
+
+    // ==================== 原有方法 ====================
 
     private String getClientIp() {
         try {

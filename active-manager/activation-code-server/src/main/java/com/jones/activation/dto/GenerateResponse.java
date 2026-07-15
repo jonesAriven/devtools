@@ -10,6 +10,8 @@ public class GenerateResponse {
     private String deviceId;
     private String initialSerial;
     private String machineCode;
+    private String downloadUrl;
+    private String clientVersion;
 
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
@@ -35,6 +37,12 @@ public class GenerateResponse {
     public String getMachineCode() { return machineCode; }
     public void setMachineCode(String machineCode) { this.machineCode = machineCode; }
 
+    public String getDownloadUrl() { return downloadUrl; }
+    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+
+    public String getClientVersion() { return clientVersion; }
+    public void setClientVersion(String clientVersion) { this.clientVersion = clientVersion; }
+
     public static GenerateResponseBuilder builder() {
         return new GenerateResponseBuilder();
     }
@@ -48,6 +56,8 @@ public class GenerateResponse {
         private String deviceId;
         private String initialSerial;
         private String machineCode;
+        private String downloadUrl;
+        private String clientVersion;
 
         public GenerateResponseBuilder success(boolean success) { this.success = success; return this; }
         public GenerateResponseBuilder message(String message) { this.message = message; return this; }
@@ -57,6 +67,8 @@ public class GenerateResponse {
         public GenerateResponseBuilder deviceId(String deviceId) { this.deviceId = deviceId; return this; }
         public GenerateResponseBuilder initialSerial(String initialSerial) { this.initialSerial = initialSerial; return this; }
         public GenerateResponseBuilder machineCode(String machineCode) { this.machineCode = machineCode; return this; }
+        public GenerateResponseBuilder downloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; return this; }
+        public GenerateResponseBuilder clientVersion(String clientVersion) { this.clientVersion = clientVersion; return this; }
 
         public GenerateResponse build() {
             GenerateResponse response = new GenerateResponse();
@@ -68,6 +80,8 @@ public class GenerateResponse {
             response.setDeviceId(deviceId);
             response.setInitialSerial(initialSerial);
             response.setMachineCode(machineCode);
+            response.setDownloadUrl(downloadUrl);
+            response.setClientVersion(clientVersion);
             return response;
         }
     }

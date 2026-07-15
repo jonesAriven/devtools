@@ -137,6 +137,13 @@
                     `);
                 } else {
                     let html = `<p style="color:#dc2626;">${data.message}</p>`;
+                    // 版本过低时显示下载链接
+                    if (data.downloadUrl) {
+                        html += `<div style="margin-top:12px;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">`;
+                        html += `<p style="color:#dc2626;font-weight:600;margin-bottom:8px;">⚠️ 当前客户端版本过低，无法生成激活码</p>`;
+                        html += `<a href="${data.downloadUrl}" target="_blank" style="display:inline-block;padding:8px 20px;background:#dc2626;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">📥 下载最新版本工具</a>`;
+                        html += `</div>`;
+                    }
                     if (data.activationCode) {
                         const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
                         html += `<p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>`;

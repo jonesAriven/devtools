@@ -110,10 +110,19 @@ namespace Jones.Activation
 
         public static string GetSerialNumber(string initialSerial)
         {
+            return GetSerialNumber(initialSerial, null);
+        }
+
+        public static string GetSerialNumber(string initialSerial, string version)
+        {
             string deviceId = GetDeviceId();
             string machineCode = GetMachineCode();
 
-            string plainText = initialSerial + "|" + deviceId + "|" + machineCode;
+            // 格式: initialSerial|deviceId|machineCode|version
+            // version 可能为空（兼容老版本客户端），服务端据此判断是否传了版本号
+            string plainText = string.IsNullOrEmpty(version)
+                ? initialSerial + "|" + deviceId + "|" + machineCode
+                : initialSerial + "|" + deviceId + "|" + machineCode + "|" + version;
             byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
 
             byte[] encrypted = new byte[plainBytes.Length];
@@ -145,7 +154,8 @@ namespace Jones.Activation
                     {
                         InitialSerial = parts[0],
                         DeviceId = parts[1],
-                        MachineCode = parts[2]
+                        MachineCode = parts[2],
+                        Version = parts.Length >= 4 ? parts[3] : null
                     };
                 }
             }
@@ -159,6 +169,7 @@ namespace Jones.Activation
             public string InitialSerial { get; set; }
             public string DeviceId { get; set; }
             public string MachineCode { get; set; }
+            public string Version { get; set; }
         }
 
         private static string GetFallbackDeviceId()

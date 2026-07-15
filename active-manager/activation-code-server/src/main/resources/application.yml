@@ -39,5 +39,12 @@ activation:
     public-key-path: rsa_keys/public_key.pem
     key-size: 2048
 
+# 版本校验策略配置
+version-check:
+  enabled: false          # 是否启用版本校验
+  mode: none             # 校验模式: none=不校验, required=必须传版本号, minimum=最低版本号要求
+  min-version: "0.0.0"   # 最低版本号（mode=minimum时生效）
+  download-url: "https://tools.marschat.online/activecode/downloads.html"  # 版本过低时的下载提示链接
+
 download:
   base-dir: /app/downloads

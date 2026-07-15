@@ -82,4 +82,16 @@ public class ActivationController {
         log.info("收到修改设备别名请求, id: {}, alias: {}", id, alias);
         return activationService.updateDeviceAlias(id, alias);
     }
+
+    @GetMapping("/version-check")
+    public Map<String, Object> getVersionCheckConfig() {
+        log.info("获取版本校验配置");
+        return activationService.getVersionCheckConfig();
+    }
+
+    @PutMapping("/version-check")
+    public Map<String, Object> updateVersionCheckConfig(@RequestBody Map<String, String> body) {
+        log.info("更新版本校验配置: {}", body.keySet());
+        return activationService.updateVersionCheckConfig(body);
+    }
 }
