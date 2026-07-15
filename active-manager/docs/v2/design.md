@@ -52,19 +52,36 @@
 ```
 工具软件                     验证工具(verifier)                  服务端(server)
    │                              │                                  │
-   │── LaunchWithProtection() ──→│                                  │
+   │── LaunchWithProtection(     │                                  │
+   │     initialSerial,           │                                  │
+   │     appVersion) ────────────→│                                  │
    │                              │── 加载activation.dat             │
    │                              │── AES解密 → 读取激活码           │
    │                              │── RSA验证 + 设备绑定检查         │
    │                              │                                  │
    │  （首次使用/已过期）          │                                  │
-   │                              │── 弹窗显示唯一序列号             │
+   │                              │── 弹窗显示唯一序列号 + 二维码    │
+   │                              │   序列号明文=                    │
+   │                              │   initialSerial|deviceId|        │
+   │                              │   machineCode|appVersion         │
+   │                              │   二维码URL=                     │
+   │                              │   tools.marschat.online/         │
+   │                              │   activecode/index.html?sn=xxx   │
    │←── 用户复制序列号 ──────────│                                  │
+   │      or 手机扫码            │                                  │
    │                              │                                  │
-   │── 用户粘贴序列号给管理员 ───────────────────────────────────→│
+   │  ┌────────────────────────────────────────────────────────┐    │
+   │  │ 两种回传路径                                            │    │
+   │  │ A. 用户粘贴序列号给管理员 → 管理员在后台生成            │    │
+   │  │ B. 手机扫码打开 index.html?sn=xxx → 前端自动填充 sn     │    │
+   │  │    → 点\"生成激活码\" → POST /activation/generate         │    │
+   │  └────────────────────────────────────────────────────────┘    │
    │                              │                   服务端解密序列号│
+   │                              │                   按 | 切分 4 段  │
+   │                              │                   校验第 4 段     │
+   │                              │                   appVersion 版本 │
    │                              │                   生成激活码      │
-   │←── 管理员返回激活码 ────────────────────────────────────────│
+   │←── 管理员/前端返回激活码 ────────────────────────────────────│
    │                              │                                  │
    │── 用户粘贴激活码 ──────────→│                                  │
    │                              │── RSA验证 + 设备绑定             │
@@ -74,6 +91,8 @@
    │── 软件正常运行 ─────────────│── 每60秒定时检查 ──→│            │
    │                              │                                  │
 ```
+
+**扫码链路说明**：微信/QQ/浏览器扫码工具在此链路中完全透明，只负责把二维码里的 URL 转到浏览器，不参与激活/校验逻辑。版本号在 C++ 端生成序列号时就已嵌入第 4 段，扫码工具无需感知版本。
 
 ---
 
@@ -95,15 +114,33 @@ signature = SHA256withRSA(payload, privateKey)
 ### 2.2 唯一序列号加密机制
 
 ```
-明文 = 初始序列号 + "|" + 设备ID + "|" + 机器码
-       例: QRTOOL|A1B2C3D4E5F6...|AA-BB-CC-DD-EE-FF
+明文（4 段格式）= 初始序列号 + "|" + 设备ID + "|" + 机器码 + "|" + 应用版本
+       例: QRCodeTool|A1B2C3D4E5F6...|AA-BB-CC-DD-EE-FF|V202607152347
 
 加密: 逐字节 XOR 0x5A → Base64编码
 解密: Base64解码 → 逐字节 XOR 0x5A → 按 "|" 分割
 ```
 
-- 客户端verifier生成，服务端解密
+- 客户端 verifier 生成，服务端解密
 - 加密方式两端必须一致
+- **第 4 段 appVersion 由调用方（QR 项目等工具软件）在启动时通过 `LaunchWithProtection(initialSerial, appVersion)` 传入，verifier 库本身不再持有版本定义**
+- 服务端拿到第 4 段做版本校验（`version-check.enabled/mode/min-version` 三种模式），控制哪些客户端版本可以领激活码
+
+**版本号维护路径（一处）**：
+
+```
+工具项目 CMakeLists.txt (VERSION_MODE=auto/manual)
+        ↓ configure_file
+工具项目 src/version.h    #define APP_VERSION "V202607152347"
+        ↓ #include
+工具项目 main.cpp          LaunchWithProtection("QRCodeTool", APP_VERSION)
+        ↓ 参数传递
+verifier 库 s_appVersion 静态字段
+        ↓ 传给
+GetSerialNumber(initialSerial, s_appVersion)   → 序列号第 4 段
+```
+
+verifier 库自身**不再依赖内部 `version.h`**，是纯透明容器，QR 项目改版本号只需改一处（`CMakeLists.txt`）即可生效。
 
 ### 2.3 RSA公钥保护机制
 

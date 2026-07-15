@@ -587,3 +587,76 @@ M5:3/3/KLMNO...   ← 第3页
 2. **数据库迁移要兼容 MySQL**：`IF NOT EXISTS` 语法在 MySQL 和 MariaDB 中支持程度不同，必须用 `information_schema` 先查询再操作。
 3. **关联查询优于冗余同步**：日志表不存储设备别名，通过 serial_number 关联查询，避免数据不一致和同步开销。
 4. **多页协议设计**：M5: 前缀 + 页码/总页数 + 分片数据，每张码独立可解析，收集齐后拼合，容错性好。
+
+---
+
+## 迭代10：C++ verifier 版本参数化 + 二维码扫码激活链路
+
+### 变更内容
+
+#### 一、verifier 库版本号来源改造
+
+**问题**：verifier 库内部持有 `version.h`（`APP_VERSION` 宏），版本号在两个地方定义（QR 项目自己的 `version.h` 一份、verifier 也一份），改版本需要同步两处，容易漂移，且 verifier 作为公共库不该锁定业务版本。
+
+**改造**：verifier 库不再持有版本定义，改由调用方传入。
+
+- `ActivationGuard::LaunchWithProtection` 签名从 `(initialSerial, checkIntervalMs)` 改为 `(initialSerial, appVersion, checkIntervalMs)`
+- 新增 `static std::string s_appVersion;` 静态成员在 `LaunchWithProtection` 里被赋值
+- 删除 `#include "version.h"`，`ShowActivationDialog` 用 `s_appVersion` 替代 `APP_VERSION` 宏
+- `GetSerialNumber(initialSerial, s_appVersion)` 正确嵌入调用方版本到序列号第 4 段
+
+**版本号维护路径（一处）**：
+
+```
+QR_GENERATORBYCCC/CMakeLists.txt (VERSION_MODE=auto/manual)
+        ↓ configure_file
+QR_GENERATORBYCCC/src/version.h    #define APP_VERSION "V202607152347"
+        ↓ #include
+QR_GENERATORBYCCC/src/main.cpp     LaunchWithProtection("QRCodeTool", APP_VERSION)
+        ↓ 参数传递
+verifier 库 s_appVersion 静态字段
+        ↓ 传给
+GetSerialNumber(initialSerial, s_appVersion)   → 序列号第 4 段
+```
+
+verifier 是纯透明容器，QR 项目改版本号只在 `CMakeLists.txt` 一处生效。
+
+#### 二、build.bat 增加先编 lib 步骤
+
+**问题**：build.bat 之前只编 QR 项目，用的是共享盘上的旧 `JonesActivation.lib`，lib 侧源码改了不会生效。
+
+**修复**：build.bat 从 `[1/4]…[4/4]` 改为 `[1/5]…[5/5]`，`[1/5]` 步骤 `pushd` 到 `../active-manager/activation-code-verifier/cpp` 调 `build_lib.bat`，确保每次都用最新 lib 源码编出 lib。
+
+#### 三、扫码激活链路澄清
+
+微信/QQ/浏览器扫码工具在整个激活流程中完全透明，只把二维码里的 URL（`https://tools.marschat.online/activecode/index.html?sn=<serialNumber>`）转到浏览器。版本号在 C++ 端生成序列号时就已嵌入第 4 段，扫码工具本身不感知版本。
+
+前端 `index.html` 从 URL 参数 `?sn=xxx` 自动填充序列号 → 点"生成激活码" → 调 `POST /activecode/api/activation/generate` → 服务端解密序列号取第 4 段做版本校验 → 返回激活码。
+
+#### 四、.gitignore 修正
+
+**问题**：`.gitignore` 里 `*.h` 全屏，导致 `include/Jones/*.h` 共 9 个手写头文件历史上从未进 git，只在 Windows 共享盘存活；此外 `test_*.py` 等临时脚本规则未加 `/` 前缀，会误伤 pytest 单元测试文件。
+
+**修复**：
+- 删除 `*.h` 全屏，换成精确忽略 `QR_GENERATORBYCCC/src/version.h` 和 `**/build/**/*.h`
+- 临时脚本规则加 `/` 前缀锚定根目录（`/test_*.py` `/check_*.py` 等）
+- 去重 `check_*.py`/`debug_*.py`/`verify_*.py`/`fix_*.py`/`test_*.py` 各出现过 2 次的历史遗留
+- 补全 9 个 `include/Jones/*.h` 头文件入库
+
+### 涉及文件
+
+| 文件 | 变更 |
+|------|------|
+| `active-manager/activation-code-verifier/cpp/include/Jones/ActivationGuard.h` | `LaunchWithProtection` 加 `appVersion` 参数；新增 `s_appVersion` 静态成员 |
+| `active-manager/activation-code-verifier/cpp/src/ActivationGuard.cpp` | 删 `#include "version.h"`；定义 `s_appVersion`；`LaunchWithProtection` 里存 version；`ShowActivationDialog` 用 `s_appVersion` |
+| `QR_GENERATORBYCCC/src/main.cpp` | 加 `#include "version.h"`；`LaunchWithProtection("QRCodeTool", APP_VERSION)` |
+| `QR_GENERATORBYCCC/build.bat` | `[1/4]…[4/4]` → `[1/5]…[5/5]`，新增 `[1/5]` `pushd` 到 lib 目录调 `build_lib.bat` |
+| `.gitignore` | 删 `*.h` 全屏；临时脚本规则加 `/` 前缀；去重；补全 `include/Jones/*.h` 入库 |
+| `docs/v2/design.md` | 更新数据流图与唯一序列号加密机制章节，新增扫码链路说明 |
+
+### 经验总结
+
+1. **公共库不持有业务版本**：verifier 是接入库，不该锁定业务版本号，`APP_VERSION` 从调用方传入更清晰，避免多处同步漂移。
+2. **构建产物依赖必须保证新鲜**：跨项目依赖静态库时，必须在主项目 build 时先编依赖库，不能默认"共享盘上的 lib 一定最新"。
+3. **`.gitignore` 一刀切是隐性 bug 源**：`*.h`/`*.png`/`test_*.py` 这类广谱规则会让人忘记本该入库的手写文件从没进过 git，用 `/` 锚定根目录或精确路径才安全。
+4. **扫码工具在激活链路中透明**：版本/设备信息在序列号本身里做，扫码工具（微信/QQ/浏览器）只是 URL 递交器，不需要感知业务字段。
