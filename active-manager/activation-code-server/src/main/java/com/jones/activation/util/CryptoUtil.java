@@ -261,12 +261,14 @@ public class CryptoUtil {
             String plainText = new String(decrypted, StandardCharsets.UTF_8);
             String[] parts = plainText.split("\\|");
             if (parts.length >= 3) {
-                return new SerialNumberParseResult(true, "解析成功", parts[0], parts[1], parts[2]);
+                // 第4段是版本号（如果存在）
+                String version = parts.length >= 4 ? parts[3] : null;
+                return new SerialNumberParseResult(true, "解析成功", parts[0], parts[1], parts[2], version);
             }
-            return new SerialNumberParseResult(false, "唯一序列号格式无效", null, null, null);
+            return new SerialNumberParseResult(false, "唯一序列号格式无效", null, null, null, null);
         } catch (Exception e) {
             log.error("解密唯一序列号失败", e);
-            return new SerialNumberParseResult(false, "唯一序列号解密失败", null, null, null);
+            return new SerialNumberParseResult(false, "唯一序列号解密失败", null, null, null, null);
         }
     }
 
@@ -276,14 +278,16 @@ public class CryptoUtil {
         private final String initialSerial;
         private final String deviceId;
         private final String machineCode;
+        private final String version;
 
         public SerialNumberParseResult(boolean success, String message, String initialSerial,
-                                       String deviceId, String machineCode) {
+                                       String deviceId, String machineCode, String version) {
             this.success = success;
             this.message = message;
             this.initialSerial = initialSerial;
             this.deviceId = deviceId;
             this.machineCode = machineCode;
+            this.version = version;
         }
 
         public boolean isSuccess() { return success; }
@@ -291,5 +295,6 @@ public class CryptoUtil {
         public String getInitialSerial() { return initialSerial; }
         public String getDeviceId() { return deviceId; }
         public String getMachineCode() { return machineCode; }
+        public String getVersion() { return version; }
     }
 }

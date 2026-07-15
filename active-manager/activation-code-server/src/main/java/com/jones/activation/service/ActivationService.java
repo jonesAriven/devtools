@@ -52,21 +52,18 @@ public class ActivationService {
                     .build();
         }
 
-        // ========== 版本校验 ==========
-        GenerateResponse versionCheck = checkVersionRestriction(request.getClientVersion());
-        if (versionCheck != null) {
-            return versionCheck;
-        }
-
         String deviceId = request.getDeviceId();
         String initialSerial;
         String machineCode;
 
+        // 先解析序列号，获取其中嵌入的版本号
+        String clientVersionFromSerial = null;
         CryptoUtil.SerialNumberParseResult parseResult = CryptoUtil.decryptSerialNumber(serialNumber);
         if (parseResult.isSuccess()) {
             initialSerial = parseResult.getInitialSerial();
             String parsedDeviceId = parseResult.getDeviceId();
             machineCode = parseResult.getMachineCode();
+            clientVersionFromSerial = parseResult.getVersion();
 
             serialNumber = initialSerial + "-" + machineCode;
             if (deviceId == null || deviceId.trim().isEmpty()) {
@@ -78,6 +75,17 @@ public class ActivationService {
             String[] parsed = parseSerialNumber(serialNumber);
             initialSerial = parsed[0];
             machineCode = parsed[1];
+        }
+
+        // ========== 版本校验 ==========
+        // 优先从 HTTP 请求取 clientVersion，如果没有则从序列号解析
+        String clientVersion = request.getClientVersion();
+        if (clientVersion == null || clientVersion.trim().isEmpty()) {
+            clientVersion = clientVersionFromSerial;
+        }
+        GenerateResponse versionCheck = checkVersionRestriction(clientVersion);
+        if (versionCheck != null) {
+            return versionCheck;
         }
 
         int expireMinutes = request.getExpireMinutes() != null ? request.getExpireMinutes() : 525600;
