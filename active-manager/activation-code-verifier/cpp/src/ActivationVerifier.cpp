@@ -211,12 +211,36 @@ ActivationVerifyResult ActivationVerifier::Verify(const std::string& activationC
 
         CryptHashData(hHash, payloadBytes.data(), (DWORD)payloadBytes.size(), 0);
         DebugLog("Hash created OK, payload size=" + std::to_string(payloadBytes.size()));
+        
+        // Debug: get hash value
+        DWORD hashLen = 0;
+        CryptGetHashParam(hHash, HP_HASHVAL, NULL, &hashLen, 0);
+        std::vector<BYTE> hashValue(hashLen);
+        CryptGetHashParam(hHash, HP_HASHVAL, hashValue.data(), &hashLen, 0);
+        std::string hashHex;
+        for (DWORD i = 0; i < hashLen; i++) {
+            char buf[4];
+            sprintf_s(buf, "%02X", hashValue[i]);
+            hashHex += buf;
+        }
+        DebugLog("SHA256 Hash: " + hashHex);
 
-        // 6. Verify signature (CryptoAPI expects little-endian, Java produces big-endian)
-        std::vector<BYTE> sigReversed(signatureBytes);
-        std::reverse(sigReversed.begin(), sigReversed.end());
+        // 6. Verify signature
+        // 服务端在生成激活码时反转了签名（reverseByteArray），生成了小端字节序
+        // CryptoAPI CryptVerifySignature 期望小端字节序（与Java的大端相反）
+        // 所以客户端不需要反转，直接使用服务端发来的小端签名
+        std::vector<BYTE> sigData(signatureBytes);
+        
+        // Debug: print first 16 bytes
+        std::string sigHex;
+        for (size_t i = 0; i < 16 && i < sigData.size(); i++) {
+            char buf[4];
+            sprintf_s(buf, "%02X", sigData[i]);
+            sigHex += buf;
+        }
+        DebugLog("Signature first 16 bytes (no reversal): " + sigHex);
 
-        BOOL verifyResult = CryptVerifySignature(hHash, sigReversed.data(), (DWORD)sigReversed.size(),
+        BOOL verifyResult = CryptVerifySignature(hHash, sigData.data(), (DWORD)sigData.size(),
                                           hKey, NULL, 0);
         DWORD verifyErr = GetLastError();
 

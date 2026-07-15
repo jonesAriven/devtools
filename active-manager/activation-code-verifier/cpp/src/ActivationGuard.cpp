@@ -192,7 +192,20 @@ std::string ActivationGuard::DecryptPublicKey() {
         decrypted[i] = (char)(s_encryptedKey[i] ^ XOR_KEYS[i % XOR_KEYS_LEN]);
     }
     decrypted[len] = '\0';
-    return std::string(decrypted.data(), len);
+    std::string result(decrypted.data(), len);
+    
+    // Debug log
+    std::ofstream debugLog("activation_debug.log", std::ios::app);
+    if (debugLog) {
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        debugLog << "[" << st.wHour << ":" << st.wMinute << ":" << st.wSecond << "] "
+                 << "DecryptPublicKey: len=" << len 
+                 << ", result_len=" << result.length()
+                 << ", first80=" << result.substr(0, 80) << std::endl;
+    }
+    
+    return result;
 }
 
 void ActivationGuard::ClearEncryptedKey() {
