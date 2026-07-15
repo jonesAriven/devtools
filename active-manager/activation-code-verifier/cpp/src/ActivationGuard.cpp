@@ -3,7 +3,6 @@
 #include "Jones/ActivationDeviceInfo.h"
 #include "Jones/ActivationSecureStorage.h"
 #include "Jones/ActivationAntiDebug.h"
-#include "version.h"
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -37,6 +36,7 @@ static void DebugLogGuard(const std::string& msg) {
 ActivationVerifier* ActivationGuard::s_verifier = nullptr;
 std::string ActivationGuard::s_lastActivationCode;
 std::string ActivationGuard::s_lastDeviceId;
+std::string ActivationGuard::s_appVersion;
 int ActivationGuard::s_checkIntervalMs = 60000;
 std::function<void(const std::string&)> ActivationGuard::s_onExpiredCallback = nullptr;
 HANDLE ActivationGuard::s_timer = nullptr;
@@ -105,8 +105,11 @@ static std::string GetExeDir() {
 
 // --- Public methods ---
 
-bool ActivationGuard::LaunchWithProtection(const std::string& initialSerial, int checkIntervalMs) {
+bool ActivationGuard::LaunchWithProtection(const std::string& initialSerial,
+                                            const std::string& appVersion,
+                                            int checkIntervalMs) {
     s_hInstance = GetModuleHandle(NULL);
+    s_appVersion = appVersion;
     std::string licPath = GetExeDir() + "\\activation.dat";
 
     // Try to load saved activation code
@@ -688,7 +691,7 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 }
 
 std::string ActivationGuard::ShowActivationDialog(const std::string& initialSerial, const std::string& licPath) {
-    g_serialNumber = ActivationDeviceInfo::GetSerialNumber(initialSerial, APP_VERSION);
+    g_serialNumber = ActivationDeviceInfo::GetSerialNumber(initialSerial, s_appVersion);
     g_activatedCode.clear();
     g_activated = false;
     g_exitApp = false;
