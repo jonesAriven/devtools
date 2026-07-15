@@ -460,28 +460,36 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         int cx = LOWORD(lParam);
         int cy = HIWORD(lParam);
         int margin = 20;
-        int leftW = 420;
+        const int qrSize = 160;
+        const int qrGap = 20;       // gap between left panel and QR code
+        const int btnH = 28;
 
-        // Left side controls: fixed width, reposition vertically
+        // Left panel width: fill available space, but leave room for QR code on right
+        // Minimum left width = 380, QR code area needs qrSize + gap
+        int rightAreaW = qrSize + qrGap + margin * 2;  // QR code + margins
+        int leftW = std::max(380, cx - rightAreaW);
+
+        // Left side controls: reposition with dynamic leftW
         struct LayoutInfo {
             int id;
-            int y;
+            double yPct;   // y position as percentage of window height (0-1)
             int height;
-            int width;  // 0 = full leftW, -1 = auto, >0 = fixed
+            int width;    // 0 = full leftW, -1 = auto, >0 = fixed
+            bool anchorBottom; // if true, y is measured from bottom
         };
         LayoutInfo layout[] = {
-            { -1,           12,  25, 0 },   // Title
-            { -1,           45,  20, -1 },  // "唯一序列号:" label
-            { ID_TXT_SERIAL,67,  25, 0 },   // Serial number text
-            { ID_BTN_COPY_SN,96, 24, 100 }, // Copy serial button
-            { -1,           128, 20, -1 },  // "激活码:" label
-            { ID_TXT_CODE,  150, 60, 0 },   // Activation code input
-            { -1,           216, 20, 0 },   // Hint text
-            { -1,           240, 20, 0 },   // "获取激活码：" label
-            { ID_LNK_URL,   260, 20, 0 },   // URL link
-            { ID_BTN_COPY_URL,284,22, 100 },// Copy URL button
-            { ID_BTN_ACTIVATE,320,28, 80 }, // Activate button
-            { ID_BTN_EXIT,  320, 28, 80 },  // Exit button
+            { -1,           0.03, 25, 0, false },     // Title (3% from top)
+            { -1,           0.12, 20, -1, false },    // "唯一序列号:" label
+            { ID_TXT_SERIAL, 0.18, 25, 0, false },    // Serial number text
+            { ID_BTN_COPY_SN, 0.26, 24, 100, false },// Copy serial button
+            { -1,           0.34, 20, -1, false },    // "激活码:" label
+            { ID_TXT_CODE,  0.40, 60, 0, false },    // Activation code input (stretches)
+            { -1,           0.57, 20, 0, false },     // Hint text
+            { -1,           0.63, 20, 0, false },     // "获取激活码：" label
+            { ID_LNK_URL,   0.67, 20, 0, false },    // URL link
+            { ID_BTN_COPY_URL,0.73, 22, 100, false }, // Copy URL button
+            { ID_BTN_ACTIVATE, 0.85, btnH, 80, true }, // Activate button (from bottom)
+            { ID_BTN_EXIT,   0.85, btnH, 80, true },  // Exit button (from bottom)
         };
 
         HWND hChild = GetWindow(hWnd, GW_CHILD);
@@ -493,6 +501,7 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 
             int x = margin;
             int ctrlW, ctrlH = li.height;
+            int y;
 
             if (li.width == 0) {
                 ctrlW = leftW;
@@ -504,41 +513,48 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 ctrlW = li.width;
             }
 
-            // Special positioning for bottom buttons
+            // Calculate Y position
+            if (li.anchorBottom) {
+                y = cy - (int)(cy * li.yPct) - ctrlH;
+                // Keep minimum distance from bottom
+                if (y < cy - 50) y = cy - 50;
+            } else {
+                y = (int)(cy * li.yPct);
+            }
+
+            // Special positioning for bottom buttons: right-aligned within left panel
             if (id == ID_BTN_ACTIVATE) {
-                x = margin + leftW - 170;
+                x = margin + leftW - 80 - 10;  // 80px button + 10px gap from exit
             } else if (id == ID_BTN_EXIT) {
                 x = margin + leftW - 80;
             }
 
-            // Activation code input stretches vertically
+            // Activation code input stretches vertically to fill space between hint and buttons
             if (id == ID_TXT_CODE) {
-                ctrlH = std::max(60, cy - li.y - 120);
+                int btnY = cy - 50;  // approximate button Y position
+                ctrlH = std::max(60, btnY - y - 10);
             }
 
-            MoveWindow(hChild, x, li.y, ctrlW, ctrlH, TRUE);
+            MoveWindow(hChild, x, y, ctrlW, ctrlH, TRUE);
             hChild = GetWindow(hChild, GW_HWNDNEXT);
             idx++;
         }
 
-        // Right side: QR code and hint - reposition based on window size
+        // Right side: QR code and hint - always positioned at right edge
+        int qrX = cx - margin - qrSize;
+        int qrY = (cy - qrSize) / 2;  // vertically centered
+
         HWND hQr = GetDlgItem(hWnd, ID_STATIC_QR);
         if (hQr) {
-            int qrX = margin + leftW + 20;
-            int qrY = 20;
-            int qrSize = 160;
             MoveWindow(hQr, qrX, qrY, qrSize, qrSize, TRUE);
         }
-        // QR hint label (last child, no ID)
-        // Find it by iterating remaining children
+        // QR hint label (no ID, find by iterating)
+        hChild = GetWindow(hWnd, GW_CHILD);
         while (hChild) {
             int id = GetDlgCtrlID(hChild);
             if (id == 0 || id == ID_STATIC_QR) {
-                // QR hint or QR static - position it
                 if (id == 0) {
-                    // This is the QR hint label
-                    int qrX = margin + leftW + 20;
-                    MoveWindow(hChild, qrX, 20 + 160 + 6, 160, 20, TRUE);
+                    MoveWindow(hChild, qrX, qrY + qrSize + 6, qrSize, 20, TRUE);
                 }
             }
             hChild = GetWindow(hChild, GW_HWNDNEXT);
