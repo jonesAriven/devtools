@@ -235,7 +235,7 @@ void CALLBACK ActivationGuard::PeriodicCheckCallback(PVOID lpParam, BOOLEAN Time
 }
 
 void ActivationGuard::ShowExpiredDialog(const std::string& msg) {
-    MessageBoxW(NULL, L"授权已失效，程序即将退出。\n\n如遇问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html", L"授权验证", MB_OK | MB_ICONWARNING);
+    MessageBoxW(NULL, L"授权已失效，程序即将退出。", L"授权验证", MB_OK | MB_ICONWARNING);
     ExitProcess(1002);
 }
 
@@ -456,59 +456,97 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
     }
 
     case WM_SIZE: {
+        // Reposition controls when window is resized
         int cx = LOWORD(lParam);
         int cy = HIWORD(lParam);
-        const int margin = 20;
-        const int qrSize = 160;
+        int margin = 20;
+        int leftW = 420;
 
-        // Dynamic left panel width: expand with window, leave room for QR code on right
-        int rightAreaW = qrSize + 20 + margin * 2;
-        int leftW = std::max(380, cx - rightAreaW);
+        // Left side controls: fixed width, reposition vertically
+        struct LayoutInfo {
+            int id;
+            int y;
+            int height;
+            int width;  // 0 = full leftW, -1 = auto, >0 = fixed
+        };
+        LayoutInfo layout[] = {
+            { -1,           12,  25, 0 },   // Title
+            { -1,           45,  20, -1 },  // "唯一序列号:" label
+            { ID_TXT_SERIAL,67,  25, 0 },   // Serial number text
+            { ID_BTN_COPY_SN,96, 24, 100 }, // Copy serial button
+            { -1,           128, 20, -1 },  // "激活码:" label
+            { ID_TXT_CODE,  150, 60, 0 },   // Activation code input
+            { -1,           216, 20, 0 },   // Hint text
+            { -1,           240, 20, 0 },   // "获取激活码：" label
+            { ID_LNK_URL,   260, 20, 0 },   // URL link
+            { ID_BTN_COPY_URL,284,22, 100 },// Copy URL button
+            { ID_BTN_ACTIVATE,320,28, 80 }, // Activate button
+            { ID_BTN_EXIT,  320, 28, 80 },  // Exit button
+        };
 
-        // --- Known-ID controls via GetDlgItem ---
-        HWND h;
-        h = GetDlgItem(hWnd, ID_TXT_SERIAL); if (h) MoveWindow(h, margin, 67, leftW, 25, TRUE);
-        h = GetDlgItem(hWnd, ID_BTN_COPY_SN); if (h) MoveWindow(h, margin, 96, 100, 24, TRUE);
-        h = GetDlgItem(hWnd, ID_TXT_CODE); if (h) MoveWindow(h, margin, 150, leftW, std::max(60, cy - 170), TRUE);
-        h = GetDlgItem(hWnd, ID_LNK_URL); if (h) MoveWindow(h, margin, cy - 72, leftW, 20, TRUE);
-        h = GetDlgItem(hWnd, ID_BTN_COPY_URL); if (h) MoveWindow(h, margin, cy - 47, 100, 22, TRUE);
-        h = GetDlgItem(hWnd, ID_BTN_ACTIVATE); if (h) MoveWindow(h, leftW + margin - 170, cy - 50, 80, 28, TRUE);
-        h = GetDlgItem(hWnd, ID_BTN_EXIT); if (h) MoveWindow(h, leftW + margin - 80, cy - 50, 80, 28, TRUE);
+        HWND hChild = GetWindow(hWnd, GW_CHILD);
+        int idx = 0;
+        int totalItems = sizeof(layout) / sizeof(layout[0]);
+        while (hChild && idx < totalItems) {
+            int id = GetDlgCtrlID(hChild);
+            LayoutInfo& li = layout[idx];
 
-        // --- Label Statics (ID=0): find relative to known-ID siblings ---
-        h = GetWindow(hWnd, GW_CHILD);
-        while (h && GetDlgCtrlID(h) != 0) h = GetWindow(h, GW_HWNDNEXT);
-        if (h) MoveWindow(h, margin, 12, leftW, 25, TRUE);
+            int x = margin;
+            int ctrlW, ctrlH = li.height;
 
-        h = GetDlgItem(hWnd, ID_TXT_SERIAL);
-        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, 45, 100, 20, TRUE); }
-
-        h = GetDlgItem(hWnd, ID_TXT_CODE);
-        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, 128, 60, 20, TRUE); }
-
-        h = GetDlgItem(hWnd, ID_TXT_CODE);
-        if (h) { HWND n = GetWindow(h, GW_HWNDNEXT); if (n && GetDlgCtrlID(n) == 0) MoveWindow(n, margin, cy - 120, leftW, 20, TRUE); }
-
-        h = GetDlgItem(hWnd, ID_LNK_URL);
-        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, cy - 95, leftW, 20, TRUE); }
-
-        // --- QR code always at right edge ---
-        int qrX = cx - margin - qrSize;
-        int qrY = std::max(margin, (cy - qrSize) / 2);
-        h = GetDlgItem(hWnd, ID_STATIC_QR);
-        if (h) MoveWindow(h, qrX, qrY, qrSize, qrSize, TRUE);
-
-        // QR hint (last Static with ID=0 below QR code)
-        h = GetWindow(hWnd, GW_CHILD);
-        while (h) {
-            if (GetDlgCtrlID(h) == 0) {
-                RECT rc; GetClientRect(h, &rc);
-                if (rc.top > qrY) { MoveWindow(h, qrX, qrY + qrSize + 6, qrSize, 20, TRUE); break; }
+            if (li.width == 0) {
+                ctrlW = leftW;
+            } else if (li.width == -1) {
+                RECT rc;
+                GetWindowRect(hChild, &rc);
+                ctrlW = rc.right - rc.left;
+            } else {
+                ctrlW = li.width;
             }
-            h = GetWindow(h, GW_HWNDNEXT);
+
+            // Special positioning for bottom buttons
+            if (id == ID_BTN_ACTIVATE) {
+                x = margin + leftW - 170;
+            } else if (id == ID_BTN_EXIT) {
+                x = margin + leftW - 80;
+            }
+
+            // Activation code input stretches vertically
+            if (id == ID_TXT_CODE) {
+                ctrlH = std::max(60, cy - li.y - 120);
+            }
+
+            MoveWindow(hChild, x, li.y, ctrlW, ctrlH, TRUE);
+            hChild = GetWindow(hChild, GW_HWNDNEXT);
+            idx++;
+        }
+
+        // Right side: QR code and hint - reposition based on window size
+        HWND hQr = GetDlgItem(hWnd, ID_STATIC_QR);
+        if (hQr) {
+            int qrX = margin + leftW + 20;
+            int qrY = 20;
+            int qrSize = 160;
+            MoveWindow(hQr, qrX, qrY, qrSize, qrSize, TRUE);
+        }
+        // QR hint label (last child, no ID)
+        // Find it by iterating remaining children
+        while (hChild) {
+            int id = GetDlgCtrlID(hChild);
+            if (id == 0 || id == ID_STATIC_QR) {
+                // QR hint or QR static - position it
+                if (id == 0) {
+                    // This is the QR hint label
+                    int qrX = margin + leftW + 20;
+                    MoveWindow(hChild, qrX, 20 + 160 + 6, 160, 20, TRUE);
+                }
+            }
+            hChild = GetWindow(hChild, GW_HWNDNEXT);
         }
         break;
-    } {
+    }
+
+    case WM_CTLCOLORSTATIC: {
         HDC hdc = (HDC)wParam;
         HWND hCtrl = (HWND)lParam;
 
@@ -604,20 +642,18 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     wMsg = L"设备不匹配，此激活码已绑定其他设备。\n\n设备ID: " +
                            std::wstring(deviceId.begin(), deviceId.end()) +
                            L"\n激活码绑定: " +
-                           std::wstring(result.deviceId.begin(), result.deviceId.end()) +
-                           L"\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
+                           std::wstring(result.deviceId.begin(), result.deviceId.end());
                 } else if (result.expired) {
-                    wMsg = L"激活码已过期，请联系管理员续期。\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
+                    wMsg = L"激活码已过期，请联系管理员续期。";
                 } else {
                     std::string deviceId = ActivationDeviceInfo::GetDeviceId();
                     std::string machineCode = ActivationDeviceInfo::GetMachineCode();
-                    wMsg = L"激活码无效，请检查是否输入正确。\n\n设备ID: " +
+                    wMsg = L"激活码无效，请检查是否输入正确。\n\n[调试信息]\n设备ID: " +
                            std::wstring(deviceId.begin(), deviceId.end()) +
                            L"\n机器码: " +
                            std::wstring(machineCode.begin(), machineCode.end()) +
                            L"\n序列号: " +
-                           std::wstring(g_serialNumber.begin(), g_serialNumber.end()) +
-                           L"\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
+                           std::wstring(g_serialNumber.begin(), g_serialNumber.end());
                 }
                 MessageBoxW(hWnd, wMsg.c_str(), L"激活失败", MB_OK | MB_ICONERROR);
             }

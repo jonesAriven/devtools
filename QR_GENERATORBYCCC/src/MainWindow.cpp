@@ -13,28 +13,6 @@
 #include <fstream>
 #include <ctime>
 #include <sstream>
-#include <shellapi.h>
-
-#pragma comment(lib, "version.lib")
-
-// Read ProductVersion from exe's own VERSIONINFO resource
-static std::wstring GetAppVersion() {
-    wchar_t exePath[MAX_PATH];
-    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-    DWORD dummy = 0;
-    DWORD size = GetFileVersionInfoSizeW(exePath, &dummy);
-    if (size == 0) return L"";
-    std::vector<BYTE> data(size);
-    if (!GetFileVersionInfoW(exePath, 0, size, data.data())) return L"";
-    UINT len = 0;
-    wchar_t* buf = nullptr;
-    if (VerQueryValueW(data.data(), L"\\StringFileInfo\\080404B0\\ProductVersion", (LPVOID*)&buf, &len) && len > 0) {
-        return buf;
-    }
-    return L"";
-}
-
-static const std::wstring g_version = GetAppVersion();
 
 // Control IDs
 #define IDC_CHK_COMPRESS  1001
@@ -157,15 +135,10 @@ bool MainWindow::Create()
         floatRegistered = true;
     }
 
-    std::wstring title = L"\u4e8c\u7ef4\u7801\u5de5\u5177";
-    if (!g_version.empty()) {
-        title += L" v" + g_version;
-    }
-
     m_hWnd = CreateWindowExW(
         0,
         CLASS_NAME,
-        title.c_str(),
+        L"QR Code Tool",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         MIN_WIDTH, 560,

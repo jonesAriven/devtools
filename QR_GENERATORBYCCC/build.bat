@@ -22,20 +22,6 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 set SHARED_DIR=D:\huliang\java\ideaworkspace\www\download\QRCodeTools
 if not exist %SHARED_DIR% mkdir %SHARED_DIR%
 
-REM --- Auto-update version info in resource.rc ---
-REM Version scheme: 2,0,MM,DD (major.minor.month-day)
-for /f "delims=" %%v in ('powershell -NoProfile -Command "$d = Get-Date; Write-Output ('{0}.{1}.{2:D2}.{3:D2}' -f 2, 0, $d.Month, $d.Day)"') do set VER_STRING=%%v
-for /f "delims=" %%v in ('powershell -NoProfile -Command "$d = Get-Date; Write-Output ('{0},{1},{2},{3}' -f 2, 0, $d.Month, $d.Day)"') do set VER_COMMA=%%v
-
-echo [1/4] Version: %VER_STRING% ^(FILEVERSION %VER_COMMA%^)
-
-REM Update resource.rc with current version
-powershell -NoProfile -Command "(Get-Content 'res\resource.rc' -Raw) -replace 'FILEVERSION [0-9,]+', 'FILEVERSION %VER_COMMA%' -replace 'PRODUCTVERSION [0-9,]+', 'PRODUCTVERSION %VER_COMMA%' -replace 'FileVersion\", \"[0-9.]+', 'FileVersion\", \"%VER_STRING%' -replace 'ProductVersion\", \"[0-9.]+', 'ProductVersion\", \"%VER_STRING%' | Set-Content 'res\resource.rc' -NoNewline"
-
-REM Pass version to CMake
-set QRTOOL_VERSION=%VER_STRING%
-set QRTOOL_VERSION_COMMA=%VER_COMMA%
-
 echo [1/4] Configuring with CMake...
 %CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (

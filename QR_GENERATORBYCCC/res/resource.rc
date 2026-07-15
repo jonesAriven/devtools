@@ -4,8 +4,8 @@
 IDR_ICON1 ICON "app.ico"
 
 1 VERSIONINFO
-FILEVERSION 2,0,7,15
-PRODUCTVERSION 2,0,7,15
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
 FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
 FILEFLAGS 0
 FILEOS VOS_NT_WINDOWS32
@@ -18,12 +18,9 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Jones"
             VALUE "FileDescription", "QR Code Tool"
-            VALUE "FileVersion", "2.0.07.15"
+            VALUE "FileVersion", "1.0.0.0"
             VALUE "ProductName", "QRCodeTool"
-            VALUE "ProductVersion", "2.0.07.15"
-            VALUE "InternalName", "QRCodeTool"
-            VALUE "OriginalFilename", "QRCodeTool.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2026 Jones"
+            VALUE "ProductVersion", "1.0.0.0"
         END
     END
     BLOCK "VarFileInfo"
