@@ -144,52 +144,59 @@ public class DatabaseInitializer implements CommandLineRunner {
                 log.warn("添加唯一索引异常: {}", e.getMessage());
             }
 
-            stmt.close();
-            conn.close();
-            log.info("数据库表初始化完成");
-        } catch (Exception e) {
-            log.error("数据库初始化失败", e);
-        }
-
-        // 初始化默认管理员账号
-        authController.initDefaultAdmin();
-
-        // 初始化版本校验默认配置（如果不存在）
-        initDefaultVersionConfig(stmt);
+        stmt.close();
+        conn.close();
+        log.info("数据库表初始化完成");
+    } catch (Exception e) {
+        log.error("数据库初始化失败", e);
     }
 
-    /**
-     * 初始化版本校验的默认配置项
-     * 只有当配置不存在时才插入，已存在则跳过
-     */
-    private void initDefaultVersionConfig(Statement stmt) {
-        try {
-            String[][] defaultConfigs = {
-                {"version-check.enabled", "false", "version-check", "是否启用版本校验"},
-                {"version-check.mode", "none", "version-check", "校验模式: none=不校验, required=必须传版本号, minimum=最低版本号"},
-                {"version-check.min-version", "0.0.0", "version-check", "最低版本号（mode=minimum时生效）"},
-                {"version-check.download-url", "https://tools.marschat.online/activecode/downloads.html", "version-check", "版本过低时的下载提示链接"}
-            };
+    // 初始化默认管理员账号
+    authController.initDefaultAdmin();
 
-            for (String[] cfg : defaultConfigs) {
-                String key = cfg[0];
-                String value = cfg[1];
-                String group = cfg[2];
-                String remark = cfg[3];
+    // 初始化版本校验默认配置（如果不存在）
+    initDefaultVersionConfig();
+}
 
-                var rs = stmt.executeQuery("SELECT COUNT(*) FROM sys_config WHERE config_key = '" + key + "'");
-                rs.next();
-                if (rs.getInt(1) == 0) {
-                    String insertSql = "INSERT INTO sys_config (config_key, config_value, config_group, remark) VALUES ('" + key + "', '" + value + "', '" + group + "', '" + remark + "')";
-                    stmt.execute(insertSql);
-                    log.info("初始化默认配置: {} = {}", key, value);
-                } else {
-                    log.info("配置 {} 已存在，跳过初始化", key);
-                }
-                rs.close();
+/**
+ * 初始化版本校验的默认配置项
+ * 只有当配置不存在时才插入，已存在则跳过
+ */
+private void initDefaultVersionConfig() {
+    Connection conn = null;
+    Statement stmt = null;
+    try {
+        conn = DriverManager.getConnection(datasourceUrl, username, password);
+        stmt = conn.createStatement();
+
+        String[][] defaultConfigs = {
+            {"version-check.enabled", "false", "version-check", "是否启用版本校验"},
+            {"version-check.mode", "none", "version-check", "校验模式: none=不校验, required=必须传版本号, minimum=最低版本号"},
+            {"version-check.min-version", "0.0.0", "version-check", "最低版本号（mode=minimum时生效）"},
+            {"version-check.download-url", "https://tools.marschat.online/activecode/downloads.html", "version-check", "版本过低时的下载提示链接"}
+        };
+
+        for (String[] cfg : defaultConfigs) {
+            String key = cfg[0];
+            String value = cfg[1];
+            String group = cfg[2];
+            String remark = cfg[3];
+
+            var rs = stmt.executeQuery("SELECT COUNT(*) FROM sys_config WHERE config_key = '" + key + "'");
+            rs.next();
+            if (rs.getInt(1) == 0) {
+                String insertSql = "INSERT INTO sys_config (config_key, config_value, config_group, remark) VALUES ('" + key + "', '" + value + "', '" + group + "', '" + remark + "')";
+                stmt.execute(insertSql);
+                log.info("初始化默认配置: {} = {}", key, value);
+            } else {
+                log.info("配置 {} 已存在，跳过初始化", key);
             }
-        } catch (Exception e) {
-            log.warn("初始化版本校验配置异常: {}", e.getMessage());
+            rs.close();
         }
+    } catch (Exception e) {
+        log.warn("初始化版本校验配置异常: {}", e.getMessage());
+    } finally {
+        try { if (stmt != null) stmt.close(); } catch (Exception ignored) {}
+        try { if (conn != null) conn.close(); } catch (Exception ignored) {}
     }
 }
