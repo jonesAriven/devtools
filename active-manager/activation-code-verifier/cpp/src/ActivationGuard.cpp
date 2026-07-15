@@ -235,7 +235,7 @@ void CALLBACK ActivationGuard::PeriodicCheckCallback(PVOID lpParam, BOOLEAN Time
 }
 
 void ActivationGuard::ShowExpiredDialog(const std::string& msg) {
-    MessageBoxW(NULL, L"授权已失效，程序即将退出。", L"授权验证", MB_OK | MB_ICONWARNING);
+    MessageBoxW(NULL, L"授权已失效，程序即将退出。\n\n如遇问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html", L"授权验证", MB_OK | MB_ICONWARNING);
     ExitProcess(1002);
 }
 
@@ -642,18 +642,20 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     wMsg = L"设备不匹配，此激活码已绑定其他设备。\n\n设备ID: " +
                            std::wstring(deviceId.begin(), deviceId.end()) +
                            L"\n激活码绑定: " +
-                           std::wstring(result.deviceId.begin(), result.deviceId.end());
+                           std::wstring(result.deviceId.begin(), result.deviceId.end()) +
+                           L"\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
                 } else if (result.expired) {
-                    wMsg = L"激活码已过期，请联系管理员续期。";
+                    wMsg = L"激活码已过期，请联系管理员续期。\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
                 } else {
                     std::string deviceId = ActivationDeviceInfo::GetDeviceId();
                     std::string machineCode = ActivationDeviceInfo::GetMachineCode();
-                    wMsg = L"激活码无效，请检查是否输入正确。\n\n[调试信息]\n设备ID: " +
+                    wMsg = L"激活码无效，请检查是否输入正确。\n\n设备ID: " +
                            std::wstring(deviceId.begin(), deviceId.end()) +
                            L"\n机器码: " +
                            std::wstring(machineCode.begin(), machineCode.end()) +
                            L"\n序列号: " +
-                           std::wstring(g_serialNumber.begin(), g_serialNumber.end());
+                           std::wstring(g_serialNumber.begin(), g_serialNumber.end()) +
+                           L"\n\n如遇激活问题，请下载最新版本：\nhttps://tools.marschat.online/activecode/downloads.html";
                 }
                 MessageBoxW(hWnd, wMsg.c_str(), L"激活失败", MB_OK | MB_ICONERROR);
             }
