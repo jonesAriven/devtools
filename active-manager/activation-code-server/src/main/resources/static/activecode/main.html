@@ -94,6 +94,16 @@
         .pagination button.active { background: #667eea; color: #fff; border-color: #667eea; }
         .pagination .page-info { font-size: 12px; color: #888; margin: 0 8px; }
         .toolbar input[type="date"] { width: 140px; }
+
+        /* 查询反馈：按钮 loading 态 + 表格上方状态条 */
+        .btn-primary:disabled,
+        .btn-green:disabled { opacity: 0.65; cursor: not-allowed; }
+        .query-status { display: none; margin: 0 24px; padding: 10px 14px; border-radius: 6px; font-size: 13px; align-items: center; gap: 8px; }
+        .query-status.show { display: flex; }
+        .query-status.loading { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .query-status.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .query-status .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: #4338ca; border-radius: 50%; animation: qs-spin 0.8s linear infinite; }
+        @keyframes qs-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -207,8 +217,9 @@
                 <option value="active">有效</option>
                 <option value="expired">已过期</option>
             </select>
-            <button class="btn-primary" onclick="loadRecords(1)">查询</button>
+            <button class="btn-primary" id="btnRecQuery" onclick="loadRecords(1)">查询</button>
         </div>
+        <div class="query-status" id="recStatus_msg"></div>
         <div class="stats">
             <div class="stat-card total"><div class="num" id="statTotal">0</div><div class="label">总记录数</div></div>
             <div class="stat-card active"><div class="num" id="statActive">0</div><div class="label">有效</div></div>
@@ -256,8 +267,9 @@
             </select>
             <input type="date" id="logStartDate" title="开始日期">
             <input type="date" id="logEndDate" title="结束日期">
-            <button class="btn-primary" onclick="loadLogs(1)">查询</button>
+            <button class="btn-primary" id="btnLogQuery" onclick="loadLogs(1)">查询</button>
         </div>
+        <div class="query-status" id="logStatus_msg"></div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -399,10 +411,44 @@
         let recPage = 1, recPages = 1, recTotal = 0;
         let logPage = 1, logPages = 1, logTotal = 0;
 
+        // 查询状态管理：按钮 loading 态 + 表格上方状态条 + 请求版本号（防竞态）
+        const queryState = {
+            rec: { loading: false, reqId: 0 },
+            log: { loading: false, reqId: 0 }
+        };
+
+        function setQueryStatus(key, mode, msg) {
+            // mode: 'loading' | 'error' | 'clear'
+            const btnId = key === 'rec' ? 'btnRecQuery' : 'btnLogQuery';
+            const msgId = key === 'rec' ? 'recStatus_msg' : 'logStatus_msg';
+            const btn = document.getElementById(btnId);
+            const statusEl = document.getElementById(msgId);
+            if (mode === 'loading') {
+                btn.disabled = true;
+                btn.textContent = '查询中...';
+                statusEl.className = 'query-status loading show';
+                statusEl.innerHTML = '<span class="spinner"></span><span>' + (msg || '正在查询，请稍候...') + '</span>';
+            } else if (mode === 'error') {
+                btn.disabled = false;
+                btn.textContent = '查询';
+                statusEl.className = 'query-status error show';
+                statusEl.textContent = '❌ ' + msg;
+            } else {
+                btn.disabled = false;
+                btn.textContent = '查询';
+                statusEl.className = 'query-status';
+                statusEl.textContent = '';
+            }
+        }
+
         async function loadRecords(page) {
+            if (queryState.rec.loading) return;  // 防重复点击
             if (page) recPage = page;
             const keyword = document.getElementById('recKeyword').value.trim();
             const status = document.getElementById('recStatus').value;
+            const reqId = ++queryState.rec.reqId;
+            queryState.rec.loading = true;
+            setQueryStatus('rec', 'loading');
             try {
                 const params = new URLSearchParams();
                 if (keyword) params.set('keyword', keyword);
@@ -411,6 +457,8 @@
                 params.set('size', 20);
                 const resp = await fetch('/activecode/api/activation/list?' + params);
                 const data = await resp.json();
+                // 竞态保护：如果又发起了新请求，忽略这次旧响应
+                if (reqId !== queryState.rec.reqId) return;
                 if (data.success) {
                     currentTime = data.currentTime || Date.now();
                     cachedRecords = data.data;
@@ -420,8 +468,20 @@
                     renderRecords(data.data);
                     updateStats(data.total, currentTime, data.data);
                     renderPagination('recPagination', recPage, recPages, recTotal, loadRecords);
+                    setQueryStatus('rec', 'clear');
+                } else {
+                    setQueryStatus('rec', 'error', data.message || '服务端返回失败');
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                if (reqId === queryState.rec.reqId) {
+                    setQueryStatus('rec', 'error', '网络错误: ' + (e.message || e));
+                }
+            } finally {
+                if (reqId === queryState.rec.reqId) {
+                    queryState.rec.loading = false;
+                }
+            }
         }
 
         function renderRecords(records) {
@@ -472,12 +532,16 @@
         }
 
         async function loadLogs(page) {
+            if (queryState.log.loading) return;  // 防重复点击
             if (page) logPage = page;
             const serialNumber = document.getElementById('logSerial').value.trim();
             const eventType = document.getElementById('logEventType').value;
             const deviceId = document.getElementById('logDeviceId').value.trim();
             const startDate = document.getElementById('logStartDate').value;
             const endDate = document.getElementById('logEndDate').value;
+            const reqId = ++queryState.log.reqId;
+            queryState.log.loading = true;
+            setQueryStatus('log', 'loading');
             try {
                 const params = new URLSearchParams();
                 if (serialNumber) params.set('serialNumber', serialNumber);
@@ -489,14 +553,28 @@
                 params.set('size', 20);
                 const resp = await fetch('/activecode/api/activation/logs?' + params);
                 const data = await resp.json();
+                // 竞态保护
+                if (reqId !== queryState.log.reqId) return;
                 if (data.success) {
                     logTotal = data.total;
                     logPages = data.pages;
                     logPage = data.page;
                     renderLogs(data.data);
                     renderPagination('logPagination', logPage, logPages, logTotal, loadLogs);
+                    setQueryStatus('log', 'clear');
+                } else {
+                    setQueryStatus('log', 'error', data.message || '服务端返回失败');
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                if (reqId === queryState.log.reqId) {
+                    setQueryStatus('log', 'error', '网络错误: ' + (e.message || e));
+                }
+            } finally {
+                if (reqId === queryState.log.reqId) {
+                    queryState.log.loading = false;
+                }
+            }
         }
 
         function renderLogs(logs) {
