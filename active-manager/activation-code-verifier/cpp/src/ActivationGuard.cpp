@@ -456,113 +456,59 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
     }
 
     case WM_SIZE: {
-        // Reposition controls when window is resized
         int cx = LOWORD(lParam);
         int cy = HIWORD(lParam);
-        int margin = 20;
+        const int margin = 20;
         const int qrSize = 160;
-        const int qrGap = 20;       // gap between left panel and QR code
-        const int btnH = 28;
 
-        // Left panel width: fill available space, but leave room for QR code on right
-        // Minimum left width = 380, QR code area needs qrSize + gap
-        int rightAreaW = qrSize + qrGap + margin * 2;  // QR code + margins
+        // Dynamic left panel width: expand with window, leave room for QR code on right
+        int rightAreaW = qrSize + 20 + margin * 2;
         int leftW = std::max(380, cx - rightAreaW);
 
-        // Left side controls: reposition with dynamic leftW
-        struct LayoutInfo {
-            int id;
-            double yPct;   // y position as percentage of window height (0-1)
-            int height;
-            int width;    // 0 = full leftW, -1 = auto, >0 = fixed
-            bool anchorBottom; // if true, y is measured from bottom
-        };
-        LayoutInfo layout[] = {
-            { -1,           0.03, 25, 0, false },     // Title (3% from top)
-            { -1,           0.12, 20, -1, false },    // "唯一序列号:" label
-            { ID_TXT_SERIAL, 0.18, 25, 0, false },    // Serial number text
-            { ID_BTN_COPY_SN, 0.26, 24, 100, false },// Copy serial button
-            { -1,           0.34, 20, -1, false },    // "激活码:" label
-            { ID_TXT_CODE,  0.40, 60, 0, false },    // Activation code input (stretches)
-            { -1,           0.57, 20, 0, false },     // Hint text
-            { -1,           0.63, 20, 0, false },     // "获取激活码：" label
-            { ID_LNK_URL,   0.67, 20, 0, false },    // URL link
-            { ID_BTN_COPY_URL,0.73, 22, 100, false }, // Copy URL button
-            { ID_BTN_ACTIVATE, 0.85, btnH, 80, true }, // Activate button (from bottom)
-            { ID_BTN_EXIT,   0.85, btnH, 80, true },  // Exit button (from bottom)
-        };
+        // --- Known-ID controls via GetDlgItem ---
+        HWND h;
+        h = GetDlgItem(hWnd, ID_TXT_SERIAL); if (h) MoveWindow(h, margin, 67, leftW, 25, TRUE);
+        h = GetDlgItem(hWnd, ID_BTN_COPY_SN); if (h) MoveWindow(h, margin, 96, 100, 24, TRUE);
+        h = GetDlgItem(hWnd, ID_TXT_CODE); if (h) MoveWindow(h, margin, 150, leftW, std::max(60, cy - 170), TRUE);
+        h = GetDlgItem(hWnd, ID_LNK_URL); if (h) MoveWindow(h, margin, cy - 72, leftW, 20, TRUE);
+        h = GetDlgItem(hWnd, ID_BTN_COPY_URL); if (h) MoveWindow(h, margin, cy - 47, 100, 22, TRUE);
+        h = GetDlgItem(hWnd, ID_BTN_ACTIVATE); if (h) MoveWindow(h, leftW + margin - 170, cy - 50, 80, 28, TRUE);
+        h = GetDlgItem(hWnd, ID_BTN_EXIT); if (h) MoveWindow(h, leftW + margin - 80, cy - 50, 80, 28, TRUE);
 
-        HWND hChild = GetWindow(hWnd, GW_CHILD);
-        int idx = 0;
-        int totalItems = sizeof(layout) / sizeof(layout[0]);
-        while (hChild && idx < totalItems) {
-            int id = GetDlgCtrlID(hChild);
-            LayoutInfo& li = layout[idx];
+        // --- Label Statics (ID=0): find relative to known-ID siblings ---
+        h = GetWindow(hWnd, GW_CHILD);
+        while (h && GetDlgCtrlID(h) != 0) h = GetWindow(h, GW_HWNDNEXT);
+        if (h) MoveWindow(h, margin, 12, leftW, 25, TRUE);
 
-            int x = margin;
-            int ctrlW, ctrlH = li.height;
-            int y;
+        h = GetDlgItem(hWnd, ID_TXT_SERIAL);
+        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, 45, 100, 20, TRUE); }
 
-            if (li.width == 0) {
-                ctrlW = leftW;
-            } else if (li.width == -1) {
-                RECT rc;
-                GetWindowRect(hChild, &rc);
-                ctrlW = rc.right - rc.left;
-            } else {
-                ctrlW = li.width;
-            }
+        h = GetDlgItem(hWnd, ID_TXT_CODE);
+        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, 128, 60, 20, TRUE); }
 
-            // Calculate Y position
-            if (li.anchorBottom) {
-                y = cy - (int)(cy * li.yPct) - ctrlH;
-                // Keep minimum distance from bottom
-                if (y < cy - 50) y = cy - 50;
-            } else {
-                y = (int)(cy * li.yPct);
-            }
+        h = GetDlgItem(hWnd, ID_TXT_CODE);
+        if (h) { HWND n = GetWindow(h, GW_HWNDNEXT); if (n && GetDlgCtrlID(n) == 0) MoveWindow(n, margin, cy - 120, leftW, 20, TRUE); }
 
-            // Special positioning for bottom buttons: right-aligned within left panel
-            if (id == ID_BTN_ACTIVATE) {
-                x = margin + leftW - 80 - 10;  // 80px button + 10px gap from exit
-            } else if (id == ID_BTN_EXIT) {
-                x = margin + leftW - 80;
-            }
+        h = GetDlgItem(hWnd, ID_LNK_URL);
+        if (h) { HWND p = GetWindow(h, GW_HWNDPREV); if (p && GetDlgCtrlID(p) == 0) MoveWindow(p, margin, cy - 95, leftW, 20, TRUE); }
 
-            // Activation code input stretches vertically to fill space between hint and buttons
-            if (id == ID_TXT_CODE) {
-                int btnY = cy - 50;  // approximate button Y position
-                ctrlH = std::max(60, btnY - y - 10);
-            }
-
-            MoveWindow(hChild, x, y, ctrlW, ctrlH, TRUE);
-            hChild = GetWindow(hChild, GW_HWNDNEXT);
-            idx++;
-        }
-
-        // Right side: QR code and hint - always positioned at right edge
+        // --- QR code always at right edge ---
         int qrX = cx - margin - qrSize;
-        int qrY = (cy - qrSize) / 2;  // vertically centered
+        int qrY = std::max(margin, (cy - qrSize) / 2);
+        h = GetDlgItem(hWnd, ID_STATIC_QR);
+        if (h) MoveWindow(h, qrX, qrY, qrSize, qrSize, TRUE);
 
-        HWND hQr = GetDlgItem(hWnd, ID_STATIC_QR);
-        if (hQr) {
-            MoveWindow(hQr, qrX, qrY, qrSize, qrSize, TRUE);
-        }
-        // QR hint label (no ID, find by iterating)
-        hChild = GetWindow(hWnd, GW_CHILD);
-        while (hChild) {
-            int id = GetDlgCtrlID(hChild);
-            if (id == 0 || id == ID_STATIC_QR) {
-                if (id == 0) {
-                    MoveWindow(hChild, qrX, qrY + qrSize + 6, qrSize, 20, TRUE);
-                }
+        // QR hint (last Static with ID=0 below QR code)
+        h = GetWindow(hWnd, GW_CHILD);
+        while (h) {
+            if (GetDlgCtrlID(h) == 0) {
+                RECT rc; GetClientRect(h, &rc);
+                if (rc.top > qrY) { MoveWindow(h, qrX, qrY + qrSize + 6, qrSize, 20, TRUE); break; }
             }
-            hChild = GetWindow(hChild, GW_HWNDNEXT);
+            h = GetWindow(h, GW_HWNDNEXT);
         }
         break;
-    }
-
-    case WM_CTLCOLORSTATIC: {
+    } {
         HDC hdc = (HDC)wParam;
         HWND hCtrl = (HWND)lParam;
 
