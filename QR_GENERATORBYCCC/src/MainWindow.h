@@ -70,6 +70,10 @@ private:
     static INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
     static LRESULT CALLBACK HotkeyEditSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
+    // About dialog
+    void ShowAboutDialog();
+    static INT_PTR CALLBACK AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+
     HINSTANCE m_hInstance;
     HWND m_hWnd;
     HWND m_hLblCompress;

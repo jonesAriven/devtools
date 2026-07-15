@@ -9,3 +9,4 @@
 #define IDC_TXT_CONTENT     1005
 
 #define IDM_ABOUT           2001
+#define IDC_BTN_ABOUT       1012  // 设置对话框中的"关于"按钮

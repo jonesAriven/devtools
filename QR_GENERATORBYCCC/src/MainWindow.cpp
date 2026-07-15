@@ -14,6 +14,9 @@
 #include <ctime>
 #include <sstream>
 
+// 版本信息（由 CMake configure_file 从 version.h.in 生成到 src/version.h）
+#include "version.h"
+
 // Control IDs
 #define IDC_CHK_COMPRESS  1001
 #define IDC_BTN_CAPTURE   1002
@@ -135,10 +138,13 @@ bool MainWindow::Create()
         floatRegistered = true;
     }
 
+    // 构建带版本号的窗口标题
+    std::wstring windowTitle = std::wstring(L"QR Code Tool ") + APP_VERSION_W;
+
     m_hWnd = CreateWindowExW(
         0,
         CLASS_NAME,
-        L"QR Code Tool",
+        windowTitle.c_str(),
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         MIN_WIDTH, 560,
@@ -1405,6 +1411,11 @@ INT_PTR CALLBACK MainWindow::SettingsDlgProc(HWND hDlg, UINT message, WPARAM wPa
             DestroyWindow(hDlg);
             return TRUE;
         }
+        case IDC_BTN_ABOUT: {
+            // 显示关于对话框（不关闭设置对话框）
+            self->ShowAboutDialog();
+            return TRUE;
+        }
         case IDCANCEL: {
             // Remove subclass before closing
             HWND hEdtKey = GetDlgItem(hDlg, IDC_EDT_HOTKEY_KEY);
@@ -1552,9 +1563,15 @@ void MainWindow::ShowSettingsDialog()
     HWND hBtnOK = CreateWindowExW(0, L"BUTTON",
         L"\u786E\u5B9A",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
-        100, 160, 70, 26,
+        60, 160, 70, 26,
         hDlg, reinterpret_cast<HMENU>(IDOK), nullptr, nullptr);
     SendMessageW(hBtnOK, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+    HWND hBtnAbout = CreateWindowExW(0, L"BUTTON",
+        L"\u5173\u4E8E",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        140, 160, 70, 26,
+        hDlg, reinterpret_cast<HMENU>(IDC_BTN_ABOUT), nullptr, nullptr);
+    SendMessageW(hBtnAbout, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hBtnCancel = CreateWindowExW(0, L"BUTTON",
         L"\u53D6\u6D88",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -1606,6 +1623,151 @@ void MainWindow::ShowSettingsDialog()
     // Re-enable parent window
     EnableWindow(m_hWnd, TRUE);
     SetFocus(m_hWnd);
+}
+
+// ============================================================
+// About dialog（版本信息）
+// ============================================================
+
+INT_PTR CALLBACK MainWindow::AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message) {
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+            DestroyWindow(hDlg);
+            return TRUE;
+        }
+        break;
+
+    case WM_CLOSE:
+        DestroyWindow(hDlg);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+void MainWindow::ShowAboutDialog()
+{
+    const wchar_t* ABOUT_CLASS = L"QRAboutDlgClass";
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        wc.lpfnWndProc = DefWindowProc;
+        wc.hInstance = m_hInstance;
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.lpszClassName = ABOUT_CLASS;
+        RegisterClassExW(&wc);
+        registered = true;
+    }
+
+    int dlgW = 300, dlgH = 260;
+    RECT parentRc;
+    GetWindowRect(m_hWnd, &parentRc);
+    int dlgX = parentRc.left + (parentRc.right - parentRc.left - dlgW) / 2;
+    int dlgY = parentRc.top + (parentRc.bottom - parentRc.top - dlgH) / 2;
+
+    HWND hDlg = CreateWindowExW(
+        WS_EX_DLGMODALFRAME,
+        ABOUT_CLASS,
+        L"\u5173\u4E8E",
+        WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        dlgX, dlgY, dlgW, dlgH,
+        m_hWnd, nullptr, m_hInstance, nullptr
+    );
+
+    if (!hDlg) return;
+
+    EnableWindow(m_hWnd, FALSE);
+
+    HFONT hDlgFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+    HFONT hDlgFontBold = CreateFontW(-15, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Microsoft YaHei");
+
+    // 应用名称（标题）
+    HWND hLblTitle = CreateWindowExW(0, L"STATIC",
+        L"QR Code Tool",
+        WS_CHILD | WS_VISIBLE,
+        20, 16, 260, 24,
+        hDlg, nullptr, nullptr, nullptr);
+    SendMessageW(hLblTitle, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFontBold), TRUE);
+
+    // 版本号
+    std::wstring versionText = L"\u7248\u672C: " APP_VERSION_W;
+    HWND hLblVersion = CreateWindowExW(0, L"STATIC",
+        versionText.c_str(),
+        WS_CHILD | WS_VISIBLE,
+        20, 46, 260, 20,
+        hDlg, nullptr, nullptr, nullptr);
+    SendMessageW(hLblVersion, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+
+    // 构建日期
+    std::wstring dateText = L"\u6784\u5EFA: " BUILD_DATE_W;
+    HWND hLblDate = CreateWindowExW(0, L"STATIC",
+        dateText.c_str(),
+        WS_CHILD | WS_VISIBLE,
+        20, 70, 260, 20,
+        hDlg, nullptr, nullptr, nullptr);
+    SendMessageW(hLblDate, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+
+    // 分隔线区域用 Static 模拟
+    HWND hSep1 = CreateWindowExW(0, L"STATIC", L"",
+        WS_CHILD | WS_VISIBLE | SS_ETCHEDHORZ,
+        16, 100, 268, 2,
+        hDlg, nullptr, nullptr, nullptr);
+
+    // 功能列表标题
+    HWND hLblFeatTitle = CreateWindowExW(0, L"STATIC",
+        L"\u529F\u80FD\u7279\u6027:",
+        WS_CHILD | WS_VISIBLE,
+        20, 112, 260, 20,
+        hDlg, nullptr, nullptr, nullptr);
+    SendMessageW(hLblFeatTitle, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+
+    // 功能列表内容
+    HWND hLblFeatures = CreateWindowExW(0, L"STATIC",
+        L"  \u2022 \u4E8C\u7EF4\u7801\u751F\u6210 (\u652F\u6301\u957F\u6587\u672C/\u591A\u9875)\n"
+        L"  \u2022 \u622A\u56FE\u8BC6\u522B (Zxing-C++)\n"
+        L"  \u2022 \u56FE\u7247\u4E0A\u4F20\u8BC6\u522B\n"
+        L"  \u2022 Brotli \u538B\u7F29 / Base45 \u7F16\u7801\n"
+        L"  \u2022 \u5168\u5C40\u5FEB\u6377\u952E (Ctrl+Alt+S)\n"
+        L"  \u2022 \u6FC0\u6D3B\u7801\u9A8C\u8BC1",
+        WS_CHILD | WS_VISIBLE,
+        20, 134, 260, 90,
+        hDlg, nullptr, nullptr, nullptr);
+    SendMessageW(hLblFeatures, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+
+    // 确定按钮
+    HWND hBtnOK = CreateWindowExW(0, L"BUTTON",
+        L"\u786E\u5B9A",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
+        110, 228, 80, 26,
+        hDlg, reinterpret_cast<HMENU>(IDOK), nullptr, nullptr);
+    SendMessageW(hBtnOK, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
+
+    ShowWindow(hDlg, SW_SHOW);
+    UpdateWindow(hDlg);
+
+    // Modal message loop
+    MSG msg;
+    while (IsWindow(hDlg) && GetMessageW(&msg, nullptr, 0, 0)) {
+        if (!IsWindow(hDlg) || !IsDialogMessageW(hDlg, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    EnableWindow(m_hWnd, TRUE);
+    SetFocus(m_hWnd);
+
+    // Cleanup fonts
+    DeleteObject(hDlgFont);
+    DeleteObject(hDlgFontBold);
 }
 
 } // namespace qr

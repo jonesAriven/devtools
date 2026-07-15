@@ -52,3 +52,9 @@ Build/
 
 
 
+
+# Generated version header
+src/version.h
+
+# Generated resource file (from resource.rc.in)
+res/resource.rc

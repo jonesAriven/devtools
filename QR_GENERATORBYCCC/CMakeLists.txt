@@ -188,8 +188,48 @@ target_link_libraries(QRCodeTool PRIVATE
     iphlpapi
 )
 
-# Generate timestamp suffix for output filename
+# ==================== 版本配置 ====================
+# VERSION_MODE: "auto" = 自动时间戳(默认，每次编译生成新版本号)
+#              "manual" = 手动维护版本号
+set(VERSION_MODE "auto")
+set(MANUAL_VERSION "3.1.0")
+
+if(VERSION_MODE STREQUAL "auto")
+    string(TIMESTAMP APP_VERSION "V%Y%m%d%H%M")
+else()
+    set(APP_VERSION "${MANUAL_VERSION}")
+endif()
+
+string(TIMESTAMP BUILD_DATE "%Y-%m-%d %H:%M")
+
+# Generate timestamp suffix for output filename (保持exe文件名不变)
 string(TIMESTAMP BUILD_TIMESTAMP "%Y%m%d%H%M")
+
+# 将版本信息通过生成头文件注入代码（比 compile_definitions 更可靠，尤其处理带空格的值）
+# 输出到 src/ 目录（与源码同目录），避免额外的 include 路径问题
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h"
+)
+
+# 生成 resource.rc（注入版本号到 VERSIONINFO 资源）
+# FILEVERSION 需要逗号分隔的数字: 年,月日,时,分 → 例如 2026,715,22,17
+if(VERSION_MODE STREQUAL "auto")
+    string(TIMESTAMP _YEAR "%Y")
+    string(TIMESTAMP _MD "%m%d")
+    string(TIMESTAMP _HM "%H%M")
+    set(APP_VERSION_COMMA "${_YEAR},${_MD},${_HM}")
+else()
+    # 手动模式: 将 x.y.z 转为 x,y,z,0
+    string(REPLACE "." "," APP_VERSION_COMMA "${MANUAL_VERSION},0")
+endif()
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/res/resource.rc.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/res/resource.rc"
+)
+
+message(STATUS "版本信息: ${APP_VERSION} (构建于 ${BUILD_DATE})")
 
 set_target_properties(QRCodeTool PROPERTIES
     WIN32_EXECUTABLE TRUE

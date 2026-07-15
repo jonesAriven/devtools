@@ -1,0 +1,8 @@
+#pragma once
+// 版本信息（由 CMake configure_file 自动生成，每次编译更新）
+#define APP_VERSION "@APP_VERSION@"
+#define BUILD_DATE  "@BUILD_DATE@"
+
+// 宽字符串版本（用于 Windows API 显示）
+#define APP_VERSION_W L"@APP_VERSION@"
+#define BUILD_DATE_W  L"@BUILD_DATE@"
