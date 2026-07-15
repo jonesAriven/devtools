@@ -173,11 +173,19 @@ std::string GetMachineCode() {
 // --- Serial number ---
 static const BYTE SERIAL_XOR_KEY = 0x5A;
 
-std::string GetSerialNumber(const std::string& initialSerial) {
+std::string GetSerialNumber(const std::string& initialSerial, const std::string& version) {
     std::string deviceId = GetDeviceId();
     std::string machineCode = GetMachineCode();
 
-    std::string plainText = initialSerial + "|" + deviceId + "|" + machineCode;
+    // 格式: initialSerial|deviceId|machineCode|version
+    // version 可选，如果提供则作为第4段嵌入序列号（供服务端版本校验使用）
+    std::string plainText;
+    if (version.empty()) {
+        plainText = initialSerial + "|" + deviceId + "|" + machineCode;
+    } else {
+        plainText = initialSerial + "|" + deviceId + "|" + machineCode + "|" + version;
+    }
+
     std::vector<BYTE> plainBytes(plainText.begin(), plainText.end());
 
     std::vector<BYTE> encrypted(plainBytes.size());

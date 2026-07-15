@@ -3,6 +3,7 @@
 #include "Jones/ActivationDeviceInfo.h"
 #include "Jones/ActivationSecureStorage.h"
 #include "Jones/ActivationAntiDebug.h"
+#include "version.h"
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -687,7 +688,7 @@ static LRESULT CALLBACK ActivationDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 }
 
 std::string ActivationGuard::ShowActivationDialog(const std::string& initialSerial, const std::string& licPath) {
-    g_serialNumber = ActivationDeviceInfo::GetSerialNumber(initialSerial);
+    g_serialNumber = ActivationDeviceInfo::GetSerialNumber(initialSerial, APP_VERSION);
     g_activatedCode.clear();
     g_activated = false;
     g_exitApp = false;
