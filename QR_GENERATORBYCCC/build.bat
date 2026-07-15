@@ -22,7 +22,26 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 set SHARED_DIR=D:\huliang\java\ideaworkspace\www\download\QRCodeTools
 if not exist %SHARED_DIR% mkdir %SHARED_DIR%
 
-echo [1/4] Configuring with CMake...
+set LIB_DIR=..\active-manager\activation-code-verifier\cpp
+if not exist %LIB_DIR%\build_lib.bat (
+    echo [ERROR] JonesActivation lib project not found at %LIB_DIR%
+    pause
+    exit /b 1
+)
+
+echo [1/5] Rebuilding JonesActivation library first (must pick up latest lib source)...
+pushd %LIB_DIR%
+call build_lib.bat
+if errorlevel 1 (
+    echo [ERROR] JonesActivation lib build failed!
+    popd
+    pause
+    exit /b 1
+)
+popd
+echo.
+
+echo [2/5] Configuring with CMake...
 %CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (
     echo [INFO] VS 2026 generator failed, trying with v143 toolset...
@@ -36,7 +55,7 @@ if %errorlevel% neq 0 (
     )
 )
 
-echo [2/4] Building Release...
+echo [3/5] Building Release...
 %CMAKE% --build %BUILD_DIR% --config Release --parallel
 if %errorlevel% neq 0 (
     echo [ERROR] Build failed!
@@ -44,7 +63,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [3/4] Build complete!
+echo [4/5] Build complete!
 echo.
 for %%F in (%BUILD_DIR%\bin\Release\QRCodeTool-*.exe) do (
     echo Output: %%F
@@ -52,7 +71,7 @@ for %%F in (%BUILD_DIR%\bin\Release\QRCodeTool-*.exe) do (
 )
 
 echo.
-echo [4/4] Copying to shared download directory...
+echo [5/5] Copying to shared download directory...
 for %%F in (%BUILD_DIR%\bin\Release\QRCodeTool-*.exe) do (
     copy /Y "%%F" "%SHARED_DIR%\" >nul
     if !errorlevel! equ 0 (
