@@ -200,3 +200,4 @@ private void initDefaultVersionConfig() {
         try { if (conn != null) conn.close(); } catch (Exception ignored) {}
     }
 }
+}
