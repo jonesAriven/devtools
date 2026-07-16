@@ -105,9 +105,25 @@
         .query-status.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
         .query-status .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: #4338ca; border-radius: 50%; animation: qs-spin 0.8s linear infinite; }
         @keyframes qs-spin { to { transform: rotate(360deg); } }
+
+        /* parse-result loading 变体（覆盖默认灰底） */
+        .parse-result.loading { background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; display: flex; align-items: center; gap: 8px; }
+        .parse-result.loading .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: #4338ca; border-radius: 50%; animation: qs-spin 0.8s linear infinite; }
+
+        /* 全局 Toast：替换 alert() */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { min-width: 220px; max-width: 380px; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toast-in 0.25s ease; pointer-events: auto; }
+        .toast.hide { animation: toast-out 0.25s ease forwards; }
+        .toast.success { background: #16a34a; }
+        .toast.error   { background: #dc2626; }
+        .toast.info    { background: #4338ca; }
+        .toast.warning { background: #d97706; }
+        @keyframes toast-in  { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toast-out { to { transform: translateX(20px); opacity: 0; } }
     </style>
 </head>
 <body>
+    <div id="toastContainer"></div>
     <div class="header">
         <h1>激活码管理后台</h1>
         <div class="header-right">
@@ -191,7 +207,7 @@
                     <input type="number" id="genExpireMinutes" value="60" min="1" style="margin-top:8px;" placeholder="也可手动输入分钟数">
                 </div>
             </div>
-            <button class="btn-primary" onclick="generateCode()">生成激活码</button>
+            <button class="btn-primary" id="btnGenerateCode" onclick="generateCode()">生成激活码</button>
             <div id="genResult" class="result-box"></div>
         </div>
 
@@ -205,7 +221,7 @@
                 <label>设备ID（可选，验证设备匹配）</label>
                 <input type="text" id="verifyDeviceId" placeholder="留空则不验证设备">
             </div>
-            <button class="btn-green" onclick="verifyCode()">验证激活码</button>
+            <button class="btn-green" id="btnVerifyCode" onclick="verifyCode()">验证激活码</button>
             <div id="verifyResult" class="result-box"></div>
         </div>
     </div>
@@ -298,7 +314,7 @@
             <h3>解析激活码</h3>
             <div style="display:flex;gap:10px;">
                 <input type="text" id="parseCodeInput" placeholder="粘贴激活码..." style="flex:1;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;font-size:13px;font-family:'Consolas',monospace;">
-                <button class="btn-primary" onclick="parseCode()">解析</button>
+                <button class="btn-primary" id="btnParseCode" onclick="parseCode()">解析</button>
             </div>
             <div id="parseCodeResult" class="parse-result" style="display:none;"></div>
         </div>
@@ -306,7 +322,7 @@
             <h3>解析序列号</h3>
             <div style="display:flex;gap:10px;">
                 <input type="text" id="parseSerialInput" placeholder="输入序列号，例如：SOFT001-AA-BB-CC-DD-EE-FF" style="flex:1;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;font-size:13px;font-family:'Consolas',monospace;">
-                <button class="btn-primary" onclick="parseSerial()">解析</button>
+                <button class="btn-primary" id="btnParseSerial" onclick="parseSerial()">解析</button>
             </div>
             <div id="parseSerialResult" class="parse-result" style="display:none;"></div>
         </div>
@@ -331,11 +347,21 @@
         }
 
         async function generateCode() {
+            if (queryState.gen && queryState.gen.loading) return;
+            if (!queryState.gen) queryState.gen = { loading: false };
             const serialNumber = document.getElementById('genSerialNumber').value.trim();
             const deviceId = document.getElementById('genDeviceId').value.trim();
             const expireMinutes = parseInt(document.getElementById('genExpireMinutes').value) || 60;
             const resultDiv = document.getElementById('genResult');
+            const btn = document.getElementById('btnGenerateCode');
             if (!serialNumber) { showResult(resultDiv, false, '序列号不能为空'); return; }
+
+            queryState.gen.loading = true;
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+            resultDiv.className = 'result-box show loading';
+            resultDiv.innerHTML = '<span class="spinner"></span><span>正在生成激活码，请稍候...</span>';
+
             try {
                 const body = { serialNumber, expireMinutes };
                 if (deviceId) body.deviceId = deviceId;
@@ -362,14 +388,30 @@
                     }
                     showResult(resultDiv, false, html);
                 }
-            } catch (e) { showResult(resultDiv, false, '请求失败: ' + e.message); }
+            } catch (e) {
+                showResult(resultDiv, false, '请求失败: ' + (e.message || e));
+            } finally {
+                queryState.gen.loading = false;
+                btn.disabled = false;
+                btn.textContent = '生成激活码';
+            }
         }
 
         async function verifyCode() {
+            if (queryState.ver && queryState.ver.loading) return;
+            if (!queryState.ver) queryState.ver = { loading: false };
             const activationCode = document.getElementById('verifyCode').value.trim();
             const deviceId = document.getElementById('verifyDeviceId').value.trim();
             const resultDiv = document.getElementById('verifyResult');
+            const btn = document.getElementById('btnVerifyCode');
             if (!activationCode) { showResult(resultDiv, false, '激活码不能为空'); return; }
+
+            queryState.ver.loading = true;
+            btn.disabled = true;
+            btn.textContent = '验证中...';
+            resultDiv.className = 'result-box show loading';
+            resultDiv.innerHTML = '<span class="spinner"></span><span>正在验证激活码，请稍候...</span>';
+
             try {
                 const body = { activationCode };
                 if (deviceId) body.deviceId = deviceId;
@@ -392,12 +434,32 @@
                     if (data.expireTime) html += `<p><span class="rl">过期时间：</span><span class="rv">${new Date(data.expireTime).toLocaleString('zh-CN')}</span></p>`;
                     showResult(resultDiv, false, html);
                 }
-            } catch (e) { showResult(resultDiv, false, '请求失败: ' + e.message); }
+            } catch (e) {
+                showResult(resultDiv, false, '请求失败: ' + (e.message || e));
+            } finally {
+                queryState.ver.loading = false;
+                btn.disabled = false;
+                btn.textContent = '验证激活码';
+            }
         }
 
         function showResult(div, success, html) {
             div.className = 'result-box show ' + (success ? 'success' : 'error');
             div.innerHTML = html;
+        }
+
+        // 全局 Toast（替代 alert）：type 支持 success/error/info/warning，duration 毫秒
+        function showToast(message, type = 'info', duration = 2600) {
+            const container = document.getElementById('toastContainer');
+            if (!container) { console.warn('toast container missing:', message); return; }
+            const t = document.createElement('div');
+            t.className = 'toast ' + type;
+            t.textContent = message;
+            container.appendChild(t);
+            setTimeout(() => {
+                t.classList.add('hide');
+                setTimeout(() => t.remove(), 260);
+            }, duration);
         }
 
         function copyText(btn) {
@@ -643,7 +705,9 @@
             const record = cachedRecords.find(r => r.id == id);
             if (record && record.activationCode) {
                 navigator.clipboard.writeText(record.activationCode).then(() => {
-                    alert('激活码已复制到剪贴板');
+                    showToast('激活码已复制到剪贴板', 'success', 1800);
+                }).catch(err => {
+                    showToast('复制失败: ' + (err.message || err), 'error');
                 });
             }
         }
@@ -653,9 +717,13 @@
             try {
                 const resp = await fetch('/activecode/api/activation/' + id, { method: 'DELETE' });
                 const data = await resp.json();
-                if (data.success) loadRecords(recPage);
-                else alert(data.message || '删除失败');
-            } catch (e) { alert('删除失败: ' + e.message); }
+                if (data.success) {
+                    showToast('删除成功', 'success', 1800);
+                    loadRecords(recPage);
+                } else {
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) { showToast('删除失败: ' + (e.message || e), 'error'); }
         }
 
         function editAlias(id, currentAlias) {
@@ -685,25 +753,36 @@
                     const record = cachedRecords.find(r => r.id == id);
                     if (record) record.deviceAlias = newAlias;
                 } else {
-                    alert(data.message || '修改失败');
+                    showToast(data.message || '修改失败', 'error');
                     cell.textContent = cell.dataset.oldAlias || '点击设置';
                     cell.style.color = cell.dataset.oldAlias ? '#667eea' : '#aaa';
                 }
             } catch (e) {
-                alert('修改失败: ' + e.message);
+                showToast('修改失败: ' + (e.message || e), 'error');
                 cell.textContent = '点击设置';
                 cell.style.color = '#aaa';
             }
         }
 
         async function parseCode() {
+            if (queryState.pc && queryState.pc.loading) return;
+            if (!queryState.pc) queryState.pc = { loading: false };
             const code = document.getElementById('parseCodeInput').value.trim();
             const resultDiv = document.getElementById('parseCodeResult');
-            if (!code) { alert('请输入激活码'); return; }
+            const btn = document.getElementById('btnParseCode');
+            if (!code) { showToast('请输入激活码', 'warning'); return; }
+
+            queryState.pc.loading = true;
+            btn.disabled = true;
+            btn.textContent = '解析中...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'parse-result loading';
+            resultDiv.innerHTML = '<span class="spinner"></span><span>正在解析激活码，请稍候...</span>';
+
             try {
                 const resp = await fetch('/activecode/api/activation/parse-code?activationCode=' + encodeURIComponent(code));
                 const data = await resp.json();
-                resultDiv.style.display = 'block';
+                resultDiv.className = 'parse-result';
                 if (data.success) {
                     resultDiv.innerHTML = `
                         <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
@@ -716,17 +795,35 @@
                 } else {
                     resultDiv.innerHTML = `<p style="color:#dc2626;">解析失败：${data.message}</p>`;
                 }
-            } catch (e) { resultDiv.style.display = 'block'; resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message}</p>`; }
+            } catch (e) {
+                resultDiv.className = 'parse-result';
+                resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message || e}</p>`;
+            } finally {
+                queryState.pc.loading = false;
+                btn.disabled = false;
+                btn.textContent = '解析';
+            }
         }
 
         async function parseSerial() {
+            if (queryState.ps && queryState.ps.loading) return;
+            if (!queryState.ps) queryState.ps = { loading: false };
             const serial = document.getElementById('parseSerialInput').value.trim();
             const resultDiv = document.getElementById('parseSerialResult');
-            if (!serial) { alert('请输入序列号'); return; }
+            const btn = document.getElementById('btnParseSerial');
+            if (!serial) { showToast('请输入序列号', 'warning'); return; }
+
+            queryState.ps.loading = true;
+            btn.disabled = true;
+            btn.textContent = '解析中...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'parse-result loading';
+            resultDiv.innerHTML = '<span class="spinner"></span><span>正在解析序列号，请稍候...</span>';
+
             try {
                 const resp = await fetch('/activecode/api/activation/parse-serial?serialNumber=' + encodeURIComponent(serial));
                 const data = await resp.json();
-                resultDiv.style.display = 'block';
+                resultDiv.className = 'parse-result';
                 let html = `
                     <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
                     <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
@@ -747,7 +844,14 @@
                     html += `<p style="color:#aaa;margin-top:8px;">数据库中未找到此序列号的记录</p>`;
                 }
                 resultDiv.innerHTML = html;
-            } catch (e) { resultDiv.style.display = 'block'; resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message}</p>`; }
+            } catch (e) {
+                resultDiv.className = 'parse-result';
+                resultDiv.innerHTML = `<p style="color:#dc2626;">请求失败: ${e.message || e}</p>`;
+            } finally {
+                queryState.ps.loading = false;
+                btn.disabled = false;
+                btn.textContent = '解析';
+            }
         }
 
         function formatDuration(ms) {
