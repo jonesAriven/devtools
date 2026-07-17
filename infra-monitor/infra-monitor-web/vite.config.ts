@@ -46,7 +46,6 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'vue-vendor': ['vue', 'vue-router', 'pinia'],
             'axios': ['axios'],
-            'element-plus': ['element-plus', '@element-plus/icons-vue'],
           },
         },
       },
