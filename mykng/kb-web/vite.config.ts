@@ -47,7 +47,6 @@ export default defineConfig(({ mode }) => {
             'axios': ['axios'],
             'wangeditor': ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
             'md-editor': ['md-editor-v3'],
-            'element-plus': ['element-plus', '@element-plus/icons-vue'],
             'xlsx': ['xlsx'],
             'docx-preview': ['docx-preview'],
             'dompurify': ['dompurify'],
