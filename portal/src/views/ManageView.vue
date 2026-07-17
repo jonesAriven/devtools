@@ -78,11 +78,11 @@
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">
+            <el-button type="primary" link size="small" @click="handleEdit(row as SystemConfig)">
               <el-icon><Edit /></el-icon>
               编辑
             </el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">
+            <el-button type="danger" link size="small" @click="handleDelete(row as SystemConfig)">
               <el-icon><Delete /></el-icon>
               删除
             </el-button>
