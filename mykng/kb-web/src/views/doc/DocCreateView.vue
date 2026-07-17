@@ -73,6 +73,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { defineAsyncComponent } from 'vue'
 import { createDoc } from '@/api/doc'
 import { getFolderTree } from '@/api/folder'
 import type { Folder, DocFormat } from '@/types'
@@ -80,8 +81,12 @@ import { ElMessage } from 'element-plus'
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import '@wangeditor/editor/dist/css/style.css'
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
+// md-editor 改为异步加载：只有 doc.format='markdown' 时才拉 chunk
+const MdEditor = defineAsyncComponent(async () => {
+  await import('md-editor-v3/lib/style.css')
+  const mod = await import('md-editor-v3')
+  return mod.MdEditor
+})
 import 'katex/dist/katex.min.css'
 import '@/styles/markdown.scss'
 import { configureMarkdownIt } from '@/utils/markdownConfig'

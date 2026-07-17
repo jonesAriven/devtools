@@ -29,12 +29,15 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 dist ======
 log_step 2 5 "解压 & 分发前端产物"
-mkdir -p "${DEPLOY_BASE}/kb-web/dist" "${DEPLOY_BASE}/tmp-kb-web"
+# vite base=/kb/s/，容器 nginx alias /usr/share/nginx/html/kb/s/
+# 需要 dist 目录结构为 dist/kb/s/*
+mkdir -p "${DEPLOY_BASE}/kb-web/dist/kb/s" "${DEPLOY_BASE}/tmp-kb-web"
 extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/tmp-kb-web"
 rm -rf "${DEPLOY_BASE}/kb-web/dist"/*
-cp -r "${DEPLOY_BASE}/tmp-kb-web/"* "${DEPLOY_BASE}/kb-web/dist/"
+mkdir -p "${DEPLOY_BASE}/kb-web/dist/kb/s"
+cp -r "${DEPLOY_BASE}/tmp-kb-web/"* "${DEPLOY_BASE}/kb-web/dist/kb/s/"
 rm -rf "${DEPLOY_BASE}/tmp-kb-web"
-log_ok "kb-web dist 已更新"
+log_ok "kb-web dist 已更新 (结构: dist/kb/s/*)"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"

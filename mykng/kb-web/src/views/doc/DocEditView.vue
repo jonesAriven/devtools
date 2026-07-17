@@ -232,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, shallowRef, watch, computed, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getDocDetail, updateDoc, getDocVersions, getDocList } from '@/api/doc'
 import { getFolderTree } from '@/api/folder'
@@ -250,8 +250,12 @@ import { ArrowDown, Clock, Link, Search, Document, MoreFilled, Download, Check, 
 import { createEditor, createToolbar } from '@wangeditor/editor'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 
-import { MdEditor } from 'md-editor-v3'
-import 'md-editor-v3/lib/style.css'
+// md-editor 改为异步加载：路由进入后按需拉 chunk，不占首屏
+const MdEditor = defineAsyncComponent(async () => {
+  await import('md-editor-v3/lib/style.css')
+  const mod = await import('md-editor-v3')
+  return mod.MdEditor
+})
 import 'katex/dist/katex.min.css'
 import '@wangeditor/editor/dist/css/style.css'
 import '@/styles/markdown.scss'
