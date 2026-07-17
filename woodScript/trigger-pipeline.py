@@ -14,7 +14,7 @@ trigger-pipeline.py - 触发 Woodpecker CI 流水线
     python trigger-pipeline.py kb-ops --note "修复bug"      # 带备注触发
 
 支持项目:
-    mykng, kb-ops, kb-ops-web, infra-monitor,
+    mykng, kb-ops, kb-ops-web, kb-web, infra-monitor,
     infra-monitor-web, active-manager, portal-web, portal-server, all
 
 环境变量:
@@ -38,6 +38,7 @@ PROJECT_MAP = {
     "mykng": "mykng",
     "kb-ops": "kb-ops",
     "kb-ops-web": "kb-ops-web",
+    "kb-web": "kb-web",
     "infra-monitor": "infra-monitor",
     "infra-monitor-web": "infra-monitor-web",
     "active-manager": "active-manager",
@@ -48,7 +49,8 @@ PROJECT_MAP = {
 
 PROJECT_DISPLAY = {
     "mykng": "知识库(mykng)", "kb-ops": "运维后台(kb-ops)",
-    "kb-ops-web": "运维前端(kb-ops-web)", "infra-monitor": "监控(infra-mon)",
+    "kb-ops-web": "运维前端(kb-ops-web)", "kb-web": "知识库前端(kb-web)",
+    "infra-monitor": "监控(infra-mon)",
     "infra-monitor-web": "监控前端(im-web)", "active-manager": "激活码(active-mgr)",
     "portal-web": "门户前端(portal-web)", "portal-server": "门户后端(portal-svr)",
     "all": "全量(all)",

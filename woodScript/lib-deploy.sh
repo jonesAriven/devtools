@@ -203,19 +203,33 @@ _start_platform() {
 # ====== 停止旧服务 (仅指定服务，不影响其他) ======
 # 用法: compose_stop_services <work_dir> <project> <compose_file> <service1> [service2...]
 # 说明: 用 docker compose stop/rm 按服务名停止，避免容器名前缀不匹配问题
+# 自动检测 compose 文件同目录的 .env 并显式传入 --env-file
+_compose_env_args() {
+  # 输入: compose_file 路径
+  # 输出: 若同目录存在 .env 则输出 "--env-file /path/.env"，否则空
+  local compose_file="$1"
+  local dir
+  dir="$(dirname "${compose_file}")"
+  if [ -f "${dir}/.env" ]; then
+    printf -- '--env-file %s' "${dir}/.env"
+  fi
+}
+
 compose_stop_services() {
   local work_dir="$1"; shift
   local project="$1"; shift
   local compose_file="$1"; shift
   local services=("$@")
+  local env_args
+  env_args=$(_compose_env_args "${compose_file}")
 
   cd "${work_dir}"
 
   # 先用 docker compose stop/rm 按服务名精确停止
   for svc in "${services[@]}"; do
-    if docker compose -p "${project}" -f "${compose_file}" ps --services 2>/dev/null | grep -q "^${svc}$"; then
-      docker compose -p "${project}" -f "${compose_file}" stop -t 10 "${svc}" 2>/dev/null || true
-      docker compose -p "${project}" -f "${compose_file}" rm -f "${svc}" 2>/dev/null || true
+    if docker compose ${env_args} -p "${project}" -f "${compose_file}" ps --services 2>/dev/null | grep -q "^${svc}$"; then
+      docker compose ${env_args} -p "${project}" -f "${compose_file}" stop -t 10 "${svc}" 2>/dev/null || true
+      docker compose ${env_args} -p "${project}" -f "${compose_file}" rm -f "${svc}" 2>/dev/null || true
       log_ok "已停止并移除旧容器: ${svc}"
       sleep 2
     fi
@@ -246,10 +260,12 @@ compose_down_all() {
   local work_dir="$1"
   local project="$2"
   local compose_file="$3"
+  local env_args
+  env_args=$(_compose_env_args "${compose_file}")
 
   cd "${work_dir}"
-  if docker compose -p "${project}" -f "${compose_file}" ps -q 2>/dev/null | grep -q .; then
-    docker compose -p "${project}" -f "${compose_file}" down --remove-orphans --timeout 30 2>&1 || true
+  if docker compose ${env_args} -p "${project}" -f "${compose_file}" ps -q 2>/dev/null | grep -q .; then
+    docker compose ${env_args} -p "${project}" -f "${compose_file}" down --remove-orphans --timeout 30 2>&1 || true
     log_ok "compose down 完成"
     sleep 3
   else
@@ -294,6 +310,8 @@ compose_up_services() {
   local project="$1"; shift
   local compose_file="$1"; shift
   local services=("$@")
+  local env_args
+  env_args=$(_compose_env_args "${compose_file}")
 
   cd "${work_dir}"
   log_info "等待 Docker 构建锁..."
@@ -301,7 +319,7 @@ compose_up_services() {
   (
     flock -x 9
     echo "  🔓 获取锁，开始构建: ${services[*]}"
-    docker compose -p "${project}" -f "${compose_file}" \
+    docker compose ${env_args} -p "${project}" -f "${compose_file}" \
       up -d --build --force-recreate --no-deps "${services[@]}" 2>&1
   ) 9>/tmp/docker-build.lock
   local COMPOSE_EXIT=$?
@@ -312,7 +330,7 @@ compose_up_services() {
     return 1
   fi
   log_ok "服务启动完成"
-  docker compose -p "${project}" -f "${compose_file}" ps 2>/dev/null || \
+  docker compose ${env_args} -p "${project}" -f "${compose_file}" ps 2>/dev/null || \
     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 }
 
@@ -322,14 +340,16 @@ compose_up_all() {
   local work_dir="$1"
   local project="$2"
   local compose_file="$3"
+  local env_args
+  env_args=$(_compose_env_args "${compose_file}")
 
   cd "${work_dir}"
-  docker compose -p "${project}" -f "${compose_file}" \
+  docker compose ${env_args} -p "${project}" -f "${compose_file}" \
     up -d --build --force-recreate --no-deps --remove-orphans 2>&1
 
   echo ""
   log_ok "服务启动完成"
-  docker compose -p "${project}" -f "${compose_file}" ps 2>/dev/null || \
+  docker compose ${env_args} -p "${project}" -f "${compose_file}" ps 2>/dev/null || \
     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 }
 

@@ -10,7 +10,7 @@
 #     └── active-mgr ─�?active-mgr-deploy                �? �?独立并行
 #                                                        �? �?#                                                     cleanup
 #
-# DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / infra-monitor-web / infra-monitor / active-manager / portal-web / portal-server
+# DEPLOY_TARGET: all(默认) / mykng / kb-ops / kb-ops-web / kb-web / infra-monitor-web / infra-monitor / active-manager / portal-web / portal-server
 # ============================================================
 
 when:
@@ -125,6 +125,30 @@ steps:
       command_timeout: 30m
       script:
         - bash /mnt/shared/woodScript/cd/deploy-kb-ops-web.sh kb-ops-web-latest.tar.gz
+
+  # ==================== kb-web (kb 主前端) ====================
+  - name: kb-web-build
+    image: node:20-slim
+    volumes:
+      - /mnt/shared:/mnt/shared
+    depends_on: [sync-ci-scripts]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-web"' }]
+    commands:
+      - bash woodScript/ci/build-kb-web.sh
+
+  - name: kb-web-deploy
+    image: appleboy/drone-ssh
+    depends_on: [kb-web-build]
+    when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-web"' }]
+    settings:
+      host: 192.168.31.105
+      username: root
+      key: { from_secret: ssh_key_mykng }
+      port: 22
+      script_stop: false
+      command_timeout: 30m
+      script:
+        - bash /mnt/shared/woodScript/cd/deploy-kb-web.sh kb-web-latest.tar.gz
 
   # ==================== infra-monitor-web (监控前端) ====================
   - name: infra-monitor-web-build
@@ -258,7 +282,7 @@ steps:
   # ==================== cleanup ====================
   - name: cleanup
     image: appleboy/drone-ssh
-    depends_on: [mykng-deploy, kb-ops-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy, portal-web-deploy, portal-server-deploy]
+    depends_on: [mykng-deploy, kb-ops-deploy, kb-web-deploy, infra-monitor-web-deploy, infra-monitor-deploy, active-manager-deploy, portal-web-deploy, portal-server-deploy]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all"' }]
     settings:
       host: 192.168.31.105
