@@ -46,9 +46,9 @@ export default defineConfig(({ mode }) => {
             'vue-vendor': ['vue', 'vue-router', 'pinia'],
             'axios': ['axios'],
             'wangeditor': ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
-            'md-editor': ['md-editor-v3'],
+            // 以下几个已在业务代码里改成 await import() 动态加载
+            // 不在 manualChunks 里命名，避免被 Vite 首屏 modulepreload
             'xlsx': ['xlsx'],
-            'docx-preview': ['docx-preview'],
             'dompurify': ['dompurify'],
           },
         },
