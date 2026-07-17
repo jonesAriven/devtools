@@ -194,7 +194,7 @@ const editId = ref('')
 
 const systems = ref<SystemConfig[]>([])
 
-const categoryTagTypes: Record<string, string> = {
+const categoryTagTypes: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = {
   web: 'primary',
   infra: 'success',
   tool: 'warning',
