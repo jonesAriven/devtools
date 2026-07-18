@@ -29,15 +29,33 @@
     </div>
 
     <div class="card-actions">
-      <el-button
-        v-if="config.url"
-        type="primary"
-        size="small"
-        @click="openUrl(config.url!)"
-      >
-        <el-icon><Position /></el-icon>
-        访问
-      </el-button>
+      <!-- 三入口下拉：至少有一个入口时显示 -->
+      <el-dropdown v-if="hasAnyEntry" trigger="click" @command="openUrl">
+        <el-button type="primary" size="small">
+          <el-icon><Position /></el-icon>
+          访问
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-if="config.urlPublic" :command="config.urlPublic">
+              🌐 公网入口
+            </el-dropdown-item>
+            <el-dropdown-item v-if="config.urlLan" :command="config.urlLan">
+              🏠 家庭局域网
+            </el-dropdown-item>
+            <el-dropdown-item v-if="config.urlTailscale" :command="config.urlTailscale">
+              🔒 Tailscale
+            </el-dropdown-item>
+            <el-dropdown-item
+              v-if="config.url && !config.urlPublic && !config.urlLan && !config.urlTailscale"
+              :command="config.url"
+            >
+              🔗 主入口
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
 
       <el-button
         v-if="config.downloadPath"
@@ -130,7 +148,19 @@ const favoritesStore = useFavoritesStore()
 const loadingCredentials = ref(false)
 
 const isFavorited = computed(() => props.isFavorite || favoritesStore.isFavorite(props.config.id))
-const showCredentialsBtn = computed(() => !!props.config.url && props.config.loginUsername)
+const showCredentialsBtn = computed(() => !!primaryUrl.value && props.config.loginUsername)
+
+// 优先级：公网 > Tailscale > 家庭 > 兼容旧 url
+const primaryUrl = computed(() =>
+  props.config.urlPublic
+  || props.config.urlTailscale
+  || props.config.urlLan
+  || props.config.url
+)
+
+const hasAnyEntry = computed(() =>
+  !!(props.config.urlPublic || props.config.urlLan || props.config.urlTailscale || props.config.url)
+)
 
 function handleToggleFavorite() {
   favoritesStore.toggleFavorite(props.config.id)
@@ -194,14 +224,14 @@ async function handleCredentialsCommand(command: string) {
       if (creds.username && creds.password) {
         const text = `${creds.username}\t${creds.password}`
         copyToClipboard(text)
-        if (props.config.url) {
-          openUrl(props.config.url)
+        if (primaryUrl.value) {
+          openUrl(primaryUrl.value)
         }
         ElMessage.success('账号密码已复制，登录页按 Ctrl+V 粘贴')
       } else if (creds.username) {
         copyToClipboard(creds.username)
-        if (props.config.url) {
-          openUrl(props.config.url)
+        if (primaryUrl.value) {
+          openUrl(primaryUrl.value)
         }
         ElMessage.success('账号已复制，登录页按 Ctrl+V 粘贴')
       }
