@@ -11,8 +11,17 @@ public class PortalSystemRequest {
 
     private String description;
 
-    @NotBlank(message = "系统URL不能为空")
+    /** 主 URL - 兼容旧字段，允许留空（三入口至少填一个即可） */
     private String url;
+
+    /** 公网入口(域名) */
+    private String urlPublic;
+
+    /** 家庭局域网入口(192.168.31.x) */
+    private String urlLan;
+
+    /** Tailscale入口(100.x.x.x) */
+    private String urlTailscale;
 
     private String icon;
 

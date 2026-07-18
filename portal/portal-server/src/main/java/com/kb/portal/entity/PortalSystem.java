@@ -18,6 +18,15 @@ public class PortalSystem {
 
     private String url;
 
+    /** 公网入口(域名) - Stage 1 新增 */
+    private String urlPublic;
+
+    /** 家庭局域网入口(192.168.31.x) - Stage 1 新增 */
+    private String urlLan;
+
+    /** Tailscale入口(100.x.x.x) - Stage 1 新增 */
+    private String urlTailscale;
+
     private String icon;
 
     private String color;
