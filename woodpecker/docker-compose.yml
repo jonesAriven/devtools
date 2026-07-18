@@ -92,14 +92,10 @@ services:
         condition: service_healthy
     networks:
       - woodpecker-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'        # ⚠️ Server 只需很少 CPU
-          memory: 256M        # ⚠️ 限制内存 256MB
-        reservations:
-          cpus: '0.10'
-          memory: 128M
+    # 2026-07-18 修正：deploy.resources 只在 swarm 模式生效，改用 compose 顶层字段
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: 0.50
     logging:
       driver: json-file
       options:
@@ -120,11 +116,11 @@ services:
       # 后端配置
       - WOODPECKER_BACKEND=docker
       - WOODPECKER_BACKEND_DOCKER_NETWORK=woodpecker_woodpecker-network
-      # 并发控制（防止占满 mykng 资源）
-      - WOODPECKER_MAX_PROCS=1   # ⚠️ 关键：同时只跑 1 个构建任务
+      # 并发控制（2026-07-18 提速：1→3，主机 4 核余量足）
+      - WOODPECKER_MAX_PROCS=3   # 同时跑 3 个 step，充分利用 3 核
       # 资源限制传递给构建容器
-      - WOODPECKER_BACKEND_DOCKER_MEMORY=1024  # 构建容器最多 1GB 内存
-      - WOODPECKER_BACKEND_DOCKER_MEMORY_SWAP=512  # + 512MB swap
+      - WOODPECKER_BACKEND_DOCKER_MEMORY=1024  # 单容器最多 1GB
+      - WOODPECKER_BACKEND_DOCKER_MEMORY_SWAP=1024  # SWAP=MEMORY 表示禁用额外 swap（原 512 是错配）
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket（构建需要）
     depends_on:
@@ -132,14 +128,11 @@ services:
         condition: service_started
     networks:
       - woodpecker-network
-    deploy:
-      resources:
-        limits:
-          cpus: '2.00'        # ⚠️ Agent + 构建容器共享 2 核
-          memory: 1536M       # ⚠️ 总内存限制 1.5GB
-        reservations:
-          cpus: '0.50'
-          memory: 256M
+    # 2026-07-18 修正：deploy.resources 只在 swarm 模式生效，改用 compose 顶层字段
+    # 提速调整：CPU 2→3 核（配合 MAX_PROCS=3），内存 1.5G→4G（3 并发 × 1G + agent 自身 + buffer）
+    mem_limit: 4096m
+    mem_reservation: 512m
+    cpus: 3.0
     logging:
       driver: json-file
       options:

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# build-kb-ops-web.sh �?运维平台前端构建
+# build-kb-ops-web.sh �?运维平台前端构建
 # 运行环境: CI 容器 (node:20-alpine)
 # 产物: kb-ops-web-latest.tar.gz
 # ============================================================
@@ -12,7 +12,7 @@ setup_pnpm
 
 echo ">>> [1/3] pnpm build kb-ops-web <<<"
 cd kb-ops/kb-ops-web
-pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 cd ../..
 

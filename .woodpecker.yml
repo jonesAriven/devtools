@@ -107,6 +107,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
+      - /mnt/shared/.pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"' }]
     commands:
@@ -131,6 +132,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
+      - /mnt/shared/.pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-web"' }]
     commands:
@@ -155,6 +157,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
+      - /mnt/shared/.pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     commands:
@@ -233,6 +236,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
+      - /mnt/shared/.pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-web"' }]
     commands:
@@ -295,4 +299,6 @@ steps:
         - docker container prune -f 2>/dev/null || true
         - docker image prune -f 2>/dev/null || true
         - docker builder prune -f 2>/dev/null || true
+        # 2026-07-18 提速：pnpm store 定期清理未引用的包（脚本走 git 版本管控，由 sync-ci-scripts 同步）
+        - bash /mnt/shared/woodScript/cd/cleanup-pnpm-store.sh
         - echo "cleanup done"

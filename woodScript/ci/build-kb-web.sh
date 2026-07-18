@@ -12,7 +12,7 @@ setup_pnpm
 
 echo ">>> [1/3] pnpm build kb-web <<<"
 cd mykng/kb-web
-pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 cd ../..
 

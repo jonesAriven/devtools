@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# build-portal-web.sh �?Portal 门户前端构建
+# build-portal-web.sh �?Portal 门户前端构建
 # 运行环境: CI 容器 (node:20-slim)
 # 产物: portal-web-latest.tar.gz
 # ============================================================
@@ -12,7 +12,7 @@ setup_pnpm
 
 echo ">>> [1/3] pnpm build portal-web <<<"
 cd portal
-pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 cd ..
 

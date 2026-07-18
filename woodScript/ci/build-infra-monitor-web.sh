@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# build-infra-monitor-web.sh �?监控前端构建
+# build-infra-monitor-web.sh �?监控前端构建
 # 运行环境: CI 容器 (node:20-alpine)
 # 产物: infra-monitor-web-latest.tar.gz
 # ============================================================
@@ -12,7 +12,7 @@ setup_pnpm
 
 echo ">>> [1/3] pnpm build infra-monitor-web <<<"
 cd infra-monitor/infra-monitor-web
-pnpm install --no-frozen-lockfile || pnpm install --no-frozen-lockfile || pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 cd ../..
 

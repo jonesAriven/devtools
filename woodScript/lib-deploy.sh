@@ -410,6 +410,11 @@ health_check() {
   done
 }
 
+# ====== 计时日志（2026-07-18 加入用于定位 deploy 卡死点） ======
+log_time() {
+  echo "  ⏱️  [$(date '+%H:%M:%S')] $*"
+}
+
 # ====== 清理悬空镜像 ======
 prune_images() {
   local dangling=$(docker images -f "dangling=true" -q 2>/dev/null | wc -l)
