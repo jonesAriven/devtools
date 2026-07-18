@@ -107,7 +107,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
-      - /mnt/shared/.pnpm-store:/root/.pnpm-store
+      - /var/cache/pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-ops-web"' }]
     commands:
@@ -132,7 +132,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
-      - /mnt/shared/.pnpm-store:/root/.pnpm-store
+      - /var/cache/pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "kb-web"' }]
     commands:
@@ -157,7 +157,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
-      - /mnt/shared/.pnpm-store:/root/.pnpm-store
+      - /var/cache/pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "infra-monitor-web"' }]
     commands:
@@ -236,7 +236,7 @@ steps:
     image: node:20-slim
     volumes:
       - /mnt/shared:/mnt/shared
-      - /mnt/shared/.pnpm-store:/root/.pnpm-store
+      - /var/cache/pnpm-store:/root/.pnpm-store
     depends_on: [sync-ci-scripts]
     when: [{ event: push }, { event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "portal-web"' }]
     commands:

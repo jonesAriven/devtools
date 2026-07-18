@@ -10,7 +10,7 @@
 # ============================================================
 set -euo pipefail
 
-STORE_DIR="/mnt/shared/.pnpm-store"
+STORE_DIR="/var/cache/pnpm-store"
 NODE_IMAGE="node:20-slim"
 
 echo ">>> pnpm store 清理 <<<"
