@@ -46,8 +46,27 @@ publish_artifact() {
 }
 
 # ====== pnpm 配置 (前端构建用) ======
+# 用法: setup_pnpm <project_dir>
+# 说明: 优先读 <project_dir>/package.json 里的 packageManager 字段锁定版本
+#       (2026-07-18 增强：支持 packageManager 字段，避免 pnpm@latest 与老 lockfile 不兼容)
 setup_pnpm() {
-  npm install -g pnpm 2>/dev/null
+  local project_dir="${1:-.}"
+  local pkg_file="${project_dir}/package.json"
+  local pm_version=""
+
+  if [ -f "${pkg_file}" ]; then
+    pm_version=$(grep -oP '"packageManager"\s*:\s*"pnpm@\K[^"]+' "${pkg_file}" || true)
+  fi
+
+  if [ -n "${pm_version}" ]; then
+    echo "  📦 检测到 packageManager: pnpm@${pm_version}，锁定安装"
+    npm install -g "pnpm@${pm_version}" 2>/dev/null
+  else
+    echo "  📦 未指定 packageManager，安装 pnpm@latest"
+    npm install -g pnpm 2>/dev/null
+  fi
+
+  pnpm --version
   pnpm config set registry "${NEXUS_NPM_REGISTRY}"
   pnpm config set fetch-retries 5
   pnpm config set fetch-retry-factor 2

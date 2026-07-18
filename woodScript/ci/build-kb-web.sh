@@ -8,7 +8,7 @@ set -euo pipefail
 source woodScript/env.sh
 source woodScript/lib-build.sh
 
-setup_pnpm
+setup_pnpm mykng/kb-web
 
 echo ">>> [1/3] pnpm build kb-web <<<"
 cd mykng/kb-web

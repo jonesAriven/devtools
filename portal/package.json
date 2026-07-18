@@ -1,6 +1,7 @@
 {
   "name": "devtools-portal",
   "version": "1.0.0",
+  "packageManager": "pnpm@8.15.9",
   "description": "devtools 工具总入口看板 - 统一导航与状态监控",
   "type": "module",
   "scripts": {
