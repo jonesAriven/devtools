@@ -23,6 +23,9 @@ interface RawSystem {
   name: string
   description: string
   url?: string
+  urlPublic?: string
+  urlLan?: string
+  urlTailscale?: string
   icon: string
   color: string
   category: string
@@ -50,6 +53,9 @@ function transformSystem(raw: RawSystem): SystemConfig {
     name: raw.name,
     description: raw.description || '',
     url: raw.url,
+    urlPublic: raw.urlPublic,
+    urlLan: raw.urlLan,
+    urlTailscale: raw.urlTailscale,
     icon: raw.icon,
     color: raw.color,
     category: (raw.category as SystemCategory) || 'web',

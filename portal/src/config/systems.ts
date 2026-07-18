@@ -11,6 +11,9 @@ export interface SystemConfig {
   description: string
   category: SystemCategory
   url?: string
+  urlPublic?: string
+  urlLan?: string
+  urlTailscale?: string
   healthCheckUrl?: string
   icon: string
   color: string

@@ -139,7 +139,16 @@
           <el-color-picker v-model="formData.color" />
         </el-form-item>
         <el-form-item label="访问地址" prop="url">
-          <el-input v-model="formData.url" placeholder="请输入访问地址" />
+          <el-input v-model="formData.url" placeholder="兼容旧字段，可留空。推荐使用下方三入口" />
+        </el-form-item>
+        <el-form-item label="🌐 公网入口" prop="urlPublic">
+          <el-input v-model="formData.urlPublic" placeholder="域名访问，如 https://xxx.marschat.online/" />
+        </el-form-item>
+        <el-form-item label="🏠 家庭局域网" prop="urlLan">
+          <el-input v-model="formData.urlLan" placeholder="192.168.31.x 段，如 http://192.168.31.105:8090/" />
+        </el-form-item>
+        <el-form-item label="🔒 Tailscale 入口" prop="urlTailscale">
+          <el-input v-model="formData.urlTailscale" placeholder="100.x.x.x 段，如 http://100.93.36.113:8090/" />
         </el-form-item>
         <el-form-item label="健康检查" prop="healthCheckUrl">
           <el-input v-model="formData.healthCheckUrl" placeholder="请输入健康检查地址" />
@@ -213,6 +222,9 @@ const formData = reactive<Partial<SystemConfig>>({
   icon: 'Monitor',
   color: '#409eff',
   url: '',
+  urlPublic: '',
+  urlLan: '',
+  urlTailscale: '',
   healthCheckUrl: '',
   techStack: '',
   downloadPath: '',
@@ -286,6 +298,9 @@ function handleAdd() {
     icon: 'Monitor',
     color: '#409eff',
     url: '',
+    urlPublic: '',
+    urlLan: '',
+    urlTailscale: '',
     healthCheckUrl: '',
     techStack: '',
     downloadPath: '',

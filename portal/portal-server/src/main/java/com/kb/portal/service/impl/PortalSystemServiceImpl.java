@@ -150,6 +150,9 @@ public class PortalSystemServiceImpl extends ServiceImpl<PortalSystemMapper, Por
         portalSystem.setName(r.getName());
         portalSystem.setDescription(r.getDescription());
         portalSystem.setUrl(r.getUrl());
+        portalSystem.setUrlPublic(r.getUrlPublic());
+        portalSystem.setUrlLan(r.getUrlLan());
+        portalSystem.setUrlTailscale(r.getUrlTailscale());
         portalSystem.setIcon(r.getIcon());
         portalSystem.setColor(r.getColor());
         portalSystem.setCategory(r.getCategory());
