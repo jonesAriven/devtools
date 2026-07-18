@@ -88,7 +88,7 @@ services:
     restart: on-failure:5
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "19001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
