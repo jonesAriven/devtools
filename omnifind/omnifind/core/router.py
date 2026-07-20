@@ -47,6 +47,10 @@ class QueryRouter:
         low = q.lower()
         if q.startswith("?"):
             return "semantic", q[1:].strip()
+        # 文件名正则:re: 或 filename-re: / name-re:
+        for pfx in ("re:", "filename-re:", "name-re:"):
+            if low.startswith(pfx):
+                return "filename_regex", q[len(pfx):].strip()
         for pfx in ("filename:", "name:"):
             if low.startswith(pfx):
                 return "filename", q[len(pfx):].strip()
@@ -60,6 +64,16 @@ class QueryRouter:
         mode, q = self.parse_mode(query)
         resp = SearchResponse(query=query, mode=mode)
         if not q:
+            return resp
+
+        if mode == "filename_regex" and self.l1:
+            try:
+                for h in self.l1.search_regex(q, limit):
+                    resp.hits.append(UnifiedHit(h.path, h.name, layer="l1",
+                                                extra={"size": h.size, "is_dir": h.is_dir, "regex": True}))
+            except ValueError as e:
+                resp.counts["error"] = str(e)
+            resp.counts["l1"] = self.l1.count()
             return resp
 
         if mode in ("filename", "all") and self.l1:

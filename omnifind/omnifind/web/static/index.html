@@ -44,10 +44,11 @@
     <button onclick="doSearch()">搜索</button>
   </div>
   <div class="hint">
-    语法:<code>filename:报告</code> 只搜文件名 ·
-    <code>content:预算</code> 搜正文 ·
-    <code>?去年的项目计划</code> 语义搜索 ·
-    <code>all:xxx</code> 三层聚合
+    语法:<code>filename:报告</code> 文件名 ·
+    <code>re:\.pdf$</code> 文件名正则 ·
+    <code>content:预算</code> 正文 ·
+    <code>?去年的项目计划</code> 语义 ·
+    <code>all:xxx</code> 聚合
   </div>
   <div class="status" id="status">加载中…</div>
   <div id="results"></div>

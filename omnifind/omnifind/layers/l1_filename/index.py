@@ -79,6 +79,63 @@ class FilenameIndex:
         ).fetchall()
         return [NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])) for r in rows]
 
+    @staticmethod
+    def _literal_prefix(pattern: str) -> str:
+        """从正则里提取开头的连续字面字符,用于 LIKE 粗筛缩小候选集。
+        遇到第一个正则元字符就停。无字面前缀返回空串(退化为全扫)。"""
+        meta = set(".^$*+?{}[]()|\\")
+        buf = []
+        for ch in pattern:
+            if ch in meta:
+                break
+            buf.append(ch)
+        return "".join(buf)
+
+    def search_regex(self, pattern: str, limit: int = 50,
+                     ignore_case: bool = True, scan_cap: int = 200000) -> list[NameHit]:
+        """文件名正则搜索:LIKE 粗筛候选集 + re 精筛。
+
+        - 有字面前缀:用 name LIKE 'prefix%' 缩小候选,再 re.search 精筛(快)。
+        - 无字面前缀:流式扫描,最多检查 scan_cap 条,防全表灾难。
+        """
+        import re
+        flags = re.IGNORECASE if ignore_case else 0
+        try:
+            rx = re.compile(pattern, flags)
+        except re.error as e:
+            raise ValueError(f"非法正则: {e}") from e
+
+        prefix = self._literal_prefix(pattern)
+        # 顶层含 | 交替时,字面前缀粗筛会漏掉其他分支 -> 强制流式扫描保正确
+        has_alt = "|" in pattern
+        if not has_alt and pattern.startswith("^") and self._literal_prefix(pattern[1:]):
+            pfx = self._literal_prefix(pattern[1:])
+            cur = self.conn.execute(
+                "SELECT path,name,size,mtime,is_dir FROM entries "
+                "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
+                (pfx.replace("%", "\\%").replace("_", "\\_") + "%",),
+            )
+        elif prefix and not has_alt:
+            cur = self.conn.execute(
+                "SELECT path,name,size,mtime,is_dir FROM entries "
+                "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
+                ("%" + prefix.replace("%", "\\%").replace("_", "\\_") + "%",),
+            )
+        else:
+            # 无字面可用,流式全扫(限 scan_cap 条)
+            cur = self.conn.execute(
+                "SELECT path,name,size,mtime,is_dir FROM entries "
+                "ORDER BY is_dir DESC, mtime DESC LIMIT ?", (scan_cap,)
+            )
+
+        hits: list[NameHit] = []
+        for r in cur:
+            if rx.search(r["name"]):
+                hits.append(NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])))
+                if len(hits) >= limit:
+                    break
+        return hits
+
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
 
