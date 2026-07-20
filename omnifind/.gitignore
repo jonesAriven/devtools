@@ -1,0 +1,31 @@
+# === OmniFind 忽略规则 ===
+# 虚拟环境
+.venv/
+venv/
+
+# 模型文件(90MB+,不入 git)
+models/
+*.onnx
+
+# 索引与向量库(运行时生成)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.lance/
+lancedb/
+
+# 构建产物
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
+
+# 日志与临时
+logs/
+*.log
+.pytest_cache/
+
+# 用户本地配置(含个人目录路径)
+config.local.yaml

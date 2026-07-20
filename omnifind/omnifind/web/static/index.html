@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniFind · 本地全能搜索</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+         background: #0f1115; color: #e6e6e6; padding: 24px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; color: #fff; }
+  .sub { color: #8a8f98; font-size: 13px; margin-bottom: 18px; }
+  .searchbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  #q { flex: 1; padding: 12px 14px; font-size: 15px; border-radius: 8px;
+       border: 1px solid #2a2e37; background: #1a1d24; color: #fff; outline: none; }
+  #q:focus { border-color: #4c8bf5; }
+  button { padding: 12px 20px; border: none; border-radius: 8px; background: #4c8bf5;
+           color: #fff; font-size: 14px; cursor: pointer; }
+  button:hover { background: #3b7ae4; }
+  .hint { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+  .hint code { background: #1a1d24; padding: 1px 6px; border-radius: 4px; color: #9ecbff; }
+  .status { font-size: 12px; color: #8a8f98; margin-bottom: 16px; }
+  .hit { padding: 12px 14px; background: #1a1d24; border-radius: 8px; margin-bottom: 8px;
+         border-left: 3px solid #2a2e37; }
+  .hit .title { font-size: 14px; color: #fff; font-weight: 500; }
+  .hit .path { font-size: 12px; color: #6b7280; margin-top: 2px; word-break: break-all; }
+  .hit .snippet { font-size: 13px; color: #b8bcc4; margin-top: 6px; line-height: 1.5; }
+  .hit .snippet [class] {}
+  .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px;
+           margin-right: 6px; vertical-align: middle; }
+  .l1 { background: #2d4a2d; color: #9ee89e; }
+  .l2 { background: #2d3a4a; color: #9ecbff; }
+  .l3 { background: #4a2d4a; color: #e89ee8; }
+  .empty { color: #6b7280; text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔍 OmniFind</h1>
+  <div class="sub">本地全能搜索 · 文件名 + 全文 + 语义 · 全离线</div>
+  <div class="searchbar">
+    <input id="q" placeholder="输入关键词搜索…" autofocus>
+    <button onclick="doSearch()">搜索</button>
+  </div>
+  <div class="hint">
+    语法:<code>filename:报告</code> 只搜文件名 ·
+    <code>content:预算</code> 搜正文 ·
+    <code>?去年的项目计划</code> 语义搜索 ·
+    <code>all:xxx</code> 三层聚合
+  </div>
+  <div class="status" id="status">加载中…</div>
+  <div id="results"></div>
+</div>
+<script>
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    document.getElementById('status').textContent =
+      `索引状态 · 文件名 ${s.l1_count} · 全文 ${s.l2_count} · 语义 ${s.l3_count} · 扫描根 ${(s.scan_roots||[]).join(', ')}`;
+  } catch(e) { document.getElementById('status').textContent = '状态获取失败'; }
+}
+async function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  const box = document.getElementById('results');
+  if (!q) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="empty">搜索中…</div>';
+  try {
+    const r = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=50');
+    const data = await r.json();
+    if (!data.hits || !data.hits.length) {
+      box.innerHTML = '<div class="empty">未找到结果 · 模式:' + data.mode + '</div>';
+      return;
+    }
+    box.innerHTML = data.hits.map(h => `
+      <div class="hit">
+        <div><span class="badge ${h.layer}">${h.layer.toUpperCase()}</span>
+             <span class="title">${escapeHtml(h.title || h.path)}</span></div>
+        <div class="path">${escapeHtml(h.path)}</div>
+        ${h.snippet ? '<div class="snippet">' + h.snippet + '</div>' : ''}
+      </div>`).join('');
+  } catch(e) { box.innerHTML = '<div class="empty">搜索出错:' + e + '</div>'; }
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+loadStatus();
+</script>
+</body>
+</html>

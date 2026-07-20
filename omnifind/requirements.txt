@@ -1,0 +1,23 @@
+# OmniFind 依赖(全离线自包含)
+# --- Web 服务 ---
+fastapi
+uvicorn[standard]
+pyyaml
+
+# --- 中文分词(L2 全文层)---
+jieba
+
+# --- 文档抽取器(覆盖所有文档类型)---
+pymupdf          # PDF
+python-docx      # Word .docx
+openpyxl         # Excel .xlsx
+python-pptx      # PowerPoint .pptx
+
+# --- L1 增量监听(阶段二)---
+watchdog
+
+# --- L3 语义层(阶段四)---
+# onnxruntime      # 本地推理
+# tokenizers       # BGE 分词
+# lancedb          # 嵌入式向量库
+# numpy

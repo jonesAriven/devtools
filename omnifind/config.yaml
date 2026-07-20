@@ -1,0 +1,30 @@
+# OmniFind 默认配置(config.yaml)
+# 用户个性化请复制为 config.local.yaml 修改(后者会覆盖本文件,且被 gitignore)
+
+# ========== L1 文件名层 ==========
+# 扫描根目录。留空则自动探测:Windows=所有盘符,Linux/Mac=用户家目录。
+# Windows 示例: ["C:\\", "D:\\"]   Linux 示例: ["/home/user", "/data"]
+scan_roots: []
+
+# L1 后端: auto(Windows自动选usn真秒搜/其他选walk) | usn | walk
+l1_backend: auto
+
+# ========== L2 全文层 ==========
+# 超过此大小(MB)的文件不抽取正文
+max_fulltext_mb: 50
+
+# ========== L3 语义层(分叉点2: 2.1+2.2)==========
+# 2.1 用户指定的重点语义目录(只对这些做向量化)。为空则按 2.2 类型自动圈定。
+# 示例: ["C:\\Users\\me\\Documents", "D:\\工作"]
+semantic_dirs: []
+
+# 是否对全盘所有可读文档做语义索引(默认 false,避免向量库爆炸)
+semantic_full_disk: false
+
+# 分块参数
+chunk_size: 512
+chunk_overlap: 64
+
+# ========== Web 服务 ==========
+host: 127.0.0.1
+port: 8899
