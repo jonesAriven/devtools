@@ -86,7 +86,7 @@ class SemanticIndex:
         self._table.add(rows)
         return len(chunks)
 
-    def search(self, query: str, limit: int = 30) -> list[SemanticHit]:
+    def search(self, query: str, limit: int = 30, min_score: float = 0.30) -> list[SemanticHit]:
         self._connect()
         if self._table is None:
             return []
@@ -98,6 +98,8 @@ class SemanticIndex:
         for r in raw:
             # lancedb 返回 _distance(cosine 距离),转相似度分
             score = 1.0 - float(r.get("_distance", 1.0))
+            if score < min_score:
+                continue
             path = r["path"]
             if path not in best or score > best[path].score:
                 snip = r["text"][:160].replace("\n", " ")

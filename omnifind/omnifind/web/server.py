@@ -26,8 +26,18 @@ async def lifespan(app: FastAPI):
     cfg = OmniConfig.load()
     l1 = FilenameIndex()
     l2 = FullTextIndex()
-    router = QueryRouter(l1=l1, l2=l2, l3=None)  # l3 阶段四接入
-    _state.update(cfg=cfg, l1=l1, l2=l2, router=router)
+    l3 = None
+    try:
+        from pathlib import Path as _P
+        if _P(cfg.embed_model_path).joinpath("model.onnx").exists():
+            from omnifind.layers.l3_semantic.builder import make_embedder
+            from omnifind.layers.l3_semantic.index import SemanticIndex
+            emb = make_embedder(cfg)
+            l3 = SemanticIndex(emb, dim=emb.dim)
+    except Exception as e:  # noqa: BLE001
+        print(f"[L3] 语义层不可用(跳过):{e}")
+    router = QueryRouter(l1=l1, l2=l2, l3=l3)
+    _state.update(cfg=cfg, l1=l1, l2=l2, l3=l3, router=router)
     yield
     l1.close()
     l2.close()
@@ -45,10 +55,11 @@ def search(q: str = Query(""), limit: int = Query(30, ge=1, le=200)):
 
 @app.get("/api/status")
 def status():
+    l3 = _state.get("l3")
     return {
         "l1_count": _state["l1"].count(),
         "l2_count": _state["l2"].count(),
-        "l3_count": 0,
+        "l3_count": l3.count() if l3 else 0,
         "scan_roots": _state["cfg"].scan_roots,
     }
 
