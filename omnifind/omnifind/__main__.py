@@ -24,17 +24,41 @@ def cmd_index(args):
     cfg = OmniConfig.load()
     l1 = FilenameIndex()
     l2 = FullTextIndex()
-    if not args.l2_only:
+    only = [f for f in (args.l1_only, args.l2_only, args.l3_only) if f]
+    do_l1 = args.l1_only or not only
+    do_l2 = args.l2_only or not only
+    do_l3 = args.l3_only or not only
+    if do_l1:
         build_filename_index(cfg, l1)
-    if not args.l1_only:
+    if do_l2:
         build_fulltext_index(cfg, l2, limit=args.l2_limit)
+    if do_l3:
+        from omnifind.layers.l3_semantic.builder import build_semantic_index, make_embedder
+        from omnifind.layers.l3_semantic.index import SemanticIndex
+        emb = make_embedder(cfg)
+        sem = SemanticIndex(emb, dim=emb.dim)
+        build_semantic_index(cfg, sem, limit=args.l3_limit)
     l1.close(); l2.close()
+
+
+def _make_router(cfg):
+    l1 = FilenameIndex(); l2 = FullTextIndex()
+    l3 = None
+    try:
+        from omnifind.layers.l3_semantic.builder import make_embedder
+        from omnifind.layers.l3_semantic.index import SemanticIndex
+        from pathlib import Path as _P
+        if _P(cfg.embed_model_path, ).joinpath("model.onnx").exists():
+            emb = make_embedder(cfg)
+            l3 = SemanticIndex(emb, dim=emb.dim)
+    except Exception as e:  # noqa: BLE001
+        print(f"[L3] 语义层不可用(跳过):{e}")
+    return QueryRouter(l1=l1, l2=l2, l3=l3), l1, l2
 
 
 def cmd_search(args):
     cfg = OmniConfig.load()
-    l1 = FilenameIndex(); l2 = FullTextIndex()
-    router = QueryRouter(l1=l1, l2=l2)
+    router, l1, l2 = _make_router(cfg)
     resp = router.search(args.query, limit=args.limit)
     print(f"模式:{resp.mode} · 命中 {len(resp.hits)}")
     for h in resp.hits:
@@ -65,7 +89,9 @@ def main(argv=None):
     pi = sub.add_parser("index", help="建立索引")
     pi.add_argument("--l1-only", action="store_true")
     pi.add_argument("--l2-only", action="store_true")
+    pi.add_argument("--l3-only", action="store_true")
     pi.add_argument("--l2-limit", type=int, default=None, help="全文层限量(测试)")
+    pi.add_argument("--l3-limit", type=int, default=None, help="语义层限量(测试)")
     pi.set_defaults(func=cmd_index)
 
     ps = sub.add_parser("search", help="搜索")
