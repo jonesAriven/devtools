@@ -296,12 +296,9 @@ def scan_volume(drive_letter: str, root_filter: Optional[str] = None) -> Iterato
     try:
         journal = _query_usn_journal(handle)
 
-        # 阶段一：收集所有节点
+        # 阶段一：收集所有节点（含隐藏/系统目录，否则子孙路径链会断）
         records: dict[int, dict] = {}
         for rec in _enum_usn_records(handle, journal.UsnJournalID):
-            # 过滤系统隐藏
-            if rec["attrs"] & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN):
-                continue
             records[rec["frn"]] = rec
 
         # 阶段二：拼绝对路径（父路径缓存，避免重复递归）
@@ -324,6 +321,9 @@ def scan_volume(drive_letter: str, root_filter: Optional[str] = None) -> Iterato
 
         rf_lower = root_filter.lower() if root_filter else None
         for frn, rec in records.items():
+            # yield 阶段过滤系统/隐藏单个文件（但不影响目录路径拼接）
+            if rec["attrs"] & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN):
+                continue
             path = resolve(frn)
             if not path:
                 continue
