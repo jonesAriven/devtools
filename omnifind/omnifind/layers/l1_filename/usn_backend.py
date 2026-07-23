@@ -380,7 +380,149 @@ class UsnBackend(FilenameBackend):
         return total
 
     def watch(self) -> None:
-        raise NotImplementedError("增量 watch 下一阶段实现")
+        """
+        增量监听 —— 阻塞式读 USN journal 新记录，命中 upsert/删除。
+        用户按 Ctrl+C 退出（服务化时靠 systemd/sc 发 SIGTERM）。
+
+        state 持久化到 <data_dir>/data/usn_state.json:
+          { "<volume_letter>": { "journal_id": int, "next_usn": int } }
+        """
+        import json
+        import time
+        from omnifind.core.config import OmniConfig
+        cfg = OmniConfig.load()
+        state_path = cfg.db_dir / "usn_state.json"
+        state = {}
+        if state_path.exists():
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            except Exception:
+                state = {}
+
+        # 收集要监听的卷
+        volumes: dict[str, str] = {}  # letter -> root prefix filter
+        for root in (self.cfg.scan_roots or []):
+            drive = os.path.splitdrive(root)[0]
+            if not drive:
+                continue
+            letter = drive.rstrip(":").rstrip("\\").upper()
+            volumes[letter] = root
+
+        # 首次 watch 若无 state 就以当前 next_usn 起步（不重放全部）
+        for letter in volumes:
+            handle = _open_volume(letter)
+            try:
+                j = _query_usn_journal(handle)
+                s = state.get(letter, {})
+                if s.get("journal_id") != j.UsnJournalID:
+                    # journal 变了（比如系统重置过 USN），从当前 NextUsn 起
+                    state[letter] = {"journal_id": j.UsnJournalID, "next_usn": j.NextUsn}
+            finally:
+                kernel32.CloseHandle(handle)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        print(f"[USN watch] 监听 {len(volumes)} 个卷: {list(volumes)}")
+
+        buf = (ctypes.c_ubyte * (1 << 20))()
+        bytes_returned = wt.DWORD(0)
+        DeviceIoControl = kernel32.DeviceIoControl
+        DeviceIoControl.argtypes = [
+            wt.HANDLE, wt.DWORD, ctypes.c_void_p, wt.DWORD,
+            ctypes.c_void_p, wt.DWORD, ctypes.POINTER(wt.DWORD), ctypes.c_void_p,
+        ]
+        DeviceIoControl.restype = wt.BOOL
+
+        # 每个卷一个持久句柄
+        handles: dict[str, int] = {letter: _open_volume(letter) for letter in volumes}
+        try:
+            while True:
+                any_progress = False
+                for letter, handle in handles.items():
+                    s = state[letter]
+                    read_data = READ_USN_JOURNAL_DATA_V0(
+                        StartUsn=s["next_usn"],
+                        ReasonMask=USN_REASON_INTERESTING,
+                        ReturnOnlyOnClose=0,
+                        Timeout=0,          # 非阻塞
+                        BytesToWaitFor=0,   # 有多少读多少
+                        UsnJournalID=s["journal_id"],
+                    )
+                    ok = DeviceIoControl(
+                        handle, FSCTL_READ_USN_JOURNAL,
+                        ctypes.byref(read_data), ctypes.sizeof(read_data),
+                        buf, ctypes.sizeof(buf),
+                        ctypes.byref(bytes_returned), None,
+                    )
+                    if not ok:
+                        err = ctypes.get_last_error()
+                        print(f"[USN watch] {letter}: READ_USN_JOURNAL 失败 err={err}", file=sys.stderr)
+                        continue
+                    n = bytes_returned.value
+                    if n < 8:
+                        continue
+
+                    next_usn = int.from_bytes(bytes(buf[0:8]), "little", signed=True)
+                    off = 8
+                    batch_upsert: list[tuple] = []
+                    batch_delete: list[str] = []
+                    while off < n:
+                        record_len = int.from_bytes(bytes(buf[off:off + 4]), "little")
+                        if record_len < 60 or off + record_len > n:
+                            break
+                        major = int.from_bytes(bytes(buf[off + 4:off + 6]), "little")
+                        if major != 2:
+                            off += record_len
+                            continue
+                        frn = int.from_bytes(bytes(buf[off + 8:off + 16]), "little")
+                        parent_frn = int.from_bytes(bytes(buf[off + 16:off + 24]), "little")
+                        timestamp = int.from_bytes(bytes(buf[off + 32:off + 40]), "little")
+                        reason = int.from_bytes(bytes(buf[off + 40:off + 44]), "little")
+                        attrs = int.from_bytes(bytes(buf[off + 52:off + 56]), "little")
+                        name_len = int.from_bytes(bytes(buf[off + 56:off + 58]), "little")
+                        name_off = int.from_bytes(bytes(buf[off + 58:off + 60]), "little")
+                        name_bytes = bytes(buf[off + name_off:off + name_off + name_len])
+                        try:
+                            name = name_bytes.decode("utf-16-le", errors="replace")
+                        except Exception:
+                            off += record_len
+                            continue
+
+                        # 增量事件里没法拿完整路径（父目录 FRN 需要另外解析），
+                        # 简化策略：删除事件只按 name 尝试模糊删；其他变更事件先记 name/frn，
+                        # 由下一次全量 build 兜底。真正低延迟增量路径重建后续 v2 再做。
+                        if reason & USN_REASON_FILE_DELETE:
+                            batch_delete.append(name)
+                        else:
+                            # 仅 upsert 一个"名字+时间戳"占位，路径栏用 frn 编码兜底
+                            is_dir = 1 if (attrs & FILE_ATTRIBUTE_DIRECTORY) else 0
+                            batch_upsert.append((
+                                f"[usn-pending]{letter}:{frn}",
+                                name, 0,
+                                _filetime_to_unix(timestamp),
+                                is_dir,
+                            ))
+                        off += record_len
+
+                    if batch_upsert:
+                        self.index.bulk_upsert(batch_upsert)
+                    if batch_delete:
+                        for name in batch_delete:
+                            self.index.conn.execute(
+                                "DELETE FROM entries WHERE name=? AND path LIKE ?",
+                                (name, f"{letter}:%"),
+                            )
+                        self.index.conn.commit()
+
+                    state[letter]["next_usn"] = next_usn
+                    any_progress = True
+
+                if any_progress:
+                    state_path.write_text(json.dumps(state), encoding="utf-8")
+                time.sleep(2)  # 2 秒轮询一次，足够近实时
+        finally:
+            for handle in handles.values():
+                kernel32.CloseHandle(handle)
 
 
 # ---------- 独立验证入口 ----------
