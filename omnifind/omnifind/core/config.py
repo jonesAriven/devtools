@@ -152,6 +152,9 @@ class OmniConfig:
                 data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
                 for k, v in data.items():
                     if hasattr(cfg, k) and v is not None:
+                        # 空列表视为"使用默认值",不覆盖
+                        if isinstance(v, list) and len(v) == 0:
+                            continue
                         setattr(cfg, k, v)
         return cfg
 

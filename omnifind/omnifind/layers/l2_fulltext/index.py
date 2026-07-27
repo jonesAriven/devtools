@@ -55,8 +55,13 @@ class FullTextIndex:
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or (DATA_DIR / "fulltext.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        import threading
+        self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # 开启 WAL 模式提高并发读性能
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -84,20 +89,21 @@ class FullTextIndex:
     def upsert_document(self, path: str, title: str, body: str,
                         size: int, mtime: float, ext: str) -> None:
         """写入/更新一篇文档的全文索引。body 已是原文,内部做分词。"""
-        cur = self.conn.cursor()
-        cur.execute(
-            "INSERT INTO files(path,title,size,mtime,ext,indexed) VALUES(?,?,?,?,?,1) "
-            "ON CONFLICT(path) DO UPDATE SET title=?,size=?,mtime=?,ext=?,indexed=1",
-            (path, title, size, mtime, ext, title, size, mtime, ext),
-        )
-        file_id = cur.execute("SELECT id FROM files WHERE path=?", (path,)).fetchone()[0]
-        # FTS5 external-less:直接按 rowid=file_id 存分词后的内容
-        cur.execute("DELETE FROM fts WHERE rowid=?", (file_id,))
-        cur.execute(
-            "INSERT INTO fts(rowid,title,body) VALUES(?,?,?)",
-            (file_id, tokenize(title), tokenize(body)),
-        )
-        self.conn.commit()
+        with self._lock:
+            cur = self.conn.cursor()
+            cur.execute(
+                "INSERT INTO files(path,title,size,mtime,ext,indexed) VALUES(?,?,?,?,?,1) "
+                "ON CONFLICT(path) DO UPDATE SET title=?,size=?,mtime=?,ext=?,indexed=1",
+                (path, title, size, mtime, ext, title, size, mtime, ext),
+            )
+            file_id = cur.execute("SELECT id FROM files WHERE path=?", (path,)).fetchone()[0]
+            # FTS5 external-less:直接按 rowid=file_id 存分词后的内容
+            cur.execute("DELETE FROM fts WHERE rowid=?", (file_id,))
+            cur.execute(
+                "INSERT INTO fts(rowid,title,body) VALUES(?,?,?)",
+                (file_id, tokenize(title), tokenize(body)),
+            )
+            self.conn.commit()
 
     def search(self, query: str, limit: int = 30, ext_filter: str | None = None) -> list[FtsHit]:
         q = build_fts5_query(query)
@@ -116,7 +122,8 @@ class FullTextIndex:
                 params.append(ext_filter)
             sql += " ORDER BY score LIMIT ?"
             params.append(limit)
-            rows = self.conn.execute(sql, params).fetchall()
+            with self._lock:
+                rows = self.conn.execute(sql, params).fetchall()
             return [FtsHit(
                 r["path"], r["title"] or "", r["snippet"] or "", r["score"],
                 r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
@@ -133,14 +140,16 @@ class FullTextIndex:
                 params.append(ext_filter)
             sql += " ORDER BY mtime DESC LIMIT ?"
             params.append(limit)
-            rows = self.conn.execute(sql, params).fetchall()
+            with self._lock:
+                rows = self.conn.execute(sql, params).fetchall()
             return [FtsHit(
                 r["path"], r["title"] or "", "", 0.0,
                 r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
             ) for r in rows]
 
     def count(self) -> int:
-        return self.conn.execute("SELECT COUNT(*) FROM files WHERE indexed=1").fetchone()[0]
+        with self._lock:
+            return self.conn.execute("SELECT COUNT(*) FROM files WHERE indexed=1").fetchone()[0]
 
     def close(self) -> None:
         self.conn.close()

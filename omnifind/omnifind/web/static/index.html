@@ -10,41 +10,122 @@
          background: #0f1115; color: #e6e6e6; height: 100vh; display: flex; flex-direction: column;
          overflow: hidden; }
 
+  /* ===== 亮色主题 ===== */
+  body.light-theme { background: #f8f9fa; color: #1f2937; }
+  body.light-theme .header { border-bottom-color: #e5e7eb; background: #fff; }
+  body.light-theme h1 { color: #111827; }
+  body.light-theme .sub { color: #6b7280; }
+  body.light-theme #q { background: #fff; border-color: #d1d5db; color: #111827; }
+  body.light-theme #q:focus { border-color: #4c8bf5; }
+  body.light-theme button.ghost { border-color: #d1d5db; color: #6b7280; }
+  body.light-theme button.ghost:hover { background: #f3f4f6; color: #374151; border-color: #cbd5e1; }
+  body.light-theme .search-history { background: #fff; border-color: #e5e7eb; }
+  body.light-theme .history-item { color: #4b5563; border-bottom-color: #f3f4f6; }
+  body.light-theme .history-item:hover { background: #f3f4f6; }
+  body.light-theme .history-header { border-bottom-color: #e5e7eb; }
+  body.light-theme .hint code { background: #f3f4f6; color: #2563eb; }
+  body.light-theme .filter-section { background: #fff; border-bottom-color: #e5e7eb; }
+  body.light-theme .filter-row + .filter-row { border-top-color: #f3f4f6; }
+  body.light-theme .filter-tags { border-bottom-color: #e5e7eb; }
+  body.light-theme .filter-tag { background: #f3f4f6; color: #6b7280; }
+  body.light-theme .filter-tag:hover { background: #e5e7eb; color: #374151; }
+  body.light-theme .filter-tag.active { background: rgba(76,139,245,0.1); color: #2563eb; border-color: rgba(76,139,245,0.3); }
+  body.light-theme .panel-left { background: #fff; border-right-color: #e5e7eb; }
+  body.light-theme .list-header { background: #f9fafb; border-bottom-color: #e5e7eb; color: #6b7280; }
+  body.light-theme .hit { border-bottom-color: #f3f4f6; }
+  body.light-theme .hit:hover { background: #f9fafb; }
+  body.light-theme .hit.selected { background: #eff6ff; }
+  body.light-theme .hit-title { color: #111827; }
+  body.light-theme .hit-path { color: #9ca3af; }
+  body.light-theme .hit-meta { color: #9ca3af; }
+  body.light-theme .hit-snippet { color: #6b7280; }
+  body.light-theme .resizer { background: #e5e7eb; }
+  body.light-theme .resizer:hover { background: #d1d5db; }
+  body.light-theme .panel-right { background: #fff; }
+  body.light-theme .preview-header { background: #f9fafb; border-bottom-color: #e5e7eb; color: #6b7280; }
+  body.light-theme .preview-body { color: #374151; }
+  body.light-theme .empty { color: #9ca3af; }
+  body.light-theme .modal-overlay { background: rgba(0,0,0,0.5); }
+  body.light-theme .modal { background: #fff; }
+  body.light-theme .modal-header { border-bottom-color: #e5e7eb; }
+  body.light-theme .modal-header h2 { color: #111827; }
+  body.light-theme .modal-footer { border-top-color: #e5e7eb; }
+  body.light-theme .tabs { border-bottom-color: #e5e7eb; }
+  body.light-theme .tab { color: #6b7280; border-bottom-color: transparent; }
+  body.light-theme .tab:hover { color: #374151; }
+  body.light-theme .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+  body.light-theme .index-card { background: #f9fafb; border: 1px solid #e5e7eb; }
+  body.light-theme .card-title { color: #111827; }
+  body.light-theme .card-desc { color: #6b7280; }
+  body.light-theme .setting-group h3 { color: #111827; }
+  body.light-theme .setting-item label { color: #6b7280; }
+  body.light-theme .setting-desc { color: #9ca3af; }
+  body.light-theme .setting-control input,
+  body.light-theme .setting-control textarea,
+  body.light-theme .setting-control select {
+    background: #fff; border-color: #d1d5db; color: #111827;
+  }
+  body.light-theme .setting-control input:focus,
+  body.light-theme .setting-control textarea:focus,
+  body.light-theme .setting-control select:focus {
+    border-color: #4c8bf5;
+  }
+  body.light-theme .ctx-menu { background: #fff; border-color: #e5e7eb; }
+  body.light-theme .ctx-item { color: #374151; }
+  body.light-theme .ctx-item:hover { background: #f3f4f6; }
+  body.light-theme .ctx-separator { border-top-color: #e5e7eb; }
+  body.light-theme .ctx-item .shortcut { color: #9ca3af; }
+  body.light-theme mark { background: #fef08a; color: #92400e; }
+  body.light-theme .badge { color: #6b7280; background: #f3f4f6; }
+  body.light-theme .badge.l1 { background: rgba(34,197,94,0.1); color: #16a34a; }
+  body.light-theme .badge.l2 { background: rgba(59,130,246,0.1); color: #2563eb; }
+  body.light-theme .badge.l3 { background: rgba(168,85,247,0.1); color: #9333ea; }
+  body.light-theme .mode-badge { color: #6b7280; }
+  body.light-theme .score-bar { background: #e5e7eb; }
+  body.light-theme .score-fill { background: #4c8bf5; }
+  body.light-theme #listSelect { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+
   /* ===== 顶部区域 ===== */
-  .header { padding: 16px 24px 12px; border-bottom: 1px solid #1e2128; flex-shrink: 0; }
-  .header-top { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
-  h1 { font-size: 18px; font-weight: 600; color: #fff; white-space: nowrap; }
-  .sub { color: #6b7280; font-size: 12px; white-space: nowrap; }
-  .searchbar { display: flex; gap: 8px; flex: 1; max-width: 600px; position: relative; }
-  #q { flex: 1; padding: 10px 14px; font-size: 14px; border-radius: 8px;
+  .header { padding: 14px 20px 10px; border-bottom: 1px solid #1e2128; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  h1 { font-size: 17px; font-weight: 600; color: #fff; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  h1 .badge-ver { font-size: 10px; color: #4c8bf5; font-weight: 500; background: rgba(76,139,245,0.1); padding: 1px 6px; border-radius: 4px; }
+  .sub { color: #6b7280; font-size: 11px; white-space: nowrap; }
+  .searchbar { display: flex; gap: 8px; flex: 1; max-width: 560px; position: relative; }
+  #q { flex: 1; padding: 9px 13px; font-size: 13px; border-radius: 7px;
        border: 1px solid #2a2e37; background: #1a1d24; color: #fff; outline: none;
        transition: border-color 0.2s; }
   #q:focus { border-color: #4c8bf5; box-shadow: 0 0 0 3px rgba(76,139,245,0.15); }
-  button { padding: 10px 18px; border: none; border-radius: 8px; background: #4c8bf5;
-           color: #fff; font-size: 13px; cursor: pointer; transition: background 0.2s;
+  button { padding: 9px 16px; border: none; border-radius: 7px; background: #4c8bf5;
+           color: #fff; font-size: 12px; cursor: pointer; transition: background 0.2s;
            white-space: nowrap; font-weight: 500; }
   button:hover { background: #3b7ae4; }
   button:active { background: #2a6cd4; }
-  button.ghost { background: transparent; border: 1px solid #2a2e37; color: #9ca3af; }
+  button.ghost { background: transparent; border: 1px solid #2a2e37; color: #9ca3af; padding: 7px 12px; }
   button.ghost:hover { background: #1a1d24; border-color: #3a3e47; color: #e6e6e6; }
-  button.icon-btn { padding: 6px 10px; font-size: 12px; }
+  button.icon-btn { padding: 7px 10px; font-size: 12px; }
+  button.danger { background: #dc2626; }
+  button.danger:hover { background: #b91c1c; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .header-actions { display: flex; gap: 6px; margin-left: auto; }
 
   /* 搜索历史下拉 */
   .search-history { position: absolute; top: 100%; left: 0; right: 68px; margin-top: 4px;
-                    background: #1a1d24; border: 1px solid #2a2e37; border-radius: 8px;
+                    background: #1a1d24; border: 1px solid #2a2e37; border-radius: 7px;
                     z-index: 100; max-height: 240px; overflow-y: auto; display: none;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
   .search-history.show { display: block; }
-  .history-item { padding: 8px 14px; cursor: pointer; font-size: 13px; color: #b8bcc4;
+  .history-item { padding: 7px 12px; cursor: pointer; font-size: 12px; color: #b8bcc4;
                    display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1a1d24; }
   .history-item:hover { background: #2a2e37; }
   .history-item:last-child { border-bottom: none; }
-  .history-item .icon { color: #4a4f58; font-size: 12px; }
+  .history-item .icon { color: #4a4f58; font-size: 11px; }
   .history-item .text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .history-item .del { color: #4a4f58; font-size: 11px; opacity: 0; transition: opacity 0.2s; }
+  .history-item .del { color: #4a4f58; font-size: 10px; opacity: 0; transition: opacity 0.2s; }
   .history-item:hover .del { opacity: 1; }
   .history-item .del:hover { color: #f87171; }
-  .history-header { padding: 6px 14px; font-size: 11px; color: #6b7280;
+  .history-header { padding: 5px 12px; font-size: 10px; color: #6b7280;
                     border-bottom: 1px solid #2a2e37; display: flex; justify-content: space-between; }
   .history-header .clear { cursor: pointer; color: #6b7280; }
   .history-header .clear:hover { color: #f87171; }
@@ -52,49 +133,56 @@
   /* 搜索按钮loading状态 */
   button.loading { position: relative; color: transparent; pointer-events: none; }
   button.loading::after {
-    content: ''; position: absolute; width: 16px; height: 16px;
-    top: 50%; left: 50%; margin: -8px 0 0 -8px;
+    content: ''; position: absolute; width: 14px; height: 14px;
+    top: 50%; left: 50%; margin: -7px 0 0 -7px;
     border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
     border-radius: 50%; animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .hint-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .hint { font-size: 11px; color: #5a5f68; }
-  .hint code { background: #1a1d24; padding: 2px 7px; border-radius: 4px; color: #9ecbff; font-size: 11px; }
-  .status { font-size: 11px; color: #5a5f68; margin-left: auto; white-space: nowrap; }
+  .hint-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hint { font-size: 10px; color: #5a5f68; }
+  .hint code { background: #1a1d24; padding: 2px 6px; border-radius: 4px; color: #9ecbff; font-size: 10px; cursor: pointer; }
+  .hint code:hover { background: #252830; color: #b8d4ff; }
+  .status { font-size: 10px; color: #5a5f68; margin-left: auto; white-space: nowrap; cursor: pointer; }
+  .status:hover { color: #9ca3af; }
 
-  /* 类型筛选条 */
-  .filter-bar { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid #1e2128;
-                background: #141720; flex-shrink: 0; overflow-x: auto; }
-  .filter-tag { padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer;
+  /* 筛选区域 - 两行布局 */
+  .filter-section { flex-shrink: 0; border-bottom: 1px solid #1e2128; background: #141720; }
+  .filter-row { display: flex; align-items: center; gap: 6px; padding: 6px 14px; }
+  .filter-row + .filter-row { border-top: 1px solid #1a1d24; padding-top: 6px; padding-bottom: 8px; }
+  .filter-label { font-size: 10px; color: #5a5f68; flex-shrink: 0; padding-right: 4px; }
+  .filter-tags { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .filter-tag { padding: 3px 10px; border-radius: 10px; font-size: 10px; cursor: pointer;
                 background: #1a1d24; color: #9ca3af; border: 1px solid transparent;
-                transition: all 0.15s; white-space: nowrap; user-select: none; }
+                transition: all 0.15s; white-space: nowrap; user-select: none;
+                display: inline-flex; align-items: center; gap: 4px; }
   .filter-tag:hover { background: #2a2e37; color: #e6e6e6; }
   .filter-tag.active { background: rgba(76,139,245,0.15); color: #4c8bf5; border-color: rgba(76,139,245,0.3); }
-  .filter-tag .count { color: #6b7280; margin-left: 4px; font-size: 10px; }
+  .filter-tag .count { color: #6b7280; font-size: 9px; }
+  .filter-tag.active .count { color: rgba(76,139,245,0.7); }
 
   /* ===== 主内容区：左右分栏 ===== */
   .main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 
   /* 左侧：结果列表 */
-  .panel-left { width: 420px; min-width: 280px; max-width: 50%;
+  .panel-left { width: 400px; min-width: 260px; max-width: 50%;
                border-right: 1px solid #1e2128; display: flex; flex-direction: column;
                background: #12141a; overflow: hidden; }
-  .list-header { padding: 10px 16px; font-size: 12px; color: #6b7280;
+  .list-header { padding: 8px 14px; font-size: 11px; color: #6b7280;
                 border-bottom: 1px solid #1e2128; display: flex; align-items: center; gap: 8px;
                 flex-shrink: 0; background: #141720; }
   .list-header .count { color: #4c8bf5; font-weight: 600; }
-  .list-header .mode-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  .list-header .mode-badge { font-size: 9px; padding: 1px 5px; border-radius: 4px;
                            background: #1e2837; color: #9ecbff; }
   .list-header .spacer { flex: 1; }
   .sort-select {
     background: #1a1d24;
     border: 1px solid #2a2e37;
     color: #9ca3af;
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 6px;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 5px;
     cursor: pointer;
     outline: none;
   }
@@ -104,33 +192,33 @@
   }
 
   /* 结果列表 */
-  .result-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
-  .result-list::-webkit-scrollbar { width: 6px; }
+  .result-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 3px 0; }
+  .result-list::-webkit-scrollbar { width: 5px; }
   .result-list::-webkit-scrollbar-track { background: transparent; }
   .result-list::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 3px; }
   .result-list::-webkit-scrollbar-thumb:hover { background: #3a3e47; }
 
   /* 单条结果 */
-  .hit { padding: 10px 16px; cursor: pointer; transition: all 0.15s;
+  .hit { padding: 8px 14px; cursor: pointer; transition: all 0.15s;
          border-left: 3px solid transparent; border-bottom: 1px solid #1a1d24;
-         display: flex; flex-direction: column; gap: 4px; position: relative; }
+         display: flex; flex-direction: column; gap: 3px; position: relative; }
   .hit:hover { background: #1a1d24; }
   .hit.active { background: #1e2837; border-left-color: #4c8bf5; }
-  .hit .hit-title { font-size: 13px; color: #e6e6e6; font-weight: 500;
-                   display: flex; align-items: center; gap: 6px; line-height: 1.3; }
-  .hit .hit-path { font-size: 11px; color: #5a5f68; word-break: break-all; line-height: 1.3; }
-  .hit .hit-meta { font-size: 10px; color: #4a4f58; display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
-  .hit .hit-snippet { font-size: 12px; color: #8a8f98; margin-top: 4px; line-height: 1.5;
-                      max-height: 60px; overflow: hidden; display: -webkit-box;
+  .hit .hit-title { font-size: 12px; color: #e6e6e6; font-weight: 500;
+                   display: flex; align-items: center; gap: 5px; line-height: 1.3; }
+  .hit .hit-path { font-size: 10px; color: #5a5f68; word-break: break-all; line-height: 1.3; }
+  .hit .hit-meta { font-size: 9px; color: #4a4f58; display: flex; align-items: center; gap: 5px; margin-top: 1px; flex-wrap: wrap; }
+  .hit .hit-snippet { font-size: 11px; color: #8a8f98; margin-top: 3px; line-height: 1.5;
+                      max-height: 48px; overflow: hidden; display: -webkit-box;
                       -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .hit .hit-actions { position: absolute; top: 8px; right: 12px; display: none; gap: 4px; }
+  .hit .hit-actions { position: absolute; top: 6px; right: 10px; display: none; gap: 3px; }
   .hit:hover .hit-actions { display: flex; }
-  .hit .action-btn { padding: 3px 6px; font-size: 10px; background: #2a2e37; border-radius: 4px;
+  .hit .action-btn { padding: 2px 5px; font-size: 9px; background: #2a2e37; border-radius: 4px;
                       color: #9ca3af; cursor: pointer; border: none; }
   .hit .action-btn:hover { background: #3a3e47; color: #fff; }
 
   /* badge */
-  .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  .badge { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 4px;
            font-weight: 600; letter-spacing: 0.3px; flex-shrink: 0; }
   .l1 { background: rgba(110,168,90,0.15); color: #6ea85a; }
   .l2 { background: rgba(76,139,245,0.15); color: #4c8bf5; }
@@ -141,25 +229,25 @@
         padding: 0 1px; font-weight: 500; }
 
   /* 右侧：预览面板 */
-  .panel-right { flex: 1; min-width: 300px; display: flex; flex-direction: column;
+  .panel-right { flex: 1; min-width: 280px; display: flex; flex-direction: column;
                 background: #0f1115; overflow: hidden; }
-  .preview-header { padding: 10px 20px; font-size: 12px; color: #6b7280;
+  .preview-header { padding: 8px 16px; font-size: 11px; color: #6b7280;
                    border-bottom: 1px solid #1e2128; display: flex; align-items: center;
                    gap: 8px; flex-shrink: 0; background: #141720; }
-  .preview-header .file-icon { font-size: 14px; }
-  .preview-header .file-name { color: #e6e6e6; font-weight: 500; font-size: 13px;
+  .preview-header .file-icon { font-size: 13px; }
+  .preview-header .file-name { color: #e6e6e6; font-weight: 500; font-size: 12px;
                                flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .preview-header .file-path { font-size: 11px; color: #5a5f68; overflow: hidden;
+  .preview-header .file-path { font-size: 10px; color: #5a5f68; overflow: hidden;
                               text-overflow: ellipsis; white-space: nowrap; flex: 1; }
   .preview-actions { display: flex; gap: 4px; }
-  .preview-actions button { padding: 4px 10px; font-size: 11px; background: #1a1d24;
+  .preview-actions button { padding: 3px 8px; font-size: 10px; background: #1a1d24;
                             color: #9ca3af; border: 1px solid #2a2e37; }
   .preview-actions button:hover { background: #2a2e37; color: #fff; }
 
-  .preview-body { flex: 1; overflow-y: auto; padding: 16px 20px; font-family: "Cascadia Code",
-                 "Fira Code", "JetBrains Mono", Consolas, monospace; font-size: 13px;
+  .preview-body { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: "Cascadia Code",
+                 "Fira Code", "JetBrains Mono", Consolas, monospace; font-size: 12px;
                  line-height: 1.7; color: #b8bcc4; white-space: pre-wrap; word-break: break-word; }
-  .preview-body::-webkit-scrollbar { width: 8px; }
+  .preview-body::-webkit-scrollbar { width: 7px; }
   .preview-body::-webkit-scrollbar-track { background: transparent; }
   .preview-body::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 4px; }
   .preview-body::-webkit-scrollbar-thumb:hover { background: #3a3e47; }
@@ -168,18 +256,18 @@
   /* 预览为空时的占位 */
   .preview-placeholder { flex: 1; display: flex; flex-direction: column;
                         align-items: center; justify-content: center; color: #3a3e47; gap: 8px; }
-  .preview-placeholder .icon { font-size: 48px; opacity: 0.4; }
-  .preview-placeholder .text { font-size: 13px; }
+  .preview-placeholder .icon { font-size: 44px; opacity: 0.4; }
+  .preview-placeholder .text { font-size: 12px; }
 
   /* Loading 遮罩（列表区域） */
   .list-loading { flex: 1; display: flex; flex-direction: column; align-items: center;
-                 justify-content: center; gap: 14px; color: #5a5f68; }
+                 justify-content: center; gap: 12px; color: #5a5f68; }
   .list-loading .spinner {
-    width: 32px; height: 32px; border: 3px solid #2a2e37; border-top-color: #4c8bf5;
+    width: 28px; height: 28px; border: 3px solid #2a2e37; border-top-color: #4c8bf5;
     border-radius: 50%; animation: spin 0.7s linear infinite;
   }
-  .list-loading .msg { font-size: 13px; }
-  .list-loading .progress-bar { width: 160px; height: 3px; background: #2a2e37;
+  .list-loading .msg { font-size: 12px; }
+  .list-loading .progress-bar { width: 140px; height: 3px; background: #2a2e37;
                                border-radius: 2px; overflow: hidden; }
   .list-loading .progress-bar .fill { height: 100%; background: #4c8bf5;
                                      border-radius: 2px; transition: width 0.3s;
@@ -192,9 +280,20 @@
 
   /* 空结果 */
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center;
-                justify-content: center; color: #5a5f68; gap: 8px; padding: 40px; }
-  .empty-state .icon { font-size: 36px; opacity: 0.5; }
-  .empty-state .text { font-size: 13px; text-align: center; line-height: 1.5; }
+                justify-content: center; color: #5a5f68; gap: 8px; padding: 30px; }
+  .empty-state .icon { font-size: 32px; opacity: 0.5; }
+  .empty-state .text { font-size: 12px; text-align: center; line-height: 1.5; }
+
+  /* 加载更多 */
+  .load-more-wrap { padding: 12px 14px; flex-shrink: 0; }
+  .load-more-btn { width: 100%; padding: 8px; border: 1px solid #2a2e37;
+                   background: #1a1d24; color: #9ca3af; border-radius: 6px;
+                   font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .load-more-btn:hover { background: #2a2e37; color: #e6e6e6; }
+  .load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  body.light-theme .load-more-btn { border-color: #e5e7eb; background: #f9fafb; color: #6b7280; }
+  body.light-theme .load-more-btn:hover { background: #f3f4f6; color: #374151; }
 
   /* 分隔条（可拖拽调整宽度） */
   .resizer { width: 4px; cursor: col-resize; background: transparent;
@@ -202,12 +301,12 @@
   .resizer:hover, .resizer.dragging { background: #4c8bf5; }
 
   /* 错误提示 */
-  .error-text { color: #f87171; font-size: 12px; }
+  .error-text { color: #f87171; font-size: 11px; }
 
   /* Toast 提示 */
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-           padding: 10px 20px; background: #1a1d24; border: 1px solid #2a2e37;
-           border-radius: 8px; font-size: 13px; color: #e6e6e6; z-index: 1000;
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+           padding: 9px 18px; background: #1a1d24; border: 1px solid #2a2e37;
+           border-radius: 7px; font-size: 12px; color: #e6e6e6; z-index: 1000;
            box-shadow: 0 8px 24px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s;
            pointer-events: none; }
   .toast.show { opacity: 1; }
@@ -216,15 +315,112 @@
 
   /* 右键菜单 */
   .ctx-menu { position: fixed; background: #1a1d24; border: 1px solid #2a2e37;
-              border-radius: 8px; padding: 4px 0; z-index: 200; min-width: 160px;
+              border-radius: 7px; padding: 4px 0; z-index: 200; min-width: 150px;
               box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: none; }
   .ctx-menu.show { display: block; }
-  .ctx-item { padding: 8px 16px; font-size: 13px; cursor: pointer; color: #e6e6e6;
-              display: flex; align-items: center; gap: 10px; }
+  .ctx-item { padding: 7px 14px; font-size: 12px; cursor: pointer; color: #e6e6e6;
+              display: flex; align-items: center; gap: 8px; }
   .ctx-item:hover { background: #2a2e37; }
-  .ctx-item .icon { width: 16px; text-align: center; font-size: 12px; }
-  .ctx-item .shortcut { margin-left: auto; font-size: 11px; color: #5a5f68; }
+  .ctx-item .icon { width: 14px; text-align: center; font-size: 11px; }
+  .ctx-item .shortcut { margin-left: auto; font-size: 10px; color: #5a5f68; }
   .ctx-separator { height: 1px; background: #2a2e37; margin: 4px 0; }
+
+  /* ===== 设置弹窗 ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+                   z-index: 500; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #141720; border: 1px solid #2a2e37; border-radius: 10px;
+           width: 560px; max-width: 90vw; max-height: 85vh; display: flex;
+           flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .modal-header { padding: 14px 18px; border-bottom: 1px solid #1e2128;
+                  display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .modal-header h2 { font-size: 14px; font-weight: 600; color: #fff; flex: 1; }
+  .modal-close { background: transparent; border: none; color: #6b7280; font-size: 18px;
+                 cursor: pointer; padding: 2px 8px; border-radius: 4px; line-height: 1; }
+  .modal-close:hover { background: #2a2e37; color: #e6e6e6; }
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+  .modal-body::-webkit-scrollbar { width: 5px; }
+  .modal-body::-webkit-scrollbar-track { background: transparent; }
+  .modal-body::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 3px; }
+  .modal-footer { padding: 12px 18px; border-top: 1px solid #1e2128;
+                  display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+
+  /* 设置页签 */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid #1e2128; margin-bottom: 16px; }
+  .tab { padding: 8px 14px; font-size: 12px; color: #6b7280; cursor: pointer;
+         border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .tab:hover { color: #9ca3af; }
+  .tab.active { color: #4c8bf5; border-bottom-color: #4c8bf5; }
+
+  .setting-group { margin-bottom: 18px; }
+  .setting-group h3 { font-size: 12px; color: #9ca3af; font-weight: 500; margin-bottom: 8px; }
+  .setting-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .setting-item label { font-size: 11px; color: #6b7280; width: 90px; flex-shrink: 0; padding-top: 6px; }
+  .setting-item .setting-control { flex: 1; }
+  .setting-item input[type="text"], .setting-item textarea, .setting-item select {
+    width: 100%; padding: 6px 10px; font-size: 11px; border-radius: 5px;
+    border: 1px solid #2a2e37; background: #1a1d24; color: #e6e6e6;
+    outline: none; font-family: inherit;
+  }
+  .setting-item input[type="text"]:focus, .setting-item textarea:focus, .setting-item select:focus {
+    border-color: #4c8bf5;
+  }
+  .setting-item textarea { resize: vertical; min-height: 60px; font-family: "Cascadia Code", Consolas, monospace; }
+  .setting-item .setting-desc { font-size: 10px; color: #4a4f58; margin-top: 4px; }
+  .setting-item input[type="number"] {
+    width: 80px; padding: 5px 8px; font-size: 11px; border-radius: 5px;
+    border: 1px solid #2a2e37; background: #1a1d24; color: #e6e6e6; outline: none;
+  }
+  .setting-row { display: flex; align-items: center; gap: 8px; }
+  .setting-row input[type="checkbox"] { accent-color: #4c8bf5; }
+  .setting-row label { font-size: 11px; color: #9ca3af; cursor: pointer; }
+
+  /* 索引状态卡片 */
+  .index-card { background: #1a1d24; border: 1px solid #2a2e37; border-radius: 7px;
+               padding: 12px; margin-bottom: 10px; }
+  .index-card .card-title { font-size: 12px; font-weight: 500; color: #e6e6e6;
+                            display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .index-card .card-count { font-size: 18px; font-weight: 600; color: #4c8bf5; }
+  .index-card .card-desc { font-size: 10px; color: #5a5f68; margin-bottom: 8px; }
+  .index-card .card-actions { display: flex; gap: 6px; }
+
+  .progress-track { width: 100%; height: 5px; background: #2a2e37; border-radius: 3px;
+                    overflow: hidden; margin: 6px 0; }
+  .progress-fill { height: 100%; background: #4c8bf5; border-radius: 3px; transition: width 0.3s; }
+
+  /* 快捷键列表 */
+  .shortcut-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shortcut-item { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .shortcut-item .key { background: #1a1d24; border: 1px solid #2a2e37; padding: 2px 6px;
+                        border-radius: 4px; font-size: 10px; color: #9ca3af; font-family: monospace;
+                        min-width: 70px; text-align: center; }
+  .shortcut-item .desc { color: #6b7280; }
+
+  /* 主题选项 */
+  .theme-options { display: flex; gap: 10px; margin-bottom: 6px; }
+  .theme-option { cursor: pointer; border: 2px solid transparent; border-radius: 8px;
+                  padding: 6px; transition: all 0.2s; text-align: center; flex: 1; }
+  .theme-option:hover { border-color: #3a3e47; }
+  .theme-option.active { border-color: #4c8bf5; background: rgba(76,139,245,0.1); }
+  .theme-preview { width: 100%; height: 40px; border-radius: 5px; margin-bottom: 6px;
+                   border: 1px solid #2a2e37; }
+  .dark-preview { background: linear-gradient(135deg, #1a1d24 0%, #0f1115 100%); }
+  .light-preview { background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%); }
+  .auto-preview { background: linear-gradient(135deg, #1a1d24 0%, #1a1d24 50%, #ffffff 50%, #ffffff 100%); }
+  .theme-label { font-size: 11px; color: #9ca3af; }
+  .theme-option.active .theme-label { color: #4c8bf5; }
+
+  body.light-theme .theme-option:hover { border-color: #cbd5e1; }
+  body.light-theme .theme-preview { border-color: #e5e7eb; }
+  body.light-theme .theme-label { color: #6b7280; }
+
+  /* 列表密度 */
+  .hit.density-compact { padding: 6px 14px; }
+  .hit.density-compact .hit-title { font-size: 12px; margin-bottom: 2px; }
+  .hit.density-compact .hit-snippet { font-size: 11px; line-height: 1.4; }
+  .hit.density-comfortable { padding: 12px 14px; }
+  .hit.density-comfortable .hit-title { font-size: 14px; margin-bottom: 5px; }
+  .hit.density-comfortable .hit-snippet { font-size: 12px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -232,8 +428,8 @@
 <!-- 顶部 -->
 <div class="header">
   <div class="header-top">
-    <h1>🔍 OmniFind</h1>
-    <span class="sub">本地全能搜索 · 文件名 + 全文 + 语义</span>
+    <h1>🔍 OmniFind <span class="badge-ver">v0.2</span></h1>
+    <span class="sub">文件名 + 全文 + 语义</span>
     <div class="searchbar">
       <input id="q" placeholder="输入关键词搜索… (Ctrl+F 聚焦)" autofocus autocomplete="off">
       <div class="search-history" id="searchHistory">
@@ -245,34 +441,41 @@
       </div>
       <button id="searchBtn" onclick="doSearch()">搜索</button>
     </div>
+    <div class="header-actions">
+      <button class="ghost icon-btn" onclick="toggleQuickTheme()" title="切换主题">🌓</button>
+      <button class="ghost icon-btn" onclick="openSettings()" title="设置">⚙️</button>
+    </div>
   </div>
   <div class="hint-row">
       <div class="hint">
         语法:
         <code onclick="fillQuery('filename:')">filename:</code> 文件名 ·
-        <code onclick="fillQuery('re:\\.pdf$')">re:</code> 正则 ·
         <code onclick="fillQuery('content:')">content:</code> 正文 ·
         <code onclick="fillQuery('?')">?</code> 语义 ·
         <code onclick="fillQuery('all:')">all:</code> 聚合 ·
         <code onclick="fillQuery('ext:.py ')">ext:</code> 类型 ·
         <code onclick="fillQuery('sort:time ')">sort:</code> 排序
       </div>
-      <div class="status" id="status">加载中…</div>
+      <div class="status" id="status" onclick="openSettings()" title="点击打开设置">加载中…</div>
     </div>
 </div>
 
-<!-- 主内容 -->
-<div class="main">
-  <!-- 左侧：结果列表 -->
-  <div class="panel-left" id="panelLeft">
-    <!-- 类型筛选条 -->
-    <div class="filter-bar" id="filterBar" style="display:none;">
-      <div class="filter-tag active" data-filter="all" onclick="setFilter('all')">全部 <span class="count" id="f-all">0</span></div>
-      <div class="filter-tag" data-filter="l1" onclick="setFilter('l1')">📍 文件名 <span class="count" id="f-l1">0</span></div>
-      <div class="filter-tag" data-filter="l2" onclick="setFilter('l2')">📄 全文 <span class="count" id="f-l2">0</span></div>
-      <div class="filter-tag" data-filter="l3" onclick="setFilter('l3')">🧠 语义 <span class="count" id="f-l3">0</span></div>
-      <div style="width:1px;background:#2a2e37;margin:2px 4px;"></div>
-      <div class="filter-tag" data-ext="" onclick="setExtFilter('')" id="ext-all">📁 全部类型</div>
+<!-- 筛选区域 - 两行 -->
+<div class="filter-section" id="filterSection" style="display:none;">
+  <div class="filter-row">
+    <span class="filter-label">搜索层:</span>
+    <div class="filter-tags" id="layerFilters">
+      <div class="filter-tag active" data-layer="auto" onclick="setLayer('auto')">🏠 智能 <span class="count" id="f-auto">-</span></div>
+      <div class="filter-tag" data-layer="filename" onclick="setLayer('filename')">📍 文件名 <span class="count" id="f-l1">-</span></div>
+      <div class="filter-tag" data-layer="fulltext" onclick="setLayer('fulltext')">📄 全文 <span class="count" id="f-l2">-</span></div>
+      <div class="filter-tag" data-layer="semantic" onclick="setLayer('semantic')">🧠 语义 <span class="count" id="f-l3">-</span></div>
+      <div class="filter-tag" data-layer="all" onclick="setLayer('all')">🔀 聚合 <span class="count" id="f-all">-</span></div>
+    </div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">文件类型:</span>
+    <div class="filter-tags" id="extFilters">
+      <div class="filter-tag active" data-ext="" onclick="setExtFilter('')" id="ext-all">全部</div>
       <div class="filter-tag" data-ext=".py" onclick="setExtFilter('.py')">🐍 Python</div>
       <div class="filter-tag" data-ext=".md" onclick="setExtFilter('.md')">📝 Markdown</div>
       <div class="filter-tag" data-ext=".txt" onclick="setExtFilter('.txt')">📄 文本</div>
@@ -280,7 +483,16 @@
       <div class="filter-tag" data-ext=".json" onclick="setExtFilter('.json')">📋 JSON</div>
       <div class="filter-tag" data-ext=".html" onclick="setExtFilter('.html')">🌐 HTML</div>
       <div class="filter-tag" data-ext=".css" onclick="setExtFilter('.css')">🎨 CSS</div>
+      <div class="filter-tag" data-ext=".java" onclick="setExtFilter('.java')">☕ Java</div>
     </div>
+    <div class="spacer" style="flex:1;"></div>
+  </div>
+</div>
+
+<!-- 主内容 -->
+<div class="main">
+  <!-- 左侧：结果列表 -->
+  <div class="panel-left" id="panelLeft">
     <div class="list-header" id="listHeader" style="display:none;">
       <span>共 <span class="count" id="hitCount">0</span> 条结果</span>
       <span class="mode-badge" id="modeBadge"></span>
@@ -292,7 +504,6 @@
         <option value="size_desc">最大文件</option>
         <option value="size_asc">最小文件</option>
       </select>
-      <span style="font-size:10px;color:#4a4f58;">双击打开 · 右键菜单</span>
     </div>
     <!-- Loading 状态 -->
     <div class="list-loading" id="listLoading" style="display:none;">
@@ -302,6 +513,10 @@
     </div>
     <!-- 结果列表 -->
     <div class="result-list" id="resultList"></div>
+    <!-- 加载更多 -->
+    <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">加载更多</button>
+    </div>
     <!-- 空状态 -->
     <div class="empty-state" id="emptyState">
       <div class="icon">📂</div>
@@ -327,7 +542,7 @@
       <div class="preview-placeholder">
         <div class="icon">👆</div>
         <div class="text">选择左侧结果查看内容预览</div>
-        <div style="font-size:11px;color:#3a3e47;margin-top:8px;">
+        <div style="font-size:10px;color:#3a3e47;margin-top:6px;">
           快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
         </div>
       </div>
@@ -347,6 +562,214 @@
   <div class="ctx-item" onclick="ctxCopyName()"><span class="icon">🏷️</span>复制文件名</div>
   <div class="ctx-separator"></div>
   <div class="ctx-item" onclick="ctxSearchContent()"><span class="icon">🔍</span>在正文中搜索<span class="shortcut">Ctrl+S</span></div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ 设置</h2>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" data-tab="index" onclick="switchTab('index')">索引管理</div>
+        <div class="tab" data-tab="search" onclick="switchTab('search')">搜索配置</div>
+        <div class="tab" data-tab="appearance" onclick="switchTab('appearance')">外观设置</div>
+        <div class="tab" data-tab="about" onclick="switchTab('about')">关于</div>
+      </div>
+
+      <!-- 索引管理 -->
+      <div id="tab-index">
+        <div class="index-card">
+          <div class="card-title">📍 L1 文件名索引</div>
+          <div class="card-count" id="cfg-l1-count">-</div>
+          <div class="card-desc">秒级文件名搜索，支持通配符和正则</div>
+          <div class="progress-track" id="idx-l1-progress" style="display:none;">
+            <div class="progress-fill" style="width:0%"></div>
+          </div>
+          <div class="card-actions">
+            <button class="ghost icon-btn" onclick="rebuildIndex('l1')">🔄 重建</button>
+          </div>
+        </div>
+        <div class="index-card">
+          <div class="card-title">📄 L2 全文索引</div>
+          <div class="card-count" id="cfg-l2-count">-</div>
+          <div class="card-desc">基于 FTS5 + Jieba 分词的全文搜索</div>
+          <div class="progress-track" id="idx-l2-progress" style="display:none;">
+            <div class="progress-fill" style="width:0%"></div>
+          </div>
+          <div class="card-actions">
+            <button class="ghost icon-btn" onclick="rebuildIndex('l2')">🔄 重建</button>
+          </div>
+        </div>
+        <div class="index-card">
+          <div class="card-title">🧠 L3 语义索引</div>
+          <div class="card-count" id="cfg-l3-count">-</div>
+          <div class="card-desc" id="cfg-l3-desc">向量语义搜索（需安装依赖）</div>
+          <div class="card-actions">
+            <button class="ghost icon-btn" disabled>🔄 重建</button>
+          </div>
+        </div>
+        <div style="margin-top:12px; padding:10px; background:#1a1d24; border-radius:6px; font-size:11px; color:#9ca3af;">
+          💡 <b>提示</b>：重建索引可能需要较长时间，期间搜索功能仍可使用旧索引。
+        </div>
+      </div>
+
+      <!-- 搜索配置 -->
+      <div id="tab-search" style="display:none;">
+        <div class="setting-group">
+          <h3>扫描范围</h3>
+          <div class="setting-item">
+            <label>扫描根目录</label>
+            <div class="setting-control">
+              <textarea id="cfg-scan-roots" placeholder="每行一个目录，如：D:\&#10;E:\projects"></textarea>
+              <div class="setting-desc">每行一个根目录，索引会扫描这些目录下的所有文件</div>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>排除目录</label>
+            <div class="setting-control">
+              <textarea id="cfg-exclude-dirs"></textarea>
+              <div class="setting-desc">要跳过的目录名（不区分大小写），用逗号或换行分隔</div>
+            </div>
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>全文索引</h3>
+          <div class="setting-item">
+            <label>索引扩展名</label>
+            <div class="setting-control">
+              <textarea id="cfg-fulltext-exts"></textarea>
+              <div class="setting-desc">需要建立全文索引的文件扩展名，逗号分隔</div>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>单文件大小限制</label>
+            <div class="setting-control">
+              <div class="setting-row">
+                <input type="number" id="cfg-max-mb" min="1" max="500">
+                <span style="font-size:11px;color:#6b7280;">MB</span>
+              </div>
+              <div class="setting-desc">超过此大小的文件不进行全文索引</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px; color:#f59e0b; font-size:11px; padding:8px; background:rgba(245,158,11,0.1); border-radius:5px;">
+          ⚠️ 修改配置后需要重建索引才能生效
+        </div>
+      </div>
+
+      <!-- 外观设置 -->
+      <div id="tab-appearance" style="display:none;">
+        <div class="setting-group">
+          <h3>主题</h3>
+          <div class="setting-item">
+            <label>界面主题</label>
+            <div class="setting-control">
+              <div class="theme-options">
+                <div class="theme-option" data-theme="dark" onclick="selectTheme('dark')">
+                  <div class="theme-preview dark-preview"></div>
+                  <div class="theme-label">暗色</div>
+                </div>
+                <div class="theme-option" data-theme="light" onclick="selectTheme('light')">
+                  <div class="theme-preview light-preview"></div>
+                  <div class="theme-label">亮色</div>
+                </div>
+                <div class="theme-option" data-theme="auto" onclick="selectTheme('auto')">
+                  <div class="theme-preview auto-preview"></div>
+                  <div class="theme-label">跟随系统</div>
+                </div>
+              </div>
+              <div class="setting-desc">选择您喜欢的界面主题</div>
+            </div>
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>显示</h3>
+          <div class="setting-item">
+            <label>预览字体大小</label>
+            <div class="setting-control">
+              <div class="setting-row">
+                <input type="range" id="cfg-font-size" min="11" max="18" value="13" oninput="updateFontSize(this.value)">
+                <span id="fontSizeValue" style="font-size:11px;color:#6b7280;min-width:30px;text-align:right;">13px</span>
+              </div>
+              <div class="setting-desc">调整右侧预览区域的字体大小</div>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>结果列表密度</label>
+            <div class="setting-control">
+              <select id="cfg-list-density">
+                <option value="compact">紧凑</option>
+                <option value="normal" selected>正常</option>
+                <option value="comfortable">舒适</option>
+              </select>
+              <div class="setting-desc">调整左侧结果列表的行高</div>
+            </div>
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>搜索</h3>
+          <div class="setting-item">
+            <label>默认搜索模式</label>
+            <div class="setting-control">
+              <select id="cfg-default-mode">
+                <option value="auto" selected>智能模式</option>
+                <option value="filename">文件名</option>
+                <option value="fulltext">全文</option>
+              </select>
+              <div class="setting-desc">打开页面时默认使用的搜索模式</div>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>每页显示数量</label>
+            <div class="setting-control">
+              <select id="cfg-page-size">
+                <option value="50">50 条</option>
+                <option value="100">100 条</option>
+                <option value="200" selected>200 条</option>
+                <option value="500">500 条</option>
+              </select>
+              <div class="setting-desc">单次搜索返回的最大结果数</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关于 -->
+      <div id="tab-about" style="display:none;">
+        <div style="text-align:center; padding:20px 0;">
+          <div style="font-size:48px; margin-bottom:12px;">🔍</div>
+          <div style="font-size:16px; font-weight:600; color:#fff; margin-bottom:4px;">OmniFind</div>
+          <div style="font-size:12px; color:#6b7280; margin-bottom:16px;">本地全能搜索 · v0.2.0</div>
+          <div style="font-size:11px; color:#5a5f68; line-height:1.8; margin-bottom:20px;">
+            集成 Everything 式文件名搜索 + AnyTXT 式全文搜索 + 向量语义搜索<br>
+            三层架构，统一入口，本地运行，数据安全
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>快捷键</h3>
+          <div class="shortcut-list">
+            <div class="shortcut-item"><span class="key">Ctrl + F</span><span class="desc">聚焦搜索框</span></div>
+            <div class="shortcut-item"><span class="key">Enter</span><span class="desc">打开选中文件</span></div>
+            <div class="shortcut-item"><span class="key">↑ / ↓</span><span class="desc">上下选择结果</span></div>
+            <div class="shortcut-item"><span class="key">Ctrl + C</span><span class="desc">复制文件路径</span></div>
+            <div class="shortcut-item"><span class="key">Ctrl + E</span><span class="desc">打开所在位置</span></div>
+            <div class="shortcut-item"><span class="key">Esc</span><span class="desc">清空/返回搜索</span></div>
+          </div>
+        </div>
+        <div class="setting-group">
+          <h3>数据目录</h3>
+          <div style="font-size:11px; color:#9ca3af; word-break:break-all;" id="cfg-data-dir">-</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" onclick="closeSettings()">取消</button>
+      <button onclick="saveSettings()">保存设置</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -458,14 +881,141 @@ function formatTime(ts) {
 
 /* ========== 状态管理 ========== */
 let currentHits = [];
-let filteredHits = [];
 let activeIndex = -1;
-let currentFilter = 'all';
+let currentLayer = 'auto';       // auto / filename / fulltext / semantic / all
 let currentExtFilter = '';
 let currentSort = 'score';
 let ctxIndex = -1;
+let pageSize = 200;
+let searchAbortController = null;
+let currentSearchQuery = '';      // 保存当前搜索的查询字符串（纯关键词）
+let currentSearchParams = '';     // 保存当前搜索的完整参数字符串
+let hasMoreResults = false;       // 是否还有更多结果
 const HISTORY_KEY = 'omnifind_search_history';
 const MAX_HISTORY = 20;
+const SETTINGS_KEY = 'omnifind_ui_settings';
+
+/* ========== UI 设置持久化 ========== */
+function loadUISettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    if (s.leftPanelWidth) {
+      document.getElementById('panelLeft').style.width = s.leftPanelWidth + 'px';
+    }
+    // 主题
+    if (s.theme) {
+      applyTheme(s.theme);
+    } else {
+      applyTheme('dark');
+    }
+    // 字体大小
+    if (s.fontSize) {
+      updateFontSize(s.fontSize);
+    }
+    // 列表密度
+    if (s.listDensity) {
+      applyListDensity(s.listDensity);
+    }
+    // 默认搜索模式
+    if (s.defaultMode) {
+      currentLayer = s.defaultMode;
+      updateLayerFilterUI();
+    }
+    // 每页数量
+    if (s.pageSize) {
+      pageSize = parseInt(s.pageSize) || 200;
+    }
+  } catch(e) {}
+}
+
+function saveUISettings() {
+  try {
+    const s = {
+      leftPanelWidth: document.getElementById('panelLeft').offsetWidth
+    };
+    const current = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    Object.assign(s, current, { leftPanelWidth: s.leftPanelWidth });
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch(e) {}
+}
+
+function saveUISetting(key, value) {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    s[key] = value;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch(e) {}
+}
+
+function getUISetting(key, defaultValue) {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    return s[key] !== undefined ? s[key] : defaultValue;
+  } catch(e) {
+    return defaultValue;
+  }
+}
+
+/* ========== 主题切换 ========== */
+function applyTheme(theme) {
+  const body = document.body;
+  body.classList.remove('light-theme');
+  
+  let actualTheme = theme;
+  if (theme === 'auto') {
+    actualTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  
+  if (actualTheme === 'light') {
+    body.classList.add('light-theme');
+  }
+  
+  saveUISetting('theme', theme);
+  updateThemeOptionUI();
+}
+
+function selectTheme(theme) {
+  applyTheme(theme);
+}
+
+function toggleQuickTheme() {
+  const current = getUISetting('theme', 'dark');
+  let next;
+  if (current === 'dark') next = 'light';
+  else if (current === 'light') next = 'auto';
+  else next = 'dark';
+  applyTheme(next);
+  showToast('主题: ' + (next === 'dark' ? '暗色' : next === 'light' ? '亮色' : '跟随系统'), 'success');
+}
+
+function updateThemeOptionUI() {
+  const currentTheme = getUISetting('theme', 'dark');
+  document.querySelectorAll('.theme-option').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.theme === currentTheme);
+  });
+}
+
+/* ========== 字体大小 ========== */
+function updateFontSize(size) {
+  size = parseInt(size) || 13;
+  document.getElementById('previewBody').style.fontSize = size + 'px';
+  const valEl = document.getElementById('fontSizeValue');
+  if (valEl) valEl.textContent = size + 'px';
+  const inputEl = document.getElementById('cfg-font-size');
+  if (inputEl) inputEl.value = size;
+  saveUISetting('fontSize', size);
+}
+
+/* ========== 列表密度 ========== */
+function applyListDensity(density) {
+  const hits = document.querySelectorAll('.hit');
+  hits.forEach(h => {
+    h.classList.remove('density-compact', 'density-comfortable');
+    if (density === 'compact') h.classList.add('density-compact');
+    if (density === 'comfortable') h.classList.add('density-comfortable');
+  });
+  saveUISetting('listDensity', density);
+}
 
 /* ========== 搜索历史 ========== */
 function getHistory() {
@@ -487,7 +1037,7 @@ function renderHistory() {
   const history = getHistory();
   const list = document.getElementById('historyList');
   if (history.length === 0) {
-    list.innerHTML = '<div style="padding:16px;text-align:center;color:#4a4f58;font-size:12px;">暂无搜索历史</div>';
+    list.innerHTML = '<div style="padding:14px;text-align:center;color:#4a4f58;font-size:11px;">暂无搜索历史</div>';
     return;
   }
   list.innerHTML = history.map((q, i) => `
@@ -527,14 +1077,22 @@ async function loadStatus() {
     const s = await r.json();
     document.getElementById('status').textContent =
       `L1 ${s.l1_count||0} · L2 ${s.l2_count||0} · L3 ${s.l3_count||0}`;
+    // 更新设置面板的计数
+    document.getElementById('cfg-l1-count').textContent = s.l1_count || 0;
+    document.getElementById('cfg-l2-count').textContent = s.l2_count || 0;
+    document.getElementById('cfg-l3-count').textContent = s.l3_count || 0;
+    document.getElementById('cfg-data-dir').textContent = s.data_dir || '-';
+    if (s.l3_available) {
+      document.getElementById('cfg-l3-desc').textContent = '向量语义搜索（已启用）';
+    } else {
+      document.getElementById('cfg-l3-desc').textContent = '向量语义搜索（未启用，需安装依赖）';
+    }
   } catch(e) {
     document.getElementById('status').textContent = '状态获取失败';
   }
 }
 
 /* ========== 搜索功能 ========== */
-let searchAbortController = null;
-
 async function doSearch() {
   const q = document.getElementById('q').value.trim();
   const btn = document.getElementById('searchBtn');
@@ -542,7 +1100,7 @@ async function doSearch() {
   const loadingEl = document.getElementById('listLoading');
   const emptyEl = document.getElementById('emptyState');
   const headerEl = document.getElementById('listHeader');
-  const filterBar = document.getElementById('filterBar');
+  const filterSection = document.getElementById('filterSection');
 
   document.getElementById('searchHistory').classList.remove('show');
 
@@ -561,21 +1119,23 @@ async function doSearch() {
   listEl.innerHTML = '';
   emptyEl.style.display = 'none';
   headerEl.style.display = 'none';
-  filterBar.style.display = 'none';
+  filterSection.style.display = 'none';
 
   resetPreview();
 
-  // 构建带筛选和排序的查询
-  let searchQuery = q;
-  if (currentExtFilter && !searchQuery.match(/\bext:/i)) {
-    searchQuery += ' ext:' + currentExtFilter;
-  }
-  if (currentSort !== 'score' && !searchQuery.match(/\bsort:/i)) {
-    searchQuery += ' sort:' + currentSort;
-  }
+  // 构建搜索参数：mode、ext、sort 作为独立参数，不污染输入框
+  const params = new URLSearchParams();
+  params.set('q', q);
+  params.set('limit', pageSize);
+  params.set('mode', currentLayer);
+  if (currentExtFilter) params.set('ext', currentExtFilter);
+  if (currentSort && currentSort !== 'score') params.set('sort', currentSort);
+
+  currentSearchQuery = q;
+  currentSearchParams = params.toString();
 
   try {
-    const r = await fetch('/api/search?q=' + encodeURIComponent(searchQuery) + '&limit=200',
+    const r = await fetch('/api/search?' + params.toString(),
       { signal: searchAbortController.signal });
     const data = await r.json();
 
@@ -583,50 +1143,55 @@ async function doSearch() {
     loadingEl.style.display = 'none';
 
     let modeLabel = data.mode || 'unknown';
-    if (data.mode === 'auto_fallback_l1') modeLabel = 'auto → L1文件名';
-    else if (data.mode === 'auto') modeLabel = 'auto → L2全文';
-    else if (data.mode === 'fulltext') modeLabel = 'L2全文';
-    else if (data.mode === 'filename') modeLabel = 'L1文件名';
-    else if (data.mode === 'filename_regex') modeLabel = '正则';
-    else if (data.mode === 'all') modeLabel = '聚合';
-    else if (data.mode === 'semantic') modeLabel = 'L3语义';
+    if (data.mode === 'auto_fallback_l1') modeLabel = '智能 → 文件名';
+    else if (data.mode === 'auto') modeLabel = '智能搜索';
+    else if (data.mode === 'fulltext') modeLabel = '全文搜索';
+    else if (data.mode === 'filename') modeLabel = '文件名';
+    else if (data.mode === 'filename_regex') modeLabel = '正则搜索';
+    else if (data.mode === 'all') modeLabel = '三层聚合';
+    else if (data.mode === 'semantic') modeLabel = '语义搜索';
     else if (data.mode === 'error') modeLabel = '错误';
 
     if (!data.hits || !data.hits.length) {
       headerEl.style.display = 'none';
-      filterBar.style.display = 'none';
+      filterSection.style.display = 'none';
       emptyEl.style.display = 'flex';
       let emptyMsg = '未找到匹配结果';
       if (data.counts && data.counts.error) {
         emptyMsg += '<br><span class="error-text">' + escapeHtml(data.counts.error) + '</span>';
       } else {
-        emptyMsg += '<br><span style="color:#5a5f68;font-size:12px;">模式: ' + escapeHtml(modeLabel) + '</span>';
+        emptyMsg += '<br><span style="color:#5a5f68;font-size:11px;">模式: ' + escapeHtml(modeLabel) + '</span>';
       }
       document.getElementById('emptyText').innerHTML = emptyMsg;
       currentHits = [];
-      filteredHits = [];
       activeIndex = -1;
+      hasMoreResults = false;
       return;
     }
 
     currentHits = data.hits;
     activeIndex = -1;
+    hasMoreResults = data.has_more || false;
 
     headerEl.style.display = 'flex';
-    filterBar.style.display = 'flex';
-    document.getElementById('hitCount').textContent = data.hits.length;
+    filterSection.style.display = 'block';
+    document.getElementById('hitCount').textContent = data.hits.length + (hasMoreResults ? '+' : '');
     document.getElementById('modeBadge').textContent = modeLabel;
     emptyEl.style.display = 'none';
 
+    // 统计各层数量
     const l1Count = data.hits.filter(h => h.layer === 'l1').length;
     const l2Count = data.hits.filter(h => h.layer === 'l2').length;
     const l3Count = data.hits.filter(h => h.layer === 'l3').length;
-    document.getElementById('f-all').textContent = data.hits.length;
+
+    // 更新筛选栏计数
+    document.getElementById('f-auto').textContent = data.hits.length + (hasMoreResults ? '+' : '');
     document.getElementById('f-l1').textContent = l1Count;
     document.getElementById('f-l2').textContent = l2Count;
     document.getElementById('f-l3').textContent = l3Count;
+    document.getElementById('f-all').textContent = data.hits.length + (hasMoreResults ? '+' : '');
 
-    setFilter(currentFilter, false);
+    renderResults();
 
   } catch(e) {
     if (e.name === 'AbortError') return;
@@ -638,58 +1203,127 @@ async function doSearch() {
   }
 }
 
-/* ========== 类型筛选 ========== */
-function setFilter(filter, save) {
-  if (save !== false) currentFilter = filter;
-  document.querySelectorAll('.filter-tag[data-filter]').forEach(el => {
-    el.classList.toggle('active', el.dataset.filter === filter);
-  });
-
-  if (filter === 'all') {
-    filteredHits = currentHits;
-  } else {
-    filteredHits = currentHits.filter(h => h.layer === filter);
+/* ========== 加载更多 ========== */
+async function loadMore() {
+  if (!currentSearchParams || !hasMoreResults) return;
+  
+  const listEl = document.getElementById('resultList');
+  const loadingEl = document.getElementById('listLoading');
+  
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  if (loadMoreBtn) {
+    loadMoreBtn.textContent = '加载中...';
+    loadMoreBtn.disabled = true;
   }
-
-  renderResults();
+  
+  const currentCount = currentHits.length;
+  
+  try {
+    const params = new URLSearchParams(currentSearchParams);
+    params.set('offset', currentCount);
+    const r = await fetch('/api/search?' + params.toString());
+    const data = await r.json();
+    
+    if (data.hits && data.hits.length > 0) {
+      currentHits = currentHits.concat(data.hits);
+      hasMoreResults = data.has_more || false;
+      
+      // 更新计数
+      document.getElementById('hitCount').textContent = currentHits.length + (hasMoreResults ? '+' : '');
+      document.getElementById('f-auto').textContent = currentHits.length + (hasMoreResults ? '+' : '');
+      document.getElementById('f-all').textContent = currentHits.length + (hasMoreResults ? '+' : '');
+      
+      // 重新统计各层
+      const l1Count = currentHits.filter(h => h.layer === 'l1').length;
+      const l2Count = currentHits.filter(h => h.layer === 'l2').length;
+      const l3Count = currentHits.filter(h => h.layer === 'l3').length;
+      document.getElementById('f-l1').textContent = l1Count;
+      document.getElementById('f-l2').textContent = l2Count;
+      document.getElementById('f-l3').textContent = l3Count;
+      
+      renderResults();
+      
+      // 恢复选中状态
+      if (activeIndex >= 0 && activeIndex < currentHits.length) {
+        selectHit(activeIndex);
+      }
+    } else {
+      hasMoreResults = false;
+    }
+    
+    if (loadMoreBtn) {
+      if (hasMoreResults) {
+        loadMoreBtn.textContent = '加载更多';
+        loadMoreBtn.disabled = false;
+      } else {
+        loadMoreBtn.style.display = 'none';
+      }
+    }
+    
+  } catch(e) {
+    if (loadMoreBtn) {
+      loadMoreBtn.textContent = '加载更多';
+      loadMoreBtn.disabled = false;
+    }
+    showToast('加载失败: ' + e.message, 'error');
+  }
 }
 
+/* ========== 层筛选（切换搜索模式） ========== */
+function setLayer(layer) {
+  currentLayer = layer;
+  document.querySelectorAll('#layerFilters .filter-tag').forEach(el => {
+    el.classList.toggle('active', el.dataset.layer === layer);
+  });
+  // 如果有搜索词，重新搜索
+  const q = document.getElementById('q').value.trim();
+  if (q) {
+    doSearch();
+  }
+}
+
+/* ========== 扩展名筛选 ========== */
 function setExtFilter(ext) {
   currentExtFilter = ext;
-  // 更新文件类型筛选按钮状态
-  document.querySelectorAll('.filter-tag[data-ext]').forEach(el => {
+  document.querySelectorAll('#extFilters .filter-tag').forEach(el => {
     el.classList.toggle('active', el.dataset.ext === ext);
   });
-  // 重新搜索
-  doSearch();
+  const q = document.getElementById('q').value.trim();
+  if (q) {
+    doSearch();
+  }
 }
 
 function onSortChange() {
   const select = document.getElementById('sortSelect');
   currentSort = select.value;
-  // 重新搜索
-  doSearch();
+  const q = document.getElementById('q').value.trim();
+  if (q) {
+    doSearch();
+  }
 }
 
 function renderResults() {
   const listEl = document.getElementById('resultList');
   const keywords = extractKeywords(document.getElementById('q').value.trim());
+  const listDensity = getUISetting('listDensity', 'normal');
+  const densityClass = listDensity === 'normal' ? '' : 'density-' + listDensity;
 
-  if (filteredHits.length === 0) {
-    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#5a5f68;font-size:12px;">该分类下无结果</div>';
+  if (currentHits.length === 0) {
+    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#5a5f68;font-size:11px;">无结果</div>';
+    document.getElementById('loadMoreWrap').style.display = 'none';
     return;
   }
 
-  listEl.innerHTML = filteredHits.map((h, i) => {
-    const realIdx = currentHits.indexOf(h);
+  listEl.innerHTML = currentHits.map((h, i) => {
     return `
-      <div class="hit" data-index="${realIdx}" data-filtered="${i}"
-           onclick="selectHit(${realIdx})" ondblclick="openHit(${realIdx})"
-           oncontextmenu="showCtxMenu(event, ${realIdx})">
+      <div class="hit ${densityClass}" data-index="${i}"
+           onclick="selectHit(${i})" ondblclick="openHit(${i})"
+           oncontextmenu="showCtxMenu(event, ${i})">
         <div class="hit-actions">
-          <button class="action-btn" onclick="event.stopPropagation();openHit(${realIdx})" title="打开文件">📂</button>
-          <button class="action-btn" onclick="event.stopPropagation();revealHit(${realIdx})" title="所在位置">📍</button>
-          <button class="action-btn" onclick="event.stopPropagation();copyHitPath(${realIdx})" title="复制路径">📋</button>
+          <button class="action-btn" onclick="event.stopPropagation();openHit(${i})" title="打开文件">📂</button>
+          <button class="action-btn" onclick="event.stopPropagation();revealHit(${i})" title="所在位置">📍</button>
+          <button class="action-btn" onclick="event.stopPropagation();copyHitPath(${i})" title="复制路径">📋</button>
         </div>
         <div class="hit-title">
           <span class="badge ${h.layer}">${h.layer.toUpperCase()}</span>
@@ -706,6 +1340,18 @@ function renderResults() {
       </div>
     `;
   }).join('');
+
+  // 控制加载更多按钮显示
+  const loadMoreWrap = document.getElementById('loadMoreWrap');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  if (hasMoreResults) {
+    loadMoreWrap.style.display = 'block';
+    loadMoreBtn.style.display = 'inline-block';
+    loadMoreBtn.textContent = '加载更多';
+    loadMoreBtn.disabled = false;
+  } else {
+    loadMoreWrap.style.display = 'none';
+  }
 }
 
 /* ========== 选中结果 ========== */
@@ -816,9 +1462,9 @@ async function showPreview(hit) {
   const keywords = extractKeywords(document.getElementById('q').value.trim());
 
   bodyEl.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a5f68;padding:40px 0;gap:10px;">
-      <div class="spinner" style="width:24px;height:24px;border:2px solid #2a2e37;border-top-color:#4c8bf5;border-radius:50%;animation:spin 0.6s linear infinite;"></div>
-      <div style="font-size:12px;">正在读取文件…</div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a5f68;padding:30px 0;gap:8px;">
+      <div class="spinner" style="width:22px;height:22px;border:2px solid #2a2e37;border-top-color:#4c8bf5;border-radius:50%;animation:spin 0.6s linear infinite;"></div>
+      <div style="font-size:11px;">正在读取文件…</div>
     </div>`;
 
   try {
@@ -826,7 +1472,7 @@ async function showPreview(hit) {
     const data = await r.json();
 
     if (!data.ok) {
-      bodyEl.innerHTML = `<div style="color:#f87171;padding:20px 0;font-size:12px;">
+      bodyEl.innerHTML = `<div style="color:#f87171;padding:16px 0;font-size:11px;">
         ⚠️ 预览失败: ${escapeHtml(data.error || '未知错误')}<br><br>
         <span style="color:#5a5f68;">${escapeHtml(hit.path)}</span>
       </div>`;
@@ -834,11 +1480,11 @@ async function showPreview(hit) {
     }
 
     if (data.content === null || data.content === undefined) {
-      bodyEl.innerHTML = `<div style="color:#5a5f68;padding:20px 0;display:flex;flex-direction:column;gap:8px;">
+      bodyEl.innerHTML = `<div style="color:#5a5f68;padding:16px 0;display:flex;flex-direction:column;gap:6px;">
         📄 <b style="color:#e6e6e6;">${escapeHtml(hit.title || hit.path)}</b>
-        <div style="font-size:12px;">${escapeHtml(hit.path)}</div>
-        ${data.message ? '<div style="font-size:11px;margin-top:4px;">' + escapeHtml(data.message) + '</div>' : ''}
-        <div style="font-size:11px;color:#4a4f58;margin-top:4px;">
+        <div style="font-size:11px;">${escapeHtml(hit.path)}</div>
+        ${data.message ? '<div style="font-size:10px;margin-top:3px;">' + escapeHtml(data.message) + '</div>' : ''}
+        <div style="font-size:10px;color:#4a4f58;margin-top:3px;">
           来源: ${escapeHtml(data.source || '-')}
           ${data.encoding ? ' · 编码: ' + escapeHtml(data.encoding) : ''}
         </div>
@@ -847,20 +1493,20 @@ async function showPreview(hit) {
     }
 
     let sourceTag = '';
-    if (data.source === 'file_read') sourceTag = '<span style="font-size:10px;color:#6ea85a;background:rgba(110,168,90,0.1);padding:1px 6px;border-radius:3px;margin-left:8px;">文件读取</span>';
-    else if (data.source && data.source.includes('extract')) sourceTag = '<span style="font-size:10px;color:#b46edc;background:rgba(180,110,220,0.1);padding:1px 6px;border-radius:3px;margin-left:8px;">文档提取</span>';
+    if (data.source === 'file_read') sourceTag = '<span style="font-size:9px;color:#6ea85a;background:rgba(110,168,90,0.1);padding:1px 5px;border-radius:3px;margin-left:6px;">文件读取</span>';
+    else if (data.source && data.source.includes('extract')) sourceTag = '<span style="font-size:9px;color:#b46edc;background:rgba(180,110,220,0.1);padding:1px 5px;border-radius:3px;margin-left:6px;">文档提取</span>';
 
     let metaInfo = `${formatSize(data.size || 0)}${data.encoding ? ' · ' + data.encoding : ''}${sourceTag}`;
     if (data.truncated) metaInfo += ' <span style="color:#f59e0b;font-size:10px;">(已截断)</span>';
 
     bodyEl.innerHTML =
-      `<div style="font-size:10px;color:#4a4f58;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1e2128;">${metaInfo}</div>` +
+      `<div style="font-size:10px;color:#4a4f58;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #1e2128;">${metaInfo}</div>` +
       highlightText(data.content, keywords);
 
     bodyEl.dataset.rawContent = data.content;
 
   } catch(e) {
-    bodyEl.innerHTML = `<div style="color:#f87171;padding:20px 0;font-size:12px;">
+    bodyEl.innerHTML = `<div style="color:#f87171;padding:16px 0;font-size:11px;">
       ⚠️ 预览请求失败: ${escapeHtml(String(e))}
     </div>`;
   }
@@ -877,19 +1523,22 @@ function copyPreviewContent() {
 function resetUI() {
   document.getElementById('resultList').innerHTML = '';
   document.getElementById('listHeader').style.display = 'none';
-  document.getElementById('filterBar').style.display = 'none';
+  document.getElementById('filterSection').style.display = 'none';
   document.getElementById('listLoading').style.display = 'none';
   document.getElementById('emptyState').style.display = 'flex';
   document.getElementById('emptyText').innerHTML = '输入关键词开始搜索';
   currentHits = [];
-  filteredHits = [];
   activeIndex = -1;
-  currentFilter = 'all';
+  currentLayer = 'auto';
   currentExtFilter = '';
   currentSort = 'score';
   document.getElementById('sortSelect').value = 'score';
+  // 重置层筛选
+  document.querySelectorAll('#layerFilters .filter-tag').forEach(el => {
+    el.classList.toggle('active', el.dataset.layer === 'auto');
+  });
   // 重置文件类型筛选按钮
-  document.querySelectorAll('.filter-tag[data-ext]').forEach(el => {
+  document.querySelectorAll('#extFilters .filter-tag').forEach(el => {
     el.classList.toggle('active', el.dataset.ext === '');
   });
   resetPreview();
@@ -901,7 +1550,7 @@ function resetPreview() {
     <div class="preview-placeholder">
       <div class="icon">👆</div>
       <div class="text">选择左侧结果查看内容预览</div>
-      <div style="font-size:11px;color:#3a3e47;margin-top:8px;">
+      <div style="font-size:10px;color:#3a3e47;margin-top:6px;">
         快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
       </div>
     </div>`;
@@ -928,7 +1577,7 @@ function resetPreview() {
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     const diff = e.clientX - startX;
-    const newWidth = Math.max(260, Math.min(startWidth + diff, window.innerWidth - 350));
+    const newWidth = Math.max(260, Math.min(startWidth + diff, window.innerWidth - 320));
     leftPanel.style.width = newWidth + 'px';
   });
 
@@ -938,6 +1587,7 @@ function resetPreview() {
     resizer.classList.remove('dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+    saveUISettings();
   });
 })();
 
@@ -951,6 +1601,153 @@ document.getElementById('q').addEventListener('blur', () => {
   setTimeout(() => {
     document.getElementById('searchHistory').classList.remove('show');
   }, 200);
+});
+
+/* ========== 设置面板 ========== */
+function openSettings() {
+  document.getElementById('settingsModal').classList.add('show');
+  loadConfigIntoForm();
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  ['index', 'search', 'appearance', 'about'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = (t === tab) ? 'block' : 'none';
+  });
+}
+
+async function loadConfigIntoForm() {
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    document.getElementById('cfg-scan-roots').value = (cfg.scan_roots || []).join('\n');
+    document.getElementById('cfg-exclude-dirs').value = (cfg.exclude_dirs || []).join(', ');
+    document.getElementById('cfg-fulltext-exts').value = (cfg.fulltext_exts || []).join(', ');
+    document.getElementById('cfg-max-mb').value = cfg.max_fulltext_mb || 50;
+    
+    // 加载外观设置
+    const theme = getUISetting('theme', 'dark');
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.theme === theme);
+    });
+    
+    const fontSize = getUISetting('fontSize', 13);
+    document.getElementById('cfg-font-size').value = fontSize;
+    document.getElementById('fontSizeValue').textContent = fontSize + 'px';
+    
+    const listDensity = getUISetting('listDensity', 'normal');
+    document.getElementById('cfg-list-density').value = listDensity;
+    
+    const defaultMode = getUISetting('defaultMode', 'auto');
+    document.getElementById('cfg-default-mode').value = defaultMode;
+    
+    const pageSize = getUISetting('pageSize', 200);
+    document.getElementById('cfg-page-size').value = pageSize;
+  } catch(e) {
+    showToast('加载配置失败: ' + e, 'error');
+  }
+}
+
+async function saveSettings() {
+  // 保存外观设置
+  const listDensity = document.getElementById('cfg-list-density').value;
+  applyListDensity(listDensity);
+  
+  const defaultMode = document.getElementById('cfg-default-mode').value;
+  saveUISetting('defaultMode', defaultMode);
+  
+  const newPageSize = document.getElementById('cfg-page-size').value;
+  saveUISetting('pageSize', newPageSize);
+  pageSize = parseInt(newPageSize) || 200;
+  
+  const data = {
+    scan_roots: document.getElementById('cfg-scan-roots').value
+      .split('\n').map(s => s.trim()).filter(s => s),
+    exclude_dirs: document.getElementById('cfg-exclude-dirs').value
+      .split(/[,\n]/).map(s => s.trim()).filter(s => s),
+    fulltext_exts: document.getElementById('cfg-fulltext-exts').value
+      .split(/[,\n]/).map(s => s.trim().toLowerCase()).filter(s => s),
+    max_fulltext_mb: parseInt(document.getElementById('cfg-max-mb').value) || 50,
+  };
+
+  try {
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('设置已保存', 'success');
+      closeSettings();
+    } else {
+      showToast(d.error || '保存失败', 'error');
+    }
+  } catch(e) {
+    showToast('保存失败: ' + e, 'error');
+  }
+}
+
+/* ========== 索引重建 ========== */
+async function rebuildIndex(type) {
+  if (!confirm(`确定要重建${type === 'l1' ? '文件名' : type === 'l2' ? '全文' : '全部'}索引吗？这可能需要较长时间。`)) {
+    return;
+  }
+  try {
+    const r = await fetch('/api/index/rebuild?type=' + type, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('索引重建已开始', 'success');
+      pollIndexStatus();
+    } else {
+      showToast(d.error || '启动失败', 'error');
+    }
+  } catch(e) {
+    showToast('启动失败: ' + e, 'error');
+  }
+}
+
+let _indexPollTimer = null;
+function pollIndexStatus() {
+  if (_indexPollTimer) clearInterval(_indexPollTimer);
+  _indexPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/api/index/status');
+      const s = await r.json();
+      if (!s.running) {
+        clearInterval(_indexPollTimer);
+        _indexPollTimer = null;
+        loadStatus();
+        if (s.error) {
+          showToast('索引重建失败: ' + s.error, 'error');
+        } else {
+          showToast('索引重建完成', 'success');
+        }
+        return;
+      }
+      // 更新进度显示
+      const progressId = 'idx-' + (s.type === 'all' ? 'l1' : s.type) + '-progress';
+      const progressEl = document.getElementById(progressId);
+      if (progressEl) {
+        progressEl.style.display = 'block';
+        const fill = progressEl.querySelector('.progress-fill');
+        if (fill && s.total > 0) {
+          fill.style.width = Math.min(100, (s.progress / s.total) * 100) + '%';
+        }
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+// 点击弹窗外部关闭
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target.id === 'settingsModal') closeSettings();
 });
 
 /* ========== 键盘快捷键 ========== */
@@ -968,6 +1765,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('ctxMenu').classList.contains('show')) {
       hideCtxMenu();
+      return;
+    }
+    if (document.getElementById('settingsModal').classList.contains('show')) {
+      closeSettings();
       return;
     }
     if (isSearchFocused && q.value) {
@@ -993,6 +1794,9 @@ document.addEventListener('keydown', e => {
     } else if (e.key === 'Enter' && activeIndex >= 0 && !e.ctrlKey && !e.shiftKey) {
       e.preventDefault();
       openHit(activeIndex);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      doSearch();
     }
   }
 
@@ -1005,9 +1809,15 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     revealHit(activeIndex);
   }
+
+  if (e.ctrlKey && e.key === ',') {
+    e.preventDefault();
+    openSettings();
+  }
 });
 
 // 初始化
+loadUISettings();
 loadStatus();
 renderHistory();
 </script>

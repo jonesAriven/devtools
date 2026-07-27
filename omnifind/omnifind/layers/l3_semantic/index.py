@@ -48,6 +48,8 @@ class SemanticIndex:
         self.dim = dim
         self._db = None
         self._table = None
+        import threading
+        self._lock = threading.Lock()
 
     def _connect(self):
         if self._db is not None:
@@ -83,7 +85,8 @@ class SemanticIndex:
              "text": chunks[i], "vector": vecs[i].tolist()}
             for i in range(len(chunks))
         ]
-        self._table.add(rows)
+        with self._lock:
+            self._table.add(rows)
         return len(chunks)
 
     def search(self, query: str, limit: int = 30, min_score: float = 0.30) -> list[SemanticHit]:
@@ -92,8 +95,9 @@ class SemanticIndex:
             return []
         qv = self.embedder.encode_one(query, is_query=True)
         # 多取一些 chunk 再按文档聚合
-        raw = (self._table.search(qv.tolist())
-               .metric("cosine").limit(limit * 3).to_list())
+        with self._lock:
+            raw = (self._table.search(qv.tolist())
+                   .metric("cosine").limit(limit * 3).to_list())
         best: dict[str, SemanticHit] = {}
         for r in raw:
             # lancedb 返回 _distance(cosine 距离),转相似度分

@@ -136,16 +136,47 @@ class QueryRouter:
         parsed = self.parse_query(query)
         return parsed["mode"], parsed["q"]
 
-    def _sort_hits(self, hits: list[UnifiedHit], sort: str) -> list[UnifiedHit]:
+    def _sort_hits(self, hits: list[UnifiedHit], sort: str, query: str = "") -> list[UnifiedHit]:
         """对搜索结果排序。"""
         if sort == "score":
-            # 相关度排序: L2/L3 按 score(越小越好)，L1 按 mtime
-            def score_key(h: UnifiedHit):
+            q = query.lower()
+            
+            def compute_score(h: UnifiedHit) -> float:
+                """计算综合相关度分，越大越相关。"""
                 if h.layer == "l1":
-                    return (0, -(h.extra.get("mtime", 0) or 0))
-                else:
-                    return (1, h.score or 0)
-            return sorted(hits, key=score_key)
+                    title = (h.title or "").lower()
+                    # 完全匹配
+                    if title == q:
+                        return 100.0
+                    # 前缀匹配
+                    if title.startswith(q):
+                        return 90.0
+                    # 后缀匹配（扩展名前）
+                    base = title.rsplit('.', 1)[0] if '.' in title else title
+                    if base.endswith(q):
+                        return 80.0
+                    # 包含匹配，计算匹配位置权重
+                    idx = title.find(q)
+                    if idx >= 0:
+                        # 越靠前权重越高
+                        pos_weight = max(0, 1.0 - idx / max(len(title), 1))
+                        return 60.0 + pos_weight * 20.0
+                    # 兜底
+                    return 40.0
+                elif h.layer == "l2":
+                    # bm25 是越小越相关（负数），取反后越大越相关
+                    # 典型范围 -10 ~ 0，取反后 0 ~ 10
+                    bm25 = h.score or 0
+                    # 归一化到 0-50 分区间
+                    normalized = max(0.0, min(50.0, -bm25 * 5.0))
+                    return normalized
+                elif h.layer == "l3":
+                    # 语义相似度 0-1，乘以 70
+                    return (h.score or 0) * 70.0
+                return 0.0
+            
+            # 按综合分降序，同分按修改时间降序
+            return sorted(hits, key=lambda h: (-compute_score(h), -(h.extra.get("mtime", 0) or 0)))
         elif sort == "time_desc":
             return sorted(hits, key=lambda h: -(h.extra.get("mtime", 0) or 0))
         elif sort == "time_asc":
@@ -156,76 +187,108 @@ class QueryRouter:
             return sorted(hits, key=lambda h: (h.extra.get("size", 0) or 0))
         return hits
 
-    def search(self, query: str, limit: int = 30) -> SearchResponse:
-        parsed = self.parse_query(query)
-        mode = parsed["mode"]
-        q = parsed["q"]
-        ext_filter = parsed["ext_filter"]
-        sort = parsed["sort"]
+    def search(self, query: str, limit: int = 30,
+               mode: str | None = None,
+               ext: str | None = None,
+               sort: str | None = None) -> SearchResponse:
+        """执行搜索。
 
-        resp = SearchResponse(query=query, mode=mode)
-        if not q:
+        参数:
+            query: 搜索关键词
+            limit: 结果数量限制
+            mode: 搜索模式（可选），优先使用传入的 mode；为 None 时从 query 中解析
+            ext: 扩展名筛选（可选），优先使用传入的 ext；为 None 时从 query 中解析
+            sort: 排序方式（可选），优先使用传入的 sort；为 None 时从 query 中解析
+        """
+        parsed = self.parse_query(query)
+        
+        # 优先使用外部传入的参数，其次使用解析结果
+        # 只有当 mode 不是 auto 时才覆盖，auto 模式下保留查询里的语法解析
+        if mode and mode != "auto":
+            final_mode = mode
+        else:
+            final_mode = parsed["mode"]
+        final_q = parsed["q"]
+        # ext 和 sort：外部传了就用外部的，否则用解析的
+        final_ext = ext if ext else parsed["ext_filter"]
+        final_sort = sort if sort else parsed["sort"]
+
+        resp = SearchResponse(query=query, mode=final_mode)
+        if not final_q:
             return resp
 
-        # ---- auto 智能模式: 先 L2 全文, 无结果 fallback L1 文件名 ----
-        if mode == "auto":
-            # 先尝试 L2 全文搜索
+        # ---- auto 智能模式: 同时搜索 L1 文件名 + L2 全文, 按相关度混合排序 ----
+        if final_mode == "auto":
+            # L1 文件名搜索
+            if self.l1:
+                for h in self.l1.search(final_q, limit=limit, ext_filter=final_ext):
+                    ext_val = os.path.splitext(h.name)[1].lower()
+                    resp.hits.append(UnifiedHit(
+                        h.path, h.name, layer="l1",
+                        extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val}
+                    ))
+                resp.counts["l1"] = self.l1.count()
+            # L2 全文搜索
             if self.l2:
-                for h in self.l2.search(q, limit=limit, ext_filter=ext_filter):
+                for h in self.l2.search(final_q, limit=limit, ext_filter=final_ext):
                     resp.hits.append(UnifiedHit(
                         h.path, h.title, snippet=h.snippet,
                         layer="l2", score=h.score,
                         extra={"size": h.size, "mtime": h.mtime, "ext": h.ext}
                     ))
                 resp.counts["l2"] = self.l2.count()
-            # 如果 L2 没命中, 自动 fallback 到 L1 文件名搜索
-            if not resp.hits and self.l1:
-                for h in self.l1.search(q, limit=limit, ext_filter=ext_filter):
-                    ext = os.path.splitext(h.name)[1].lower()
-                    resp.hits.append(UnifiedHit(
-                        h.path, h.name, layer="l1",
-                        extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext}
-                    ))
-                resp.counts["l1"] = self.l1.count()
-                if resp.hits:
-                    resp.mode = "auto_fallback_l1"
-            if ext_filter:
-                resp.counts["ext"] = ext_filter
-            resp.hits = self._sort_hits(resp.hits, sort)
+            # L3 语义搜索(如果可用)
+            if self.l3:
+                try:
+                    for h in self.l3.search(final_q, limit=limit):
+                        resp.hits.append(UnifiedHit(
+                            h.path, h.title, snippet=h.snippet,
+                            layer="l3", score=h.score,
+                            extra=getattr(h, 'extra', {})
+                        ))
+                    resp.counts["l3"] = self.l3.count()
+                except Exception:
+                    pass
+            if final_ext:
+                resp.counts["ext"] = final_ext
+            resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
+            # 限制最终结果数量
+            if len(resp.hits) > limit:
+                resp.hits = resp.hits[:limit]
             return resp
 
-        if mode == "filename_regex" and self.l1:
+        if final_mode == "filename_regex" and self.l1:
             try:
-                for h in self.l1.search_regex(q, limit):
+                for h in self.l1.search_regex(final_q, limit):
                     # ext_filter 在正则搜索中再过滤一次
-                    if ext_filter:
+                    if final_ext:
                         file_ext = os.path.splitext(h.name)[1].lower()
-                        if file_ext != ext_filter.lower():
+                        if file_ext != final_ext.lower():
                             continue
-                    ext = os.path.splitext(h.name)[1].lower()
+                    ext_val = os.path.splitext(h.name)[1].lower()
                     resp.hits.append(UnifiedHit(
                         h.path, h.name, layer="l1",
-                        extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext, "regex": True}
+                        extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val, "regex": True}
                     ))
             except ValueError as e:
                 resp.counts["error"] = str(e)
             resp.counts["l1"] = self.l1.count()
-            if ext_filter:
-                resp.counts["ext"] = ext_filter
-            resp.hits = self._sort_hits(resp.hits, sort)
+            if final_ext:
+                resp.counts["ext"] = final_ext
+            resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
             return resp
 
-        if mode in ("filename", "all") and self.l1:
-            for h in self.l1.search(q, limit, ext_filter=ext_filter):
-                ext = os.path.splitext(h.name)[1].lower()
+        if final_mode in ("filename", "all") and self.l1:
+            for h in self.l1.search(final_q, limit, ext_filter=final_ext):
+                ext_val = os.path.splitext(h.name)[1].lower()
                 resp.hits.append(UnifiedHit(
                     h.path, h.name, layer="l1",
-                    extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext}
+                    extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val}
                 ))
             resp.counts["l1"] = self.l1.count()
 
-        if mode in ("fulltext", "all") and self.l2:
-            for h in self.l2.search(q, limit=limit, ext_filter=ext_filter):
+        if final_mode in ("fulltext", "all") and self.l2:
+            for h in self.l2.search(final_q, limit=limit, ext_filter=final_ext):
                 resp.hits.append(UnifiedHit(
                     h.path, h.title, snippet=h.snippet,
                     layer="l2", score=h.score,
@@ -233,8 +296,8 @@ class QueryRouter:
                 ))
             resp.counts["l2"] = self.l2.count()
 
-        if mode in ("semantic", "all") and self.l3:
-            for h in self.l3.search(q, limit):
+        if final_mode in ("semantic", "all") and self.l3:
+            for h in self.l3.search(final_q, limit):
                 resp.hits.append(UnifiedHit(
                     h.path, h.title, snippet=h.snippet,
                     layer="l3", score=h.score,
@@ -242,8 +305,8 @@ class QueryRouter:
                 ))
             resp.counts["l3"] = self.l3.count()
 
-        if ext_filter:
-            resp.counts["ext"] = ext_filter
+        if final_ext:
+            resp.counts["ext"] = final_ext
 
-        resp.hits = self._sort_hits(resp.hits, sort)
+        resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
         return resp

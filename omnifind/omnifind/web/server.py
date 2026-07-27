@@ -4,6 +4,8 @@ OmniFind Web 服务 —— FastAPI,监听 127.0.0.1,提供查询 API + 静态 UI
 from __future__ import annotations
 from pathlib import Path
 from contextlib import asynccontextmanager
+import threading
+import time
 
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
@@ -20,6 +22,17 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # 全局单例(简单起见;后续可换依赖注入)
 _state: dict = {}
+
+# 索引任务状态
+_index_task: dict = {
+    "running": False,
+    "type": "",      # l1 / l2 / all
+    "progress": 0,
+    "total": 0,
+    "message": "",
+    "start_time": 0,
+    "error": "",
+}
 
 
 @asynccontextmanager
@@ -45,37 +58,175 @@ async def lifespan(app: FastAPI):
     l2.close()
 
 
-app = FastAPI(title="OmniFind", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="OmniFind", version="0.2.0", lifespan=lifespan)
 
 
 logger = logging.getLogger(__name__)
 
 
 @app.get("/api/search")
-def search(q: str = Query(""), limit: int = Query(30, ge=1, le=200)):
+def search(q: str = Query(""),
+           limit: int = Query(30, ge=1, le=5000),
+           offset: int = Query(0, ge=0, le=100000),
+           mode: str | None = Query(None, pattern="^(auto|filename|fulltext|semantic|all|filename_regex)$"),
+           ext: str | None = None,
+           sort: str | None = None):
     router: QueryRouter = _state["router"]
     try:
-        resp = router.search(q, limit=limit)
-        return JSONResponse(resp.to_dict())
+        resp = router.search(q, limit=limit + offset, mode=mode, ext=ext, sort=sort)
+        # 分页切片
+        if offset > 0 and len(resp.hits) > offset:
+            resp.hits = resp.hits[offset:]
+        if len(resp.hits) > limit:
+            resp.hits = resp.hits[:limit]
+        result = resp.to_dict()
+        result["has_more"] = len(resp.hits) >= limit
+        return JSONResponse(result)
     except Exception as e:
-        logger.exception("搜索异常 query=%s", q)
+        logger.exception("搜索异常 query=%s mode=%s", q, mode)
         return JSONResponse({
             "query": q,
             "mode": "error",
             "hits": [],
             "counts": {"error": str(e)},
+            "has_more": False,
         }, status_code=500)
 
 
 @app.get("/api/status")
 def status():
     l3 = _state.get("l3")
+    cfg = _state["cfg"]
     return {
         "l1_count": _state["l1"].count(),
         "l2_count": _state["l2"].count(),
         "l3_count": l3.count() if l3 else 0,
-        "scan_roots": _state["cfg"].scan_roots,
+        "scan_roots": cfg.scan_roots,
+        "exclude_dirs": cfg.exclude_dirs,
+        "fulltext_exts": cfg.fulltext_exts,
+        "max_fulltext_mb": cfg.max_fulltext_mb,
+        "host": cfg.host,
+        "port": cfg.port,
+        "data_dir": str(cfg.data_dir_path),
+        "l3_available": l3 is not None,
     }
+
+
+@app.get("/api/config")
+def get_config():
+    cfg = _state["cfg"]
+    return {
+        "scan_roots": cfg.scan_roots,
+        "exclude_dirs": cfg.exclude_dirs,
+        "fulltext_exts": cfg.fulltext_exts,
+        "max_fulltext_mb": cfg.max_fulltext_mb,
+        "l1_backend": cfg.l1_backend,
+        "semantic_dirs": cfg.semantic_dirs,
+        "semantic_exts": cfg.semantic_exts,
+        "semantic_full_disk": cfg.semantic_full_disk,
+        "host": cfg.host,
+        "port": cfg.port,
+        "data_dir": str(cfg.data_dir_path),
+    }
+
+
+@app.post("/api/config")
+def update_config(data: dict):
+    cfg = _state["cfg"]
+    changed = False
+    for k, v in data.items():
+        if hasattr(cfg, k) and v is not None:
+            setattr(cfg, k, v)
+            changed = True
+    if changed:
+        # 保存到 config.local.yaml
+        from pathlib import Path as _P
+        import yaml
+        ROOT = _P(__file__).resolve().parent.parent.parent
+        local_cfg_path = ROOT / "config.local.yaml"
+        try:
+            existing = {}
+            if local_cfg_path.exists():
+                existing = yaml.safe_load(local_cfg_path.read_text(encoding="utf-8")) or {}
+            existing.update(data)
+            local_cfg_path.write_text(
+                yaml.dump(existing, allow_unicode=True, default_flow_style=False),
+                encoding="utf-8"
+            )
+            return {"ok": True, "saved": True, "path": str(local_cfg_path)}
+        except Exception as e:
+            logger.exception("保存配置失败")
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    return {"ok": True, "saved": False}
+
+
+@app.get("/api/index/status")
+def index_status():
+    return {
+        "running": _index_task["running"],
+        "type": _index_task["type"],
+        "progress": _index_task["progress"],
+        "total": _index_task["total"],
+        "message": _index_task["message"],
+        "start_time": _index_task["start_time"],
+        "elapsed": time.time() - _index_task["start_time"] if _index_task["running"] else 0,
+        "error": _index_task["error"],
+    }
+
+
+@app.post("/api/index/rebuild")
+def rebuild_index(type: str = Query("all", pattern="^(l1|l2|all)$")):
+    if _index_task["running"]:
+        return JSONResponse({"ok": False, "error": "索引任务正在进行中，请稍候"}, status_code=400)
+
+    cfg = _state["cfg"]
+    l1 = _state["l1"]
+    l2 = _state["l2"]
+
+    _index_task["running"] = True
+    _index_task["type"] = type
+    _index_task["progress"] = 0
+    _index_task["total"] = 0
+    _index_task["message"] = "准备中..."
+    _index_task["start_time"] = time.time()
+    _index_task["error"] = ""
+
+    def run_index():
+        try:
+            if type in ("l1", "all"):
+                _index_task["message"] = "正在重建文件名索引..."
+                from omnifind.core.indexer import build_filename_index
+                # 清空旧索引
+                l1.conn.execute("DELETE FROM entries")
+                l1.conn.commit()
+                n = build_filename_index(cfg, l1)
+                _index_task["progress"] = n
+                _index_task["total"] = n
+                _index_task["message"] = f"文件名索引完成: {n} 条"
+
+            if type in ("l2", "all"):
+                _index_task["message"] = "正在重建全文索引..."
+                from omnifind.core.indexer import build_fulltext_index
+                # 清空旧索引
+                l2.conn.execute("DELETE FROM files")
+                l2.conn.execute("DELETE FROM fts")
+                l2.conn.commit()
+                n = build_fulltext_index(cfg, l2)
+                _index_task["progress"] = n
+                _index_task["total"] = n
+                _index_task["message"] = f"全文索引完成: {n} 篇"
+
+            _index_task["message"] += " · 全部完成"
+        except Exception as e:
+            logger.exception("索引重建失败")
+            _index_task["error"] = str(e)
+            _index_task["message"] = f"失败: {e}"
+        finally:
+            _index_task["running"] = False
+
+    t = threading.Thread(target=run_index, daemon=True)
+    t.start()
+    return {"ok": True, "started": True, "type": type}
 
 
 @app.get("/")

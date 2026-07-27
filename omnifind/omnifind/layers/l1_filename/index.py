@@ -34,8 +34,13 @@ class FilenameIndex:
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or (DATA_DIR / "filename.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        import threading
+        self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # 开启 WAL 模式提高并发读性能
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -54,17 +59,19 @@ class FilenameIndex:
         self.conn.commit()
 
     def bulk_upsert(self, rows: list[tuple]) -> None:
-        self.conn.executemany(
-            "INSERT INTO entries(path,name,size,mtime,is_dir) VALUES(?,?,?,?,?) "
-            "ON CONFLICT(path) DO UPDATE SET name=excluded.name,size=excluded.size,"
-            "mtime=excluded.mtime,is_dir=excluded.is_dir",
-            rows,
-        )
-        self.conn.commit()
+        with self._lock:
+            self.conn.executemany(
+                "INSERT INTO entries(path,name,size,mtime,is_dir) VALUES(?,?,?,?,?) "
+                "ON CONFLICT(path) DO UPDATE SET name=excluded.name,size=excluded.size,"
+                "mtime=excluded.mtime,is_dir=excluded.is_dir",
+                rows,
+            )
+            self.conn.commit()
 
     def remove(self, path: str) -> None:
-        self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ?", (path, path + os.sep + "%"))
-        self.conn.commit()
+        with self._lock:
+            self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ?", (path, path + os.sep + "%"))
+            self.conn.commit()
 
     def search(self, query: str, limit: int = 50, ext_filter: str | None = None) -> list[NameHit]:
         # 默认子串匹配(不区分大小写);支持 * 通配转 LIKE
@@ -79,7 +86,8 @@ class FilenameIndex:
             params.append(ext_filter)
         sql += " ORDER BY is_dir DESC, mtime DESC LIMIT ?"
         params.append(limit)
-        rows = self.conn.execute(sql, params).fetchall()
+        with self._lock:
+            rows = self.conn.execute(sql, params).fetchall()
         return [NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])) for r in rows]
 
     @staticmethod
@@ -111,36 +119,39 @@ class FilenameIndex:
         prefix = self._literal_prefix(pattern)
         # 顶层含 | 交替时,字面前缀粗筛会漏掉其他分支 -> 强制流式扫描保正确
         has_alt = "|" in pattern
-        if not has_alt and pattern.startswith("^") and self._literal_prefix(pattern[1:]):
-            pfx = self._literal_prefix(pattern[1:])
-            cur = self.conn.execute(
-                "SELECT path,name,size,mtime,is_dir FROM entries "
-                "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
-                (pfx.replace("%", "\\%").replace("_", "\\_") + "%",),
-            )
-        elif prefix and not has_alt:
-            cur = self.conn.execute(
-                "SELECT path,name,size,mtime,is_dir FROM entries "
-                "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
-                ("%" + prefix.replace("%", "\\%").replace("_", "\\_") + "%",),
-            )
-        else:
-            # 无字面可用,流式全扫(限 scan_cap 条)
-            cur = self.conn.execute(
-                "SELECT path,name,size,mtime,is_dir FROM entries "
-                "ORDER BY is_dir DESC, mtime DESC LIMIT ?", (scan_cap,)
-            )
-
         hits: list[NameHit] = []
-        for r in cur:
-            if rx.search(r["name"]):
-                hits.append(NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])))
-                if len(hits) >= limit:
-                    break
+        
+        with self._lock:
+            if not has_alt and pattern.startswith("^") and self._literal_prefix(pattern[1:]):
+                pfx = self._literal_prefix(pattern[1:])
+                cur = self.conn.execute(
+                    "SELECT path,name,size,mtime,is_dir FROM entries "
+                    "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
+                    (pfx.replace("%", "\\%").replace("_", "\\_") + "%",),
+                )
+            elif prefix and not has_alt:
+                cur = self.conn.execute(
+                    "SELECT path,name,size,mtime,is_dir FROM entries "
+                    "WHERE name LIKE ? ESCAPE '\\' ORDER BY is_dir DESC, mtime DESC",
+                    ("%" + prefix.replace("%", "\\%").replace("_", "\\_") + "%",),
+                )
+            else:
+                # 无字面可用,流式全扫(限 scan_cap 条)
+                cur = self.conn.execute(
+                    "SELECT path,name,size,mtime,is_dir FROM entries "
+                    "ORDER BY is_dir DESC, mtime DESC LIMIT ?", (scan_cap,)
+                )
+
+            for r in cur:
+                if rx.search(r["name"]):
+                    hits.append(NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])))
+                    if len(hits) >= limit:
+                        break
         return hits
 
     def count(self) -> int:
-        return self.conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+        with self._lock:
+            return self.conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
 
     def close(self) -> None:
         self.conn.close()
