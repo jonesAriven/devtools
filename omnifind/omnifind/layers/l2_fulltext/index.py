@@ -20,12 +20,35 @@ def tokenize(text: str) -> str:
     return " ".join(jieba.cut_for_search(text))
 
 
+def _escape_fts5_token(token: str) -> str:
+    """转义 FTS5 MATCH 特殊字符,用双引号包裹 token 避免语法错误。"""
+    if not token:
+        return '""'
+    escaped = token.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def build_fts5_query(query: str) -> str:
+    """构建安全的 FTS5 MATCH 查询字符串。
+
+    策略: jieba 分词 -> 每个 token 用双引号包裹 -> 空格连接(AND 语义)。
+    这样可以避免特殊字符(.@-:()等)导致的 FTS5 语法错误。
+    """
+    tokens = [t for t in jieba.cut_for_search(query) if t.strip()]
+    if not tokens:
+        return '""'
+    return " ".join(_escape_fts5_token(t) for t in tokens)
+
+
 @dataclass
 class FtsHit:
     path: str
     title: str
     snippet: str
     score: float
+    size: int = 0
+    mtime: float = 0.0
+    ext: str = ""
 
 
 class FullTextIndex:
@@ -76,22 +99,45 @@ class FullTextIndex:
         )
         self.conn.commit()
 
-    def search(self, query: str, limit: int = 30) -> list[FtsHit]:
-        q = tokenize(query)
-        # FTS5 MATCH,bm25 排序;snippet 取正文匹配片段
-        rows = self.conn.execute(
+    def search(self, query: str, limit: int = 30, ext_filter: str | None = None) -> list[FtsHit]:
+        q = build_fts5_query(query)
+        try:
+            sql = """
+                SELECT f.path AS path, f.title AS title, f.size AS size,
+                       f.mtime AS mtime, f.ext AS ext,
+                       snippet(fts, 1, '[', ']', ' … ', 12) AS snippet,
+                       bm25(fts) AS score
+                FROM fts JOIN files f ON f.id = fts.rowid
+                WHERE fts MATCH ?
             """
-            SELECT f.path AS path, f.title AS title,
-                   snippet(fts, 1, '[', ']', ' … ', 12) AS snippet,
-                   bm25(fts) AS score
-            FROM fts JOIN files f ON f.id = fts.rowid
-            WHERE fts MATCH ?
-            ORDER BY score
-            LIMIT ?
-            """,
-            (q, limit),
-        ).fetchall()
-        return [FtsHit(r["path"], r["title"] or "", r["snippet"] or "", r["score"]) for r in rows]
+            params: list = [q]
+            if ext_filter:
+                sql += " AND LOWER(f.ext) = LOWER(?)"
+                params.append(ext_filter)
+            sql += " ORDER BY score LIMIT ?"
+            params.append(limit)
+            rows = self.conn.execute(sql, params).fetchall()
+            return [FtsHit(
+                r["path"], r["title"] or "", r["snippet"] or "", r["score"],
+                r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
+            ) for r in rows]
+        except sqlite3.OperationalError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("FTS5 搜索失败 query=%s error=%s, 降级为 LIKE 模糊搜索", query, e)
+            like = f"%{query}%"
+            sql = "SELECT path, title, size, mtime, ext FROM files WHERE (title LIKE ? OR path LIKE ?)"
+            params: list = [like, like]
+            if ext_filter:
+                sql += " AND LOWER(ext) = LOWER(?)"
+                params.append(ext_filter)
+            sql += " ORDER BY mtime DESC LIMIT ?"
+            params.append(limit)
+            rows = self.conn.execute(sql, params).fetchall()
+            return [FtsHit(
+                r["path"], r["title"] or "", "", 0.0,
+                r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
+            ) for r in rows]
 
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM files WHERE indexed=1").fetchone()[0]

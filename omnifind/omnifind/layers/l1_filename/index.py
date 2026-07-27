@@ -66,17 +66,20 @@ class FilenameIndex:
         self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ?", (path, path + os.sep + "%"))
         self.conn.commit()
 
-    def search(self, query: str, limit: int = 50) -> list[NameHit]:
+    def search(self, query: str, limit: int = 50, ext_filter: str | None = None) -> list[NameHit]:
         # 默认子串匹配(不区分大小写);支持 * 通配转 LIKE
         if "*" in query:
             like = query.replace("*", "%")
         else:
             like = f"%{query}%"
-        rows = self.conn.execute(
-            "SELECT * FROM entries WHERE name LIKE ? ESCAPE '\\' "
-            "ORDER BY is_dir DESC, mtime DESC LIMIT ?",
-            (like, limit),
-        ).fetchall()
+        sql = "SELECT * FROM entries WHERE name LIKE ? ESCAPE '\\'"
+        params: list = [like]
+        if ext_filter:
+            sql += " AND LOWER(SUBSTR(name, INSTR(name, '.'))) = LOWER(?)"
+            params.append(ext_filter)
+        sql += " ORDER BY is_dir DESC, mtime DESC LIMIT ?"
+        params.append(limit)
+        rows = self.conn.execute(sql, params).fetchall()
         return [NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])) for r in rows]
 
     @staticmethod

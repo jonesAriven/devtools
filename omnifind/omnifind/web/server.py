@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+import logging
+import os
 
 from omnifind.core.config import OmniConfig, ensure_dirs
 from omnifind.core.router import QueryRouter
@@ -46,11 +48,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="OmniFind", version="0.1.0", lifespan=lifespan)
 
 
+logger = logging.getLogger(__name__)
+
+
 @app.get("/api/search")
 def search(q: str = Query(""), limit: int = Query(30, ge=1, le=200)):
     router: QueryRouter = _state["router"]
-    resp = router.search(q, limit=limit)
-    return JSONResponse(resp.to_dict())
+    try:
+        resp = router.search(q, limit=limit)
+        return JSONResponse(resp.to_dict())
+    except Exception as e:
+        logger.exception("搜索异常 query=%s", q)
+        return JSONResponse({
+            "query": q,
+            "mode": "error",
+            "hits": [],
+            "counts": {"error": str(e)},
+        }, status_code=500)
 
 
 @app.get("/api/status")
@@ -67,6 +81,329 @@ def status():
 @app.get("/")
 def index():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+# 支持预览的纯文本扩展名
+_TEXT_EXTS = {
+    ".txt", ".md", ".py", ".js", ".ts", ".java", ".go", ".rs",
+    ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php", ".swift",
+    ".kt", ".scala", ".r", ".lua", ".perl", ".sh", ".bat",
+    ".ps1", ".cmd", ".bash", ".zsh", ".fish", ".yaml", ".yml",
+    ".json", ".xml", ".html", ".htm", ".css", ".scss", ".less",
+    ".sql", ".log", ".csv", ".ini", ".toml", ".cfg", ".conf",
+    ".env", ".gitignore", ".dockerfile", ".makefile", ".cmake",
+    ".proto", ".graphql", ".vue", ".svelte", ".jsx", ".tsx",
+    ".tcl", ".ex", ".exs", ".erl", ".hs", ".ml", ".mli",
+    ".vim", ".el", ".lisp", ".clj", ".cljs", ".rkt",
+    ".dockerignore", ".editorconfig", ".prettierrc", ".eslintrc",
+    "Dockerfile", "Makefile", "README", "LICENSE", "CHANGELOG",
+    "CONTRIBUTING", ".gitattributes", ".mailmap",
+}
+# 需要用专用库提取文本的文档扩展名
+_DOC_EXTS = {".docx", ".xlsx", ".xls"}
+# 预览最大 500KB（增大限制，用户反馈预览内容不全）
+_MAX_PREVIEW_SIZE = 500 * 1024
+
+
+@app.get("/api/preview")
+def preview(path: str = Query(...)):
+    """读取文件内容用于预览。优先从 L2 索引取 body，否则直接读文件。"""
+    ok, resolved, err = _verify_path_in_index(path)
+    if not ok:
+        status = 400 if "必填" in (err or "") or "无效" in (err or "") else (404 if "不存在" in (err or "") else 403)
+        return JSONResponse({"ok": False, "error": err}, status_code=status)
+
+    if resolved.is_dir():
+        return JSONResponse({"ok": False, "error": "是目录，无法预览"}, status_code=400)
+
+    p = resolved
+    ext = p.suffix.lower()
+    name = p.name
+
+    # ===== 核心策略：预览优先读原始文件，L2 body 仅作最后 fallback =====
+    # 原因: L2 存的是 jieba 分词后的 token(空格分隔)，格式全丢，用户看不懂
+
+    # 1) 文档格式 (.docx/.xlsx/.xls) → 用专用库提取
+    if ext in _DOC_EXTS:
+        doc_result = _extract_document_text(p, ext)
+        if doc_result is not None:
+            content, src_label = doc_result
+            truncated = len(content) > _MAX_PREVIEW_SIZE
+            return JSONResponse({
+                "ok": True, "path": path,
+                "content": content[:_MAX_PREVIEW_SIZE],
+                "source": src_label, "size": p.stat().st_size,
+                "truncated": truncated,
+            })
+
+    # 2) PDF → 用 pdfplumber/PyPDF2 提取
+    if ext == ".pdf":
+        pdf_result = _extract_pdf_text(p)
+        if pdf_result is not None:
+            content, src_label = pdf_result
+            truncated = len(content) > _MAX_PREVIEW_SIZE
+            return JSONResponse({
+                "ok": True, "path": path,
+                "content": content[:_MAX_PREVIEW_SIZE],
+                "source": src_label, "size": p.stat().st_size,
+                "truncated": truncated,
+            })
+        else:
+            return JSONResponse({
+                "ok": True, "path": path, "content": None,
+                "source": "pdf_no_lib",
+                "message": "PDF 预览需要安装 pdfplumber 库 (pip install pdfplumber)。当前环境未安装，无法预览 PDF 文件。",
+            })
+
+    # 3) 判断是否为文本/代码文件
+    is_text = (ext in _TEXT_EXTS or name in _TEXT_EXTS or _is_text_file(p))
+
+    if not is_text:
+        return JSONResponse({
+            "ok": True, "path": path, "content": None,
+            "source": "binary_skip",
+            "message": f"二进制/不支持的格式({ext or '未知类型'})。支持预览: 纯文本/.docx/.xlsx/.xls/.pdf(需pdfplumber)。",
+        })
+
+    # 4) 文本文件 → 直接读取原始内容（保留原始格式！）
+    try:
+        raw = p.read_bytes()
+        file_size = len(raw)
+        if file_size > _MAX_PREVIEW_SIZE * 10:
+            return JSONResponse({
+                "ok": True, "path": path, "content": None,
+                "source": "too_large",
+                "message": f"文件过大({file_size//1024}KB)，超过预览限制。",
+            })
+        for enc in ("utf-8", "gbk", "gb2312", "latin-1"):
+            try:
+                text = raw.decode(enc)
+                truncated = len(text) > _MAX_PREVIEW_SIZE
+                return JSONResponse({
+                    "ok": True, "path": path,
+                    "content": text[:_MAX_PREVIEW_SIZE],
+                    "source": "file_read",
+                    "encoding": enc,
+                    "size": file_size,
+                    "truncated": truncated,
+                })
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return JSONResponse({"ok": False, "error": "无法以已知编码解码文件"}, status_code=422)
+    except Exception as e:
+        logger.exception("文件读取失败 path=%s: %s", path, e)
+        return JSONResponse({"ok": False, "error": f"读取失败: {e}"}, status_code=500)
+
+
+def _is_text_file(p: Path) -> bool:
+    """启发式检测：读一小段判断是否为文本文件。"""
+    try:
+        raw = p.read_bytes()
+        chunk = raw[:min(8192, len(raw))]
+        if b'\x00' in chunk:
+            return False
+        chunk.decode('utf-8')
+        return True
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+def _extract_document_text(p: Path, ext: str) -> tuple[str, str] | None:
+    """
+    从 Office 文档中提取纯文本内容。
+    返回 (text, source_label) 或 None（解析失败）。
+    """
+    try:
+        if ext == ".docx":
+            import docx
+            doc = docx.Document(str(p))
+            parts = []
+            for para in doc.paragraphs:
+                text = para.text.strip()
+                if text:
+                    parts.append(text)
+            # 也尝试提取表格中的文字
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if row_text:
+                        parts.append(" | ".join(row_text))
+            body = "\n\n".join(parts)
+            return (body, "docx_extract") if body else None
+
+        elif ext == ".xlsx":
+            import openpyxl
+            wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
+            parts = []
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                parts.append(f"=== {sheet_name} ===")
+                for row in sheet.iter_rows(values_only=True):
+                    # 过滤全空行
+                    row_text = [str(c) if c is not None else "" for c in row]
+                    if any(cell.strip() for cell in row_text if cell):
+                        parts.append("\t".join(row_text))
+            wb.close()
+            body = "\n".join(parts)
+            return (body, "xlsx_extract") if body else None
+
+        elif ext == ".xls":
+            import xlrd
+            wb = xlrd.open_workbook(str(p))
+            parts = []
+            for sheet in wb.sheets():
+                parts.append(f"=== {sheet.name} ===")
+                for row_idx in range(sheet.nrows):
+                    row = sheet.row_values(row_idx)
+                    row_text = [str(c) if c is not None else "" for c in row]
+                    if any(cell.strip() for cell in row_text if cell):
+                        parts.append("\t".join(row_text))
+            body = "\n".join(parts)
+            return (body, "xls_extract") if body else None
+
+    except ImportError as e:
+        logger.debug("文档库缺失 ext=%s: %s", ext, e)
+        return None
+    except Exception as e:
+        logger.debug("文档解析失败 path=%s ext=%s: %s", p, ext, e)
+        return None
+
+
+def _extract_pdf_text(p: Path) -> tuple[str, str] | None:
+    """从 PDF 中提取文本（需要 pdfplumber 或 PyPDF2）。"""
+    # 优先用 pdfplumber（更好的表格/布局支持）
+    try:
+        import pdfplumber
+        parts = []
+        with pdfplumber.open(str(p)) as pdf:
+            for i, page in enumerate(pdf.pages):
+                text = page.extract_text()
+                if text and text.strip():
+                    parts.append(f"--- Page {i+1} ---\n{text}")
+        body = "\n\n".join(parts)
+        return (body, "pdf_plumber") if body else None
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("pdfplumber 解析失败: %s", e)
+
+    # fallback: PyPDF2
+    try:
+        import PyPDF2
+        reader = PyPDF2.PdfReader(str(p))
+        parts = []
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text()
+            if text and text.strip():
+                parts.append(f"--- Page {i+1} ---\n{text}")
+        body = "\n\n".join(parts)
+        return (body, "pdf_pypdf2") if body else None
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("PyPDF2 解析失败: %s", e)
+
+    return None
+
+
+def _verify_path_in_index(path_str: str) -> tuple[bool, Path | None, str | None]:
+    """验证文件路径是否在索引中，返回 (是否在索引中, 解析后的路径, 错误信息)。"""
+    if not path_str:
+        return False, None, "path 参数必填"
+    try:
+        resolved = Path(path_str).resolve()
+    except (OSError, ValueError) as e:
+        return False, None, f"无效路径: {e}"
+    l1 = _state.get("l1")
+    l2 = _state.get("l2")
+    in_index = False
+    if l2:
+        try:
+            row = l2.conn.execute(
+                "SELECT 1 FROM files WHERE path=? LIMIT 1", (str(resolved),)
+            ).fetchone()
+            if row:
+                in_index = True
+        except Exception:
+            pass
+    if not in_index and l1:
+        try:
+            row = l1.conn.execute(
+                "SELECT 1 FROM entries WHERE path=? LIMIT 1", (str(resolved),)
+            ).fetchone()
+            if row:
+                in_index = True
+        except Exception:
+            pass
+    if not in_index:
+        return False, resolved, "文件不在索引中，无法操作（安全限制：仅可操作已索引文件）"
+    if not resolved.exists():
+        return False, resolved, "文件不存在"
+    return True, resolved, None
+
+
+@app.post("/api/file/open")
+def open_file(path: str = Query(...)):
+    """打开文件（用系统默认程序）。"""
+    ok, resolved, err = _verify_path_in_index(path)
+    if not ok:
+        return JSONResponse({"ok": False, "error": err}, status_code=400 if "必填" in err or "无效" in err else 403)
+    try:
+        import subprocess, platform
+        if platform.system() == "Windows":
+            os.startfile(str(resolved))
+        elif platform.system() == "Darwin":
+            subprocess.run(["open", str(resolved)])
+        else:
+            subprocess.run(["xdg-open", str(resolved)])
+        return JSONResponse({"ok": True, "path": str(resolved)})
+    except Exception as e:
+        logger.exception("打开文件失败 path=%s", path)
+        return JSONResponse({"ok": False, "error": f"打开失败: {e}"}, status_code=500)
+
+
+@app.post("/api/file/reveal")
+def reveal_file(path: str = Query(...)):
+    """在文件管理器中显示文件（打开所在位置并选中）。"""
+    ok, resolved, err = _verify_path_in_index(path)
+    if not ok:
+        return JSONResponse({"ok": False, "error": err}, status_code=400 if "必填" in err or "无效" in err else 403)
+    try:
+        import subprocess, platform
+        if platform.system() == "Windows":
+            subprocess.run(["explorer", "/select,", str(resolved)])
+        elif platform.system() == "Darwin":
+            subprocess.run(["open", "-R", str(resolved)])
+        else:
+            parent = resolved.parent
+            subprocess.run(["xdg-open", str(parent)])
+        return JSONResponse({"ok": True, "path": str(resolved)})
+    except Exception as e:
+        logger.exception("定位文件失败 path=%s", path)
+        return JSONResponse({"ok": False, "error": f"定位失败: {e}"}, status_code=500)
+
+
+@app.get("/api/file/info")
+def file_info(path: str = Query(...)):
+    """获取文件详细信息（大小、修改时间、类型等）。"""
+    ok, resolved, err = _verify_path_in_index(path)
+    if not ok:
+        return JSONResponse({"ok": False, "error": err}, status_code=400 if "必填" in err or "无效" in err else 403)
+    try:
+        st = resolved.stat()
+        return JSONResponse({
+            "ok": True,
+            "path": str(resolved),
+            "name": resolved.name,
+            "ext": resolved.suffix.lower(),
+            "size": st.st_size,
+            "mtime": st.st_mtime,
+            "ctime": st.st_ctime,
+            "is_dir": resolved.is_dir(),
+        })
+    except Exception as e:
+        logger.exception("获取文件信息失败 path=%s", path)
+        return JSONResponse({"ok": False, "error": f"获取失败: {e}"}, status_code=500)
 
 
 # 静态资源

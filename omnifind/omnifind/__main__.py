@@ -33,11 +33,23 @@ def cmd_index(args):
     if do_l2:
         build_fulltext_index(cfg, l2, limit=args.l2_limit)
     if do_l3:
-        from omnifind.layers.l3_semantic.builder import build_semantic_index, make_embedder
-        from omnifind.layers.l3_semantic.index import SemanticIndex
-        emb = make_embedder(cfg)
-        sem = SemanticIndex(emb, dim=emb.dim)
-        build_semantic_index(cfg, sem, limit=args.l3_limit)
+        try:
+            from omnifind.layers.l3_semantic.builder import build_semantic_index, make_embedder
+            from omnifind.layers.l3_semantic.index import SemanticIndex
+            from pathlib import Path as _P
+            model_path = _P(cfg.resolved_embed_model_path)
+            if not model_path.joinpath("model.onnx").exists():
+                print(f"[L3] 跳过: 模型文件不存在 ({model_path / 'model.onnx'})")
+                print("[L3] 请先运行: python -m omnifind.layers.l3_semantic.builder --download")
+            else:
+                emb = make_embedder(cfg)
+                sem = SemanticIndex(emb, dim=emb.dim)
+                build_semantic_index(cfg, sem, limit=args.l3_limit)
+        except ImportError as e:
+            print(f"[L3] 跳过: 依赖缺失 ({e})")
+            print("[L3] 安装依赖: pip install onnxruntime tokenizers lancedb numpy")
+        except Exception as e:
+            print(f"[L3] 跳过: 初始化失败 ({e})")
     l1.close(); l2.close()
 
 

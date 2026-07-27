@@ -7,85 +7,1009 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-         background: #0f1115; color: #e6e6e6; padding: 24px; }
-  .wrap { max-width: 900px; margin: 0 auto; }
-  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; color: #fff; }
-  .sub { color: #8a8f98; font-size: 13px; margin-bottom: 18px; }
-  .searchbar { display: flex; gap: 8px; margin-bottom: 12px; }
-  #q { flex: 1; padding: 12px 14px; font-size: 15px; border-radius: 8px;
-       border: 1px solid #2a2e37; background: #1a1d24; color: #fff; outline: none; }
-  #q:focus { border-color: #4c8bf5; }
-  button { padding: 12px 20px; border: none; border-radius: 8px; background: #4c8bf5;
-           color: #fff; font-size: 14px; cursor: pointer; }
+         background: #0f1115; color: #e6e6e6; height: 100vh; display: flex; flex-direction: column;
+         overflow: hidden; }
+
+  /* ===== 顶部区域 ===== */
+  .header { padding: 16px 24px 12px; border-bottom: 1px solid #1e2128; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+  h1 { font-size: 18px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .sub { color: #6b7280; font-size: 12px; white-space: nowrap; }
+  .searchbar { display: flex; gap: 8px; flex: 1; max-width: 600px; position: relative; }
+  #q { flex: 1; padding: 10px 14px; font-size: 14px; border-radius: 8px;
+       border: 1px solid #2a2e37; background: #1a1d24; color: #fff; outline: none;
+       transition: border-color 0.2s; }
+  #q:focus { border-color: #4c8bf5; box-shadow: 0 0 0 3px rgba(76,139,245,0.15); }
+  button { padding: 10px 18px; border: none; border-radius: 8px; background: #4c8bf5;
+           color: #fff; font-size: 13px; cursor: pointer; transition: background 0.2s;
+           white-space: nowrap; font-weight: 500; }
   button:hover { background: #3b7ae4; }
-  .hint { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
-  .hint code { background: #1a1d24; padding: 1px 6px; border-radius: 4px; color: #9ecbff; }
-  .status { font-size: 12px; color: #8a8f98; margin-bottom: 16px; }
-  .hit { padding: 12px 14px; background: #1a1d24; border-radius: 8px; margin-bottom: 8px;
-         border-left: 3px solid #2a2e37; }
-  .hit .title { font-size: 14px; color: #fff; font-weight: 500; }
-  .hit .path { font-size: 12px; color: #6b7280; margin-top: 2px; word-break: break-all; }
-  .hit .snippet { font-size: 13px; color: #b8bcc4; margin-top: 6px; line-height: 1.5; }
-  .hit .snippet [class] {}
+  button:active { background: #2a6cd4; }
+  button.ghost { background: transparent; border: 1px solid #2a2e37; color: #9ca3af; }
+  button.ghost:hover { background: #1a1d24; border-color: #3a3e47; color: #e6e6e6; }
+  button.icon-btn { padding: 6px 10px; font-size: 12px; }
+
+  /* 搜索历史下拉 */
+  .search-history { position: absolute; top: 100%; left: 0; right: 68px; margin-top: 4px;
+                    background: #1a1d24; border: 1px solid #2a2e37; border-radius: 8px;
+                    z-index: 100; max-height: 240px; overflow-y: auto; display: none;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .search-history.show { display: block; }
+  .history-item { padding: 8px 14px; cursor: pointer; font-size: 13px; color: #b8bcc4;
+                   display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1a1d24; }
+  .history-item:hover { background: #2a2e37; }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .icon { color: #4a4f58; font-size: 12px; }
+  .history-item .text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-item .del { color: #4a4f58; font-size: 11px; opacity: 0; transition: opacity 0.2s; }
+  .history-item:hover .del { opacity: 1; }
+  .history-item .del:hover { color: #f87171; }
+  .history-header { padding: 6px 14px; font-size: 11px; color: #6b7280;
+                    border-bottom: 1px solid #2a2e37; display: flex; justify-content: space-between; }
+  .history-header .clear { cursor: pointer; color: #6b7280; }
+  .history-header .clear:hover { color: #f87171; }
+
+  /* 搜索按钮loading状态 */
+  button.loading { position: relative; color: transparent; pointer-events: none; }
+  button.loading::after {
+    content: ''; position: absolute; width: 16px; height: 16px;
+    top: 50%; left: 50%; margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hint-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .hint { font-size: 11px; color: #5a5f68; }
+  .hint code { background: #1a1d24; padding: 2px 7px; border-radius: 4px; color: #9ecbff; font-size: 11px; }
+  .status { font-size: 11px; color: #5a5f68; margin-left: auto; white-space: nowrap; }
+
+  /* 类型筛选条 */
+  .filter-bar { display: flex; gap: 6px; padding: 8px 16px; border-bottom: 1px solid #1e2128;
+                background: #141720; flex-shrink: 0; overflow-x: auto; }
+  .filter-tag { padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer;
+                background: #1a1d24; color: #9ca3af; border: 1px solid transparent;
+                transition: all 0.15s; white-space: nowrap; user-select: none; }
+  .filter-tag:hover { background: #2a2e37; color: #e6e6e6; }
+  .filter-tag.active { background: rgba(76,139,245,0.15); color: #4c8bf5; border-color: rgba(76,139,245,0.3); }
+  .filter-tag .count { color: #6b7280; margin-left: 4px; font-size: 10px; }
+
+  /* ===== 主内容区：左右分栏 ===== */
+  .main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+  /* 左侧：结果列表 */
+  .panel-left { width: 420px; min-width: 280px; max-width: 50%;
+               border-right: 1px solid #1e2128; display: flex; flex-direction: column;
+               background: #12141a; overflow: hidden; }
+  .list-header { padding: 10px 16px; font-size: 12px; color: #6b7280;
+                border-bottom: 1px solid #1e2128; display: flex; align-items: center; gap: 8px;
+                flex-shrink: 0; background: #141720; }
+  .list-header .count { color: #4c8bf5; font-weight: 600; }
+  .list-header .mode-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px;
+                           background: #1e2837; color: #9ecbff; }
+  .list-header .spacer { flex: 1; }
+  .sort-select {
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    color: #9ca3af;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+  }
+  .sort-select:hover {
+    border-color: #3a3e47;
+    color: #e6e6e6;
+  }
+
+  /* 结果列表 */
+  .result-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
+  .result-list::-webkit-scrollbar { width: 6px; }
+  .result-list::-webkit-scrollbar-track { background: transparent; }
+  .result-list::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 3px; }
+  .result-list::-webkit-scrollbar-thumb:hover { background: #3a3e47; }
+
+  /* 单条结果 */
+  .hit { padding: 10px 16px; cursor: pointer; transition: all 0.15s;
+         border-left: 3px solid transparent; border-bottom: 1px solid #1a1d24;
+         display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .hit:hover { background: #1a1d24; }
+  .hit.active { background: #1e2837; border-left-color: #4c8bf5; }
+  .hit .hit-title { font-size: 13px; color: #e6e6e6; font-weight: 500;
+                   display: flex; align-items: center; gap: 6px; line-height: 1.3; }
+  .hit .hit-path { font-size: 11px; color: #5a5f68; word-break: break-all; line-height: 1.3; }
+  .hit .hit-meta { font-size: 10px; color: #4a4f58; display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+  .hit .hit-snippet { font-size: 12px; color: #8a8f98; margin-top: 4px; line-height: 1.5;
+                      max-height: 60px; overflow: hidden; display: -webkit-box;
+                      -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hit .hit-actions { position: absolute; top: 8px; right: 12px; display: none; gap: 4px; }
+  .hit:hover .hit-actions { display: flex; }
+  .hit .action-btn { padding: 3px 6px; font-size: 10px; background: #2a2e37; border-radius: 4px;
+                      color: #9ca3af; cursor: pointer; border: none; }
+  .hit .action-btn:hover { background: #3a3e47; color: #fff; }
+
+  /* badge */
   .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px;
-           margin-right: 6px; vertical-align: middle; }
-  .l1 { background: #2d4a2d; color: #9ee89e; }
-  .l2 { background: #2d3a4a; color: #9ecbff; }
-  .l3 { background: #4a2d4a; color: #e89ee8; }
-  .empty { color: #6b7280; text-align: center; padding: 40px; }
+           font-weight: 600; letter-spacing: 0.3px; flex-shrink: 0; }
+  .l1 { background: rgba(110,168,90,0.15); color: #6ea85a; }
+  .l2 { background: rgba(76,139,245,0.15); color: #4c8bf5; }
+  .l3 { background: rgba(180,110,220,0.15); color: #b46edc; }
+
+  /* 高亮样式 */
+  .hl { background: rgba(255,200,50,0.25); color: #ffe066; border-radius: 2px;
+        padding: 0 1px; font-weight: 500; }
+
+  /* 右侧：预览面板 */
+  .panel-right { flex: 1; min-width: 300px; display: flex; flex-direction: column;
+                background: #0f1115; overflow: hidden; }
+  .preview-header { padding: 10px 20px; font-size: 12px; color: #6b7280;
+                   border-bottom: 1px solid #1e2128; display: flex; align-items: center;
+                   gap: 8px; flex-shrink: 0; background: #141720; }
+  .preview-header .file-icon { font-size: 14px; }
+  .preview-header .file-name { color: #e6e6e6; font-weight: 500; font-size: 13px;
+                               flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preview-header .file-path { font-size: 11px; color: #5a5f68; overflow: hidden;
+                              text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .preview-actions { display: flex; gap: 4px; }
+  .preview-actions button { padding: 4px 10px; font-size: 11px; background: #1a1d24;
+                            color: #9ca3af; border: 1px solid #2a2e37; }
+  .preview-actions button:hover { background: #2a2e37; color: #fff; }
+
+  .preview-body { flex: 1; overflow-y: auto; padding: 16px 20px; font-family: "Cascadia Code",
+                 "Fira Code", "JetBrains Mono", Consolas, monospace; font-size: 13px;
+                 line-height: 1.7; color: #b8bcc4; white-space: pre-wrap; word-break: break-word; }
+  .preview-body::-webkit-scrollbar { width: 8px; }
+  .preview-body::-webkit-scrollbar-track { background: transparent; }
+  .preview-body::-webkit-scrollbar-thumb { background: #2a2e37; border-radius: 4px; }
+  .preview-body::-webkit-scrollbar-thumb:hover { background: #3a3e47; }
+  .preview-body .hl { background: rgba(255,200,50,0.3); color: #ffe066; }
+
+  /* 预览为空时的占位 */
+  .preview-placeholder { flex: 1; display: flex; flex-direction: column;
+                        align-items: center; justify-content: center; color: #3a3e47; gap: 8px; }
+  .preview-placeholder .icon { font-size: 48px; opacity: 0.4; }
+  .preview-placeholder .text { font-size: 13px; }
+
+  /* Loading 遮罩（列表区域） */
+  .list-loading { flex: 1; display: flex; flex-direction: column; align-items: center;
+                 justify-content: center; gap: 14px; color: #5a5f68; }
+  .list-loading .spinner {
+    width: 32px; height: 32px; border: 3px solid #2a2e37; border-top-color: #4c8bf5;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  .list-loading .msg { font-size: 13px; }
+  .list-loading .progress-bar { width: 160px; height: 3px; background: #2a2e37;
+                               border-radius: 2px; overflow: hidden; }
+  .list-loading .progress-bar .fill { height: 100%; background: #4c8bf5;
+                                     border-radius: 2px; transition: width 0.3s;
+                                     animation: progress-pulse 1.5s ease-in-out infinite; }
+  @keyframes progress-pulse {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 70%; margin-left: 15%; }
+    100% { width: 30%; margin-left: 55%; }
+  }
+
+  /* 空结果 */
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center;
+                justify-content: center; color: #5a5f68; gap: 8px; padding: 40px; }
+  .empty-state .icon { font-size: 36px; opacity: 0.5; }
+  .empty-state .text { font-size: 13px; text-align: center; line-height: 1.5; }
+
+  /* 分隔条（可拖拽调整宽度） */
+  .resizer { width: 4px; cursor: col-resize; background: transparent;
+             transition: background 0.2s; flex-shrink: 0; z-index: 10; }
+  .resizer:hover, .resizer.dragging { background: #4c8bf5; }
+
+  /* 错误提示 */
+  .error-text { color: #f87171; font-size: 12px; }
+
+  /* Toast 提示 */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+           padding: 10px 20px; background: #1a1d24; border: 1px solid #2a2e37;
+           border-radius: 8px; font-size: 13px; color: #e6e6e6; z-index: 1000;
+           box-shadow: 0 8px 24px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s;
+           pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: rgba(110,168,90,0.3); color: #6ea85a; }
+  .toast.error { border-color: rgba(248,113,113,0.3); color: #f87171; }
+
+  /* 右键菜单 */
+  .ctx-menu { position: fixed; background: #1a1d24; border: 1px solid #2a2e37;
+              border-radius: 8px; padding: 4px 0; z-index: 200; min-width: 160px;
+              box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: none; }
+  .ctx-menu.show { display: block; }
+  .ctx-item { padding: 8px 16px; font-size: 13px; cursor: pointer; color: #e6e6e6;
+              display: flex; align-items: center; gap: 10px; }
+  .ctx-item:hover { background: #2a2e37; }
+  .ctx-item .icon { width: 16px; text-align: center; font-size: 12px; }
+  .ctx-item .shortcut { margin-left: auto; font-size: 11px; color: #5a5f68; }
+  .ctx-separator { height: 1px; background: #2a2e37; margin: 4px 0; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🔍 OmniFind</h1>
-  <div class="sub">本地全能搜索 · 文件名 + 全文 + 语义 · 全离线</div>
-  <div class="searchbar">
-    <input id="q" placeholder="输入关键词搜索…" autofocus>
-    <button onclick="doSearch()">搜索</button>
+
+<!-- 顶部 -->
+<div class="header">
+  <div class="header-top">
+    <h1>🔍 OmniFind</h1>
+    <span class="sub">本地全能搜索 · 文件名 + 全文 + 语义</span>
+    <div class="searchbar">
+      <input id="q" placeholder="输入关键词搜索… (Ctrl+F 聚焦)" autofocus autocomplete="off">
+      <div class="search-history" id="searchHistory">
+        <div class="history-header">
+          <span>搜索历史</span>
+          <span class="clear" onclick="clearHistory(event)">清空</span>
+        </div>
+        <div id="historyList"></div>
+      </div>
+      <button id="searchBtn" onclick="doSearch()">搜索</button>
+    </div>
   </div>
-  <div class="hint">
-    语法:<code>filename:报告</code> 文件名 ·
-    <code>re:\.pdf$</code> 文件名正则 ·
-    <code>content:预算</code> 正文 ·
-    <code>?去年的项目计划</code> 语义 ·
-    <code>all:xxx</code> 聚合
-  </div>
-  <div class="status" id="status">加载中…</div>
-  <div id="results"></div>
+  <div class="hint-row">
+      <div class="hint">
+        语法:
+        <code onclick="fillQuery('filename:')">filename:</code> 文件名 ·
+        <code onclick="fillQuery('re:\\.pdf$')">re:</code> 正则 ·
+        <code onclick="fillQuery('content:')">content:</code> 正文 ·
+        <code onclick="fillQuery('?')">?</code> 语义 ·
+        <code onclick="fillQuery('all:')">all:</code> 聚合 ·
+        <code onclick="fillQuery('ext:.py ')">ext:</code> 类型 ·
+        <code onclick="fillQuery('sort:time ')">sort:</code> 排序
+      </div>
+      <div class="status" id="status">加载中…</div>
+    </div>
 </div>
+
+<!-- 主内容 -->
+<div class="main">
+  <!-- 左侧：结果列表 -->
+  <div class="panel-left" id="panelLeft">
+    <!-- 类型筛选条 -->
+    <div class="filter-bar" id="filterBar" style="display:none;">
+      <div class="filter-tag active" data-filter="all" onclick="setFilter('all')">全部 <span class="count" id="f-all">0</span></div>
+      <div class="filter-tag" data-filter="l1" onclick="setFilter('l1')">📍 文件名 <span class="count" id="f-l1">0</span></div>
+      <div class="filter-tag" data-filter="l2" onclick="setFilter('l2')">📄 全文 <span class="count" id="f-l2">0</span></div>
+      <div class="filter-tag" data-filter="l3" onclick="setFilter('l3')">🧠 语义 <span class="count" id="f-l3">0</span></div>
+      <div style="width:1px;background:#2a2e37;margin:2px 4px;"></div>
+      <div class="filter-tag" data-ext="" onclick="setExtFilter('')" id="ext-all">📁 全部类型</div>
+      <div class="filter-tag" data-ext=".py" onclick="setExtFilter('.py')">🐍 Python</div>
+      <div class="filter-tag" data-ext=".md" onclick="setExtFilter('.md')">📝 Markdown</div>
+      <div class="filter-tag" data-ext=".txt" onclick="setExtFilter('.txt')">📄 文本</div>
+      <div class="filter-tag" data-ext=".js" onclick="setExtFilter('.js')">⚡ JS</div>
+      <div class="filter-tag" data-ext=".json" onclick="setExtFilter('.json')">📋 JSON</div>
+      <div class="filter-tag" data-ext=".html" onclick="setExtFilter('.html')">🌐 HTML</div>
+      <div class="filter-tag" data-ext=".css" onclick="setExtFilter('.css')">🎨 CSS</div>
+    </div>
+    <div class="list-header" id="listHeader" style="display:none;">
+      <span>共 <span class="count" id="hitCount">0</span> 条结果</span>
+      <span class="mode-badge" id="modeBadge"></span>
+      <div class="spacer"></div>
+      <select class="sort-select" id="sortSelect" onchange="onSortChange()" title="排序方式">
+        <option value="score">相关度</option>
+        <option value="time_desc">最新修改</option>
+        <option value="time_asc">最早修改</option>
+        <option value="size_desc">最大文件</option>
+        <option value="size_asc">最小文件</option>
+      </select>
+      <span style="font-size:10px;color:#4a4f58;">双击打开 · 右键菜单</span>
+    </div>
+    <!-- Loading 状态 -->
+    <div class="list-loading" id="listLoading" style="display:none;">
+      <div class="spinner"></div>
+      <div class="msg" id="loadingMsg">正在搜索…</div>
+      <div class="progress-bar"><div class="fill"></div></div>
+    </div>
+    <!-- 结果列表 -->
+    <div class="result-list" id="resultList"></div>
+    <!-- 空状态 -->
+    <div class="empty-state" id="emptyState">
+      <div class="icon">📂</div>
+      <div class="text" id="emptyText">输入关键词开始搜索</div>
+    </div>
+  </div>
+
+  <!-- 可拖拽分隔条 -->
+  <div class="resizer" id="resizer"></div>
+
+  <!-- 右侧：预览面板 -->
+  <div class="panel-right" id="panelRight">
+    <div class="preview-header" id="previewHeader" style="display:none;">
+      <span class="file-icon" id="previewIcon">📄</span>
+      <span class="file-name" id="previewFileName" title=""></span>
+      <div class="preview-actions">
+        <button onclick="copyPreviewContent()" title="复制内容">📋 复制</button>
+        <button onclick="openCurrentFile()" title="打开文件">📂 打开</button>
+        <button onclick="revealCurrentFile()" title="所在位置">📍 定位</button>
+      </div>
+    </div>
+    <div class="preview-body" id="previewBody">
+      <div class="preview-placeholder">
+        <div class="icon">👆</div>
+        <div class="text">选择左侧结果查看内容预览</div>
+        <div style="font-size:11px;color:#3a3e47;margin-top:8px;">
+          快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- 右键菜单 -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxOpen()"><span class="icon">📂</span>打开文件<span class="shortcut">Enter</span></div>
+  <div class="ctx-item" onclick="ctxReveal()"><span class="icon">📍</span>打开所在位置<span class="shortcut">Ctrl+E</span></div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="ctxCopyPath()"><span class="icon">📋</span>复制路径<span class="shortcut">Ctrl+C</span></div>
+  <div class="ctx-item" onclick="ctxCopyName()"><span class="icon">🏷️</span>复制文件名</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="ctxSearchContent()"><span class="icon">🔍</span>在正文中搜索<span class="shortcut">Ctrl+S</span></div>
+</div>
+
 <script>
+/* ========== 工具函数 ========== */
+function escapeHtml(s) {
+  return (s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 2000);
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('已复制到剪贴板', 'success');
+    return true;
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('已复制到剪贴板', 'success');
+    return true;
+  }
+}
+
+/** 提取搜索关键词用于高亮 */
+function extractKeywords(query) {
+  const q = (query || '').trim();
+  if (!q) return [];
+  let keywords = [];
+
+  const prefixMatch = q.match(/^(filename|content|all|re|name):(.+)$/);
+  if (prefixMatch) {
+    if (prefixMatch[1] === 're') return [];
+    keywords.push(prefixMatch[2].trim());
+  } else if (q.startsWith('?')) {
+    keywords.push(q.substring(1).trim());
+  } else {
+    keywords.push(q);
+  }
+
+  return keywords.filter(k => k.length > 1);
+}
+
+/** 对文本中的关键词进行高亮 */
+function highlightText(text, keywords) {
+  if (!text || !keywords || keywords.length === 0) return escapeHtml(text);
+  let escaped = escapeHtml(text);
+  keywords.forEach(kw => {
+    if (!kw || kw.length < 1) return;
+    try {
+      const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      escaped = escaped.replace(regex, '<span class="hl">$&</span>');
+    } catch(e) {}
+  });
+  return escaped;
+}
+
+/** 获取文件图标 */
+function getFileIcon(path) {
+  if (!path) return '📄';
+  const ext = path.split('.').pop().toLowerCase();
+  const icons = {
+    pdf: '📕', doc: '📘', docx: '📘', xls: '📗', xlsx: '📗',
+    ppt: '📙', pptx: '📙', txt: '📝', md: '📝', py: '🐍', js: '⚡',
+    ts: '💎', java: '☕', go: '🐹', rs: '🦀', c: '⚙️', cpp: '⚙️',
+    h: '📋', hpp: '📋', css: '🎨', html: '🌐', json: '📋', xml: '📋',
+    yaml: '📋', yml: '📋', sh: '🖥️', bat: '🖥️', sql: '🗃️',
+    png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️',
+    mp4: '🎬', mp3: '🎵', zip: '📦', rar: '📦', exe: '⚙️', dll: '🔧'
+  };
+  return icons[ext] || '📄';
+}
+
+/** 格式化文件大小 */
+function formatSize(bytes) {
+  if (!bytes || bytes <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+  return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+/** 格式化时间 */
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
+  return d.toLocaleDateString();
+}
+
+/* ========== 状态管理 ========== */
+let currentHits = [];
+let filteredHits = [];
+let activeIndex = -1;
+let currentFilter = 'all';
+let currentExtFilter = '';
+let currentSort = 'score';
+let ctxIndex = -1;
+const HISTORY_KEY = 'omnifind_search_history';
+const MAX_HISTORY = 20;
+
+/* ========== 搜索历史 ========== */
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+function saveHistory(query) {
+  if (!query || !query.trim()) return;
+  let history = getHistory();
+  history = history.filter(h => h !== query.trim());
+  history.unshift(query.trim());
+  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:#4a4f58;font-size:12px;">暂无搜索历史</div>';
+    return;
+  }
+  list.innerHTML = history.map((q, i) => `
+    <div class="history-item" onclick="fillQuery('${escapeHtml(q).replace(/'/g, "\\'")}')">
+      <span class="icon">⏱️</span>
+      <span class="text">${escapeHtml(q)}</span>
+      <span class="del" onclick="event.stopPropagation();removeHistory(${i})">✕</span>
+    </div>
+  `).join('');
+}
+
+function removeHistory(index) {
+  let history = getHistory();
+  history.splice(index, 1);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function clearHistory(e) {
+  e.stopPropagation();
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+  showToast('已清空搜索历史');
+}
+
+function fillQuery(q) {
+  const input = document.getElementById('q');
+  input.value = q;
+  input.focus();
+  document.getElementById('searchHistory').classList.remove('show');
+}
+
+/* ========== 加载索引状态 ========== */
 async function loadStatus() {
   try {
     const r = await fetch('/api/status');
     const s = await r.json();
     document.getElementById('status').textContent =
-      `索引状态 · 文件名 ${s.l1_count} · 全文 ${s.l2_count} · 语义 ${s.l3_count} · 扫描根 ${(s.scan_roots||[]).join(', ')}`;
-  } catch(e) { document.getElementById('status').textContent = '状态获取失败'; }
+      `L1 ${s.l1_count||0} · L2 ${s.l2_count||0} · L3 ${s.l3_count||0}`;
+  } catch(e) {
+    document.getElementById('status').textContent = '状态获取失败';
+  }
 }
+
+/* ========== 搜索功能 ========== */
+let searchAbortController = null;
+
 async function doSearch() {
   const q = document.getElementById('q').value.trim();
-  const box = document.getElementById('results');
-  if (!q) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="empty">搜索中…</div>';
+  const btn = document.getElementById('searchBtn');
+  const listEl = document.getElementById('resultList');
+  const loadingEl = document.getElementById('listLoading');
+  const emptyEl = document.getElementById('emptyState');
+  const headerEl = document.getElementById('listHeader');
+  const filterBar = document.getElementById('filterBar');
+
+  document.getElementById('searchHistory').classList.remove('show');
+
+  if (!q) {
+    resetUI();
+    return;
+  }
+
+  saveHistory(q);
+
+  if (searchAbortController) searchAbortController.abort();
+  searchAbortController = new AbortController();
+
+  btn.classList.add('loading');
+  loadingEl.style.display = 'flex';
+  listEl.innerHTML = '';
+  emptyEl.style.display = 'none';
+  headerEl.style.display = 'none';
+  filterBar.style.display = 'none';
+
+  resetPreview();
+
+  // 构建带筛选和排序的查询
+  let searchQuery = q;
+  if (currentExtFilter && !searchQuery.match(/\bext:/i)) {
+    searchQuery += ' ext:' + currentExtFilter;
+  }
+  if (currentSort !== 'score' && !searchQuery.match(/\bsort:/i)) {
+    searchQuery += ' sort:' + currentSort;
+  }
+
   try {
-    const r = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=50');
+    const r = await fetch('/api/search?q=' + encodeURIComponent(searchQuery) + '&limit=200',
+      { signal: searchAbortController.signal });
     const data = await r.json();
+
+    btn.classList.remove('loading');
+    loadingEl.style.display = 'none';
+
+    let modeLabel = data.mode || 'unknown';
+    if (data.mode === 'auto_fallback_l1') modeLabel = 'auto → L1文件名';
+    else if (data.mode === 'auto') modeLabel = 'auto → L2全文';
+    else if (data.mode === 'fulltext') modeLabel = 'L2全文';
+    else if (data.mode === 'filename') modeLabel = 'L1文件名';
+    else if (data.mode === 'filename_regex') modeLabel = '正则';
+    else if (data.mode === 'all') modeLabel = '聚合';
+    else if (data.mode === 'semantic') modeLabel = 'L3语义';
+    else if (data.mode === 'error') modeLabel = '错误';
+
     if (!data.hits || !data.hits.length) {
-      box.innerHTML = '<div class="empty">未找到结果 · 模式:' + data.mode + '</div>';
+      headerEl.style.display = 'none';
+      filterBar.style.display = 'none';
+      emptyEl.style.display = 'flex';
+      let emptyMsg = '未找到匹配结果';
+      if (data.counts && data.counts.error) {
+        emptyMsg += '<br><span class="error-text">' + escapeHtml(data.counts.error) + '</span>';
+      } else {
+        emptyMsg += '<br><span style="color:#5a5f68;font-size:12px;">模式: ' + escapeHtml(modeLabel) + '</span>';
+      }
+      document.getElementById('emptyText').innerHTML = emptyMsg;
+      currentHits = [];
+      filteredHits = [];
+      activeIndex = -1;
       return;
     }
-    box.innerHTML = data.hits.map(h => `
-      <div class="hit">
-        <div><span class="badge ${h.layer}">${h.layer.toUpperCase()}</span>
-             <span class="title">${escapeHtml(h.title || h.path)}</span></div>
-        <div class="path">${escapeHtml(h.path)}</div>
-        ${h.snippet ? '<div class="snippet">' + h.snippet + '</div>' : ''}
-      </div>`).join('');
-  } catch(e) { box.innerHTML = '<div class="empty">搜索出错:' + e + '</div>'; }
+
+    currentHits = data.hits;
+    activeIndex = -1;
+
+    headerEl.style.display = 'flex';
+    filterBar.style.display = 'flex';
+    document.getElementById('hitCount').textContent = data.hits.length;
+    document.getElementById('modeBadge').textContent = modeLabel;
+    emptyEl.style.display = 'none';
+
+    const l1Count = data.hits.filter(h => h.layer === 'l1').length;
+    const l2Count = data.hits.filter(h => h.layer === 'l2').length;
+    const l3Count = data.hits.filter(h => h.layer === 'l3').length;
+    document.getElementById('f-all').textContent = data.hits.length;
+    document.getElementById('f-l1').textContent = l1Count;
+    document.getElementById('f-l2').textContent = l2Count;
+    document.getElementById('f-l3').textContent = l3Count;
+
+    setFilter(currentFilter, false);
+
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    btn.classList.remove('loading');
+    loadingEl.style.display = 'none';
+    emptyEl.style.display = 'flex';
+    document.getElementById('emptyText').innerHTML =
+      '<span class="error-text">搜索出错: ' + escapeHtml(String(e)) + '</span>';
+  }
 }
-function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+/* ========== 类型筛选 ========== */
+function setFilter(filter, save) {
+  if (save !== false) currentFilter = filter;
+  document.querySelectorAll('.filter-tag[data-filter]').forEach(el => {
+    el.classList.toggle('active', el.dataset.filter === filter);
+  });
+
+  if (filter === 'all') {
+    filteredHits = currentHits;
+  } else {
+    filteredHits = currentHits.filter(h => h.layer === filter);
+  }
+
+  renderResults();
+}
+
+function setExtFilter(ext) {
+  currentExtFilter = ext;
+  // 更新文件类型筛选按钮状态
+  document.querySelectorAll('.filter-tag[data-ext]').forEach(el => {
+    el.classList.toggle('active', el.dataset.ext === ext);
+  });
+  // 重新搜索
+  doSearch();
+}
+
+function onSortChange() {
+  const select = document.getElementById('sortSelect');
+  currentSort = select.value;
+  // 重新搜索
+  doSearch();
+}
+
+function renderResults() {
+  const listEl = document.getElementById('resultList');
+  const keywords = extractKeywords(document.getElementById('q').value.trim());
+
+  if (filteredHits.length === 0) {
+    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#5a5f68;font-size:12px;">该分类下无结果</div>';
+    return;
+  }
+
+  listEl.innerHTML = filteredHits.map((h, i) => {
+    const realIdx = currentHits.indexOf(h);
+    return `
+      <div class="hit" data-index="${realIdx}" data-filtered="${i}"
+           onclick="selectHit(${realIdx})" ondblclick="openHit(${realIdx})"
+           oncontextmenu="showCtxMenu(event, ${realIdx})">
+        <div class="hit-actions">
+          <button class="action-btn" onclick="event.stopPropagation();openHit(${realIdx})" title="打开文件">📂</button>
+          <button class="action-btn" onclick="event.stopPropagation();revealHit(${realIdx})" title="所在位置">📍</button>
+          <button class="action-btn" onclick="event.stopPropagation();copyHitPath(${realIdx})" title="复制路径">📋</button>
+        </div>
+        <div class="hit-title">
+          <span class="badge ${h.layer}">${h.layer.toUpperCase()}</span>
+          <span>${highlightText(h.title || h.path.split(/[/\\]/).pop(), keywords)}</span>
+        </div>
+        <div class="hit-path">${escapeHtml(h.path)}</div>
+        ${h.snippet ? '<div class="hit-snippet">' + highlightText(h.snippet, keywords) + '</div>' : ''}
+        <div class="hit-meta">
+          ${h.extra && h.extra.size ? '<span>' + formatSize(h.extra.size) + '</span>' : ''}
+          ${h.extra && h.extra.mtime ? '<span>' + formatTime(h.extra.mtime) + '</span>' : ''}
+          ${h.extra && h.extra.ext ? '<span>' + h.extra.ext + '</span>' : ''}
+          ${h.score !== undefined && h.score > 0 ? '<span>相关度: ' + (h.score * 100).toFixed(0) + '%</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ========== 选中结果 ========== */
+function selectHit(index) {
+  if (index < 0 || index >= currentHits.length) return;
+  activeIndex = index;
+  const hit = currentHits[index];
+
+  document.querySelectorAll('.hit').forEach(el => el.classList.remove('active'));
+  const selectedEl = document.querySelector(`.hit[data-index="${index}"]`);
+  if (selectedEl) {
+    selectedEl.classList.add('active');
+    selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  showPreview(hit);
+}
+
+/* ========== 右键菜单 ========== */
+function showCtxMenu(e, index) {
+  e.preventDefault();
+  ctxIndex = index;
+  const menu = document.getElementById('ctxMenu');
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+  menu.classList.add('show');
+}
+
+function hideCtxMenu() {
+  document.getElementById('ctxMenu').classList.remove('show');
+}
+
+function ctxOpen() { hideCtxMenu(); if (ctxIndex >= 0) openHit(ctxIndex); }
+function ctxReveal() { hideCtxMenu(); if (ctxIndex >= 0) revealHit(ctxIndex); }
+function ctxCopyPath() { hideCtxMenu(); if (ctxIndex >= 0) copyHitPath(ctxIndex); }
+function ctxCopyName() {
+  hideCtxMenu();
+  if (ctxIndex >= 0) {
+    const path = currentHits[ctxIndex].path;
+    const name = path.split(/[/\\]/).pop();
+    copyToClipboard(name);
+  }
+}
+function ctxSearchContent() {
+  hideCtxMenu();
+  if (ctxIndex >= 0) {
+    const path = currentHits[ctxIndex].path;
+    const name = path.split(/[/\\]/).pop();
+    fillQuery('content:' + name);
+    doSearch();
+  }
+}
+
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('scroll', hideCtxMenu, true);
+
+/* ========== 文件操作 ========== */
+async function openHit(index) {
+  if (index < 0 || index >= currentHits.length) return;
+  const hit = currentHits[index];
+  try {
+    const r = await fetch('/api/file/open?path=' + encodeURIComponent(hit.path), { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) showToast('已打开文件', 'success');
+    else showToast(d.error || '打开失败', 'error');
+  } catch(e) {
+    showToast('打开失败: ' + e, 'error');
+  }
+}
+
+async function revealHit(index) {
+  if (index < 0 || index >= currentHits.length) return;
+  const hit = currentHits[index];
+  try {
+    const r = await fetch('/api/file/reveal?path=' + encodeURIComponent(hit.path), { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) showToast('已打开所在位置', 'success');
+    else showToast(d.error || '定位失败', 'error');
+  } catch(e) {
+    showToast('定位失败: ' + e, 'error');
+  }
+}
+
+function copyHitPath(index) {
+  if (index < 0 || index >= currentHits.length) return;
+  copyToClipboard(currentHits[index].path);
+}
+
+function openCurrentFile() {
+  if (activeIndex >= 0) openHit(activeIndex);
+}
+
+function revealCurrentFile() {
+  if (activeIndex >= 0) revealHit(activeIndex);
+}
+
+/* ========== 预览功能 ========== */
+async function showPreview(hit) {
+  const headerEl = document.getElementById('previewHeader');
+  const bodyEl = document.getElementById('previewBody');
+
+  headerEl.style.display = 'flex';
+  document.getElementById('previewIcon').textContent = getFileIcon(hit.path);
+  const name = hit.title || hit.path.split(/[/\\]/).pop() || hit.path;
+  document.getElementById('previewFileName').textContent = name;
+  document.getElementById('previewFileName').title = hit.path;
+
+  const keywords = extractKeywords(document.getElementById('q').value.trim());
+
+  bodyEl.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a5f68;padding:40px 0;gap:10px;">
+      <div class="spinner" style="width:24px;height:24px;border:2px solid #2a2e37;border-top-color:#4c8bf5;border-radius:50%;animation:spin 0.6s linear infinite;"></div>
+      <div style="font-size:12px;">正在读取文件…</div>
+    </div>`;
+
+  try {
+    const r = await fetch('/api/preview?path=' + encodeURIComponent(hit.path));
+    const data = await r.json();
+
+    if (!data.ok) {
+      bodyEl.innerHTML = `<div style="color:#f87171;padding:20px 0;font-size:12px;">
+        ⚠️ 预览失败: ${escapeHtml(data.error || '未知错误')}<br><br>
+        <span style="color:#5a5f68;">${escapeHtml(hit.path)}</span>
+      </div>`;
+      return;
+    }
+
+    if (data.content === null || data.content === undefined) {
+      bodyEl.innerHTML = `<div style="color:#5a5f68;padding:20px 0;display:flex;flex-direction:column;gap:8px;">
+        📄 <b style="color:#e6e6e6;">${escapeHtml(hit.title || hit.path)}</b>
+        <div style="font-size:12px;">${escapeHtml(hit.path)}</div>
+        ${data.message ? '<div style="font-size:11px;margin-top:4px;">' + escapeHtml(data.message) + '</div>' : ''}
+        <div style="font-size:11px;color:#4a4f58;margin-top:4px;">
+          来源: ${escapeHtml(data.source || '-')}
+          ${data.encoding ? ' · 编码: ' + escapeHtml(data.encoding) : ''}
+        </div>
+      </div>`;
+      return;
+    }
+
+    let sourceTag = '';
+    if (data.source === 'file_read') sourceTag = '<span style="font-size:10px;color:#6ea85a;background:rgba(110,168,90,0.1);padding:1px 6px;border-radius:3px;margin-left:8px;">文件读取</span>';
+    else if (data.source && data.source.includes('extract')) sourceTag = '<span style="font-size:10px;color:#b46edc;background:rgba(180,110,220,0.1);padding:1px 6px;border-radius:3px;margin-left:8px;">文档提取</span>';
+
+    let metaInfo = `${formatSize(data.size || 0)}${data.encoding ? ' · ' + data.encoding : ''}${sourceTag}`;
+    if (data.truncated) metaInfo += ' <span style="color:#f59e0b;font-size:10px;">(已截断)</span>';
+
+    bodyEl.innerHTML =
+      `<div style="font-size:10px;color:#4a4f58;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1e2128;">${metaInfo}</div>` +
+      highlightText(data.content, keywords);
+
+    bodyEl.dataset.rawContent = data.content;
+
+  } catch(e) {
+    bodyEl.innerHTML = `<div style="color:#f87171;padding:20px 0;font-size:12px;">
+      ⚠️ 预览请求失败: ${escapeHtml(String(e))}
+    </div>`;
+  }
+}
+
+function copyPreviewContent() {
+  const body = document.getElementById('previewBody');
+  const content = body.dataset.rawContent;
+  if (content) copyToClipboard(content);
+  else showToast('暂无可复制的内容', 'error');
+}
+
+/* ========== 重置UI ========== */
+function resetUI() {
+  document.getElementById('resultList').innerHTML = '';
+  document.getElementById('listHeader').style.display = 'none';
+  document.getElementById('filterBar').style.display = 'none';
+  document.getElementById('listLoading').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('emptyText').innerHTML = '输入关键词开始搜索';
+  currentHits = [];
+  filteredHits = [];
+  activeIndex = -1;
+  currentFilter = 'all';
+  currentExtFilter = '';
+  currentSort = 'score';
+  document.getElementById('sortSelect').value = 'score';
+  // 重置文件类型筛选按钮
+  document.querySelectorAll('.filter-tag[data-ext]').forEach(el => {
+    el.classList.toggle('active', el.dataset.ext === '');
+  });
+  resetPreview();
+}
+
+function resetPreview() {
+  document.getElementById('previewHeader').style.display = 'none';
+  document.getElementById('previewBody').innerHTML = `
+    <div class="preview-placeholder">
+      <div class="icon">👆</div>
+      <div class="text">选择左侧结果查看内容预览</div>
+      <div style="font-size:11px;color:#3a3e47;margin-top:8px;">
+        快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
+      </div>
+    </div>`;
+}
+
+/* ========== 可拖拽调整分栏宽度 ========== */
+(function initResizer() {
+  const resizer = document.getElementById('resizer');
+  const leftPanel = document.getElementById('panelLeft');
+  let isDragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  resizer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = leftPanel.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const diff = e.clientX - startX;
+    const newWidth = Math.max(260, Math.min(startWidth + diff, window.innerWidth - 350));
+    leftPanel.style.width = newWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+/* ========== 搜索历史下拉 ========== */
+document.getElementById('q').addEventListener('focus', () => {
+  renderHistory();
+  document.getElementById('searchHistory').classList.add('show');
+});
+
+document.getElementById('q').addEventListener('blur', () => {
+  setTimeout(() => {
+    document.getElementById('searchHistory').classList.remove('show');
+  }, 200);
+});
+
+/* ========== 键盘快捷键 ========== */
+document.addEventListener('keydown', e => {
+  const q = document.getElementById('q');
+  const isSearchFocused = document.activeElement === q;
+
+  if (e.ctrlKey && e.key === 'f') {
+    e.preventDefault();
+    q.focus();
+    q.select();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (document.getElementById('ctxMenu').classList.contains('show')) {
+      hideCtxMenu();
+      return;
+    }
+    if (isSearchFocused && q.value) {
+      q.value = '';
+      resetUI();
+      return;
+    }
+    if (!isSearchFocused) {
+      q.focus();
+      return;
+    }
+  }
+
+  if (isSearchFocused) {
+    if (e.key === 'ArrowDown' && currentHits.length > 0) {
+      e.preventDefault();
+      const next = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, currentHits.length - 1);
+      selectHit(next);
+    } else if (e.key === 'ArrowUp' && currentHits.length > 0) {
+      e.preventDefault();
+      const prev = Math.max(activeIndex - 1, 0);
+      selectHit(prev);
+    } else if (e.key === 'Enter' && activeIndex >= 0 && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      openHit(activeIndex);
+    }
+  }
+
+  if (e.ctrlKey && e.key === 'c' && activeIndex >= 0 && !isSearchFocused) {
+    e.preventDefault();
+    copyHitPath(activeIndex);
+  }
+
+  if (e.ctrlKey && e.key === 'e' && activeIndex >= 0) {
+    e.preventDefault();
+    revealHit(activeIndex);
+  }
+});
+
+// 初始化
 loadStatus();
+renderHistory();
 </script>
 </body>
 </html>
