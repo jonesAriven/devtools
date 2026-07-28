@@ -228,8 +228,6 @@
 
     <div id="recordsTab" class="tab-content">
         <div class="toolbar">
-            <input type="checkbox" id="selectAllRecords" onclick="toggleSelectAll(this)" title="全选/取消全选本页">
-            <label for="selectAllRecords" style="cursor:pointer;font-size:13px;margin-right:8px;">全选</label>
             <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/别名..." onkeydown="if(event.key==='Enter')loadRecords(1)">
             <select id="recStatus">
                 <option value="">全部状态</option>
@@ -237,7 +235,6 @@
                 <option value="expired">已过期</option>
             </select>
             <button class="btn-primary" id="btnRecQuery" onclick="loadRecords(1)">查询</button>
-            <button class="btn-danger" id="btnBatchDelete" onclick="batchDeleteRecords()" style="display:none;" title="删除选中的记录">批量删除 (<span id="selectedCount">0</span>)</button>
         </div>
         <div class="query-status" id="recStatus_msg"></div>
         <div class="stats">
@@ -269,6 +266,11 @@
                 <tbody id="recordsBody"></tbody>
             </table>
             <div class="empty" id="recordsEmpty" style="display:none;">暂无数据</div>
+            <div class="batch-actions" id="batchActionsBar" style="display:none;padding:8px 0;border-top:1px solid #e8e8e8;display:flex;align-items:center;gap:10px;">
+                <span style="font-size:13px;color:#666;">已选 <strong id="selectedCount2" style="color:#f5222d">0</strong> 项</span>
+                <button class="btn-sm btn-danger" onclick="batchDeleteRecords()" title="删除选中的记录">批量删除</button>
+                <button class="btn-sm btn-default" onclick="clearSelection()" style="padding:2px 8px;font-size:12px;border:1px solid #d9d9d9;background:#fff;cursor:pointer;border-radius:3px;">取消选择</button>
+            </div>
             <div class="pagination" id="recPagination"></div>
         </div>
     </div>
@@ -1011,25 +1013,30 @@
 
         function updateBatchDeleteBtn() {
             const checked = document.querySelectorAll('.row-checkbox:checked');
-            const btn = document.getElementById('btnBatchDelete');
-            const countEl = document.getElementById('selectedCount');
-            const selectAllCb = document.getElementById('selectAllRecords');
+            const bar = document.getElementById('batchActionsBar');
+            const countEl = document.getElementById('selectedCount2');
             const thSelectAllCb = document.getElementById('thSelectAll');
             
             if (checked.length > 0) {
-                btn.style.display = 'inline-block';
+                bar.style.display = 'flex';
                 countEl.textContent = checked.length;
             } else {
-                btn.style.display = 'none';
+                bar.style.display = 'none';
             }
             
-            // Sync select-all state
+            // Sync table-header select-all state
             const allCheckboxes = document.querySelectorAll('.row-checkbox');
             if (allCheckboxes.length > 0) {
                 const allChecked = checked.length === allCheckboxes.length;
-                if (selectAllCb) selectAllCb.checked = allChecked;
                 if (thSelectAllCb) thSelectAllCb.checked = allChecked;
             }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            const thSelectAllCb = document.getElementById('thSelectAll');
+            if (thSelectAllCb) thSelectAllCb.checked = false;
+            updateBatchDeleteBtn();
         }
 
         async function batchDeleteRecords() {
