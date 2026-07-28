@@ -829,6 +829,7 @@
                     <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
                     <p><span class="pl">机器码：</span><span class="pv">${data.machineCode || '-'}</span></p>
                 `;
+                // 有记录时显示完整信息；无记录但有解析出的 deviceId 也显示
                 if (data.recordId) {
                     html += `
                         <hr style="margin:8px 0;border-color:#e8e8e8;">
@@ -841,6 +842,12 @@
                         <p><span class="pl">状态：</span><span class="pv" style="color:${data.expired ? '#dc2626' : '#16a34a'}">${data.expired ? '已过期' : '有效'}</span></p>
                     `;
                 } else {
+                    if (data.deviceId) {
+                        html += `
+                            <hr style="margin:8px 0;border-color:#e8e8e8;">
+                            <p><span class="pl">设备ID（从序列号解析）：</span><span class="pv">${data.deviceId}</span></p>
+                        `;
+                    }
                     html += `<p style="color:#aaa;margin-top:8px;">数据库中未找到此序列号的记录</p>`;
                 }
                 resultDiv.innerHTML = html;

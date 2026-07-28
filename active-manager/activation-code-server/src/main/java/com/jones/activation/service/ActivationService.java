@@ -393,13 +393,39 @@ public class ActivationService {
 
     public java.util.Map<String, Object> parseSerialNumberInfo(String serialNumber) {
         java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
-        String[] parsed = parseSerialNumber(serialNumber);
         map.put("serialNumber", serialNumber);
-        map.put("initialSerial", parsed[0]);
-        map.put("machineCode", parsed[1]);
+
+        // 先尝试解密序列号（兼容加密格式：Base64 XOR编码）
+        String initialSerial;
+        String machineCode;
+        String parsedDeviceId = null;
+
+        CryptoUtil.SerialNumberParseResult decryptResult = CryptoUtil.decryptSerialNumber(serialNumber);
+        if (decryptResult.isSuccess()) {
+            // 解密成功：返回结构化的初始序列号、设备ID、机器码
+            initialSerial = decryptResult.getInitialSerial();
+            machineCode = decryptResult.getMachineCode();
+            parsedDeviceId = decryptResult.getDeviceId();
+            log.info("解析序列号(解密成功): 初始序列号={}, 机器码={}, 设备ID={}", initialSerial, machineCode, parsedDeviceId);
+        } else {
+            // 解密失败：降级为明文格式（按最后一个 '-' 分割，如 SOFT001-AA-BB-CC-DD-EE-FF）
+            String[] parsed = parseSerialNumber(serialNumber);
+            initialSerial = parsed[0];
+            machineCode = parsed[1];
+            log.info("解析序列号(明文模式): 初始序列号={}, 机器码={}", initialSerial, machineCode);
+        }
+
+        map.put("initialSerial", initialSerial);
+        map.put("machineCode", machineCode);
+
+        // 查询数据库记录时使用解密后重组的 serialNumber（与 generateActivationCode 保持一致）
+        String dbSerialNumber = serialNumber;
+        if (decryptResult.isSuccess()) {
+            dbSerialNumber = initialSerial + "-" + machineCode;
+        }
 
         LambdaQueryWrapper<ActivationRecord> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ActivationRecord::getSerialNumber, serialNumber);
+        queryWrapper.eq(ActivationRecord::getSerialNumber, dbSerialNumber);
         ActivationRecord record = activationRecordMapper.selectOne(queryWrapper);
         if (record != null) {
             map.put("recordId", record.getId());
@@ -409,6 +435,9 @@ public class ActivationService {
             map.put("activatedTime", record.getActivatedTime() != null ? record.getActivatedTime().toString() : null);
             map.put("createTime", record.getCreateTime() != null ? record.getCreateTime().toString() : null);
             map.put("expired", record.getExpireTime() < System.currentTimeMillis());
+        } else if (parsedDeviceId != null && !parsedDeviceId.isEmpty()) {
+            // 数据库无记录时，仍返回从序列号中解析出的 deviceId
+            map.put("deviceId", parsedDeviceId);
         }
         return map;
     }
