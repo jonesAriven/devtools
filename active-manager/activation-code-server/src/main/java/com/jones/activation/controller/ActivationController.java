@@ -97,6 +97,20 @@ public class ActivationController {
         return activationService.updateDeviceAlias(id, alias);
     }
 
+
+    @GetMapping("/config/default-expire")
+    public Map<String, Object> getDefaultExpireConfig() {
+        log.info("获取默认有效期配置");
+        return activationService.getDefaultExpireConfig();
+    }
+
+    @PutMapping("/config/default-expire")
+    public Map<String, Object> updateDefaultExpireConfig(@RequestBody Map<String, Object> body) {
+        int minutes = Integer.parseInt(body.getOrDefault("expireMinutes", "43200").toString());
+        log.info("更新默认有效期配置: {} 分钟", minutes);
+        return activationService.updateDefaultExpireConfig(minutes);
+    }
+
     @GetMapping("/version-check")
     public Map<String, Object> getVersionCheckConfig() {
         log.info("获取版本校验配置");

@@ -65,7 +65,7 @@
 
             <div class="form-group">
                 <label>有效期</label>
-                <span class="expire-tag">1 个月</span>
+                <span class="expire-tag" id="defaultExpireTag">加载中...</span>
             </div>
 
             <button class="btn-generate" id="btnGenerate" onclick="generateCode()">生成激活码</button>
@@ -76,7 +76,7 @@
 
     <script>
         // Fixed: 1 month = 30 days = 43200 minutes
-        const EXPIRE_MINUTES = 43200;
+        // 有效期由后端根据管理页面设置的默认值决定
 
         // Auto-fill serial number from URL parameter ?sn=xxx
         (function() {
@@ -115,7 +115,7 @@
                 const resp = await fetch('/activecode/api/activation/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ serialNumber, expireMinutes: EXPIRE_MINUTES })
+                    body: JSON.stringify({ serialNumber })  // 不传expireMinutes，后端使用系统配置的默认值
                 });
                 const data = await resp.json();
                 if (data.success) {
@@ -131,7 +131,7 @@
                         <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
                         ${infoHtml}
                         <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
-                        <p><span class="rl">有效期：</span><span class="rv">1 个月</span></p>
+                        <p><span class="rl">有效期：</span><span class="rv">' + (data.expireLabel || formatExpireFromMinutes(data.expireMinutes)) + '</span></p>
                         <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
                         <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
                     `);

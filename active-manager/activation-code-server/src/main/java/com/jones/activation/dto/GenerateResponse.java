@@ -12,6 +12,10 @@ public class GenerateResponse {
     private String machineCode;
     private String downloadUrl;
     private String clientVersion;
+        private Integer expireMinutes;
+        private String expireLabel;
+    private Integer expireMinutes;
+    private String expireLabel;
 
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
@@ -43,6 +47,12 @@ public class GenerateResponse {
     public String getClientVersion() { return clientVersion; }
     public void setClientVersion(String clientVersion) { this.clientVersion = clientVersion; }
 
+    public Integer getExpireMinutes() { return expireMinutes; }
+    public void setExpireMinutes(Integer expireMinutes) { this.expireMinutes = expireMinutes; }
+
+    public String getExpireLabel() { return expireLabel; }
+    public void setExpireLabel(String expireLabel) { this.expireLabel = expireLabel; }
+
     public static GenerateResponseBuilder builder() {
         return new GenerateResponseBuilder();
     }
@@ -69,6 +79,8 @@ public class GenerateResponse {
         public GenerateResponseBuilder machineCode(String machineCode) { this.machineCode = machineCode; return this; }
         public GenerateResponseBuilder downloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; return this; }
         public GenerateResponseBuilder clientVersion(String clientVersion) { this.clientVersion = clientVersion; return this; }
+        public GenerateResponseBuilder expireMinutes(Integer expireMinutes) { this.expireMinutes = expireMinutes; return this; }
+        public GenerateResponseBuilder expireLabel(String expireLabel) { this.expireLabel = expireLabel; return this; }
 
         public GenerateResponse build() {
             GenerateResponse response = new GenerateResponse();
@@ -82,6 +94,8 @@ public class GenerateResponse {
             response.setMachineCode(machineCode);
             response.setDownloadUrl(downloadUrl);
             response.setClientVersion(clientVersion);
+            response.setExpireMinutes(expireMinutes);
+            response.setExpireLabel(expireLabel);
             return response;
         }
     }

@@ -88,7 +88,15 @@ public class ActivationService {
             return versionCheck;
         }
 
-        int expireMinutes = request.getExpireMinutes() != null ? request.getExpireMinutes() : 525600;
+        int expireMinutes;
+        if (request.getExpireMinutes() != null && request.getExpireMinutes() > 0) {
+            expireMinutes = request.getExpireMinutes();
+        } else {
+            // 从系统配置读取默认有效期，未配置则默认1个月(43200分钟)
+            String configured = getConfigValue("default-expire-minutes", "43200");
+            expireMinutes = Integer.parseInt(configured);
+            log.info("使用系统配置的默认有效期: {} 分钟", expireMinutes);
+        }
         if (expireMinutes <= 0) {
             log.warn("生成激活码失败: 过期分钟数无效, expireMinutes={}", expireMinutes);
             return GenerateResponse.builder()
@@ -166,6 +174,8 @@ public class ActivationService {
                 .deviceId(deviceId)
                 .initialSerial(initialSerial)
                 .machineCode(machineCode)
+                .expireMinutes(expireMinutes)
+                .expireLabel(formatExpireLabel(expireMinutes))
                 .build();
     }
 

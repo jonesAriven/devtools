@@ -195,6 +195,25 @@
             <div id="vcResult" class="result-box"></div>
         </div>
 
+        <!-- 默认有效期配置（使用页面index.html的默认有效期） -->
+        <div class="section">
+            <h3>⏱ 默认有效期设置</h3>
+            <p style="font-size:12px;color:#888;margin-bottom:14px;">设置使用页面（index.html）生成激活码时的默认有效期。管理页面手动生成时仍可单独指定。</p>
+            <div class="form-group">
+                <label>当前默认有效期：<strong id="currentDefaultExpire" style="color:#667eea">加载中...</strong></label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                    <button class="btn-sm btn-info" onclick="setDefaultExpire(43200)" title="1个月">1个月</button>
+                    <button class="btn-sm btn-info" onclick="setDefaultExpire(129600)" title="3个月">3个月</button>
+                    <button class="btn-sm btn-info" onclick="setDefaultExpire(525600)" title="1年">1年</button>
+                    <button class="btn-sm btn-info" onclick="setDefaultExpire(1051200)" title="2年">2年</button>
+                    <span style="font-size:12px;color:#999;display:flex;align-items:center;">或自定义：</span>
+                    <input type="number" id="customDefaultExpire" min="1" max="5256000" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid #d9d9d9;border-radius:4px;" placeholder="分钟数">
+                    <button class="btn-sm btn-primary" onclick="saveCustomDefaultExpire()">保存</button>
+                </div>
+            </div>
+            <div id="defaultExpireResult" class="result-box"></div>
+        </div>
+
         <div class="section">
             <h3>生成激活码</h3>
             <div class="form-group">
@@ -352,7 +371,51 @@
         let currentTime = Date.now();
         const tabNames = ['tool', 'records', 'logs', 'parse'];
 
-        function setAdminExpire(minutes) {
+        
+        // ===== 默认有效期配置（使用页面） =====
+        let defaultExpireMinutes = 43200;
+
+        function loadDefaultExpireConfig() {
+            fetch('/activecode/api/activation/config/default-expire')
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        defaultExpireMinutes = d.defaultExpireMinutes;
+                        document.getElementById('currentDefaultExpire').textContent = d.defaultExpireLabel + ' (' + d.defaultExpireMinutes + ' 分钟)';
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function setDefaultExpire(minutes) {
+            fetch('/activecode/api/activation/config/default-expire', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expireMinutes: minutes })
+            })
+            .then(r => r.json())
+            .then(d => {
+                const div = document.getElementById('defaultExpireResult');
+                if (d.success) {
+                    defaultExpireMinutes = d.defaultExpireMinutes;
+                    document.getElementById('currentDefaultExpire').textContent = d.defaultExpireLabel + ' (' + d.defaultExpireMinutes + ' 分钟)';
+                    div.className = 'result-box success';
+                    div.innerHTML = '<p style="color:#16a34a;">✅ 默认有效期已更新为 ' + d.defaultExpireLabel + '</p>';
+                } else {
+                    div.className = 'result-box error';
+                    div.innerHTML = '<p style="color:#dc2626;">❌ ' + (d.message || '更新失败') + '</p>';
+                }
+                setTimeout(() => { div.innerHTML = ''; div.className = 'result-box'; }, 3000);
+            });
+        }
+
+        function saveCustomDefaultExpire() {
+            const val = parseInt(document.getElementById('customDefaultExpire').value);
+            if (!val || val <= 0) { alert('请输入有效的分钟数'); return; }
+            setDefaultExpire(val);
+        }
+
+function setAdminExpire(minutes) {
             document.getElementById('genExpireMinutes').value = minutes;
         }
 
@@ -363,6 +426,8 @@
             document.querySelectorAll('.tab-btn')[idx].classList.add('active');
             document.getElementById(tab + 'Tab').classList.add('active');
             if (tab === 'records') loadRecords();
+        // 加载默认有效期配置
+        loadDefaultExpireConfig();
             else if (tab === 'logs') loadLogs();
         }
 

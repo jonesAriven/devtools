@@ -33,3 +33,13 @@ CREATE TABLE IF NOT EXISTS activation_log (
     INDEX idx_event_type (event_type),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sys_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    config_key VARCHAR(128) NOT NULL UNIQUE,
+    config_value TEXT DEFAULT NULL,
+    config_group VARCHAR(64) DEFAULT 'general',
+    remark VARCHAR(256) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
