@@ -41,6 +41,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/auth/session",
                         "/activecode/api/activation/verify",
                         "/activecode/api/activation/generate",
+                        "/activecode/api/activation/config/default-expire",
                         "/activecode/index.html",
                         "/activecode/downloads.html",
                         "/activecode/api/download/**",
