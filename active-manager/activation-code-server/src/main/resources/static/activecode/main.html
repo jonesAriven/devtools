@@ -399,10 +399,10 @@
                 if (d.success) {
                     defaultExpireMinutes = d.defaultExpireMinutes;
                     document.getElementById('currentDefaultExpire').textContent = d.defaultExpireLabel + ' (' + d.defaultExpireMinutes + ' 分钟)';
-                    div.className = 'result-box success';
+                    div.className = 'result-box success show';
                     div.innerHTML = '<p style="color:#16a34a;">✅ 默认有效期已更新为 ' + d.defaultExpireLabel + '</p>';
                 } else {
-                    div.className = 'result-box error';
+                    div.className = 'result-box error show';
                     div.innerHTML = '<p style="color:#dc2626;">❌ ' + (d.message || '更新失败') + '</p>';
                 }
                 setTimeout(() => { div.innerHTML = ''; div.className = 'result-box'; }, 3000);
