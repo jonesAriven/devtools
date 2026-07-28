@@ -202,13 +202,13 @@
             <div class="form-group">
                 <label>当前默认有效期：<strong id="currentDefaultExpire" style="color:#667eea">加载中...</strong></label>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-                    <button class="btn-sm btn-info" onclick="setDefaultExpire(43200)" title="1个月">1个月</button>
-                    <button class="btn-sm btn-info" onclick="setDefaultExpire(129600)" title="3个月">3个月</button>
-                    <button class="btn-sm btn-info" onclick="setDefaultExpire(525600)" title="1年">1年</button>
-                    <button class="btn-sm btn-info" onclick="setDefaultExpire(1051200)" title="2年">2年</button>
+                    <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setDefaultExpire(43200)">1个月</button>
+                    <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setDefaultExpire(129600)">3个月</button>
+                    <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setDefaultExpire(525600)">1年</button>
+                    <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setDefaultExpire(1051200)">2年</button>
                     <span style="font-size:12px;color:#999;display:flex;align-items:center;">或自定义：</span>
                     <input type="number" id="customDefaultExpire" min="1" max="5256000" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid #d9d9d9;border-radius:4px;" placeholder="分钟数">
-                    <button class="btn-sm btn-primary" onclick="saveCustomDefaultExpire()">保存</button>
+                    <button class="btn-primary" onclick="saveCustomDefaultExpire()">保存</button>
                 </div>
             </div>
             <div id="defaultExpireResult" class="result-box"></div>
