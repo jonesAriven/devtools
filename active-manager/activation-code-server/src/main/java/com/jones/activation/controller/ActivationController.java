@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/activecode/api/activation")
@@ -74,6 +75,19 @@ public class ActivationController {
         log.info("收到删除激活码记录请求, id: {}", id);
         boolean deleted = activationService.deleteRecord(id);
         return Map.of("success", deleted, "message", deleted ? "删除成功" : "记录不存在");
+    }
+    @DeleteMapping("/batch")
+    public Map<String, Object> batchDelete(@RequestBody List<Long> ids) {
+        log.info("收到批量删除激活码记录请求, ids: {}", ids);
+        if (ids == null || ids.isEmpty()) {
+            return Map.of("success", false, "message", "请选择要删除的记录");
+        }
+        if (ids.size() > 100) {
+            return Map.of("success", false, "message", "单次批量删除不能超过100条");
+        }
+        Map<String, Object> result = activationService.batchDeleteRecords(ids);
+        log.info("批量删除完成, 成功: {}", result.get("deletedCount"));
+        return result;
     }
 
     @PutMapping("/{id}/alias")

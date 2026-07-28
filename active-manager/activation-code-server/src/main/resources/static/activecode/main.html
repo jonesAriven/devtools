@@ -228,6 +228,8 @@
 
     <div id="recordsTab" class="tab-content">
         <div class="toolbar">
+            <input type="checkbox" id="selectAllRecords" onclick="toggleSelectAll(this)" title="全选/取消全选本页">
+            <label for="selectAllRecords" style="cursor:pointer;font-size:13px;margin-right:8px;">全选</label>
             <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/别名..." onkeydown="if(event.key==='Enter')loadRecords(1)">
             <select id="recStatus">
                 <option value="">全部状态</option>
@@ -235,6 +237,7 @@
                 <option value="expired">已过期</option>
             </select>
             <button class="btn-primary" id="btnRecQuery" onclick="loadRecords(1)">查询</button>
+            <button class="btn-danger" id="btnBatchDelete" onclick="batchDeleteRecords()" style="display:none;" title="删除选中的记录">批量删除 (<span id="selectedCount">0</span>)</button>
         </div>
         <div class="query-status" id="recStatus_msg"></div>
         <div class="stats">
@@ -246,6 +249,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th style="width:40px;text-align:center"><input type="checkbox" id="thSelectAll" onclick="toggleSelectAll(this)" title="全选/取消全选"></th>
                         <th>ID</th>
                         <th>序列号</th>
                         <th>初始序列号</th>
@@ -291,6 +295,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th style="width:40px;text-align:center"><input type="checkbox" id="thSelectAll" onclick="toggleSelectAll(this)" title="全选/取消全选"></th>
                         <th>ID</th>
                         <th>关联记录ID</th>
                         <th>序列号</th>
@@ -566,6 +571,7 @@
                     ? `<span class="mono" title="${r.activationCode}">${r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
                     : '-';
                 return `<tr>
+                    <td style="text-align:center"><input type="checkbox" class="row-checkbox" value="${r.id}" onchange="updateBatchDeleteBtn()"></td>
                     <td>${r.id}</td>
                     <td><span class="mono">${r.serialNumber || '-'}</span></td>
                     <td><span class="mono">${r.initialSerial || '-'}</span></td>
@@ -995,6 +1001,67 @@
 
         checkSession();
         loadVersionCheckConfig();
+
+        // ===== 批量删除相关函数 =====
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateBatchDeleteBtn();
+        }
+
+        function updateBatchDeleteBtn() {
+            const checked = document.querySelectorAll('.row-checkbox:checked');
+            const btn = document.getElementById('btnBatchDelete');
+            const countEl = document.getElementById('selectedCount');
+            const selectAllCb = document.getElementById('selectAllRecords');
+            const thSelectAllCb = document.getElementById('thSelectAll');
+            
+            if (checked.length > 0) {
+                btn.style.display = 'inline-block';
+                countEl.textContent = checked.length;
+            } else {
+                btn.style.display = 'none';
+            }
+            
+            // Sync select-all state
+            const allCheckboxes = document.querySelectorAll('.row-checkbox');
+            if (allCheckboxes.length > 0) {
+                const allChecked = checked.length === allCheckboxes.length;
+                if (selectAllCb) selectAllCb.checked = allChecked;
+                if (thSelectAllCb) thSelectAllCb.checked = allChecked;
+            }
+        }
+
+        async function batchDeleteRecords() {
+            const checked = document.querySelectorAll('.row-checkbox:checked');
+            if (checked.length === 0) {
+                showToast('请先选择要删除的记录', 'warning');
+                return;
+            }
+            const ids = Array.from(checked).map(cb => parseInt(cb.value));
+            if (!confirm('确定要删除选中的 ' + ids.length + ' 条记录吗？此操作不可撤销！')) return;
+            
+            try {
+                showToast('正在删除...', 'info', 2000);
+                const resp = await fetch('/activecode/api/activation/batch', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ids)
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showToast(data.message || '批量删除成功', 'success', 3000);
+                    loadRecords(recPage);
+                } else {
+                    showToast(data.message || '批量删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('批量删除失败: ' + (e.message || e), 'error');
+            }
+        }
+
+        // Clear selections when loading new page
+        const _origLoadRec = typeof loadRecords !== 'undefined' ? loadRecords : null;
     </script>
 </body>
 </html>

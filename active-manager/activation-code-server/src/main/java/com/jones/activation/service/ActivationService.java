@@ -336,6 +336,20 @@ public class ActivationService {
     public boolean deleteRecord(Long id) {
         return activationRecordMapper.deleteById(id) > 0;
     }
+    public java.util.Map<String, Object> batchDeleteRecords(java.util.List<Long> ids) {
+        int deletedCount = 0;
+        for (Long id : ids) {
+            int result = activationRecordMapper.deleteById(id);
+            if (result > 0) deletedCount++;
+        }
+        boolean allSuccess = deletedCount == ids.size();
+        return java.util.Map.of(
+            "success", true,
+            "deletedCount", deletedCount,
+            "totalCount", ids.size(),
+            "message", allSuccess ? "成功删除" + deletedCount + "条记录" : "成功删除" + deletedCount + "/" + ids.size() + "条（部分记录不存在）"
+        );
+    }
 
     public java.util.Map<String, Object> updateDeviceAlias(Long id, String alias) {
         ActivationRecord record = activationRecordMapper.selectById(id);
