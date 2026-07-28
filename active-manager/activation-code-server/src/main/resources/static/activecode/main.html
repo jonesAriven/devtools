@@ -426,8 +426,6 @@ function setAdminExpire(minutes) {
             document.querySelectorAll('.tab-btn')[idx].classList.add('active');
             document.getElementById(tab + 'Tab').classList.add('active');
             if (tab === 'records') loadRecords();
-        // 加载默认有效期配置
-        loadDefaultExpireConfig();
             else if (tab === 'logs') loadLogs();
         }
 
@@ -1162,6 +1160,9 @@ function setAdminExpire(minutes) {
 
         // Clear selections when loading new page
         const _origLoadRec = typeof loadRecords !== 'undefined' ? loadRecords : null;
-    </script>
+    
+        // 页面加载时获取默认有效期配置
+        loadDefaultExpireConfig();
+</script>
 </body>
 </html>
