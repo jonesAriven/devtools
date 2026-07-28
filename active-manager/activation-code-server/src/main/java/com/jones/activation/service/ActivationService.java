@@ -703,7 +703,40 @@ public class ActivationService {
         }
     }
 
-    // ==================== 原有方法 ====================
+        private String formatExpireLabel(int minutes) {
+        if (minutes < 60) return minutes + " 分钟";
+        if (minutes < 1440) return (minutes / 60) + " 小时";
+        if (minutes < 43200) return (minutes / 1440) + " 天";
+        double months = Math.round(minutes / 4320.0) / 10.0;
+        if (months < 12) return months + " 个月";
+        return Math.round(months / 12.0 * 10) / 10.0 + " 年";
+    }
+
+    // ===== 默认有效期配置（供使用页面 index.html 调用） =====
+    
+    public Map<String, Object> getDefaultExpireConfig() {
+        String value = getConfigValue("default-expire-minutes", "43200");
+        int minutes = Integer.parseInt(value);
+        Map<String, Object> config = new java.util.LinkedHashMap<>();
+        config.put("defaultExpireMinutes", minutes);
+        config.put("defaultExpireLabel", formatExpireLabel(minutes));
+        config.put("success", true);
+        return config;
+    }
+
+    public Map<String, Object> updateDefaultExpireConfig(int minutes) {
+        if (minutes <= 0) {
+            return Map.of("success", false, "message", "有效期必须大于0分钟");
+        }
+        if (minutes > 5256000) {
+            return Map.of("success", false, "message", "有效期不能超过10年");
+        }
+        updateConfigValue("default-expire-minutes", String.valueOf(minutes));
+        log.info("更新默认有效期配置: {} 分钟", minutes);
+        return getDefaultExpireConfig();
+    }
+
+// ==================== 原有方法 ====================
 
     private String getClientIp() {
         try {

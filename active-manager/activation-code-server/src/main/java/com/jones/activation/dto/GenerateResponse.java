@@ -12,8 +12,6 @@ public class GenerateResponse {
     private String machineCode;
     private String downloadUrl;
     private String clientVersion;
-        private Integer expireMinutes;
-        private String expireLabel;
     private Integer expireMinutes;
     private String expireLabel;
 
@@ -67,7 +65,9 @@ public class GenerateResponse {
         private String initialSerial;
         private String machineCode;
         private String downloadUrl;
-        private String clientVersion;\n        private Integer expireMinutes;\n        private String expireLabel;
+        private String clientVersion;
+        private Integer expireMinutes;
+        private String expireLabel;
 
         public GenerateResponseBuilder success(boolean success) { this.success = success; return this; }
         public GenerateResponseBuilder message(String message) { this.message = message; return this; }
