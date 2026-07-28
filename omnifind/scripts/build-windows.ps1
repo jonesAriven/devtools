@@ -54,7 +54,11 @@ python -m PyInstaller `
     --hidden-import omnifind.layers.l3_semantic.embedder `
     --hidden-import omnifind.web.server `
     --collect-data jieba `
+    --collect-data onnxruntime `
+    --collect-data lancedb `
+    --collect-data tokenizers `
     --add-data "config.yaml;." `
+    --add-data "models/bge-small-zh-v1.5;models/bge-small-zh-v1.5" `
     omnifind\__main__.py
 
 # 4. 打包 omnifind-indexer.exe（SYSTEM 索引服务）
@@ -71,7 +75,14 @@ python -m PyInstaller `
     --hidden-import omnifind.layers.l1_filename.index `
     --hidden-import omnifind.core.config `
     --hidden-import omnifind.core.indexer `
+    --hidden-import omnifind.layers.l3_semantic.index `
+    --hidden-import omnifind.layers.l3_semantic.embedder `
+    --hidden-import omnifind.layers.l3_semantic.builder `
+    --collect-data onnxruntime `
+    --collect-data lancedb `
+    --collect-data tokenizers `
     --add-data "config.yaml;." `
+    --add-data "models/bge-small-zh-v1.5;models/bge-small-zh-v1.5" `
     omnifind\service\indexer_service.py
 
 # 5. 合并两份 dist 到 dist\omnifind（共享 site-packages 等大文件，省磁盘）

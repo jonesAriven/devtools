@@ -59,4 +59,5 @@ def build_semantic_index(cfg: OmniConfig, sem: SemanticIndex,
 
 
 def make_embedder(cfg: OmniConfig) -> OnnxEmbedder:
-    return OnnxEmbedder(cfg.embed_model_path, max_length=cfg.chunk_size)
+    # 空 embed_model_path 时必须回退默认模型目录,否则 L3 永远初始化失败
+    return OnnxEmbedder(cfg.resolved_embed_model_path, max_length=cfg.chunk_size)

@@ -43,8 +43,7 @@ async def lifespan(app: FastAPI):
     l2 = FullTextIndex()
     l3 = None
     try:
-        from pathlib import Path as _P
-        if _P(cfg.embed_model_path).joinpath("model.onnx").exists():
+        if cfg.resolved_embed_model_path.joinpath("model.onnx").exists():
             from omnifind.layers.l3_semantic.builder import make_embedder
             from omnifind.layers.l3_semantic.index import SemanticIndex
             emb = make_embedder(cfg)
@@ -53,7 +52,34 @@ async def lifespan(app: FastAPI):
         print(f"[L3] 语义层不可用(跳过):{e}")
     router = QueryRouter(l1=l1, l2=l2, l3=l3)
     _state.update(cfg=cfg, l1=l1, l2=l2, l3=l3, router=router)
+
+    # 首次自动构建:新机器/空索引时,启动后台构建(不阻塞启动,离线可跑——模型随包走)。
+    # L1/L2 空 -> 触发全量;L3 可用且已配置 semantic_dirs 且空 -> 触发语义构建。
+    try:
+        if l1.count() == 0:
+            start_build("all")          # 含 L3(当且仅当已配置 semantic_dirs)
+        elif l2.count() == 0:
+            start_build("l2")
+        # 独立 L3 首建:L1/L2 已存在但语义库为空
+        if l3 is not None and cfg.semantic_dirs and l3.count() == 0:
+            start_build("l3")
+    except Exception as e:  # noqa: BLE001
+        print(f"[auto-build] 触发失败: {e}")
+
+    # 启动 L3 增量监听:日常增删改只更新单文件向量,无需全量重建语义索引
+    if l3 is not None and cfg.semantic_dirs:
+        try:
+            from omnifind.layers.l3_semantic.watcher import SemanticWatcher
+            watcher = SemanticWatcher(cfg, l3, interval=30.0)
+            watcher.start()
+            _state["l3_watcher"] = watcher
+        except Exception as e:  # noqa: BLE001
+            print(f"[L3 watch] 启动失败(跳过): {e}")
+
     yield
+    watcher = _state.get("l3_watcher")
+    if watcher:
+        watcher.stop()
     l1.close()
     l2.close()
 
@@ -65,30 +91,36 @@ logger = logging.getLogger(__name__)
 
 
 @app.get("/api/search")
-def search(q: str = Query(""),
+def search(q: str = Query("", max_length=2000),
            limit: int = Query(30, ge=1, le=5000),
            offset: int = Query(0, ge=0, le=100000),
            mode: str | None = Query(None, pattern="^(auto|filename|fulltext|semantic|all|filename_regex)$"),
            ext: str | None = None,
            sort: str | None = None):
     router: QueryRouter = _state["router"]
+    # ext 统一补点,防传 py 命中 happy
+    if ext and not ext.startswith("."):
+        ext = "." + ext
     try:
-        resp = router.search(q, limit=limit + offset, mode=mode, ext=ext, sort=sort)
-        # 分页切片
-        if offset > 0 and len(resp.hits) > offset:
-            resp.hits = resp.hits[offset:]
-        if len(resp.hits) > limit:
-            resp.hits = resp.hits[:limit]
+        # 多取 1 条用于精确判断 has_more
+        resp = router.search(q, limit=limit + offset + 1, mode=mode, ext=ext, sort=sort)
+        total_got = len(resp.hits)
+        # 分页切片:offset 越界必须返回空,不能回落到第一页
+        if offset > 0:
+            resp.hits = resp.hits[offset:] if total_got > offset else []
+        has_more = len(resp.hits) > limit
+        resp.hits = resp.hits[:limit]
         result = resp.to_dict()
-        result["has_more"] = len(resp.hits) >= limit
+        result["has_more"] = has_more
         return JSONResponse(result)
     except Exception as e:
+        # 详细错误只写日志, 不向客户端回吐原始数据库/系统错误串(避免信息泄漏与 XSS 注入)
         logger.exception("搜索异常 query=%s mode=%s", q, mode)
         return JSONResponse({
             "query": q,
             "mode": "error",
             "hits": [],
-            "counts": {"error": str(e)},
+            "counts": {"error": "搜索失败，请简化关键词或稍后重试"},
             "has_more": False,
         }, status_code=500)
 
@@ -130,12 +162,40 @@ def get_config():
     }
 
 
+# 允许通过 API 修改的字段白名单及类型（防任意字段注入导致运行态不一致）
+_CONFIG_SCHEMA: dict[str, type] = {
+    "scan_roots": list,
+    "exclude_dirs": list,
+    "fulltext_exts": list,
+    "semantic_dirs": list,
+    "semantic_exts": list,
+    "semantic_full_disk": bool,
+    "max_fulltext_mb": int,
+    "chunk_size": int,
+    "chunk_overlap": int,
+    "l1_backend": str,
+}
+
+
 @app.post("/api/config")
 def update_config(data: dict):
     cfg = _state["cfg"]
+    # 类型校验：字段必须在白名单内且类型匹配
+    rejected: dict[str, str] = {}
+    for k, v in data.items():
+        expected = _CONFIG_SCHEMA.get(k)
+        if expected is None:
+            rejected[k] = "字段不允许在线修改"
+        elif v is not None and not isinstance(v, expected):
+            rejected[k] = f"类型应为 {expected.__name__}"
+        elif expected is list and v is not None and not all(isinstance(i, str) for i in v):
+            rejected[k] = "列表元素必须为字符串"
+    if rejected:
+        return JSONResponse({"ok": False, "error": f"非法字段: {rejected}"}, status_code=400)
+
     changed = False
     for k, v in data.items():
-        if hasattr(cfg, k) and v is not None:
+        if v is not None:
             setattr(cfg, k, v)
             changed = True
     if changed:
@@ -174,58 +234,83 @@ def index_status():
     }
 
 
-@app.post("/api/index/rebuild")
-def rebuild_index(type: str = Query("all", pattern="^(l1|l2|all)$")):
-    if _index_task["running"]:
-        return JSONResponse({"ok": False, "error": "索引任务正在进行中，请稍候"}, status_code=400)
+_rebuild_lock = threading.Lock()
 
+
+def _run_build(type: str) -> None:
+    """实际构建逻辑(后台线程调用)。支持 l1/l2/l3/all。"""
     cfg = _state["cfg"]
     l1 = _state["l1"]
     l2 = _state["l2"]
+    l3 = _state.get("l3")
+    try:
+        if type in ("l1", "all"):
+            _index_task["message"] = "正在重建文件名索引..."
+            from omnifind.core.indexer import build_filename_index
+            l1.conn.execute("DELETE FROM entries")
+            l1.conn.commit()
+            n = build_filename_index(cfg, l1)
+            _index_task["progress"] = n
+            _index_task["total"] = n
+            _index_task["message"] = f"文件名索引完成: {n} 条"
 
-    _index_task["running"] = True
+        if type in ("l2", "all"):
+            _index_task["message"] = "正在重建全文索引..."
+            from omnifind.core.indexer import build_fulltext_index
+            l2.conn.execute("DELETE FROM files")
+            l2.conn.execute("DELETE FROM fts")
+            l2.conn.commit()
+            n = build_fulltext_index(cfg, l2)
+            _index_task["progress"] = n
+            _index_task["total"] = n
+            _index_task["message"] = f"全文索引完成: {n} 篇"
+
+        if type in ("l3", "all"):
+            if l3 is None:
+                raise RuntimeError("语义层未启用(模型/依赖缺失)，无法重建 L3")
+            # 安全阀:未配置语义目录且未明确要求全盘,绝不偷偷向量化全盘
+            if not cfg.semantic_dirs and not cfg.semantic_full_disk:
+                logger.warning(
+                    "[L3] 未配置 semantic_dirs 且 semantic_full_disk=False，跳过语义构建(避免全盘向量化)"
+                )
+            else:
+                _index_task["message"] = "正在重建语义索引..."
+                from omnifind.layers.l3_semantic.builder import build_semantic_index
+                l3.drop()
+                build_semantic_index(cfg, l3)
+                _index_task["message"] = f"语义索引完成: {l3.count()} chunks"
+
+        _index_task["message"] += " · 全部完成"
+    except Exception as e:
+        logger.exception("索引重建失败")
+        _index_task["error"] = str(e)
+        _index_task["message"] = f"失败: {e}"
+    finally:
+        _index_task["running"] = False
+
+
+def start_build(type: str) -> bool:
+    """原子启动一次构建任务;若已有任务在进行中返回 False。"""
+    with _rebuild_lock:
+        if _index_task["running"]:
+            return False
+        _index_task["running"] = True
     _index_task["type"] = type
     _index_task["progress"] = 0
     _index_task["total"] = 0
     _index_task["message"] = "准备中..."
     _index_task["start_time"] = time.time()
     _index_task["error"] = ""
-
-    def run_index():
-        try:
-            if type in ("l1", "all"):
-                _index_task["message"] = "正在重建文件名索引..."
-                from omnifind.core.indexer import build_filename_index
-                # 清空旧索引
-                l1.conn.execute("DELETE FROM entries")
-                l1.conn.commit()
-                n = build_filename_index(cfg, l1)
-                _index_task["progress"] = n
-                _index_task["total"] = n
-                _index_task["message"] = f"文件名索引完成: {n} 条"
-
-            if type in ("l2", "all"):
-                _index_task["message"] = "正在重建全文索引..."
-                from omnifind.core.indexer import build_fulltext_index
-                # 清空旧索引
-                l2.conn.execute("DELETE FROM files")
-                l2.conn.execute("DELETE FROM fts")
-                l2.conn.commit()
-                n = build_fulltext_index(cfg, l2)
-                _index_task["progress"] = n
-                _index_task["total"] = n
-                _index_task["message"] = f"全文索引完成: {n} 篇"
-
-            _index_task["message"] += " · 全部完成"
-        except Exception as e:
-            logger.exception("索引重建失败")
-            _index_task["error"] = str(e)
-            _index_task["message"] = f"失败: {e}"
-        finally:
-            _index_task["running"] = False
-
-    t = threading.Thread(target=run_index, daemon=True)
+    t = threading.Thread(target=_run_build, args=(type,), daemon=True)
     t.start()
+    return True
+
+
+@app.post("/api/index/rebuild")
+def rebuild_index(type: str = Query("all", pattern="^(l1|l2|l3|all)$")):
+    ok = start_build(type)
+    if not ok:
+        return JSONResponse({"ok": False, "error": "索引任务正在进行中，请稍候"}, status_code=400)
     return {"ok": True, "started": True, "type": type}
 
 
@@ -271,6 +356,19 @@ def preview(path: str = Query(...)):
     ext = p.suffix.lower()
     name = p.name
 
+    # OOM 预检：任何分支动手前先 stat 大小，超限直接拒绝（不整读进内存）
+    try:
+        fsize = p.stat().st_size
+    except OSError as e:
+        return JSONResponse({"ok": False, "error": f"无法读取文件属性: {e}"}, status_code=500)
+    _HARD_LIMIT = _MAX_PREVIEW_SIZE * 100  # 50MB：文档/PDF 提取库也会整读，统一硬顶
+    if fsize > _HARD_LIMIT:
+        return JSONResponse({
+            "ok": True, "path": path, "content": None,
+            "source": "too_large",
+            "message": f"文件过大({fsize // (1024 * 1024)}MB)，超过预览硬限制(50MB)。",
+        })
+
     # ===== 核心策略：预览优先读原始文件，L2 body 仅作最后 fallback =====
     # 原因: L2 存的是 jieba 分词后的 token(空格分隔)，格式全丢，用户看不懂
 
@@ -287,7 +385,7 @@ def preview(path: str = Query(...)):
                 "truncated": truncated,
             })
 
-    # 2) PDF → 用 pdfplumber/PyPDF2 提取
+    # 2) PDF → fitz / pdfplumber / PyPDF2 提取
     if ext == ".pdf":
         pdf_result = _extract_pdf_text(p)
         if pdf_result is not None:
@@ -303,7 +401,7 @@ def preview(path: str = Query(...)):
             return JSONResponse({
                 "ok": True, "path": path, "content": None,
                 "source": "pdf_no_lib",
-                "message": "PDF 预览需要安装 pdfplumber 库 (pip install pdfplumber)。当前环境未安装，无法预览 PDF 文件。",
+                "message": "PDF 文本提取失败（文件可能为扫描件/图片型 PDF，或解析库均不可用）。",
             })
 
     # 3) 判断是否为文本/代码文件
@@ -318,14 +416,15 @@ def preview(path: str = Query(...)):
 
     # 4) 文本文件 → 直接读取原始内容（保留原始格式！）
     try:
-        raw = p.read_bytes()
-        file_size = len(raw)
-        if file_size > _MAX_PREVIEW_SIZE * 10:
+        # 先按 stat 大小拒绝，再读 —— 不允许"整读后才发现太大"
+        if fsize > _MAX_PREVIEW_SIZE * 10:
             return JSONResponse({
                 "ok": True, "path": path, "content": None,
                 "source": "too_large",
-                "message": f"文件过大({file_size//1024}KB)，超过预览限制。",
+                "message": f"文件过大({fsize//1024}KB)，超过预览限制。",
             })
+        raw = p.read_bytes()
+        file_size = len(raw)
         for enc in ("utf-8", "gbk", "gb2312", "latin-1"):
             try:
                 text = raw.decode(enc)
@@ -421,8 +520,25 @@ def _extract_document_text(p: Path, ext: str) -> tuple[str, str] | None:
 
 
 def _extract_pdf_text(p: Path) -> tuple[str, str] | None:
-    """从 PDF 中提取文本（需要 pdfplumber 或 PyPDF2）。"""
-    # 优先用 pdfplumber（更好的表格/布局支持）
+    """从 PDF 中提取文本。优先 PyMuPDF/fitz（项目已声明依赖），
+    其次 pdfplumber，最后 PyPDF2。"""
+    # 优先 fitz（requirements.txt 已声明 pymupdf，与索引抽取器一致）
+    try:
+        import fitz  # PyMuPDF
+        parts = []
+        with fitz.open(str(p)) as doc:
+            for i, page in enumerate(doc):
+                text = page.get_text("text")
+                if text and text.strip():
+                    parts.append(f"--- Page {i+1} ---\n{text}")
+        body = "\n\n".join(parts)
+        return (body, "pdf_fitz") if body else None
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.debug("fitz 解析失败: %s", e)
+
+    # fallback: pdfplumber（更好的表格/布局支持）
     try:
         import pdfplumber
         parts = []

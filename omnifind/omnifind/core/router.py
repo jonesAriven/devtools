@@ -18,6 +18,16 @@ from dataclasses import dataclass, asdict, field
 from typing import Any
 import os
 
+# 计数/遍历上限: 防止高频词或超长结果集导致服务端卡死(DoS 防护)。
+# count_match 用 SELECT COUNT(*) FROM (子查询 LIMIT COUNT_CAP+1) 早停；
+# 真实匹配数超过该值时返回 COUNT_CAP 并置对应 *_capped 标记。
+COUNT_CAP = 5000
+
+# 前端文件类型行的固定扩展名列表(与 index.html 的 extFilters 一一对应)。
+# facet 计数按与 counts["total"] 完全相同的口径(各激活层 count_match 之和),
+# 保证"按钮上的数字 == 点击该按钮后看到的 共 N 条"。
+FACET_EXTS = [".py", ".md", ".txt", ".js", ".json", ".html", ".css", ".java"]
+
 
 @dataclass
 class UnifiedHit:
@@ -35,6 +45,9 @@ class SearchResponse:
     mode: str
     hits: list[UnifiedHit] = field(default_factory=list)
     counts: dict = field(default_factory=dict)
+    # 每个固定扩展名在当前模式+查询下的命中总数(口径同 counts["total"]),
+    # 供前端文件类型按钮展示数量; 正则模式等场景可能为 None(前端隐藏数字)。
+    ext_facets: dict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -201,13 +214,16 @@ class QueryRouter:
             sort: 排序方式（可选），优先使用传入的 sort；为 None 时从 query 中解析
         """
         parsed = self.parse_query(query)
-        
-        # 优先使用外部传入的参数，其次使用解析结果
-        # 只有当 mode 不是 auto 时才覆盖，auto 模式下保留查询里的语法解析
-        if mode and mode != "auto":
+        parsed_mode = parsed["mode"]
+
+        # 前缀优先(修复 P1: q 中的 filename:/content:/all:/re:/? 前缀覆盖 mode 参数,
+        # 仅当 query 无显式前缀时才回退到传入的 mode)。
+        if parsed_mode != "auto":
+            final_mode = parsed_mode
+        elif mode and mode != "auto":
             final_mode = mode
         else:
-            final_mode = parsed["mode"]
+            final_mode = "auto"
         final_q = parsed["q"]
         # ext 和 sort：外部传了就用外部的，否则用解析的
         final_ext = ext if ext else parsed["ext_filter"]
@@ -217,96 +233,145 @@ class QueryRouter:
         if not final_q:
             return resp
 
-        # ---- auto 智能模式: 同时搜索 L1 文件名 + L2 全文, 按相关度混合排序 ----
-        if final_mode == "auto":
-            # L1 文件名搜索
-            if self.l1:
+        active = self._active_layers(final_mode)
+        counts: dict = {}
+
+        # ====================== 命中采集(仅当前模式激活的层) ======================
+        # L1 文件名(含正则模式)
+        if "l1" in active and self.l1:
+            if final_mode == "filename_regex":
+                try:
+                    rx_hits = self.l1.search_regex(final_q, limit=COUNT_CAP)
+                except ValueError as e:
+                    # 修复 P1: 非法正则时 l1 计数应为 0, 不泄漏全量索引条数
+                    counts["error"] = str(e)
+                    counts["l1"] = 0
+                else:
+                    counts["l1"] = len(rx_hits)
+                    if len(rx_hits) >= COUNT_CAP:
+                        counts["l1_capped"] = True
+                    for h in rx_hits[:limit]:
+                        # ext_filter 在正则结果上再过滤一次
+                        if final_ext:
+                            file_ext = os.path.splitext(h.name)[1].lower()
+                            if file_ext != final_ext.lower():
+                                continue
+                        ext_val = os.path.splitext(h.name)[1].lower()
+                        resp.hits.append(UnifiedHit(
+                            h.path, h.name, layer="l1",
+                            extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime,
+                                   "ext": ext_val, "regex": True}
+                        ))
+            else:
                 for h in self.l1.search(final_q, limit=limit, ext_filter=final_ext):
                     ext_val = os.path.splitext(h.name)[1].lower()
                     resp.hits.append(UnifiedHit(
                         h.path, h.name, layer="l1",
                         extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val}
                     ))
-                resp.counts["l1"] = self.l1.count()
-            # L2 全文搜索
-            if self.l2:
-                for h in self.l2.search(final_q, limit=limit, ext_filter=final_ext):
-                    resp.hits.append(UnifiedHit(
-                        h.path, h.title, snippet=h.snippet,
-                        layer="l2", score=h.score,
-                        extra={"size": h.size, "mtime": h.mtime, "ext": h.ext}
-                    ))
-                resp.counts["l2"] = self.l2.count()
-            # L3 语义搜索(如果可用)
-            if self.l3:
-                try:
-                    for h in self.l3.search(final_q, limit=limit):
-                        resp.hits.append(UnifiedHit(
-                            h.path, h.title, snippet=h.snippet,
-                            layer="l3", score=h.score,
-                            extra=getattr(h, 'extra', {})
-                        ))
-                    resp.counts["l3"] = self.l3.count()
-                except Exception:
-                    pass
-            if final_ext:
-                resp.counts["ext"] = final_ext
-            resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
-            # 限制最终结果数量
-            if len(resp.hits) > limit:
-                resp.hits = resp.hits[:limit]
-            return resp
 
-        if final_mode == "filename_regex" and self.l1:
-            try:
-                for h in self.l1.search_regex(final_q, limit):
-                    # ext_filter 在正则搜索中再过滤一次
-                    if final_ext:
-                        file_ext = os.path.splitext(h.name)[1].lower()
-                        if file_ext != final_ext.lower():
-                            continue
-                    ext_val = os.path.splitext(h.name)[1].lower()
-                    resp.hits.append(UnifiedHit(
-                        h.path, h.name, layer="l1",
-                        extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val, "regex": True}
-                    ))
-            except ValueError as e:
-                resp.counts["error"] = str(e)
-            resp.counts["l1"] = self.l1.count()
-            if final_ext:
-                resp.counts["ext"] = final_ext
-            resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
-            return resp
-
-        if final_mode in ("filename", "all") and self.l1:
-            for h in self.l1.search(final_q, limit, ext_filter=final_ext):
-                ext_val = os.path.splitext(h.name)[1].lower()
-                resp.hits.append(UnifiedHit(
-                    h.path, h.name, layer="l1",
-                    extra={"size": h.size, "is_dir": h.is_dir, "mtime": h.mtime, "ext": ext_val}
-                ))
-            resp.counts["l1"] = self.l1.count()
-
-        if final_mode in ("fulltext", "all") and self.l2:
+        # L2 全文
+        if "l2" in active and self.l2:
             for h in self.l2.search(final_q, limit=limit, ext_filter=final_ext):
                 resp.hits.append(UnifiedHit(
                     h.path, h.title, snippet=h.snippet,
                     layer="l2", score=h.score,
                     extra={"size": h.size, "mtime": h.mtime, "ext": h.ext}
                 ))
-            resp.counts["l2"] = self.l2.count()
 
-        if final_mode in ("semantic", "all") and self.l3:
-            for h in self.l3.search(final_q, limit):
-                resp.hits.append(UnifiedHit(
-                    h.path, h.title, snippet=h.snippet,
-                    layer="l3", score=h.score,
-                    extra=getattr(h, 'extra', {})
-                ))
-            resp.counts["l3"] = self.l3.count()
+        # L3 语义
+        if "l3" in active and self.l3:
+            try:
+                for h in self.l3.search(final_q, limit=limit):
+                    resp.hits.append(UnifiedHit(
+                        h.path, h.title, snippet=h.snippet,
+                        layer="l3", score=h.score,
+                        extra=getattr(h, 'extra', {})
+                    ))
+            except Exception:
+                pass
+
+        # ====================== counts: 始终计算所有可用层的真实计数 ======================
+        # 修复 P0: 切换单层(mode=filename)时仍返回其它层的真实数, 供前端对比。
+        if self.l1:
+            if final_mode == "filename_regex":
+                # l1 已在上方正则分支设置(成功=真实正则命中数, 失败=0)
+                if "l1" not in counts:
+                    counts["l1"] = 0
+            else:
+                n, capped = self.l1.count_match(final_q, final_ext, cap=COUNT_CAP)
+                counts["l1"] = n
+                if capped:
+                    counts["l1_capped"] = True
+        else:
+            counts["l1"] = 0
+
+        if self.l2:
+            n, capped = self.l2.count_match(final_q, final_ext, cap=COUNT_CAP)
+            counts["l2"] = n
+            if capped:
+                counts["l2_capped"] = True
+        else:
+            counts["l2"] = 0
+
+        if self.l3:
+            l3_hits = self.l3.search(final_q, limit=COUNT_CAP + 1)
+            n = len(l3_hits)
+            counts["l3"] = n
+            if n > COUNT_CAP:
+                counts["l3_capped"] = True
+        else:
+            counts["l3"] = 0
 
         if final_ext:
-            resp.counts["ext"] = final_ext
+            counts["ext"] = final_ext
 
+        # 语义层关闭信号(供前端明确提示, 而非空结果)
+        if final_mode in ("semantic", "all") and self.l3 is None:
+            counts["semantic_disabled"] = True
+
+        # total: 当前模式真实命中总数 = 各激活层计数之和
+        counts["total"] = sum(counts.get(layer, 0) for layer in active)
+
+        # ext facet: 每个固定扩展名在"当前模式+当前查询"下的命中总数,
+        # 口径与 counts["total"] 完全一致(各激活层 count_match(final_q, ext) 之和),
+        # 保证前端按钮上的数字与点击后看到的"共 N 条"相等。
+        # 正则模式无法按 ext 高效计数, 跳过(前端检测缺失时不展示数字)。
+        # L3 语义层暂无按 ext 计数能力, 贡献记 0(当前 L3 未启用, 无影响)。
+        if final_mode != "filename_regex":
+            facets: dict[str, int] = {}
+            # "" 键 = 无扩展名限定的总数(即"全部"按钮应显示的数字,
+            # 与当前是否已限定某扩展名无关)
+            for fext in [""] + FACET_EXTS:
+                n_sum = 0
+                ext_arg = fext or None
+                if "l1" in active and self.l1:
+                    n, _ = self.l1.count_match(final_q, ext_arg, cap=COUNT_CAP)
+                    n_sum += n
+                if "l2" in active and self.l2:
+                    n, _ = self.l2.count_match(final_q, ext_arg, cap=COUNT_CAP)
+                    n_sum += n
+                facets[fext] = n_sum
+            resp.ext_facets = facets
+
+        resp.counts = counts
         resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)
+        # 仅 auto 模式在 router 层截断(与既有行为一致; all/单层由 server 层兜底切片)
+        if final_mode == "auto" and len(resp.hits) > limit:
+            resp.hits = resp.hits[:limit]
         return resp
+
+    def _active_layers(self, mode: str) -> set[str]:
+        """返回当前模式下参与命中采集的层集合。"""
+        has_l3 = self.l3 is not None
+        if mode == "auto":
+            return {"l1", "l2", "l3"} if has_l3 else {"l1", "l2"}
+        if mode in ("filename", "filename_regex"):
+            return {"l1"}
+        if mode == "fulltext":
+            return {"l2"}
+        if mode == "semantic":
+            return {"l3"}
+        if mode == "all":
+            return {"l1", "l2", "l3"} if has_l3 else {"l1", "l2"}
+        return set()

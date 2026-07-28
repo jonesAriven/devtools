@@ -1,0 +1,10 @@
+把 bge-small-zh-v1.5 的两个文件放在这个目录里：
+  - model.onnx
+  - tokenizer.json
+
+来源（任选其一，禁止直连公网）：
+  1. 你局域网/本机已有该模型 -> 直接拷进来（--from-local）
+  2. 经你批准后走 hf-mirror.com 镜像拉取（仍属公网，需你明确拍板）
+
+放好后，dev 模式由 config.local.yaml 的 embed_model_path 指向本目录；
+打包时由 build-windows.ps1 的 --add-data 把本目录打进 exe，离线即用。

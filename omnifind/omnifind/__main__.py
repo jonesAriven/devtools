@@ -40,7 +40,7 @@ def cmd_index(args):
             model_path = _P(cfg.resolved_embed_model_path)
             if not model_path.joinpath("model.onnx").exists():
                 print(f"[L3] 跳过: 模型文件不存在 ({model_path / 'model.onnx'})")
-                print("[L3] 请先运行: python -m omnifind.layers.l3_semantic.builder --download")
+                print("[L3] 请先运行: python scripts/fetch_model.py")
             else:
                 emb = make_embedder(cfg)
                 sem = SemanticIndex(emb, dim=emb.dim)
@@ -59,8 +59,7 @@ def _make_router(cfg):
     try:
         from omnifind.layers.l3_semantic.builder import make_embedder
         from omnifind.layers.l3_semantic.index import SemanticIndex
-        from pathlib import Path as _P
-        if _P(cfg.embed_model_path, ).joinpath("model.onnx").exists():
+        if cfg.resolved_embed_model_path.joinpath("model.onnx").exists():
             emb = make_embedder(cfg)
             l3 = SemanticIndex(emb, dim=emb.dim)
     except Exception as e:  # noqa: BLE001

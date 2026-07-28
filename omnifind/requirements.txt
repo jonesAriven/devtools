@@ -16,8 +16,8 @@ python-pptx      # PowerPoint .pptx
 # --- L1 增量监听(阶段二)---
 watchdog
 
-# --- L3 语义层(阶段四)---
-# onnxruntime      # 本地推理
-# tokenizers       # BGE 分词
-# lancedb          # 嵌入式向量库
-# numpy
+# --- L3 语义层(阶段四,本地 CPU 推理,离线自包含)---
+onnxruntime       # 本地推理(CPU, int8 量化模型)
+tokenizers        # BGE 分词
+lancedb           # 嵌入式向量库(无服务、内存映射)
+numpy

@@ -38,9 +38,10 @@ class FilenameIndex:
         self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        # 开启 WAL 模式提高并发读性能
+        # 开启 WAL 模式提高并发读性能;busy_timeout 防多进程/重建并发写冲突
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -70,25 +71,58 @@ class FilenameIndex:
 
     def remove(self, path: str) -> None:
         with self._lock:
-            self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ?", (path, path + os.sep + "%"))
+            # 子树 LIKE 需转义,防路径含 %/_ 时连带误删
+            sub = path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + os.sep + "%"
+            self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ? ESCAPE '\\'", (path, sub))
             self.conn.commit()
 
+    @staticmethod
+    def _escape_like(s: str) -> str:
+        """转义 LIKE 特殊字符(配合 ESCAPE '\\'),防搜 a_b 误中 axb。"""
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def search(self, query: str, limit: int = 50, ext_filter: str | None = None) -> list[NameHit]:
-        # 默认子串匹配(不区分大小写);支持 * 通配转 LIKE
+        # 默认子串匹配(不区分大小写);支持 * 通配转 LIKE;字面 % _ 必须转义
         if "*" in query:
-            like = query.replace("*", "%")
+            like = "%".join(self._escape_like(seg) for seg in query.split("*"))
         else:
-            like = f"%{query}%"
+            like = f"%{self._escape_like(query)}%"
         sql = "SELECT * FROM entries WHERE name LIKE ? ESCAPE '\\'"
         params: list = [like]
         if ext_filter:
-            sql += " AND LOWER(SUBSTR(name, INSTR(name, '.'))) = LOWER(?)"
-            params.append(ext_filter)
+            # 取最后一个点后的后缀做精确匹配(修正 archive.tar.gz 被当成 .tar.gz 的问题)
+            sql += " AND LOWER(SUBSTR(name, LENGTH(name) - LENGTH(?) + 1)) = LOWER(?)"
+            params.extend([ext_filter, ext_filter])
         sql += " ORDER BY is_dir DESC, mtime DESC LIMIT ?"
         params.append(limit)
         with self._lock:
             rows = self.conn.execute(sql, params).fetchall()
         return [NameHit(r["path"], r["name"], r["size"], r["mtime"], bool(r["is_dir"])) for r in rows]
+
+    def count_match(self, query: str, ext_filter: str | None = None,
+                    cap: int = 5000) -> tuple[int, bool]:
+        """查询实际匹配数（用于结果层计数，区别于全量 count()）。
+
+        返回 (count, capped):
+          - count: 真实匹配数，但超过 cap 时返回 cap 并令 capped=True（表示真实数 >= cap）。
+          - 用 SELECT COUNT(*) FROM (子查询 LIMIT cap+1) 实现早停，避免对超大结果集全表扫描。
+        """
+        if "*" in query:
+            like = "%".join(self._escape_like(seg) for seg in query.split("*"))
+        else:
+            like = f"%{self._escape_like(query)}%"
+        sql = "SELECT 1 FROM entries WHERE name LIKE ? ESCAPE '\\'"
+        params: list = [like]
+        if ext_filter:
+            sql += " AND LOWER(SUBSTR(name, LENGTH(name) - LENGTH(?) + 1)) = LOWER(?)"
+            params.extend([ext_filter, ext_filter])
+        # 早停计数：子查询 LIMIT cap+1，超过 cap 即截断，防止超大结果集全扫
+        capped_sql = f"SELECT COUNT(*) FROM ({sql} LIMIT ?)"
+        params.append(cap + 1)
+        with self._lock:
+            n = self.conn.execute(capped_sql, params).fetchone()[0]
+        capped = n > cap
+        return (cap if capped else n, capped)
 
     @staticmethod
     def _literal_prefix(pattern: str) -> str:
@@ -183,28 +217,34 @@ class WalkBackend(FilenameBackend):
         batch: list[tuple] = []
         total = 0
         for root in self.cfg.scan_roots:
-            for dirpath, dirnames, filenames in os.walk(root, topdown=True):
-                # 原地过滤排除目录(topdown 才生效)
-                dirnames[:] = [d for d in dirnames if d.lower() not in exclude]
-                # 目录自身也入索引
-                for name in dirnames:
-                    p = os.path.join(dirpath, name)
-                    try:
-                        st = os.stat(p, follow_symlinks=False)
-                        batch.append((p, name, 0, st.st_mtime, 1))
-                    except OSError:
-                        continue
-                for name in filenames:
-                    p = os.path.join(dirpath, name)
-                    try:
-                        st = os.stat(p, follow_symlinks=False)
-                        batch.append((p, name, st.st_size, st.st_mtime, 0))
-                    except OSError:
-                        continue
-                    if len(batch) >= 5000:
-                        self.index.bulk_upsert(batch)
-                        total += len(batch)
-                        batch.clear()
+            # 按根目录隔离异常:单个盘/根不可访问(权限不足、脱机、云盘异常等)
+            # 不应连累其他盘,否则会丢失已索引的数据(尤其 rebuild 先 DELETE 再 build 的场景)。
+            try:
+                for dirpath, dirnames, filenames in os.walk(root, topdown=True):
+                    # 原地过滤排除目录(topdown 才生效)
+                    dirnames[:] = [d for d in dirnames if d.lower() not in exclude]
+                    # 目录自身也入索引
+                    for name in dirnames:
+                        p = os.path.join(dirpath, name)
+                        try:
+                            st = os.stat(p, follow_symlinks=False)
+                            batch.append((p, name, 0, st.st_mtime, 1))
+                        except OSError:
+                            continue
+                    for name in filenames:
+                        p = os.path.join(dirpath, name)
+                        try:
+                            st = os.stat(p, follow_symlinks=False)
+                            batch.append((p, name, st.st_size, st.st_mtime, 0))
+                        except OSError:
+                            continue
+                        if len(batch) >= 5000:
+                            self.index.bulk_upsert(batch)
+                            total += len(batch)
+                            batch.clear()
+            except OSError as e:
+                print(f"[L1] 扫描根 {root} 失败(权限/不可访问),已跳过: {type(e).__name__}: {e}")
+                continue
         if batch:
             self.index.bulk_upsert(batch)
             total += len(batch)
@@ -216,16 +256,25 @@ class WalkBackend(FilenameBackend):
 
 
 def make_backend(cfg: OmniConfig, index: FilenameIndex) -> FilenameBackend:
-    """按配置/平台选后端。Windows+usn -> UsnBackend(待 Windows 机实现),否则 WalkBackend。"""
+    """按配置/平台选后端。
+
+    auto 模式下 Windows 优先 USN，但 USN 需要 SYSTEM 权限(SeManageVolumePrivilege)，
+    普通管理员也不可用。因此 auto 模式做轻量可用性探测(开卷+查 journal)，
+    探测失败安全回退 walk，避免"实例化成功但 build 静默返回 0 条"的假成功。
+    """
     from omnifind.core.config import is_windows
     backend = cfg.l1_backend
     if backend == "auto":
         backend = "usn" if is_windows() else "walk"
     if backend == "usn":
         try:
-            from omnifind.layers.l1_filename.usn_backend import UsnBackend
+            from omnifind.layers.l1_filename.usn_backend import UsnBackend, probe_usn_available
+            # auto 模式先探测权限，不可用则回退 walk；显式 usn 则原样返回(build 时报错)
+            if cfg.l1_backend == "auto" and not probe_usn_available(cfg):
+                print("[L1] USN 权限不足(需 SYSTEM)，auto 模式回退 walk 后端")
+                return WalkBackend(cfg, index)
             return UsnBackend(cfg, index)
-        except Exception:
+        except ImportError:
             # Windows 后端不可用时安全回退
             return WalkBackend(cfg, index)
     return WalkBackend(cfg, index)

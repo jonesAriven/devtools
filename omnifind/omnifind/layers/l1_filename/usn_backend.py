@@ -37,7 +37,9 @@ from typing import Iterator, Optional
 GENERIC_READ = 0x80000000
 FILE_SHARE_READ = 0x00000001
 FILE_SHARE_WRITE = 0x00000002
+FILE_SHARE_DELETE = 0x00000004
 OPEN_EXISTING = 3
+FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 # FSCTL codes（CTL_CODE 宏计算好的常量）
@@ -273,11 +275,90 @@ def _enum_usn_records(handle: int, journal_id: int, buffer_size: int = 1 << 20) 
             return
 
 
+class _FILE_ID_DESCRIPTOR(ctypes.Structure):
+    """OpenFileById 的文件标识描述符（FileIdType=0，用 64 位 FRN）。"""
+    _fields_ = [
+        ("dwSize", wt.DWORD),
+        ("Type", wt.DWORD),
+        ("FileId", ctypes.c_longlong),
+    ]
+
+
+def _frn_to_path(volume_handle: int, frn: int) -> Optional[str]:
+    """由 FRN 解析真实绝对路径（OpenFileById + GetFinalPathNameByHandleW）。
+
+    用于 watch 增量事件的路径重建：事件记录只带 name + parent_frn，
+    通过解析 parent_frn 得到父目录绝对路径后拼出完整路径。
+    解析失败（文件已被快速删除等）返回 None，调用方跳过该事件即可，
+    下一次全量 build 兜底 —— 绝不写入占位路径污染索引。
+    """
+    if kernel32 is None:
+        return None
+    desc = _FILE_ID_DESCRIPTOR()
+    desc.dwSize = ctypes.sizeof(desc)
+    desc.Type = 0  # FileIdType
+    desc.FileId = ctypes.c_longlong(frn & 0xFFFFFFFFFFFFFFFF).value
+    OpenFileById = kernel32.OpenFileById
+    OpenFileById.argtypes = [
+        wt.HANDLE, ctypes.c_void_p, wt.DWORD, wt.DWORD, ctypes.c_void_p, wt.DWORD,
+    ]
+    OpenFileById.restype = wt.HANDLE
+    h = OpenFileById(
+        volume_handle, ctypes.byref(desc), 0,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        None, FILE_FLAG_BACKUP_SEMANTICS,
+    )
+    if not h or h == INVALID_HANDLE_VALUE:
+        return None
+    try:
+        buf = ctypes.create_unicode_buffer(4096)
+        GetFinalPathNameByHandleW = kernel32.GetFinalPathNameByHandleW
+        GetFinalPathNameByHandleW.argtypes = [wt.HANDLE, ctypes.c_wchar_p, wt.DWORD, wt.DWORD]
+        GetFinalPathNameByHandleW.restype = wt.DWORD
+        n = GetFinalPathNameByHandleW(h, buf, 4096, 0)  # FILE_NAME_NORMALIZED
+        if n == 0 or n >= 4096:
+            return None
+        p = buf.value
+        if p.startswith("\\\\?\\"):
+            p = p[4:]
+        return p
+    finally:
+        kernel32.CloseHandle(h)
+
+
 def _filetime_to_unix(ft_100ns: int) -> float:
     """Windows FILETIME (100ns since 1601-01-01 UTC) → Unix epoch 秒。"""
     if ft_100ns <= 0:
         return 0.0
     return ft_100ns / 10_000_000 - 11_644_473_600
+
+
+def probe_usn_available(cfg=None) -> bool:
+    """轻量探测 USN 是否可用(开卷+查 journal)。
+
+    读 USN journal 需要 SeManageVolumePrivilege(SYSTEM 才有)，
+    普通 Administrator 会在 CreateFileW 报 err=5 或 FSCTL 阶段失败。
+    auto 模式用此探测决定是否回退 walk，避免 build 静默返回 0 条。
+    """
+    if sys.platform != "win32":
+        return False
+    drives: list[str] = []
+    if cfg is not None:
+        for root in (getattr(cfg, "scan_roots", None) or []):
+            drive = os.path.splitdrive(root)[0]
+            if drive:
+                drives.append(drive)
+    if not drives:
+        drives = [os.environ.get("SystemDrive", "C:")]
+    try:
+        handle = _open_volume(drives[0])
+        try:
+            _query_usn_journal(handle)
+        finally:
+            kernel32.CloseHandle(handle)
+        return True
+    except OSError:
+        return False
 
 
 def scan_volume(drive_letter: str, root_filter: Optional[str] = None) -> Iterator[tuple]:
@@ -310,19 +391,25 @@ def scan_volume(drive_letter: str, root_filter: Optional[str] = None) -> Iterato
                 return path_cache[frn]
             rec = records.get(frn)
             if rec is None:
-                # 父不在 records 里说明它是卷根节点
-                return drive_root.rstrip("\\")
+                # 父不在 records 里说明它是卷根节点(NTFS 根目录 frn=5 不被枚举)。
+                # 必须返回带尾反斜杠的卷根 "C:\" —— 若返回 "C:"，
+                # os.path.join("C:", "Users") 会得到 "C:Users"(驱动器相对路径陷阱)，
+                # 导致所有拼出路径缺分隔符、root_filter 永远匹配不上(实测全盘 0 条)。
+                return drive_root
             parent = resolve(rec["parent_frn"])
-            if parent is None:
-                path_cache[frn] = os.path.join(drive_root, rec["name"])
+            if parent == drive_root:
+                # 顶级条目直接拼在卷根后, 避免 join 对 "C:\" 尾部分隔符的歧义
+                path_cache[frn] = drive_root + rec["name"]
             else:
                 path_cache[frn] = os.path.join(parent, rec["name"])
             return path_cache[frn]
 
         rf_lower = root_filter.lower() if root_filter else None
         for frn, rec in records.items():
-            # yield 阶段过滤系统/隐藏单个文件（但不影响目录路径拼接）
-            if rec["attrs"] & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN):
+            # 只过滤系统文件，不过滤隐藏文件：
+            # 用户显式指定的 scan_roots 可能在隐藏目录下(如 AppData)，
+            # 按 HIDDEN 过滤会导致整棵子树全灭(实测 0 条)。
+            if rec["attrs"] & FILE_ATTRIBUTE_SYSTEM:
                 continue
             path = resolve(frn)
             if not path:
@@ -361,12 +448,19 @@ class UsnBackend(FilenameBackend):
     def build(self) -> int:
         total = 0
         batch: list[tuple] = []
+        failed: list[str] = []
+        exclude = set(d.lower() for d in (getattr(self.cfg, "exclude_dirs", None) or []))
         for root in (self.cfg.scan_roots or []):
             drive = os.path.splitdrive(root)[0]
             if not drive:
                 continue
             try:
                 for entry in scan_volume(drive, root):
+                    # 与 WalkBackend 行为对齐: 路径任一段命中排除目录则跳过
+                    if exclude:
+                        parts = entry[0].lower().replace("/", "\\").split("\\")
+                        if any(seg in exclude for seg in parts):
+                            continue
                     batch.append(entry)
                     if len(batch) >= 5000:
                         self.index.bulk_upsert(batch)
@@ -374,9 +468,13 @@ class UsnBackend(FilenameBackend):
                         batch.clear()
             except OSError as e:
                 print(f"[USN] 扫描 {drive} 失败: {e}", file=sys.stderr)
+                failed.append(drive)
         if batch:
             self.index.bulk_upsert(batch)
             total += len(batch)
+        # 所有卷都失败时不得静默返回 0(会造成"索引为空"的假成功)
+        if failed and total == 0:
+            raise OSError(f"USN 扫描全部卷失败: {failed}(需 SYSTEM 权限)")
         return total
 
     def watch(self) -> None:
@@ -488,29 +586,41 @@ class UsnBackend(FilenameBackend):
                             off += record_len
                             continue
 
-                        # 增量事件里没法拿完整路径（父目录 FRN 需要另外解析），
-                        # 简化策略：删除事件只按 name 尝试模糊删；其他变更事件先记 name/frn，
-                        # 由下一次全量 build 兜底。真正低延迟增量路径重建后续 v2 再做。
+                        # 路径重建：事件只带 name + parent_frn，
+                        # 用 OpenFileById 解析父目录绝对路径后拼完整路径。
+                        # 解析失败(父目录已删等)直接跳过，由下一次全量 build 兜底
+                        # —— 绝不写占位路径污染索引，也绝不按 name 全盘模糊删。
+                        parent_path = _frn_to_path(handle, parent_frn)
+                        if parent_path is None:
+                            off += record_len
+                            continue
+                        full_path = os.path.join(parent_path, name)
+                        # 只处理监听根前缀内的事件，避免全卷噪音进索引
+                        root_prefix = volumes.get(letter, "")
+                        if root_prefix and not full_path.lower().startswith(root_prefix.lower()):
+                            off += record_len
+                            continue
                         if reason & USN_REASON_FILE_DELETE:
-                            batch_delete.append(name)
+                            batch_delete.append(full_path)
                         else:
-                            # 仅 upsert 一个"名字+时间戳"占位，路径栏用 frn 编码兜底
                             is_dir = 1 if (attrs & FILE_ATTRIBUTE_DIRECTORY) else 0
-                            batch_upsert.append((
-                                f"[usn-pending]{letter}:{frn}",
-                                name, 0,
-                                _filetime_to_unix(timestamp),
-                                is_dir,
-                            ))
+                            mtime = _filetime_to_unix(timestamp)
+                            if mtime <= 0:
+                                try:
+                                    mtime = os.path.getmtime(full_path)
+                                except OSError:
+                                    mtime = 0.0
+                            batch_upsert.append((full_path, name, 0, mtime, is_dir))
                         off += record_len
 
                     if batch_upsert:
                         self.index.bulk_upsert(batch_upsert)
                     if batch_delete:
-                        for name in batch_delete:
+                        for p in batch_delete:
+                            # 精确路径删除；目录被删时连带清其子树
                             self.index.conn.execute(
-                                "DELETE FROM entries WHERE name=? AND path LIKE ?",
-                                (name, f"{letter}:%"),
+                                "DELETE FROM entries WHERE path=? OR path LIKE ? ESCAPE '\\'",
+                                (p, self.index._escape_like(p) + "\\\\%"),
                             )
                         self.index.conn.commit()
 

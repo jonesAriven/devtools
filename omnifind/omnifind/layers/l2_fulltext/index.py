@@ -6,6 +6,7 @@ L2 全文层 —— SQLite FTS5 + jieba 中文分词。
   fts   表:FTS5 虚表,存正文分词索引,external content 关联 files
 """
 from __future__ import annotations
+import re
 import sqlite3
 from pathlib import Path
 from dataclasses import dataclass
@@ -13,6 +14,10 @@ from dataclasses import dataclass
 import jieba
 
 from omnifind.core.config import DATA_DIR
+
+# 与前端 highlightText 约定的高亮标记(Unicode 私有区)
+_HL0 = "\ue000"
+_HL1 = "\ue001"
 
 
 def tokenize(text: str) -> str:
@@ -59,9 +64,10 @@ class FullTextIndex:
         self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        # 开启 WAL 模式提高并发读性能
+        # 开启 WAL 模式提高并发读性能;busy_timeout 防多进程/重建并发写冲突
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -108,11 +114,15 @@ class FullTextIndex:
     def search(self, query: str, limit: int = 30, ext_filter: str | None = None) -> list[FtsHit]:
         q = build_fts5_query(query)
         try:
+            # 排序用 FTS5 内置 `rank` 列(默认即 bm25), 触发按相关度流式输出 + LIMIT 早停,
+            # 避免 ORDER BY bm25(fts) 退化成对全部命中行逐条算分再排序, 高频词卡死。
+            # 不用 SQL snippet() —— 它对超大 body 列逐行扫描极慢(单条可达秒级)。
+            # 改为读取原始 body 后在 Python 侧生成 snippet(见 _make_snippet), 速度提升数百倍。
             sql = """
                 SELECT f.path AS path, f.title AS title, f.size AS size,
                        f.mtime AS mtime, f.ext AS ext,
-                       snippet(fts, 1, '[', ']', ' … ', 12) AS snippet,
-                       bm25(fts) AS score
+                       body AS body_text,
+                       rank AS score
                 FROM fts JOIN files f ON f.id = fts.rowid
                 WHERE fts MATCH ?
             """
@@ -120,20 +130,22 @@ class FullTextIndex:
             if ext_filter:
                 sql += " AND LOWER(f.ext) = LOWER(?)"
                 params.append(ext_filter)
-            sql += " ORDER BY score LIMIT ?"
+            sql += " ORDER BY rank LIMIT ?"
             params.append(limit)
             with self._lock:
                 rows = self.conn.execute(sql, params).fetchall()
             return [FtsHit(
-                r["path"], r["title"] or "", r["snippet"] or "", r["score"],
-                r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
+                r["path"], r["title"] or "", self._make_snippet(r["body_text"] or "", query),
+                r["score"], r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
             ) for r in rows]
         except sqlite3.OperationalError as e:
             import logging
             logger = logging.getLogger(__name__)
             logger.warning("FTS5 搜索失败 query=%s error=%s, 降级为 LIKE 模糊搜索", query, e)
-            like = f"%{query}%"
-            sql = "SELECT path, title, size, mtime, ext FROM files WHERE (title LIKE ? OR path LIKE ?)"
+            # LIKE 通配符 % _ 必须转义,防搜 a_b 误中 axb
+            like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            sql = ("SELECT path, title, size, mtime, ext FROM files "
+                   "WHERE (title LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')")
             params: list = [like, like]
             if ext_filter:
                 sql += " AND LOWER(ext) = LOWER(?)"
@@ -146,6 +158,77 @@ class FullTextIndex:
                 r["path"], r["title"] or "", "", 0.0,
                 r["size"] or 0, r["mtime"] or 0.0, r["ext"] or ""
             ) for r in rows]
+
+
+    def _make_snippet(self, body_text: str, query: str, window: int = 120) -> str:
+        """在 Python 侧生成 snippet(替代 FTS5 慢速 snippet())。
+
+        - 以 query 分词后首个命中位置为中心, 截取 window 字符的上下文窗口;
+        - 用 U+E000/U+E001 私有区标记包裹命中词, 与旧 FTS5 snippet 一致, 前端 highlightText 可识别;
+        - 仅对返回的 limit 条结果生效, 不做全量遍历(DoS 防护)。
+        """
+        if not body_text:
+            return ""
+        tokens = [t for t in jieba.cut_for_search(query) if t.strip()]
+        low = body_text.lower()
+        best = -1
+        for t in tokens:
+            i = low.find(t.lower())
+            if i >= 0 and (best == -1 or i < best):
+                best = i
+        if best < 0:
+            snippet = body_text[:window]
+        else:
+            start = max(0, best - window // 2)
+            end = min(len(body_text), best + window // 2)
+            snippet = body_text[start:end]
+            if start > 0:
+                snippet = " … " + snippet
+            if end < len(body_text):
+                snippet = snippet + " … "
+        for t in tokens:
+            if not t:
+                continue
+            try:
+                snippet = re.sub(re.escape(t), lambda m: _HL0 + m.group(0) + _HL1,
+                                 snippet, flags=re.IGNORECASE)
+            except re.error:
+                pass
+        return snippet
+
+    def count_match(self, query: str, ext_filter: str | None = None,
+                    cap: int = 5000) -> tuple[int, bool]:
+        """查询实际匹配数（用于结果层计数，区别于全量 count()）。
+
+        返回 (count, capped): 超过 cap 时返回 cap 并令 capped=True。
+        用 SELECT COUNT(*) FROM (子查询 LIMIT cap+1) 实现早停。
+        """
+        q = build_fts5_query(query)
+        try:
+            inner = "SELECT 1 FROM fts JOIN files f ON f.id = fts.rowid WHERE fts MATCH ?"
+            params: list = [q]
+            if ext_filter:
+                inner += " AND LOWER(f.ext) = LOWER(?)"
+                params.append(ext_filter)
+            capped_sql = f"SELECT COUNT(*) FROM ({inner} LIMIT ?)"
+            params.append(cap + 1)
+            with self._lock:
+                n = self.conn.execute(capped_sql, params).fetchone()[0]
+            capped = n > cap
+            return (cap if capped else n, capped)
+        except sqlite3.OperationalError:
+            like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            inner = ("SELECT 1 FROM files WHERE (title LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')")
+            params: list = [like, like]
+            if ext_filter:
+                inner += " AND LOWER(ext) = LOWER(?)"
+                params.append(ext_filter)
+            capped_sql = f"SELECT COUNT(*) FROM ({inner} LIMIT ?)"
+            params.append(cap + 1)
+            with self._lock:
+                n = self.conn.execute(capped_sql, params).fetchone()[0]
+            capped = n > cap
+            return (cap if capped else n, capped)
 
     def count(self) -> int:
         with self._lock:

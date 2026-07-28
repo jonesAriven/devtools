@@ -27,10 +27,14 @@ def is_windows() -> bool:
 
 def default_data_dir() -> Path:
     """
-    默认运行时数据目录。Windows 走 %ProgramData%\\omnifind\\
-    （SYSTEM 服务和普通用户 Web 都能读写的共享位置），
-    Linux/Mac 走 ~/.omnifind/。用户可通过 config.local.yaml 的 data_dir 覆盖。
+    默认运行时数据目录。
+    - 打包后(frozen):随 exe 走 <exe同级>/data,实现离线自包含,不写死 %ProgramData%。
+    - 开发/系统安装:Windows 走 %ProgramData%\\omnifind\\
+      （SYSTEM 服务和普通用户 Web 都能读写的共享位置）,
+      Linux/Mac 走 ~/.omnifind/。用户可通过 config.local.yaml 的 data_dir 覆盖。
     """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "data"
     if is_windows():
         base = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
         return Path(base) / "omnifind"
@@ -122,6 +126,9 @@ class OmniConfig:
 
     @property
     def models_dir(self) -> Path:
+        # 打包后:模型随 exe 打进 _MEIPASS/models,离线即用(不依赖 %ProgramData%)
+        if getattr(sys, "frozen", False):
+            return Path(getattr(sys, "_MEIPASS", "")) / "models"
         return self.data_dir_path / "models"
 
     @property
@@ -149,13 +156,31 @@ class OmniConfig:
             candidate_paths.append(prog_data_cfg)
         for p in candidate_paths:
             if p.exists():
-                data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+                # 配置文件损坏时降级为默认配置,不拖垮服务启动
+                try:
+                    data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+                except yaml.YAMLError as e:
+                    print(f"[config] 配置文件 {p} 解析失败({e}),该文件按默认处理")
+                    continue
+                if not isinstance(data, dict):
+                    print(f"[config] 配置文件 {p} 顶层不是字典,该文件按默认处理")
+                    continue
                 for k, v in data.items():
-                    if hasattr(cfg, k) and v is not None:
-                        # 空列表视为"使用默认值",不覆盖
-                        if isinstance(v, list) and len(v) == 0:
-                            continue
-                        setattr(cfg, k, v)
+                    if not hasattr(cfg, k) or v is None:
+                        continue
+                    # 派生 property(db_dir/logs_dir 等)不可写,跳过防 AttributeError
+                    if isinstance(getattr(type(cfg), k, None), property):
+                        print(f"[config] 跳过派生只读字段: {k}")
+                        continue
+                    # 空列表视为"使用默认值",不覆盖
+                    if isinstance(v, list) and len(v) == 0:
+                        continue
+                    # bool 不是合法 int(True 会被 isinstance(bool, int) 放过)
+                    cur = getattr(cfg, k)
+                    if isinstance(cur, int) and not isinstance(cur, bool) and isinstance(v, bool):
+                        print(f"[config] 字段 {k} 需要 int,忽略 bool 值 {v}")
+                        continue
+                    setattr(cfg, k, v)
         return cfg
 
 

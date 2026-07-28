@@ -10,6 +10,8 @@
          background: #0f1115; color: #e6e6e6; height: 100vh; display: flex; flex-direction: column;
          overflow: hidden; }
 
+  :focus-visible { outline: 2px solid #4c8bf5; outline-offset: 2px; }
+
   /* ===== 亮色主题 ===== */
   body.light-theme { background: #f8f9fa; color: #1f2937; }
   body.light-theme .header { border-bottom-color: #e5e7eb; background: #fff; }
@@ -75,6 +77,12 @@
   body.light-theme .ctx-item:hover { background: #f3f4f6; }
   body.light-theme .ctx-separator { border-top-color: #e5e7eb; }
   body.light-theme .ctx-item .shortcut { color: #9ca3af; }
+  /* light 主题高亮：暗琥珀文字+浅琥珀底，白底上对比度 ≥ 4.5:1
+     (dark 主题的 #ffe066 在白底上几乎不可见) */
+  body.light-theme .hl { background: rgba(255,170,0,0.22); color: #92400e; }
+  body.light-theme .preview-body .hl { background: rgba(255,170,0,0.28); color: #92400e; }
+  body.light-theme .about-title { color: #111827; }
+  body.light-theme .preview-placeholder { color: #9ca3af; }
   body.light-theme mark { background: #fef08a; color: #92400e; }
   body.light-theme .badge { color: #6b7280; background: #f3f4f6; }
   body.light-theme .badge.l1 { background: rgba(34,197,94,0.1); color: #16a34a; }
@@ -83,7 +91,7 @@
   body.light-theme .mode-badge { color: #6b7280; }
   body.light-theme .score-bar { background: #e5e7eb; }
   body.light-theme .score-fill { background: #4c8bf5; }
-  body.light-theme #listSelect { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+  body.light-theme #sortSelect { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
 
   /* ===== 顶部区域 ===== */
   .header { padding: 14px 20px 10px; border-bottom: 1px solid #1e2128; flex-shrink: 0; }
@@ -141,17 +149,19 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .hint-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .hint { font-size: 10px; color: #5a5f68; }
+  .hint { font-size: 10px; color: #9ca3af; }
   .hint code { background: #1a1d24; padding: 2px 6px; border-radius: 4px; color: #9ecbff; font-size: 10px; cursor: pointer; }
   .hint code:hover { background: #252830; color: #b8d4ff; }
-  .status { font-size: 10px; color: #5a5f68; margin-left: auto; white-space: nowrap; cursor: pointer; }
+  .hint code.disabled { opacity: 0.45; cursor: not-allowed; color: #6b7280 !important; background: #1a1d24 !important; }
+  .hint code.disabled:hover { background: #1a1d24 !important; color: #6b7280 !important; }
+  .status { font-size: 10px; color: #9ca3af; margin-left: auto; white-space: nowrap; cursor: pointer; }
   .status:hover { color: #9ca3af; }
 
   /* 筛选区域 - 两行布局 */
   .filter-section { flex-shrink: 0; border-bottom: 1px solid #1e2128; background: #141720; }
   .filter-row { display: flex; align-items: center; gap: 6px; padding: 6px 14px; }
   .filter-row + .filter-row { border-top: 1px solid #1a1d24; padding-top: 6px; padding-bottom: 8px; }
-  .filter-label { font-size: 10px; color: #5a5f68; flex-shrink: 0; padding-right: 4px; }
+  .filter-label { font-size: 10px; color: #9ca3af; flex-shrink: 0; padding-right: 4px; }
   .filter-tags { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; min-width: 0; }
   .filter-tag { padding: 3px 10px; border-radius: 10px; font-size: 10px; cursor: pointer;
                 background: #1a1d24; color: #9ca3af; border: 1px solid transparent;
@@ -161,9 +171,101 @@
   .filter-tag.active { background: rgba(76,139,245,0.15); color: #4c8bf5; border-color: rgba(76,139,245,0.3); }
   .filter-tag .count { color: #6b7280; font-size: 9px; }
   .filter-tag.active .count { color: rgba(76,139,245,0.7); }
+  .filter-tag .count.zero { color: #4a4f57; }
+  body.light-theme .filter-tag .count.zero { color: #d1d5db; }
+  .filter-tag.disabled { opacity: 0.45; cursor: not-allowed; background: #1a1d24 !important; color: #6b7280 !important; border-color: transparent !important; }
+  .filter-tag.disabled:hover { background: #1a1d24 !important; color: #6b7280 !important; }
+  body.light-theme .filter-tag.disabled { background: #f3f4f6 !important; color: #9ca3af !important; }
+  body.light-theme .filter-tag.disabled:hover { background: #f3f4f6 !important; color: #9ca3af !important; }
+
+  /* 搜索模式：分段控件（连接式外观，切换=重新搜索） */
+  .filter-tags.segmented { flex: 0 0 auto; gap: 0; border: 1px solid #2a2e37; border-radius: 8px; overflow: hidden; width: fit-content; }
+  .filter-tags.segmented .filter-tag { border: none; border-radius: 0; border-right: 1px solid #2a2e37; background: transparent; color: #9ca3af; }
+  .filter-tags.segmented .filter-tag:last-child { border-right: none; }
+  .filter-tags.segmented .filter-tag:hover { background: #2a2e37; color: #e6e6e6; }
+  .filter-tags.segmented .filter-tag.active { background: #4c8bf5; color: #fff; }
+  .filter-tags.segmented .filter-tag.disabled { opacity: 0.45; }
+  body.light-theme .filter-tags.segmented { border-color: #d1d5db; }
+  body.light-theme .filter-tags.segmented .filter-tag { color: #6b7280; border-right-color: #d1d5db; }
+  body.light-theme .filter-tags.segmented .filter-tag:last-child { border-right: none; }
+  body.light-theme .filter-tags.segmented .filter-tag:hover { background: #e5e7eb; color: #374151; }
+  body.light-theme .filter-tags.segmented .filter-tag.active { background: #4c8bf5; color: #fff; }
+  /* 当前筛选分类下无结果提示已移除（层切换始终重新搜索，不再客户端过滤） */
+  body.light-theme .filter-tags.segmented .filter-tag.disabled { background: #f3f4f6 !important; color: #9ca3af !important; }
+  body.light-theme .hint code.disabled { background: #f3f4f6 !important; color: #9ca3af !important; }
+  body.light-theme .sidebar { background: #eef0f3; }
+  body.light-theme .sidebar-group { background: #ffffff; border-color: #e2e5ea; }
+  body.light-theme .sidebar-group-title { border-bottom-color: #e8eaed; }
+  body.light-theme .sidebar-group.cond .sidebar-group-title { color: #2b6cff; border-bottom-color: #d6e2ff; }
+  body.light-theme .sidebar-group.filter .sidebar-group-title { color: #5b6470; }
+
+  /* ===== 补齐：浅色主题下残留的深色块全部修复 ===== */
+  /* 搜索框横条（最显眼的黑带） */
+  body.light-theme .search-area { background: #ffffff; border-bottom-color: #e5e7eb; }
+  /* 结果列表选中行：JS 加的是 .active 而非 .selected，原只覆盖了 selected，导致选中行在浅色下仍是深底 */
+  body.light-theme .hit.active { background: #eff6ff; }
+  /* 排序下拉：HTML id 是 sortSelect，原浅色覆盖写成了 #listSelect，id 对不上，这里用 #sortSelect 与类双保险 */
+  body.light-theme .sort-select { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+  /* 预览头部按钮（复制/打开/定位） */
+  body.light-theme .preview-actions button { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+  body.light-theme .preview-actions button:hover { background: #e5e7eb; color: #374151; }
+  /* 结果行内 hover 操作按钮 */
+  body.light-theme .hit .action-btn { background: #e5e7eb; color: #6b7280; }
+  body.light-theme .hit .action-btn:hover { background: #d1d5db; color: #374151; }
+  /* 底部 toast 提示条 */
+  body.light-theme .toast { background: #ffffff; border-color: #e5e7eb; color: #1f2937; }
+  body.light-theme .toast.success { border-color: rgba(22,163,74,0.3); color: #16a34a; }
+  body.light-theme .toast.error { border-color: rgba(220,38,38,0.3); color: #dc2626; }
+  /* 设置页快捷键键帽 */
+  body.light-theme .shortcut-item .key { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+  /* 语法标签 hover */
+  body.light-theme .hint code:hover { background: #e5e7eb; color: #2563eb; }
+  /* 浅色下滚动条改用浅灰，避免深灰 scrollbar 突兀 */
+  body.light-theme ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+  body.light-theme ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  /* 加载/进度条轨道在浅色下改浅灰 */
+  body.light-theme .progress-track,
+  body.light-theme .list-loading .progress-bar { background: #e5e7eb; }
+  body.light-theme .list-loading,
+  body.light-theme .empty-state { color: #6b7280; }
+
+  /* 内联提示框（重建索引提示）改为类控制，深浅色各一套，去掉写死黑底 */
+  .info-tip { margin-top: 12px; padding: 10px; background: #1a1d24; border-radius: 6px;
+              font-size: 11px; color: #9ca3af; }
+  body.light-theme .info-tip { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+
+  /* ===== 内容区：左 sidebar（条件） + 右 main（搜索框 + 结果） ===== */
+  .content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+  .sidebar { width: 224px; flex-shrink: 0; border-right: 1px solid #1e2128;
+             background: #0f1116; overflow-y: auto; padding: 14px 12px;
+             display: flex; flex-direction: column; gap: 14px; }
+  /* 两个明确分区：搜索条件（模式/排序） vs 结果过滤（文件类型），视觉隔离避免混淆 */
+  .sidebar-group { padding: 12px; border: 1px solid #23262f; border-radius: 10px;
+                   background: #141720; display: flex; flex-direction: column; gap: 14px; }
+  .sidebar-group-title { font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+                         padding-bottom: 8px; border-bottom: 1px dashed #2a2e37;
+                         display: flex; align-items: center; gap: 6px; }
+  .sidebar-group-title .g-hint { margin-left: auto; font-size: 9px; color: #4a4f57; font-weight: 400; }
+  .sidebar-group.cond .sidebar-group-title { color: #6c9eff; border-bottom-color: #2b3a5c; }
+  .sidebar-group.filter .sidebar-group-title { color: #8b95a5; }
+  .sidebar-section { display: flex; flex-direction: column; gap: 9px; }
+  .sidebar-title { font-size: 11px; font-weight: 600; color: #9ca3af;
+                   letter-spacing: 0.3px; display: flex; align-items: baseline; gap: 6px; }
+  .sidebar-title .hint { font-size: 9px; color: #4a4f57; font-weight: 400; }
+  .sidebar .filter-tags { flex: 0 0 auto; }
+  .sidebar-layers { flex-direction: column; align-items: stretch; }
+  .sidebar-layers .filter-tag { text-align: left; }
+  .sidebar-ext { flex-direction: row; flex-wrap: wrap; }
+  .sidebar-sort { width: 100%; }
+
+  /* 主区：搜索框在上，结果区在下 */
+  .search-area { flex-shrink: 0; padding: 12px 16px; border-bottom: 1px solid #1e2128;
+                 background: #141720; }
+  .search-area .searchbar { max-width: none; }
+  .main-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 
   /* ===== 主内容区：左右分栏 ===== */
-  .main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   /* 左侧：结果列表 */
   .panel-left { width: 400px; min-width: 260px; max-width: 50%;
@@ -184,7 +286,6 @@
     padding: 2px 6px;
     border-radius: 5px;
     cursor: pointer;
-    outline: none;
   }
   .sort-select:hover {
     border-color: #3a3e47;
@@ -204,11 +305,11 @@
          display: flex; flex-direction: column; gap: 3px; position: relative; }
   .hit:hover { background: #1a1d24; }
   .hit.active { background: #1e2837; border-left-color: #4c8bf5; }
-  .hit .hit-title { font-size: 12px; color: #e6e6e6; font-weight: 500;
+  .hit .hit-title { font-size: calc(var(--list-font-size, 13px) - 1px); color: #e6e6e6; font-weight: 500;
                    display: flex; align-items: center; gap: 5px; line-height: 1.3; }
-  .hit .hit-path { font-size: 10px; color: #5a5f68; word-break: break-all; line-height: 1.3; }
-  .hit .hit-meta { font-size: 9px; color: #4a4f58; display: flex; align-items: center; gap: 5px; margin-top: 1px; flex-wrap: wrap; }
-  .hit .hit-snippet { font-size: 11px; color: #8a8f98; margin-top: 3px; line-height: 1.5;
+  .hit .hit-path { font-size: calc(var(--list-font-size, 13px) - 3px); color: #5a5f68; word-break: break-all; line-height: 1.3; }
+  .hit .hit-meta { font-size: calc(var(--list-font-size, 13px) - 4px); color: #4a4f58; display: flex; align-items: center; gap: 5px; margin-top: 1px; flex-wrap: wrap; }
+  .hit .hit-snippet { font-size: calc(var(--list-font-size, 13px) - 2px); color: #8a8f98; margin-top: 3px; line-height: 1.5;
                       max-height: 48px; overflow: hidden; display: -webkit-box;
                       -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hit .hit-actions { position: absolute; top: 6px; right: 10px; display: none; gap: 3px; }
@@ -227,6 +328,21 @@
   /* 高亮样式 */
   .hl { background: rgba(255,200,50,0.25); color: #ffe066; border-radius: 2px;
         padding: 0 1px; font-weight: 500; }
+  .about-title { color: #fff; }
+
+  /* 响应式：窄屏(≤768px)上下堆叠面板，预览收窄 */
+  @media (max-width: 768px) {
+    .main { flex-direction: column; }
+    .content { flex-direction: column; }
+    .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; border-right: none;
+               border-bottom: 1px solid #1e2128; gap: 14px; padding: 12px; }
+    .sidebar-section { flex: 1 1 auto; min-width: 150px; }
+    .main-body { flex-direction: column; }
+    .panel-left { min-width: 0; width: 100% !important; flex: 1; border-right: none; }
+    .panel-right { min-width: 0; max-height: 40vh; border-top: 1px solid #1e2128; }
+    .resizer { display: none; }
+    .filter-row { flex-wrap: wrap; }
+  }
 
   /* 右侧：预览面板 */
   .panel-right { flex: 1; min-width: 280px; display: flex; flex-direction: column;
@@ -430,17 +546,6 @@
   <div class="header-top">
     <h1>🔍 OmniFind <span class="badge-ver">v0.2</span></h1>
     <span class="sub">文件名 + 全文 + 语义</span>
-    <div class="searchbar">
-      <input id="q" placeholder="输入关键词搜索… (Ctrl+F 聚焦)" autofocus autocomplete="off">
-      <div class="search-history" id="searchHistory">
-        <div class="history-header">
-          <span>搜索历史</span>
-          <span class="clear" onclick="clearHistory(event)">清空</span>
-        </div>
-        <div id="historyList"></div>
-      </div>
-      <button id="searchBtn" onclick="doSearch()">搜索</button>
-    </div>
     <div class="header-actions">
       <button class="ghost icon-btn" onclick="toggleQuickTheme()" title="切换主题">🌓</button>
       <button class="ghost icon-btn" onclick="openSettings()" title="设置">⚙️</button>
@@ -449,101 +554,129 @@
   <div class="hint-row">
       <div class="hint">
         语法:
-        <code onclick="fillQuery('filename:')">filename:</code> 文件名 ·
-        <code onclick="fillQuery('content:')">content:</code> 正文 ·
-        <code onclick="fillQuery('?')">?</code> 语义 ·
-        <code onclick="fillQuery('all:')">all:</code> 聚合 ·
-        <code onclick="fillQuery('ext:.py ')">ext:</code> 类型 ·
-        <code onclick="fillQuery('sort:time ')">sort:</code> 排序
+        <code role="button" tabindex="0" onclick="addSyntax('filename:')" onkeydown="keyAct(event)">filename:</code> 文件名 ·
+        <code role="button" tabindex="0" onclick="addSyntax('content:')" onkeydown="keyAct(event)">content:</code> 正文 ·
+        <code id="syntaxSemantic" role="button" tabindex="0" onclick="addSyntax('?')" onkeydown="keyAct(event)">?</code> 语义 ·
+        <code role="button" tabindex="0" onclick="addSyntax('all:')" onkeydown="keyAct(event)">all:</code> 聚合 ·
+        <code role="button" tabindex="0" onclick="addSyntax('ext:.py ')" onkeydown="keyAct(event)">ext:</code> 类型 ·
+        <code role="button" tabindex="0" onclick="addSyntax('sort:time ')" onkeydown="keyAct(event)">sort:</code> 排序
       </div>
       <div class="status" id="status" onclick="openSettings()" title="点击打开设置">加载中…</div>
     </div>
 </div>
 
-<!-- 筛选区域 - 两行 -->
-<div class="filter-section" id="filterSection" style="display:none;">
-  <div class="filter-row">
-    <span class="filter-label">搜索层:</span>
-    <div class="filter-tags" id="layerFilters">
-      <div class="filter-tag active" data-layer="auto" onclick="setLayer('auto')">🏠 智能 <span class="count" id="f-auto">-</span></div>
-      <div class="filter-tag" data-layer="filename" onclick="setLayer('filename')">📍 文件名 <span class="count" id="f-l1">-</span></div>
-      <div class="filter-tag" data-layer="fulltext" onclick="setLayer('fulltext')">📄 全文 <span class="count" id="f-l2">-</span></div>
-      <div class="filter-tag" data-layer="semantic" onclick="setLayer('semantic')">🧠 语义 <span class="count" id="f-l3">-</span></div>
-      <div class="filter-tag" data-layer="all" onclick="setLayer('all')">🔀 聚合 <span class="count" id="f-all">-</span></div>
-    </div>
-  </div>
-  <div class="filter-row">
-    <span class="filter-label">文件类型:</span>
-    <div class="filter-tags" id="extFilters">
-      <div class="filter-tag active" data-ext="" onclick="setExtFilter('')" id="ext-all">全部</div>
-      <div class="filter-tag" data-ext=".py" onclick="setExtFilter('.py')">🐍 Python</div>
-      <div class="filter-tag" data-ext=".md" onclick="setExtFilter('.md')">📝 Markdown</div>
-      <div class="filter-tag" data-ext=".txt" onclick="setExtFilter('.txt')">📄 文本</div>
-      <div class="filter-tag" data-ext=".js" onclick="setExtFilter('.js')">⚡ JS</div>
-      <div class="filter-tag" data-ext=".json" onclick="setExtFilter('.json')">📋 JSON</div>
-      <div class="filter-tag" data-ext=".html" onclick="setExtFilter('.html')">🌐 HTML</div>
-      <div class="filter-tag" data-ext=".css" onclick="setExtFilter('.css')">🎨 CSS</div>
-      <div class="filter-tag" data-ext=".java" onclick="setExtFilter('.java')">☕ Java</div>
-    </div>
-    <div class="spacer" style="flex:1;"></div>
-  </div>
-</div>
-
-<!-- 主内容 -->
-<div class="main">
-  <!-- 左侧：结果列表 -->
-  <div class="panel-left" id="panelLeft">
-    <div class="list-header" id="listHeader" style="display:none;">
-      <span>共 <span class="count" id="hitCount">0</span> 条结果</span>
-      <span class="mode-badge" id="modeBadge"></span>
-      <div class="spacer"></div>
-      <select class="sort-select" id="sortSelect" onchange="onSortChange()" title="排序方式">
-        <option value="score">相关度</option>
-        <option value="time_desc">最新修改</option>
-        <option value="time_asc">最早修改</option>
-        <option value="size_desc">最大文件</option>
-        <option value="size_asc">最小文件</option>
-      </select>
-    </div>
-    <!-- Loading 状态 -->
-    <div class="list-loading" id="listLoading" style="display:none;">
-      <div class="spinner"></div>
-      <div class="msg" id="loadingMsg">正在搜索…</div>
-      <div class="progress-bar"><div class="fill"></div></div>
-    </div>
-    <!-- 结果列表 -->
-    <div class="result-list" id="resultList"></div>
-    <!-- 加载更多 -->
-    <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
-      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">加载更多</button>
-    </div>
-    <!-- 空状态 -->
-    <div class="empty-state" id="emptyState">
-      <div class="icon">📂</div>
-      <div class="text" id="emptyText">输入关键词开始搜索</div>
-    </div>
-  </div>
-
-  <!-- 可拖拽分隔条 -->
-  <div class="resizer" id="resizer"></div>
-
-  <!-- 右侧：预览面板 -->
-  <div class="panel-right" id="panelRight">
-    <div class="preview-header" id="previewHeader" style="display:none;">
-      <span class="file-icon" id="previewIcon">📄</span>
-      <span class="file-name" id="previewFileName" title=""></span>
-      <div class="preview-actions">
-        <button onclick="copyPreviewContent()" title="复制内容">📋 复制</button>
-        <button onclick="openCurrentFile()" title="打开文件">📂 打开</button>
-        <button onclick="revealCurrentFile()" title="所在位置">📍 定位</button>
+<!-- 内容区：左 sidebar（搜索条件 / 结果过滤） + 右 main（搜索框 + 结果） -->
+<div class="content">
+  <!-- 左侧：条件栏 -->
+  <aside class="sidebar" id="sidebar">
+    <!-- 搜索条件区：决定“怎么搜”（搜索模式 + 排序） -->
+    <div class="sidebar-group cond">
+      <div class="sidebar-group-title">🔍 搜索条件 <span class="g-hint">搜索前设定</span></div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">搜索模式 <span class="hint">切换将重搜</span></div>
+        <div class="filter-tags sidebar-layers" id="layerFilters" role="radiogroup" aria-label="搜索模式">
+          <div class="filter-tag active" role="radio" aria-checked="true" tabindex="0" data-layer="auto" onclick="applyLayerFilter('auto')" onkeydown="keyAct(event)">🏠 智能</div>
+          <div class="filter-tag" role="radio" aria-checked="false" tabindex="0" data-layer="filename" onclick="applyLayerFilter('filename')" onkeydown="keyAct(event)">📍 文件名</div>
+          <div class="filter-tag" role="radio" aria-checked="false" tabindex="0" data-layer="fulltext" onclick="applyLayerFilter('fulltext')" onkeydown="keyAct(event)">📄 全文</div>
+          <div class="filter-tag" role="radio" aria-checked="false" tabindex="0" data-layer="semantic" onclick="applyLayerFilter('semantic')" onkeydown="keyAct(event)">🧠 语义</div>
+          <div class="filter-tag" role="radio" aria-checked="false" tabindex="0" data-layer="all" onclick="applyLayerFilter('all')" onkeydown="keyAct(event)">🔀 聚合</div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">排序</div>
+        <select class="sort-select sidebar-sort" id="sortSelect" onchange="onSortChange()" title="排序方式">
+          <option value="score">相关度</option>
+          <option value="time_desc">最新修改</option>
+          <option value="time_asc">最早修改</option>
+          <option value="size_desc">最大文件</option>
+          <option value="size_asc">最小文件</option>
+        </select>
       </div>
     </div>
-    <div class="preview-body" id="previewBody">
-      <div class="preview-placeholder">
-        <div class="icon">👆</div>
-        <div class="text">选择左侧结果查看内容预览</div>
-        <div style="font-size:10px;color:#3a3e47;margin-top:6px;">
-          快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
+    <!-- 结果过滤区：对搜索结果再筛选（仅在有结果后有意义） -->
+    <div class="sidebar-group filter">
+      <div class="sidebar-group-title">⛃ 结果过滤 <span class="g-hint">结果出来后用</span></div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">文件类型 <span class="hint">按类型筛选</span></div>
+        <div class="filter-tags sidebar-ext" id="extFilters">
+          <div class="filter-tag active" role="button" tabindex="0" data-ext="" onclick="setExtFilter('')" onkeydown="keyAct(event)" id="ext-all">全部</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".py" onclick="setExtFilter('.py')" onkeydown="keyAct(event)">🐍 Python</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".md" onclick="setExtFilter('.md')" onkeydown="keyAct(event)">📝 Markdown</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".txt" onclick="setExtFilter('.txt')" onkeydown="keyAct(event)">📄 文本</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".js" onclick="setExtFilter('.js')" onkeydown="keyAct(event)">⚡ JS</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".json" onclick="setExtFilter('.json')" onkeydown="keyAct(event)">📋 JSON</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".html" onclick="setExtFilter('.html')" onkeydown="keyAct(event)">🌐 HTML</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".css" onclick="setExtFilter('.css')" onkeydown="keyAct(event)">🎨 CSS</div>
+          <div class="filter-tag" role="button" tabindex="0" data-ext=".java" onclick="setExtFilter('.java')" onkeydown="keyAct(event)">☕ Java</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧主区 -->
+  <div class="main">
+    <div class="search-area">
+      <div class="searchbar">
+        <input id="q" placeholder="输入关键词搜索… (Ctrl+F 聚焦)" autofocus autocomplete="off">
+        <div class="search-history" id="searchHistory">
+          <div class="history-header">
+            <span>搜索历史</span>
+            <span class="clear" onclick="clearHistory(event)">清空</span>
+          </div>
+          <div id="historyList"></div>
+        </div>
+        <button id="searchBtn" onclick="doSearch()">搜索</button>
+      </div>
+    </div>
+    <div class="main-body">
+      <!-- 左侧：结果列表 -->
+      <div class="panel-left" id="panelLeft">
+        <div class="list-header" id="listHeader" style="display:none;">
+          <span class="result-summary" id="resultSummary"></span>
+          <span class="mode-badge" id="modeBadge"></span>
+          <div class="spacer"></div>
+        </div>
+        <!-- Loading 状态 -->
+        <div class="list-loading" id="listLoading" style="display:none;">
+          <div class="spinner"></div>
+          <div class="msg" id="loadingMsg">正在搜索…</div>
+          <div class="progress-bar"><div class="fill"></div></div>
+        </div>
+        <!-- 结果列表 -->
+        <div class="result-list" id="resultList"></div>
+        <!-- 加载更多 -->
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+          <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">加载更多</button>
+        </div>
+        <!-- 空状态 -->
+        <div class="empty-state" id="emptyState">
+          <div class="icon">📂</div>
+          <div class="text" id="emptyText">输入关键词开始搜索</div>
+        </div>
+      </div>
+
+      <!-- 可拖拽分隔条 -->
+      <div class="resizer" id="resizer"></div>
+
+      <!-- 右侧：预览面板 -->
+      <div class="panel-right" id="panelRight">
+        <div class="preview-header" id="previewHeader" style="display:none;">
+          <span class="file-icon" id="previewIcon">📄</span>
+          <span class="file-name" id="previewFileName" title=""></span>
+          <div class="preview-actions">
+            <button onclick="copyPreviewContent()" title="复制内容">📋 复制</button>
+            <button onclick="openCurrentFile()" title="打开文件">📂 打开</button>
+            <button onclick="revealCurrentFile()" title="所在位置">📍 定位</button>
+          </div>
+        </div>
+        <div class="preview-body" id="previewBody">
+          <div class="preview-placeholder">
+            <div class="icon">👆</div>
+            <div class="text">选择左侧结果查看内容预览</div>
+            <div style="font-size:10px;color:#3a3e47;margin-top:6px;">
+              快捷键: ↑↓ 选择 · Enter 打开 · Ctrl+C 复制路径
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -607,12 +740,15 @@
           <div class="card-title">🧠 L3 语义索引</div>
           <div class="card-count" id="cfg-l3-count">-</div>
           <div class="card-desc" id="cfg-l3-desc">向量语义搜索（需安装依赖）</div>
+          <div class="progress-track" id="idx-l3-progress" style="display:none;">
+            <div class="progress-fill" style="width:0%"></div>
+          </div>
           <div class="card-actions">
-            <button class="ghost icon-btn" disabled>🔄 重建</button>
+            <button class="ghost icon-btn" onclick="rebuildIndex('l3')">🔄 重建</button>
           </div>
         </div>
-        <div style="margin-top:12px; padding:10px; background:#1a1d24; border-radius:6px; font-size:11px; color:#9ca3af;">
-          💡 <b>提示</b>：重建索引可能需要较长时间，期间搜索功能仍可使用旧索引。
+        <div class="info-tip">
+          💡 <b>提示</b>：重建会先清空旧索引再重新构建，期间对应层的搜索结果可能不完整，请等待完成。
         </div>
       </div>
 
@@ -688,13 +824,13 @@
         <div class="setting-group">
           <h3>显示</h3>
           <div class="setting-item">
-            <label>预览字体大小</label>
+            <label>界面字号</label>
             <div class="setting-control">
               <div class="setting-row">
                 <input type="range" id="cfg-font-size" min="11" max="18" value="13" oninput="updateFontSize(this.value)">
                 <span id="fontSizeValue" style="font-size:11px;color:#6b7280;min-width:30px;text-align:right;">13px</span>
               </div>
-              <div class="setting-desc">调整右侧预览区域的字体大小</div>
+              <div class="setting-desc">调整结果列表与预览区域的字体大小</div>
             </div>
           </div>
           <div class="setting-item">
@@ -741,7 +877,7 @@
       <div id="tab-about" style="display:none;">
         <div style="text-align:center; padding:20px 0;">
           <div style="font-size:48px; margin-bottom:12px;">🔍</div>
-          <div style="font-size:16px; font-weight:600; color:#fff; margin-bottom:4px;">OmniFind</div>
+          <div class="about-title" style="font-size:16px; font-weight:600; margin-bottom:4px;">OmniFind</div>
           <div style="font-size:12px; color:#6b7280; margin-bottom:16px;">本地全能搜索 · v0.2.0</div>
           <div style="font-size:11px; color:#5a5f68; line-height:1.8; margin-bottom:20px;">
             集成 Everything 式文件名搜索 + AnyTXT 式全文搜索 + 向量语义搜索<br>
@@ -827,10 +963,13 @@ function extractKeywords(query) {
   return keywords.filter(k => k.length > 1);
 }
 
-/** 对文本中的关键词进行高亮 */
+/** 对文本中的关键词进行高亮。FTS5 snippet 自带的私有区标记(/)一并转为高亮 */
 function highlightText(text, keywords) {
-  if (!text || !keywords || keywords.length === 0) return escapeHtml(text);
+  if (!text) return '';
   let escaped = escapeHtml(text);
+  // 后端 FTS5 snippet 高亮标记(Unicode 私有区) → <span class="hl">
+  escaped = escaped.replace(//g, '<span class="hl">').replace(//g, '</span>');
+  if (!keywords || keywords.length === 0) return escaped;
   keywords.forEach(kw => {
     if (!kw || kw.length < 1) return;
     try {
@@ -883,11 +1022,13 @@ function formatTime(ts) {
 let currentHits = [];
 let activeIndex = -1;
 let currentLayer = 'auto';       // auto / filename / fulltext / semantic / all
+let currentLayerFilter = 'auto'; // 结果列表层筛选（客户端过滤，不重新搜索）
 let currentExtFilter = '';
 let currentSort = 'score';
 let ctxIndex = -1;
 let pageSize = 200;
 let searchAbortController = null;
+let searchReqId = 0;            // 自增请求序号：仅最新请求可渲染，防止快速连点串台
 let currentSearchQuery = '';      // 保存当前搜索的查询字符串（纯关键词）
 let currentSearchParams = '';     // 保存当前搜索的完整参数字符串
 let hasMoreResults = false;       // 是否还有更多结果
@@ -919,8 +1060,9 @@ function loadUISettings() {
     // 默认搜索模式
     if (s.defaultMode) {
       currentLayer = s.defaultMode;
-      updateLayerFilterUI();
     }
+    currentLayerFilter = 'auto';
+    updateLayerFilterUI();
     // 每页数量
     if (s.pageSize) {
       pageSize = parseInt(s.pageSize) || 200;
@@ -998,6 +1140,7 @@ function updateThemeOptionUI() {
 /* ========== 字体大小 ========== */
 function updateFontSize(size) {
   size = parseInt(size) || 13;
+  document.documentElement.style.setProperty('--list-font-size', size + 'px');
   document.getElementById('previewBody').style.fontSize = size + 'px';
   const valEl = document.getElementById('fontSizeValue');
   if (valEl) valEl.textContent = size + 'px';
@@ -1070,11 +1213,60 @@ function fillQuery(q) {
   document.getElementById('searchHistory').classList.remove('show');
 }
 
+/** 语法 chip：追加到现有输入而非整体覆盖，避免丢失已输入的关键词 */
+function addSyntax(s) {
+  const input = document.getElementById('q');
+  let v = input.value;
+  const token = (s || '').trim();
+  if (!token) { input.focus(); return; }
+  // 语义层未启用时拦截 ? 语义搜索，与“语义”分段标签口径一致
+  if (token === '?' && !window.__l3Available) {
+    showToast('语义层未启用，无法使用 ? 语义搜索', 'error');
+    return;
+  }
+  // 避免重复添加同一前缀
+  if (v.toLowerCase().includes(token.toLowerCase())) { input.focus(); return; }
+  if (v && !v.endsWith(' ') && !v.endsWith('\n')) v += ' ';
+  input.value = v + s;
+  input.focus();
+  document.getElementById('searchHistory').classList.remove('show');
+}
+
+/* 键盘可达：Enter/Space 触发 click（禁用项拦截），用于语法 code / 分段控件 / 文件类型标签 */
+function keyAct(e) {
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+    const el = e.currentTarget;
+    if (el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true') {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    el.click();
+  }
+}
+
 /* ========== 加载索引状态 ========== */
 async function loadStatus() {
   try {
     const r = await fetch('/api/status');
     const s = await r.json();
+    window.__l3Available = !!s.l3_available;
+    window.__l3Count = s.l3_count || 0;
+    // 语义层未启用时同步置灰 ? 语法 chip，与“语义”分段标签口径一致
+    const _qChip = document.getElementById('syntaxSemantic');
+    if (_qChip) {
+      if (window.__l3Available) {
+        _qChip.classList.remove('disabled');
+        _qChip.removeAttribute('aria-disabled');
+        _qChip.tabIndex = 0;
+        _qChip.title = '插入 ? 进行语义搜索';
+      } else {
+        _qChip.classList.add('disabled');
+        _qChip.setAttribute('aria-disabled', 'true');
+        _qChip.tabIndex = -1;
+        _qChip.title = '语义层未启用';
+      }
+    }
     document.getElementById('status').textContent =
       `L1 ${s.l1_count||0} · L2 ${s.l2_count||0} · L3 ${s.l3_count||0}`;
     // 更新设置面板的计数
@@ -1093,14 +1285,14 @@ async function loadStatus() {
 }
 
 /* ========== 搜索功能 ========== */
-async function doSearch() {
+async function doSearch(opts) {
+  opts = opts || {};
   const q = document.getElementById('q').value.trim();
   const btn = document.getElementById('searchBtn');
   const listEl = document.getElementById('resultList');
   const loadingEl = document.getElementById('listLoading');
   const emptyEl = document.getElementById('emptyState');
   const headerEl = document.getElementById('listHeader');
-  const filterSection = document.getElementById('filterSection');
 
   document.getElementById('searchHistory').classList.remove('show');
 
@@ -1108,6 +1300,11 @@ async function doSearch() {
     resetUI();
     return;
   }
+
+  // 搜索模式（currentLayer）是用户的显式选择，跨查询持久化：
+  // 仅在 applyLayerFilter 中改变；普通搜索（回车/按钮/改类型/改排序）不再重置回智能，
+  // 否则会出现“选了文件名再点类型就被吃回智能”的 bug。文件类型由 setExtFilter 单独管理。
+  const myReqId = ++searchReqId;
 
   saveHistory(q);
 
@@ -1119,7 +1316,6 @@ async function doSearch() {
   listEl.innerHTML = '';
   emptyEl.style.display = 'none';
   headerEl.style.display = 'none';
-  filterSection.style.display = 'none';
 
   resetPreview();
 
@@ -1137,7 +1333,27 @@ async function doSearch() {
   try {
     const r = await fetch('/api/search?' + params.toString(),
       { signal: searchAbortController.signal });
+    if (!r.ok) {
+      let detail = 'HTTP ' + r.status;
+      try {
+        const errData = await r.json();
+        detail = errData.detail || errData.error || errData.message || detail;
+      } catch (e) { /* 非 JSON 错误体，使用状态码 */ }
+      btn.classList.remove('loading');
+      loadingEl.style.display = 'none';
+      emptyEl.style.display = 'flex';
+      headerEl.style.display = 'none';
+      document.getElementById('emptyText').innerHTML =
+        '<span class="error-text">搜索失败: ' + escapeHtml(String(detail)) + '</span>';
+      showToast('搜索失败: ' + detail, 'error');
+      currentHits = [];
+      activeIndex = -1;
+      hasMoreResults = false;
+      return;
+    }
     const data = await r.json();
+    // 过期响应直接丢弃（快速连点/慢请求回包顺序错乱时，避免旧结果覆盖新结果）
+    if (myReqId !== searchReqId) return;
 
     btn.classList.remove('loading');
     loadingEl.style.display = 'none';
@@ -1154,15 +1370,22 @@ async function doSearch() {
 
     if (!data.hits || !data.hits.length) {
       headerEl.style.display = 'none';
-      filterSection.style.display = 'none';
+      // 空结果（含点击计数为 0 的文件类型）仍保留筛选区，否则整块工具栏消失、用户被困在 0 结果且无法切回其它类型
       emptyEl.style.display = 'flex';
+      document.getElementById('loadMoreWrap').style.display = 'none';
+      document.getElementById('modeBadge').textContent = modeLabel;
       let emptyMsg = '未找到匹配结果';
       if (data.counts && data.counts.error) {
         emptyMsg += '<br><span class="error-text">' + escapeHtml(data.counts.error) + '</span>';
       } else {
-        emptyMsg += '<br><span style="color:#5a5f68;font-size:11px;">模式: ' + escapeHtml(modeLabel) + '</span>';
+        emptyMsg += '<br><span style="color:#9ca3af;font-size:11px;">模式：' + escapeHtml(modeLabel) + '</span>';
+        if (data.mode === 'semantic' && !window.__l3Available) {
+          emptyMsg += '<br><span style="color:#f59e0b;font-size:11px;">语义层未启用或为空，请改用关键词或 content: 搜索</span>';
+        }
       }
       document.getElementById('emptyText').innerHTML = emptyMsg;
+      updateResultSummary(data.counts, false);
+      updateExtFacets(data.ext_facets);
       currentHits = [];
       activeIndex = -1;
       hasMoreResults = false;
@@ -1174,22 +1397,12 @@ async function doSearch() {
     hasMoreResults = data.has_more || false;
 
     headerEl.style.display = 'flex';
-    filterSection.style.display = 'block';
-    document.getElementById('hitCount').textContent = data.hits.length + (hasMoreResults ? '+' : '');
     document.getElementById('modeBadge').textContent = modeLabel;
     emptyEl.style.display = 'none';
 
-    // 统计各层数量
-    const l1Count = data.hits.filter(h => h.layer === 'l1').length;
-    const l2Count = data.hits.filter(h => h.layer === 'l2').length;
-    const l3Count = data.hits.filter(h => h.layer === 'l3').length;
-
-    // 更新筛选栏计数
-    document.getElementById('f-auto').textContent = data.hits.length + (hasMoreResults ? '+' : '');
-    document.getElementById('f-l1').textContent = l1Count;
-    document.getElementById('f-l2').textContent = l2Count;
-    document.getElementById('f-l3').textContent = l3Count;
-    document.getElementById('f-all').textContent = data.hits.length + (hasMoreResults ? '+' : '');
+    // 结果摘要使用后端真实计数（total/l1/l2/l3），不再用被截断的 hits.length
+    updateResultSummary(data.counts, hasMoreResults);
+    updateExtFacets(data.ext_facets);
 
     renderResults();
 
@@ -1217,34 +1430,29 @@ async function loadMore() {
   }
   
   const currentCount = currentHits.length;
-  
+
   try {
     const params = new URLSearchParams(currentSearchParams);
     params.set('offset', currentCount);
-    const r = await fetch('/api/search?' + params.toString());
-    const data = await r.json();
-    
+    const r2 = await fetch('/api/search?' + params.toString());
+    if (!r2.ok) {
+      if (loadMoreBtn) { loadMoreBtn.textContent = '加载更多'; loadMoreBtn.disabled = false; }
+      showToast('加载失败: HTTP ' + r2.status, 'error');
+      return;
+    }
+    const data = await r2.json();
+
     if (data.hits && data.hits.length > 0) {
       currentHits = currentHits.concat(data.hits);
       hasMoreResults = data.has_more || false;
-      
-      // 更新计数
-      document.getElementById('hitCount').textContent = currentHits.length + (hasMoreResults ? '+' : '');
-      document.getElementById('f-auto').textContent = currentHits.length + (hasMoreResults ? '+' : '');
-      document.getElementById('f-all').textContent = currentHits.length + (hasMoreResults ? '+' : '');
-      
-      // 重新统计各层
-      const l1Count = currentHits.filter(h => h.layer === 'l1').length;
-      const l2Count = currentHits.filter(h => h.layer === 'l2').length;
-      const l3Count = currentHits.filter(h => h.layer === 'l3').length;
-      document.getElementById('f-l1').textContent = l1Count;
-      document.getElementById('f-l2').textContent = l2Count;
-      document.getElementById('f-l3').textContent = l3Count;
-      
+
+      // 摘要使用后端真实计数
+      updateResultSummary(data.counts, hasMoreResults);
+
       renderResults();
       
       // 恢复选中状态
-      if (activeIndex >= 0 && activeIndex < currentHits.length) {
+      if (activeIndex >= 0 && activeIndex < getDisplayedHits().length) {
         selectHit(activeIndex);
       }
     } else {
@@ -1269,17 +1477,82 @@ async function loadMore() {
   }
 }
 
-/* ========== 层筛选（切换搜索模式） ========== */
-function setLayer(layer) {
-  currentLayer = layer;
-  document.querySelectorAll('#layerFilters .filter-tag').forEach(el => {
-    el.classList.toggle('active', el.dataset.layer === layer);
-  });
-  // 如果有搜索词，重新搜索
-  const q = document.getElementById('q').value.trim();
-  if (q) {
-    doSearch();
+/* ========== 层筛选：搜索层切换始终走重新搜索（applyLayerFilter），此处直接返回当前结果集 ========== */
+function getDisplayedHits() {
+  return currentHits;
+}
+
+/* 结果摘要：使用后端真实计数 {total, l1, l2, l3}，彻底消除“智能30<文件名528”等矛盾 */
+function updateResultSummary(_c, hasMore) {
+  _c = _c || {};
+  const total = (_c.total != null) ? _c.total : currentHits.length;
+  const l1 = (_c.l1 != null) ? _c.l1 : currentHits.filter(h => h.layer === 'l1').length;
+  const l2 = (_c.l2 != null) ? _c.l2 : currentHits.filter(h => h.layer === 'l2').length;
+  const l3 = (_c.l3 != null) ? _c.l3 : currentHits.filter(h => h.layer === 'l3').length;
+  const el = document.getElementById('resultSummary');
+  if (el) {
+    el.textContent = '共 ' + total + ' 条 · 文件名 ' + l1 + ' · 全文 ' + l2 + ' · 语义 ' + l3;
   }
+}
+
+/* 文件类型按钮数量徽标：数字来自后端 ext_facets（口径与点击后的"共 N 条"完全一致）。
+   facets 缺失（如正则模式）时隐藏全部数字，避免展示错误数据。 */
+function updateExtFacets(facets) {
+  document.querySelectorAll('#extFilters .filter-tag').forEach(el => {
+    const ext = el.dataset.ext;
+    let span = el.querySelector('.count');
+    // facets[''] = 无扩展名限定的总数（"全部"按钮），其余键为各扩展名命中数
+    let n = (facets && facets[ext] != null) ? facets[ext] : null;
+    if (n == null) {
+      if (span) span.remove();
+      return;
+    }
+    if (!span) {
+      span = document.createElement('span');
+      span.className = 'count';
+      el.appendChild(span);
+    }
+    span.textContent = ' ' + n;
+    span.classList.toggle('zero', n === 0);
+  });
+}
+
+function updateLayerFilterUI() {
+  const active = currentLayerFilter || 'auto';
+  document.querySelectorAll('#layerFilters .filter-tag').forEach(el => {
+    const layer = el.dataset.layer;
+    const isActive = (layer === active);
+    el.classList.toggle('active', isActive);
+    el.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    el.title = '切换将重新搜索';
+    if (layer === 'semantic') {
+      const disabled = !window.__l3Available;
+      el.classList.toggle('disabled', disabled);
+      el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      el.tabIndex = disabled ? -1 : 0;
+      el.title = disabled ? '语义层未启用' : '切换将重新搜索';
+      if (disabled && isActive) {
+        // 语义不可用时，禁止停留在语义模式
+        el.classList.remove('active');
+        el.setAttribute('aria-checked', 'false');
+      }
+    } else {
+      el.tabIndex = 0;
+    }
+  });
+}
+
+/** 点击层筛选标签：切换到对应搜索层并重新检索（计数来自后端真实匹配数，不再误导） */
+function applyLayerFilter(layer) {
+  if (layer === 'semantic' && !window.__l3Available) {
+    showToast('语义层未启用或为空，已保持当前模式');
+    updateLayerFilterUI();
+    return;
+  }
+  currentLayer = layer;
+  currentLayerFilter = layer;
+  updateLayerFilterUI();
+  doSearch({ resetFilter: false });
 }
 
 /* ========== 扩展名筛选 ========== */
@@ -1308,14 +1581,15 @@ function renderResults() {
   const keywords = extractKeywords(document.getElementById('q').value.trim());
   const listDensity = getUISetting('listDensity', 'normal');
   const densityClass = listDensity === 'normal' ? '' : 'density-' + listDensity;
+  const hits = getDisplayedHits();
 
-  if (currentHits.length === 0) {
+  if (hits.length === 0) {
     listEl.innerHTML = '<div style="padding:30px;text-align:center;color:#5a5f68;font-size:11px;">无结果</div>';
     document.getElementById('loadMoreWrap').style.display = 'none';
     return;
   }
 
-  listEl.innerHTML = currentHits.map((h, i) => {
+  listEl.innerHTML = hits.map((h, i) => {
     return `
       <div class="hit ${densityClass}" data-index="${i}"
            onclick="selectHit(${i})" ondblclick="openHit(${i})"
@@ -1356,9 +1630,10 @@ function renderResults() {
 
 /* ========== 选中结果 ========== */
 function selectHit(index) {
-  if (index < 0 || index >= currentHits.length) return;
+  const hits = getDisplayedHits();
+  if (index < 0 || index >= hits.length) return;
   activeIndex = index;
-  const hit = currentHits[index];
+  const hit = hits[index];
 
   document.querySelectorAll('.hit').forEach(el => el.classList.remove('active'));
   const selectedEl = document.querySelector(`.hit[data-index="${index}"]`);
@@ -1390,7 +1665,7 @@ function ctxCopyPath() { hideCtxMenu(); if (ctxIndex >= 0) copyHitPath(ctxIndex)
 function ctxCopyName() {
   hideCtxMenu();
   if (ctxIndex >= 0) {
-    const path = currentHits[ctxIndex].path;
+    const path = getDisplayedHits()[ctxIndex].path;
     const name = path.split(/[/\\]/).pop();
     copyToClipboard(name);
   }
@@ -1398,10 +1673,14 @@ function ctxCopyName() {
 function ctxSearchContent() {
   hideCtxMenu();
   if (ctxIndex >= 0) {
-    const path = currentHits[ctxIndex].path;
+    const path = getDisplayedHits()[ctxIndex].path;
     const name = path.split(/[/\\]/).pop();
     fillQuery('content:' + name);
-    doSearch();
+    // content: 前缀强制全文模式，同步 UI 高亮，避免徽标与结果模式错位
+    currentLayer = 'fulltext';
+    currentLayerFilter = 'fulltext';
+    updateLayerFilterUI();
+    doSearch({ resetFilter: false });
   }
 }
 
@@ -1410,8 +1689,9 @@ document.addEventListener('scroll', hideCtxMenu, true);
 
 /* ========== 文件操作 ========== */
 async function openHit(index) {
-  if (index < 0 || index >= currentHits.length) return;
-  const hit = currentHits[index];
+  const hits = getDisplayedHits();
+  if (index < 0 || index >= hits.length) return;
+  const hit = hits[index];
   try {
     const r = await fetch('/api/file/open?path=' + encodeURIComponent(hit.path), { method: 'POST' });
     const d = await r.json();
@@ -1423,8 +1703,9 @@ async function openHit(index) {
 }
 
 async function revealHit(index) {
-  if (index < 0 || index >= currentHits.length) return;
-  const hit = currentHits[index];
+  const hits = getDisplayedHits();
+  if (index < 0 || index >= hits.length) return;
+  const hit = hits[index];
   try {
     const r = await fetch('/api/file/reveal?path=' + encodeURIComponent(hit.path), { method: 'POST' });
     const d = await r.json();
@@ -1436,8 +1717,9 @@ async function revealHit(index) {
 }
 
 function copyHitPath(index) {
-  if (index < 0 || index >= currentHits.length) return;
-  copyToClipboard(currentHits[index].path);
+  const hits = getDisplayedHits();
+  if (index < 0 || index >= hits.length) return;
+  copyToClipboard(hits[index].path);
 }
 
 function openCurrentFile() {
@@ -1472,6 +1754,17 @@ async function showPreview(hit) {
     const data = await r.json();
 
     if (!data.ok) {
+      if ((data.error || '').includes('目录')) {
+        bodyEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:20px 0;color:#5a5f68;">
+          <div style="font-size:32px;">📁</div>
+          <div style="color:#e6e6e6;font-size:13px;font-weight:500;">${escapeHtml(name)}</div>
+          <div style="font-size:11px;word-break:break-all;">${escapeHtml(hit.path)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:4px;line-height:1.5;">
+            这是一个目录，无法预览文件内容。<br>在结果列表中右键可「打开所在位置」。
+          </div>
+        </div>`;
+        return;
+      }
       bodyEl.innerHTML = `<div style="color:#f87171;padding:16px 0;font-size:11px;">
         ⚠️ 预览失败: ${escapeHtml(data.error || '未知错误')}<br><br>
         <span style="color:#5a5f68;">${escapeHtml(hit.path)}</span>
@@ -1523,20 +1816,17 @@ function copyPreviewContent() {
 function resetUI() {
   document.getElementById('resultList').innerHTML = '';
   document.getElementById('listHeader').style.display = 'none';
-  document.getElementById('filterSection').style.display = 'none';
   document.getElementById('listLoading').style.display = 'none';
   document.getElementById('emptyState').style.display = 'flex';
   document.getElementById('emptyText').innerHTML = '输入关键词开始搜索';
   currentHits = [];
   activeIndex = -1;
-  currentLayer = 'auto';
+  // 注意：清空输入框只重置结果与类型/排序，但【不重置搜索模式 currentLayer】，
+  // 因为模式是用户的显式选择，应跨查询持久（支持“先选模式→再输入搜索”的流畅流程）。
   currentExtFilter = '';
   currentSort = 'score';
   document.getElementById('sortSelect').value = 'score';
-  // 重置层筛选
-  document.querySelectorAll('#layerFilters .filter-tag').forEach(el => {
-    el.classList.toggle('active', el.dataset.layer === 'auto');
-  });
+  updateLayerFilterUI();
   // 重置文件类型筛选按钮
   document.querySelectorAll('#extFilters .filter-tag').forEach(el => {
     el.classList.toggle('active', el.dataset.ext === '');
@@ -1590,6 +1880,11 @@ function resetPreview() {
     saveUISettings();
   });
 })();
+
+/* 修改查询词时重置选中项：避免按 Enter 误打开旧结果而非执行新搜索 */
+document.getElementById('q').addEventListener('input', () => {
+  activeIndex = -1;
+});
 
 /* ========== 搜索历史下拉 ========== */
 document.getElementById('q').addEventListener('focus', () => {
@@ -1783,11 +2078,12 @@ document.addEventListener('keydown', e => {
   }
 
   if (isSearchFocused) {
-    if (e.key === 'ArrowDown' && currentHits.length > 0) {
+    const _dhLen = getDisplayedHits().length;
+    if (e.key === 'ArrowDown' && _dhLen > 0) {
       e.preventDefault();
-      const next = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, currentHits.length - 1);
+      const next = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, _dhLen - 1);
       selectHit(next);
-    } else if (e.key === 'ArrowUp' && currentHits.length > 0) {
+    } else if (e.key === 'ArrowUp' && _dhLen > 0) {
       e.preventDefault();
       const prev = Math.max(activeIndex - 1, 0);
       selectHit(prev);
