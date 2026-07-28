@@ -158,6 +158,21 @@
                 btn.textContent = '生成激活码';
             }
         }
-    </script>
+    
+        // 页面加载时获取默认有效期配置
+        fetch('/activecode/api/activation/config/default-expire')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success && document.getElementById('defaultExpireTag')) {
+                    document.getElementById('defaultExpireTag').textContent = d.defaultExpireLabel;
+                }
+            })
+            .catch(function() {
+                // 读取失败时默认显示1个月
+                if (document.getElementById('defaultExpireTag')) {
+                    document.getElementById('defaultExpireTag').textContent = '1 个月';
+                }
+            });
+</script>
 </body>
 </html>
