@@ -478,7 +478,7 @@
         }
 
         let cachedRecords = [];
-        let recPage = 1, recPages = 1, recTotal = 0;
+        let recPage = 1, recPages = 1, recTotal = 0, recSize = 20;
         let logPage = 1, logPages = 1, logTotal = 0;
 
         // 查询状态管理：按钮 loading 态 + 表格上方状态条 + 请求版本号（防竞态）
@@ -524,7 +524,7 @@
                 if (keyword) params.set('keyword', keyword);
                 if (status) params.set('status', status);
                 params.set('page', recPage);
-                params.set('size', 20);
+                params.set('size', recSize);
                 const resp = await fetch('/activecode/api/activation/list?' + params);
                 const data = await resp.json();
                 // 竞态保护：如果又发起了新请求，忽略这次旧响应
@@ -595,6 +595,11 @@
             }).join('');
         }
 
+        function changePageSize(newSize) {
+            recSize = parseInt(newSize);
+            loadRecords(1);
+        }
+
         function updateStats(total, now, records) {
             const active = records ? records.filter(r => r.expireTime >= now).length : 0;
             document.getElementById('statTotal').textContent = total;
@@ -621,7 +626,7 @@
                 if (startDate) params.set('startDate', startDate);
                 if (endDate) params.set('endDate', endDate);
                 params.set('page', logPage);
-                params.set('size', 20);
+                params.set('size', recSize);
                 const resp = await fetch('/activecode/api/activation/logs?' + params);
                 const data = await resp.json();
                 // 竞态保护
@@ -685,10 +690,20 @@
             loadLogs(1);
         }
 
-        function renderPagination(containerId, current, totalPages, total, loadFn) {
+        function renderPagination(containerId, current, totalPages, total, loadFn, showSizeSelector) {
             const container = document.getElementById(containerId);
-            if (totalPages <= 1) { container.innerHTML = `<span class="page-info">共 ${total} 条</span>`; return; }
-            let html = `<button ${current <= 1 ? 'disabled' : ''} onclick="${loadFn.name}(${current - 1})">上一页</button>`;
+            const isRec = containerId === 'recPagination';
+            if (totalPages <= 1) { 
+                let info = `<span class="page-info">共 ${total} 条</span>`;
+                if (isRec) info = `<select onchange="changePageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${recSize===10?'selected':''}>10条/页</option><option value="20" ${recSize===20?'selected':''}>20条/页</option><option value="50" ${recSize===50?'selected':''}>50条/页</option><option value="100" ${recSize===100?'selected':''}>100条/页</option></select>` + info;
+                container.innerHTML = info; 
+                return; 
+            }
+            let html = '';
+            if (isRec) {
+                html += `<select onchange="changePageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${recSize===10?'selected':''}>10条/页</option><option value="20" ${recSize===20?'selected':''}>20条/页</option><option value="50" ${recSize===50?'selected':''}>50条/页</option><option value="100" ${recSize===100?'selected':''}>100条/页</option></select>';
+            }
+            html += `<button ${current <= 1 ? 'disabled' : ''} onclick="${loadFn.name}(${current - 1})">上一页</button>`;
             const maxButtons = 5;
             let start = Math.max(1, current - Math.floor(maxButtons / 2));
             let end = Math.min(totalPages, start + maxButtons - 1);
