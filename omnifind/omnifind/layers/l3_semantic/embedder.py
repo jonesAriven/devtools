@@ -48,27 +48,39 @@ class OnnxEmbedder:
         # 探测模型需要哪些输入(有的导出带 token_type_ids,有的不带)
         self._input_names = {i.name for i in self._session.get_inputs()}
 
-    def encode(self, texts: list[str], is_query: bool = False) -> np.ndarray:
-        """批量编码,返回 (N, dim) 的归一化向量。"""
+    def encode(self, texts: list[str], is_query: bool = False,
+               batch_size: int = 32) -> np.ndarray:
+        """批量编码,返回 (N, dim) 的归一化向量。
+
+        内部按 batch_size 分批推理后拼接:避免单文档 chunk 数过大时,
+        一次性把整批喂入 ORT 导致激活张量 (N,512,768) 撑爆内存(OOM)。
+        分批后峰值内存恒定在 batch_size*512*768,默认 32 约 64MB。
+        """
         self._lazy_load()
         if is_query:
             texts = [QUERY_INSTRUCTION + t for t in texts]
-        encs = self._tokenizer.encode_batch(texts)
-        ids = np.array([e.ids for e in encs], dtype=np.int64)
-        mask = np.array([e.attention_mask for e in encs], dtype=np.int64)
-        feed = {"input_ids": ids, "attention_mask": mask}
-        if "token_type_ids" in self._input_names:
-            feed["token_type_ids"] = np.zeros_like(ids)
-        # 只喂模型实际需要的输入
-        feed = {k: v for k, v in feed.items() if k in self._input_names}
-        outputs = self._session.run(None, feed)
-        last_hidden = outputs[0]  # (N, seq, dim)
-        # BGE 用 [CLS] 池化(取第 0 个 token)
-        cls = last_hidden[:, 0, :]
-        # L2 归一化
-        norms = np.linalg.norm(cls, axis=1, keepdims=True)
-        norms[norms == 0] = 1e-9
-        return (cls / norms).astype(np.float32)
+        if not texts:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        all_vecs: list[np.ndarray] = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            encs = self._tokenizer.encode_batch(batch)
+            ids = np.array([e.ids for e in encs], dtype=np.int64)
+            mask = np.array([e.attention_mask for e in encs], dtype=np.int64)
+            feed = {"input_ids": ids, "attention_mask": mask}
+            if "token_type_ids" in self._input_names:
+                feed["token_type_ids"] = np.zeros_like(ids)
+            # 只喂模型实际需要的输入
+            feed = {k: v for k, v in feed.items() if k in self._input_names}
+            outputs = self._session.run(None, feed)
+            last_hidden = outputs[0]  # (b, seq, dim)
+            # BGE 用 [CLS] 池化(取第 0 个 token)
+            cls = last_hidden[:, 0, :]
+            # L2 归一化
+            norms = np.linalg.norm(cls, axis=1, keepdims=True)
+            norms[norms == 0] = 1e-9
+            all_vecs.append((cls / norms).astype(np.float32))
+        return np.concatenate(all_vecs, axis=0)
 
     def encode_one(self, text: str, is_query: bool = False) -> np.ndarray:
         return self.encode([text], is_query=is_query)[0]
