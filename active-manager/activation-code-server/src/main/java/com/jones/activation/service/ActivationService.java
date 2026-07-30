@@ -425,12 +425,14 @@ public class ActivationService {
         String parsedDeviceId = null;
 
         CryptoUtil.SerialNumberParseResult decryptResult = CryptoUtil.decryptSerialNumber(serialNumber);
+        String clientVersion = null;
         if (decryptResult.isSuccess()) {
-            // 解密成功：返回结构化的初始序列号、设备ID、机器码
+            // 解密成功：返回结构化的初始序列号、设备ID、机器码、版本号
             initialSerial = decryptResult.getInitialSerial();
             machineCode = decryptResult.getMachineCode();
             parsedDeviceId = decryptResult.getDeviceId();
-            log.info("解析序列号(解密成功): 初始序列号={}, 机器码={}, 设备ID={}", initialSerial, machineCode, parsedDeviceId);
+            clientVersion = decryptResult.getVersion();
+            log.info("解析序列号(解密成功): 初始序列号={}, 机器码={}, 设备ID={}, 版本号={}", initialSerial, machineCode, parsedDeviceId, clientVersion);
         } else {
             // 解密失败：降级为明文格式（按最后一个 '-' 分割，如 SOFT001-AA-BB-CC-DD-EE-FF）
             String[] parsed = parseSerialNumber(serialNumber);
@@ -441,6 +443,7 @@ public class ActivationService {
 
         map.put("initialSerial", initialSerial);
         map.put("machineCode", machineCode);
+        map.put("version", clientVersion);
 
         // 查询数据库记录时使用解密后重组的 serialNumber（与 generateActivationCode 保持一致）
         String dbSerialNumber = serialNumber;

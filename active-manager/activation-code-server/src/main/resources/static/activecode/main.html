@@ -942,6 +942,7 @@ function setAdminExpire(minutes) {
                     <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
                     <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
                     <p><span class="pl">机器码：</span><span class="pv">${data.machineCode || '-'}</span></p>
+                    <p><span class="pl">版本号：</span><span class="pv" style="color:#667eea;font-weight:600;">${data.version || '未知'}</span></p>
                 `;
                 // 有记录时显示完整信息；无记录但有解析出的 deviceId 也显示
                 if (data.recordId) {
