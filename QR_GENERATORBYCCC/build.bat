@@ -41,18 +41,13 @@ if errorlevel 1 (
 popd
 echo.
 
-echo [2/5] Configuring with CMake...
-%CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release
+echo [2/5] Configuring with CMake for Win7 compatibility (Win32 + v143 + Windows 7 SDK)...
+%CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_VERSION=7.0
 if %errorlevel% neq 0 (
-    echo [INFO] VS 2026 generator failed, trying with v143 toolset...
-    REM Try using the VS 2026 with v143 toolset for compatibility
-    %CMAKE% -B %BUILD_DIR% -G "Visual Studio 18 2026" -A Win32 -DCMAKE_BUILD_TYPE=Release -T v143
-    if %errorlevel% neq 0 (
-        echo [ERROR] CMake configuration failed!
-        echo Please make sure Visual Studio Build Tools with C++ workload is installed.
-        pause
-        exit /b 1
-    )
+    echo [ERROR] CMake configuration failed for Win7 target!
+    echo Please install VS 2022 Build Tools with "VC++ v143 toolset" and "Windows 7.1 SDK" components.
+    pause
+    exit /b 1
 )
 
 echo [3/5] Building Release...
