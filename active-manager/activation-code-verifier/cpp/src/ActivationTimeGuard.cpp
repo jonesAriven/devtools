@@ -21,14 +21,18 @@ static int64_t GetMonotonicMs() {
     return (int64_t)(counter.QuadPart * 1000LL / freq.QuadPart);
 }
 
+// Windows FILETIME epoch (1601-01-01) to Unix epoch (1970-01-01) in 100ns units
+static const int64_t FILETIME_UNIX_DIFF = 116444736000000000LL;
+
 static int64_t GetCurrentTimeMs() {
     FILETIME ft;
     GetSystemTimeAsFileTime(&ft);
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
-    // FILETIME 单位是 100ns，转 ms
-    return (int64_t)(uli.QuadPart / 10000ULL);
+    // FILETIME 单位是 100ns，先转 Unix epoch (ms)，再转 ms
+    // Unix epoch ms = (FILETIME - FILETIME_UNIX_DIFF) / 10000
+    return (int64_t)((uli.QuadPart - FILETIME_UNIX_DIFF) / 10000ULL);
 }
 
 static std::string GetExeDir() {

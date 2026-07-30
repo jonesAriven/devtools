@@ -6,8 +6,8 @@ IDR_ICON1 ICON "app.ico"
 // 版本号从 CMake configure_file 注入
 // FILEVERSION 需要逗号分隔数字: 2026,715,22,17 (年,月日,时,分)
 1 VERSIONINFO
-FILEVERSION 2026,0730,2014
-PRODUCTVERSION 2026,0730,2014
+FILEVERSION 2026,0730,2204
+PRODUCTVERSION 2026,0730,2204
 FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
 FILEFLAGS 0
 FILEOS VOS_NT_WINDOWS32
@@ -20,9 +20,9 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Jones"
             VALUE "FileDescription", "QR Code Tool - 二维码生成与识别工具"
-            VALUE "FileVersion", "V202607302014"
+            VALUE "FileVersion", "V202607302204"
             VALUE "ProductName", "QRCodeTool"
-            VALUE "ProductVersion", "V202607302014"
+            VALUE "ProductVersion", "V202607302204"
         END
     END
     BLOCK "VarFileInfo"
