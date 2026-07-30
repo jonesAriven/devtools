@@ -8,6 +8,7 @@ struct SerialNumberInfo {
     std::string initialSerial;
     std::string deviceId;
     std::string machineCode;
+    std::string version;  // optional version (4th segment)
 };
 
 // Get device ID: SHA256(CPU+Board+Disk+MAC) first 32 hex chars
