@@ -4,6 +4,9 @@ project(QRCodeTool LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Win7兼容：全局声明最低支持系统版本，避免任何目标隐式链接Win8+ API
+add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 NTDDI_VERSION=0x06010000)
+
 # Static CRT linking (/MT)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 if(MSVC)
