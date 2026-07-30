@@ -9,6 +9,8 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 if(MSVC)
     add_compile_options(/MT /O2 /Os /GL /Gy /W3 /EHsc /utf-8)
     add_compile_definitions(NOMINMAX UNICODE _UNICODE)
+    # Win7兼容：显式声明最小支持系统版本，避免隐式链接Win8+ API
+    add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 NTDDI_VERSION=0x06010000)
     add_link_options(/LTCG /OPT:REF /OPT:ICF)
 endif()
 
