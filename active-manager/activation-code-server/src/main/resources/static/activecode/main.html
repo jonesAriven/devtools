@@ -64,6 +64,8 @@
         .badge-expired-log { background: #fff7ed; color: #ea580c; }
         .badge-mismatch { background: #fef2f2; color: #dc2626; }
         .badge-duplicate { background: #fff7ed; color: #ea580c; }
+        .badge-invalid { background: #fef2f2; color: #dc2626; }
+        .badge-version-rejected { background: #fff7ed; color: #ea580c; }
         .btn-sm { padding: 3px 10px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 12px; cursor: pointer; background: #fff; }
         .btn-sm:hover { background: #f5f5f5; }
         .btn-danger { color: #dc2626; border-color: #fecaca; }
@@ -321,17 +323,25 @@
                 <option value="VERIFY_FAIL">验证失败</option>
                 <option value="EXPIRED">已过期</option>
                 <option value="DEVICE_MISMATCH">设备不匹配</option>
+                <option value="SERIAL_INVALID">序列号无效</option>
+                <option value="VERSION_REJECTED">版本校验拒绝</option>
             </select>
             <input type="date" id="logStartDate" title="开始日期">
             <input type="date" id="logEndDate" title="结束日期">
             <button class="btn-primary" id="btnLogQuery" onclick="loadLogs(1)">查询</button>
         </div>
         <div class="query-status" id="logStatus_msg"></div>
+        <div class="stats" id="logStats" style="display:none;">
+            <div class="stat-card total"><div class="num" id="logStatTotal">0</div><div class="label">总日志数</div></div>
+            <div class="stat-card active"><div class="num" id="logStatGenerate">0</div><div class="label">生成成功</div></div>
+            <div class="stat-card expired"><div class="num" id="logStatError">0</div><div class="label">异常/拒绝</div></div>
+        </div>
         <div class="table-wrap">
+            <div class="table-scroll">
             <table>
                 <thead>
                     <tr>
-                        <th style="width:40px;text-align:center"><input type="checkbox" id="thSelectAll" onclick="toggleSelectAll(this)" title="全选/取消全选"></th>
+                        <th style="width:40px;text-align:center"><input type="checkbox" id="thSelectAllLogs" onclick="toggleSelectAllLogs(this)" title="全选/取消全选"></th>
                         <th>ID</th>
                         <th>关联记录ID</th>
                         <th>序列号</th>
@@ -346,6 +356,7 @@
                 <tbody id="logsBody"></tbody>
             </table>
             <div class="empty" id="logsEmpty" style="display:none;">暂无日志</div>
+                        </div>
             <div class="pagination" id="logPagination"></div>
         </div>
     </div>
@@ -727,6 +738,7 @@ function setAdminExpire(minutes) {
                     logPages = data.pages;
                     logPage = data.page;
                     renderLogs(data.data);
+                    updateLogStats(data.data);
                     renderPagination('logPagination', logPage, logPages, logTotal, loadLogs);
                     setQueryStatus('log', 'clear');
                 } else {
@@ -753,15 +765,18 @@ function setAdminExpire(minutes) {
                 const badgeClass = {
                     'GENERATE': 'badge-generate', 'GENERATE_DUPLICATE': 'badge-duplicate',
                     'VERIFY_SUCCESS': 'badge-verify', 'VERIFY_FAIL': 'badge-fail',
-                    'EXPIRED': 'badge-expired-log', 'DEVICE_MISMATCH': 'badge-mismatch'
+                    'EXPIRED': 'badge-expired-log', 'DEVICE_MISMATCH': 'badge-mismatch',
+                    'SERIAL_INVALID': 'badge-invalid', 'VERSION_REJECTED': 'badge-version-rejected'
                 }[l.eventType] || 'badge-fail';
                 const typeLabel = {
                     'GENERATE': '生成', 'GENERATE_DUPLICATE': '重复生成',
                     'VERIFY_SUCCESS': '验证成功', 'VERIFY_FAIL': '验证失败',
-                    'EXPIRED': '已过期', 'DEVICE_MISMATCH': '设备不匹配'
+                    'EXPIRED': '已过期', 'DEVICE_MISMATCH': '设备不匹配',
+                    'SERIAL_INVALID': '序列号无效', 'VERSION_REJECTED': '版本拒绝'
                 }[l.eventType] || l.eventType;
                 const time = l.createTime ? new Date(l.createTime).toLocaleString('zh-CN') : '-';
                 return `<tr>
+                    <td style="text-align:center"><input type="checkbox" class="row-checkbox-logs" value="${l.id}"></td>
                     <td>${l.id}</td>
                     <td>${l.recordId || '-'}</td>
                     <td><span class="mono">${l.serialNumber || '-'}</span></td>
@@ -773,6 +788,24 @@ function setAdminExpire(minutes) {
                     <td>${time}</td>
                 </tr>`;
             }).join('');
+        }
+
+        function updateLogStats(logs) {
+            if (!logs || logs.length === 0) return;
+            const total = logTotal;
+            const generate = logs.filter(l => l.eventType === 'GENERATE' || l.eventType === 'GENERATE_DUPLICATE').length;
+            // 统计当前页的异常数量，加上估算的其他页
+            const errorTypes = ['SERIAL_INVALID','VERSION_REJECTED','VERIFY_FAIL','EXPIRED','DEVICE_MISMATCH'];
+            const errorOnPage = logs.filter(l => errorTypes.includes(l.eventType)).length;
+            document.getElementById('logStatTotal').textContent = total;
+            document.getElementById('logStatGenerate').textContent = generate + (logPages > 1 ? '+' : '');
+            document.getElementById('logStatError').textContent = errorOnPage + (logPages > 1 ? '+' : '');
+            document.getElementById('logStats').style.display = '';
+        }
+
+        function toggleSelectAllLogs(source) {
+            const checkboxes = document.querySelectorAll('.row-checkbox-logs');
+            checkboxes.forEach(cb => cb.checked = source.checked);
         }
 
         function viewLogs(recordId, serialNumber) {

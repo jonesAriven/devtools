@@ -89,7 +89,7 @@ public class ActivationService {
         if (clientVersion == null || clientVersion.trim().isEmpty()) {
             clientVersion = clientVersionFromSerial;
         }
-        GenerateResponse versionCheck = checkVersionRestriction(clientVersion);
+        GenerateResponse versionCheck = checkVersionRestriction(clientVersion, serialNumber);
         if (versionCheck != null) {
             return versionCheck;
         }
@@ -544,7 +544,7 @@ public class ActivationService {
      * @param clientVersion 客户端传来的版本号（可能为null）
      * @return 如果校验不通过返回错误Response，如果通过返回null继续执行
      */
-    private GenerateResponse checkVersionRestriction(String clientVersion) {
+    private GenerateResponse checkVersionRestriction(String clientVersion, String serialNumber) {
         String enabled = getConfigValue("version-check.enabled", "false");
         if (!"true".equalsIgnoreCase(enabled)) {
             return null; // 未启用版本校验，直接放行
@@ -559,7 +559,7 @@ public class ActivationService {
                     log.warn("版本校验失败: 客户端未传版本号 (mode=required)");
                     return buildVersionRejectResponse(
                         "客户端版本信息缺失，请下载最新版本工具",
-                        null, clientVersion);
+                        null, clientVersion, serialNumber);
                 }
                 log.info("版本校验通过: version={}, mode=required", clientVersion);
                 return null;
@@ -572,13 +572,13 @@ public class ActivationService {
                     log.warn("版本校验失败: 客户端未传版本号 (mode=minimum, min={})", minVersion);
                     return buildVersionRejectResponse(
                         "无法识别客户端版本，请下载最新版本工具",
-                        minVersion, null);
+                        minVersion, null, serialNumber);
                 }
                 if (compareVersions(clientVersion, minVersion) < 0) {
                     log.warn("版本校验失败: 客户端版本 {} 低于最低要求 {}", clientVersion, minVersion);
                     return buildVersionRejectResponse(
                         "当前版本过低，请下载最新版本工具后重试",
-                        minVersion, clientVersion);
+                        minVersion, clientVersion, serialNumber);
                 }
                 log.info("版本校验通过: version={}, min={}, mode=minimum", clientVersion, minVersion);
                 return null;
@@ -592,9 +592,9 @@ public class ActivationService {
     /**
      * 构建版本校验拒绝的响应
      */
-    private GenerateResponse buildVersionRejectResponse(String message, String minVersion, String clientVersion) {
+    private GenerateResponse buildVersionRejectResponse(String message, String minVersion, String clientVersion, String serialNumber) {
         String downloadUrl = getConfigValue("version-check.download-url", "");
-        saveLog(null, "", "", "VERSION_REJECTED",
+        saveLog(null, serialNumber != null ? serialNumber : "", "", "VERSION_REJECTED",
                 "版本校验拒绝: " + message + ", clientVersion=" + (clientVersion != null ? clientVersion : "空") + ", minVersion=" + (minVersion != null ? minVersion : "未设置"),
                 getClientIp());
         return GenerateResponse.builder()
