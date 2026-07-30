@@ -22,9 +22,15 @@ static int64_t GetMonotonicMs() {
 }
 
 static int64_t GetCurrentTimeMs() {
-    auto now = std::chrono::system_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-    return ms.count();
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    FILETIME ft;
+    SystemTimeToFileTime(&st, &ft);
+    ULARGE_INTEGER uli;
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+    // FILETIME 单位是 100ns，转 ms
+    return (int64_t)(uli.QuadPart / 10000ULL);
 }
 
 static std::string GetExeDir() {
