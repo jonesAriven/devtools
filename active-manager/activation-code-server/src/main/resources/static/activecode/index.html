@@ -136,9 +136,20 @@
                         <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
                     `);
                 } else {
-                    let html = `<p style="color:#dc2626;">${data.message}</p>`;
-                    // 版本过低时显示下载链接
-                    if (data.downloadUrl) {
+                    let html = `<p style="color:#dc2626;font-weight:600;">${data.message}</p>`;
+                    // 根据错误码显示不同的辅助信息
+                    if (data.errorCode === 'SERIAL_INVALID') {
+                        // 序列号无效：显示使用提示，不显示下载链接
+                        html += `<div style="margin-top:10px;padding:12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;">`;
+                        html += `<p style="color:#92400e;font-size:13px;margin-bottom:6px;">💡 <b>正确获取序列号的方法：</b></p>`;
+                        html += `<ol style="color:#92400e;font-size:12px;padding-left:20px;margin:0;line-height:1.8;">`;
+                        html += `<li>打开客户端软件（QRCodeTool）</li>`;
+                        html += `<li>等待弹窗显示「唯一序列号」</li>`;
+                        html += `<li>点击「复制」按钮完整复制</li>`;
+                        html += `<li>粘贴到上方输入框</li>`;
+                        html += `</ol></div>`;
+                    } else if (data.errorCode === 'VERSION_REJECTED' || data.downloadUrl) {
+                        // 版本校验不通过：显示下载链接
                         html += `<div style="margin-top:12px;padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">`;
                         html += `<p style="color:#dc2626;font-weight:600;margin-bottom:8px;">⚠️ 当前客户端版本过低，无法生成激活码</p>`;
                         html += `<a href="${data.downloadUrl}" target="_blank" style="display:inline-block;padding:8px 20px;background:#dc2626;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">📥 下载最新版本工具</a>`;
