@@ -11,6 +11,8 @@ if(MSVC)
     # /O2 = Max speed, /Os = Favor small code
     add_compile_options(/MT /O2 /Os /GL /Gy /W3 /EHsc /utf-8)
     add_compile_definitions(NOMINMAX)
+    # Win7兼容：显式声明最小支持系统版本，避免隐式链接Win8+ API
+    add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 NTDDI_VERSION=0x06010000)
     # /LTCG = Link-time Code Generation, /OPT:REF = Remove unused functions, /OPT:ICF = COMDAT folding
     add_link_options(/LTCG /OPT:REF /OPT:ICF)
 endif()
