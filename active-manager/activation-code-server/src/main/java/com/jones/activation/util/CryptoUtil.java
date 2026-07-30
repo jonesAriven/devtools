@@ -100,7 +100,13 @@ public class CryptoUtil {
 
     public String generateActivationCode(String serialNumber, String deviceId, long expireTimestamp) {
         try {
-            String payload = serialNumber + PAYLOAD_SEPARATOR + deviceId + PAYLOAD_SEPARATOR + expireTimestamp;
+            // deviceId 为 null/空时只生成 2 段 payload，避免客户端解析失败
+            String payload;
+            if (deviceId == null || deviceId.trim().isEmpty()) {
+                payload = serialNumber + PAYLOAD_SEPARATOR + expireTimestamp;
+            } else {
+                payload = serialNumber + PAYLOAD_SEPARATOR + deviceId + PAYLOAD_SEPARATOR + expireTimestamp;
+            }
             byte[] payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
 
             Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
