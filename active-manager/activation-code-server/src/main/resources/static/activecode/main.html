@@ -581,7 +581,7 @@ function setAdminExpire(minutes) {
 
         let cachedRecords = [];
         let recPage = 1, recPages = 1, recTotal = 0, recSize = 20;
-        let logPage = 1, logPages = 1, logTotal = 0;
+        let logPage = 1, logPages = 1, logTotal = 0, logSize = 20;
 
         // 查询状态管理：按钮 loading 态 + 表格上方状态条 + 请求版本号（防竞态）
         const queryState = {
@@ -728,7 +728,7 @@ function setAdminExpire(minutes) {
                 if (startDate) params.set('startDate', startDate);
                 if (endDate) params.set('endDate', endDate);
                 params.set('page', logPage);
-                params.set('size', recSize);
+                params.set('size', logSize);
                 const resp = await fetch('/activecode/api/activation/logs?' + params);
                 const data = await resp.json();
                 // 竞态保护
@@ -803,6 +803,11 @@ function setAdminExpire(minutes) {
             document.getElementById('logStats').style.display = '';
         }
 
+        function changeLogPageSize(newSize) {
+            logSize = parseInt(newSize);
+            loadLogs(1);
+        }
+
         function toggleSelectAllLogs(source) {
             const checkboxes = document.querySelectorAll('.row-checkbox-logs');
             checkboxes.forEach(cb => cb.checked = source.checked);
@@ -817,15 +822,20 @@ function setAdminExpire(minutes) {
         function renderPagination(containerId, current, totalPages, total, loadFn, showSizeSelector) {
             const container = document.getElementById(containerId);
             const isRec = containerId === 'recPagination';
+            const isLog = containerId === 'logPagination';
             if (totalPages <= 1) { 
                 let info = `<span class="page-info">共 ${total} 条</span>`;
                 if (isRec) info = `<select onchange="changePageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${recSize===10?'selected':''}>10条/页</option><option value="20" ${recSize===20?'selected':''}>20条/页</option><option value="50" ${recSize===50?'selected':''}>50条/页</option><option value="100" ${recSize===100?'selected':''}>100条/页</option></select>` + info;
+                if (isLog) info = `<select onchange="changeLogPageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${logSize===10?'selected':''}>10条/页</option><option value="20" ${logSize===20?'selected':''}>20条/页</option><option value="50" ${logSize===50?'selected':''}>50条/页</option><option value="100" ${logSize===100?'selected':''}>100条/页</option></select>` + info;
                 container.innerHTML = info; 
                 return; 
             }
             let html = '';
             if (isRec) {
                 html += `<select onchange="changePageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${recSize===10?'selected':''}>10条/页</option><option value="20" ${recSize===20?'selected':''}>20条/页</option><option value="50" ${recSize===50?'selected':''}>50条/页</option><option value="100" ${recSize===100?'selected':''}>100条/页</option></select>`;
+            }
+            if (isLog) {
+                html += `<select onchange="changeLogPageSize(this.value)" style="padding:2px 6px;font-size:12px;border:1px solid #d9d9d9;border-radius:3px;cursor:pointer;margin-right:12px;"><option value="10" ${logSize===10?'selected':''}>10条/页</option><option value="20" ${logSize===20?'selected':''}>20条/页</option><option value="50" ${logSize===50?'selected':''}>50条/页</option><option value="100" ${logSize===100?'selected':''}>100条/页</option></select>`;
             }
             html += `<button ${current <= 1 ? 'disabled' : ''} onclick="${loadFn.name}(${current - 1})">上一页</button>`;
             const maxButtons = 5;
