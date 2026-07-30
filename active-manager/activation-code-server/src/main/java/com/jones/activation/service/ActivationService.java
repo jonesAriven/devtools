@@ -58,10 +58,8 @@ public class ActivationService {
 
         // 先解析序列号，获取其中嵌入的版本号
         String clientVersionFromSerial = null;
-        boolean serialDecrypted = false;  // 标记序列号是否成功解密
         CryptoUtil.SerialNumberParseResult parseResult = CryptoUtil.decryptSerialNumber(serialNumber);
         if (parseResult.isSuccess()) {
-            serialDecrypted = true;
             initialSerial = parseResult.getInitialSerial();
             String parsedDeviceId = parseResult.getDeviceId();
             machineCode = parseResult.getMachineCode();
@@ -74,35 +72,26 @@ public class ActivationService {
 
             log.info("从加密序列号解析: 初始序列号={}, 设备ID={}, 机器码={}", initialSerial, parsedDeviceId, machineCode);
         } else {
-            // 序列号解密失败，尝试明文降级解析（兼容旧格式）
-            log.warn("序列号解密失败，尝试明文降级解析: serialNumber={}", serialNumber);
-            String[] parsed = parseSerialNumber(serialNumber);
-            if (parsed == null || parsed.length < 2 || parsed[0] == null || parsed[0].trim().isEmpty()) {
-                // 明文也解析失败 → 序列号完全无效
-                log.warn("生成激活码失败: 序列号格式无效, serialNumber={}", serialNumber);
-                saveLog(null, serialNumber, deviceId, "SERIAL_INVALID",
-                        "序列号格式无效: 无法识别", getClientIp());
-                return GenerateResponse.builder()
-                        .success(false)
-                        .message("序列号格式无效：无法识别该序列号，请确认是从客户端软件复制的完整唯一序列号")
-                        .errorCode("SERIAL_INVALID")
-                        .build();
-            }
-            initialSerial = parsed[0];
-            machineCode = parsed[1];
+            // 解密失败 → 序列号无效，不是从客户端软件生成的合法序列号
+            log.warn("生成激活码失败: 序列号无法解密, serialNumber={}", serialNumber);
+            saveLog(null, serialNumber, deviceId, "SERIAL_INVALID",
+                    "序列号无法解密: 不是有效的客户端序列号", getClientIp());
+            return GenerateResponse.builder()
+                    .success(false)
+                    .message("序列号无效：无法识别该序列号，请确认是从客户端软件（QRCodeTool）弹窗中复制的完整唯一序列号")
+                    .errorCode("SERIAL_INVALID")
+                    .build();
         }
 
         // ========== 版本校验 ==========
-        // 只有成功解密的序列号才进行版本校验（未解密的序列号不包含版本信息，不应报版本过低）
-        if (serialDecrypted) {
-            String clientVersion = request.getClientVersion();
-            if (clientVersion == null || clientVersion.trim().isEmpty()) {
-                clientVersion = clientVersionFromSerial;
-            }
-            GenerateResponse versionCheck = checkVersionRestriction(clientVersion);
-            if (versionCheck != null) {
-                return versionCheck;
-            }
+        // 能走到这里说明序列号解密成功，可以进行版本校验
+        String clientVersion = request.getClientVersion();
+        if (clientVersion == null || clientVersion.trim().isEmpty()) {
+            clientVersion = clientVersionFromSerial;
+        }
+        GenerateResponse versionCheck = checkVersionRestriction(clientVersion);
+        if (versionCheck != null) {
+            return versionCheck;
         }
 
         int expireMinutes;
