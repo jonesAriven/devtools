@@ -22,10 +22,8 @@ static int64_t GetMonotonicMs() {
 }
 
 static int64_t GetCurrentTimeMs() {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
     FILETIME ft;
-    SystemTimeToFileTime(&st, &ft);
+    GetSystemTimeAsFileTime(&ft);
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
