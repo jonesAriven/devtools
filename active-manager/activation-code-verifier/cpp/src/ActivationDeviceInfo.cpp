@@ -177,13 +177,12 @@ std::string GetSerialNumber(const std::string& initialSerial, const std::string&
     std::string deviceId = GetDeviceId();
     std::string machineCode = GetMachineCode();
 
-    // 格式: initialSerial|deviceId|machineCode|version
-    // version 可选，如果提供则作为第4段嵌入序列号（供服务端版本校验使用）
+    // 格式: initialSerial:deviceId:machineCode[:version]
     std::string plainText;
     if (version.empty()) {
-        plainText = initialSerial + "|" + deviceId + "|" + machineCode;
+        plainText = initialSerial + ":" + deviceId + ":" + machineCode;
     } else {
-        plainText = initialSerial + "|" + deviceId + "|" + machineCode + "|" + version;
+        plainText = initialSerial + ":" + deviceId + ":" + machineCode + ":" + version;
     }
 
     std::vector<BYTE> plainBytes(plainText.begin(), plainText.end());
@@ -207,11 +206,11 @@ SerialNumberInfo ParseSerialNumber(const std::string& encryptedSerialNumber) {
 
         std::string plainText(decrypted.begin(), decrypted.end());
 
-        // Split by '|'
+        // Split by ':'
         std::vector<std::string> parts;
         std::istringstream iss(plainText);
         std::string part;
-        while (std::getline(iss, part, '|')) {
+        while (std::getline(iss, part, ':')) {
             parts.push_back(part);
         }
 
@@ -219,6 +218,9 @@ SerialNumberInfo ParseSerialNumber(const std::string& encryptedSerialNumber) {
             info.initialSerial = parts[0];
             info.deviceId = parts[1];
             info.machineCode = parts[2];
+            if (parts.size() >= 4) {
+                info.version = parts[3];
+            }
         }
     } catch (...) {}
 
