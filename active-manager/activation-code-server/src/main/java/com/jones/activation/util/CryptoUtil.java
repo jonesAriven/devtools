@@ -263,7 +263,7 @@ public class CryptoUtil {
                 decrypted[i] = (byte) (encrypted[i] ^ SERIAL_XOR_KEY);
             }
             String plainText = new String(decrypted, StandardCharsets.UTF_8);
-            String[] parts = plainText.split("\\|");
+            String[] parts = plainText.split(":");
             if (parts.length >= 3) {
                 // 第4段是版本号（如果存在）
                 String version = parts.length >= 4 ? parts[3] : null;
