@@ -37,6 +37,8 @@
 QR_GENERATORBYCCC/
 ├── CMakeLists.txt          # CMake 构建配置
 ├── build.bat               # 一键构建脚本
+├── doc/
+│   └── README.md           # 本文档
 ├── res/
 │   └── resource.rc         # Windows 资源文件
 ├── src/
@@ -48,12 +50,6 @@ QR_GENERATORBYCCC/
 │   ├── Base45.h/cpp        # Base45 编解码（RFC 9285）
 │   ├── ImageProcess.h/cpp  # 图像处理（灰度转换、缩放、二值化、Otsu 等）
 │   ├── ScreenCapture.h/cpp # 屏幕截图选区（Win32 API，半透明遮罩）
-│   ├── Activation/         # 激活码验证模块（JonesActivation.lib）
-│   │   ├── ActivationGuard.h/cpp  # 激活码验证与保护
-│   │   ├── DeviceInfo.h/cpp       # 设备指纹采集
-│   │   ├── CryptoUtil.h/cpp       # RSA/AES/HMAC 加密工具
-│   │   ├── LicenseStore.h/cpp     # 激活码本地存储
-│   │   └── RsaKey.h               # RSA 公钥（PEM）
 │   └── Resource.h          # 资源 ID 定义
 └── build/                  # 构建输出目录
     └── bin/Release/QRCodeTool.exe
@@ -77,6 +73,7 @@ QR_GENERATORBYCCC/
 - **Visual Studio Build Tools 2022**（或 2019），需安装 "使用 C++ 的桌面开发" 工作负载
 - **CMake** 3.16+
 - **Git**（FetchContent 需要拉取依赖）
+- **Windows 7.1 SDK**（Win7 兼容必须，在 VS Installer 勾选）
 
 ### 一键构建
 
@@ -104,6 +101,7 @@ CMakeLists.txt 中的关键编译选项：
 | `/GL /LTCG` | 链接时优化 | 全程序优化，减小体积 |
 | `/OPT:REF /OPT:ICF` | 链接器 | 移除未引用函数，COMDAT 折叠 |
 | `NOMINMAX` | 宏定义 | 避免 Windows min/max 宏与 std::min/std::max 冲突 |
+| `_WIN32_WINNT=0x0601` | 宏定义 | 最低支持 Windows 7（Win7 兼容必须） |
 
 ## 架构设计
 
@@ -235,16 +233,6 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
   - `getMissingPages()` — 获取缺失页码列表
   - `reset()` — 清空已收集数据
 
-### Activation/ — 激活码验证模块
-
-- 从 C# 版 `activation-code-verifier` 移植为 C++ 静态库
-- `ActivationGuard` — 验证并保护，启动时检查激活码有效性
-- `DeviceInfo` — 设备指纹采集（CPU+主板+硬盘+MAC → SHA256 → 设备ID）
-- `CryptoUtil` — RSA 签名验证、AES-256-CBC 加解密、HMAC-SHA256
-- `LicenseStore` — 激活码本地存储（AES 加密存储到文件）
-- `RsaKey.h` — 内嵌 RSA 公钥（PEM 格式）
-- 激活弹窗显示唯一序列号和激活地址，支持输入激活码
-
 ### Base45.h/cpp — Base45 编解码
 
 - RFC 9285 标准实现
@@ -267,101 +255,7 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 - ESC 取消，选区小于 40x40 自动取消
 - 使用屏幕 DC 创建兼容位图（确保 32 位真彩色）
 
-## 开发过程中遇到的问题与解决方案
-
-### 1. 窗口创建后点击没反应
-
-**问题**：`WM_CREATE` 触发 `BuildUI()` 时，`m_hWnd` 仍为 NULL（`CreateWindowExW` 尚未返回），导致所有子控件以 NULL 父窗口创建，控件不可见也不响应。
-
-**解决**：在 `WM_NCCREATE` 阶段提前设置 `pThis->m_hWnd = hWnd`，确保后续 `WM_CREATE` → `BuildUI()` 时 `m_hWnd` 已有效。
-
-### 2. 编辑框不支持 Ctrl+A 全选
-
-**问题**：Win32 标准 EDIT 控件默认不处理 Ctrl+A 快捷键。
-
-**解决**：通过 `SetWindowSubclass` 子类化编辑框，拦截 `WM_CHAR` 消息中 `wParam == 1`（Ctrl+A），发送 `EM_SETSEL(0, -1)` 全选文本。
-
-### 3. QR 码生成后无法识别
-
-**问题**：多个原因叠加导致：
-- 小版本 QR 码静区不足 4 模块
-- STATIC 控件 `SS_REALSIZECONTROL` 拉伸位图导致 QR 码变形
-- `CreateCompatibleBitmap(NULL DC)` 创建的是 1 位单色位图
-
-**解决**：
-- 强制保留 4 模块宽度的白色静区
-- 移除 STATIC 控件，改为 `WM_PAINT` 自定义绘制，1:1 等比缩放
-- 使用屏幕 DC 创建兼容位图，确保 32 位真彩色
-
-### 4. quirc 解码器识别能力不足
-
-**问题**：quirc 使用简单全局阈值，对截图中的 QR 码解码能力远不如 C# 版 ZXing.Net（带 HybridBinarizer 自适应二值化）。quirc 能检测到 QR 码位置但解码失败（ECC 校验错误）。
-
-**解决**：将 quirc 替换为 zxing-cpp（ZXing 的 C++ 移植版），和 C# 版使用同一套解码引擎。使用 `QRCode::Reader` 直接解码（而非 `MultiFormatReader`），避免拉入其他条码格式的代码。
-
-### 5. GDI+ 缩放导致 QR 码解码失败
-
-**问题**：`InterpolationModeHighQualityBicubic` 双三次插值在黑白 QR 码边缘产生灰色中间值，导致解码器无法正确识别模块边界。
-
-**解决**：改用最近邻缩放（`scaleGrayscale`），直接对灰度数组做整数倍放大，保持黑白锐利边界。同时在解码前做二值化处理（0 或 255），消除抗锯齿。
-
-### 6. toGrayscale 不支持所有像素格式
-
-**问题**：`toGrayscale` 只处理 `PixelFormat24bppRGB` 和 `PixelFormat32bppARGB`，截图位图通常是 `PixelFormat32bppPARGB`（预乘 Alpha），导致灰度数组全是 255（白色），解码器看到白图。
-
-**解决**：统一用 `LockBits` 转换为 `PixelFormat32bppARGB` 再处理，兼容所有源像素格式。
-
-### 7. Base45 解码 bug
-
-**问题**：`base45Decode` 中检查尾部 2 字符时用了 `i + 1 == len`，应该是 `i + 2 == len`。循环 `while (i + 2 < len)` 结束后 `i` 指向剩余字符起始位置，剩余 2 字符时 `i + 2 == len` 才正确。
-
-**解决**：修正条件为 `i + 2 == len`。
-
-### 8. 识别后二维码不回显
-
-**问题**：截图识别成功后文本框填入文字，但二维码区域不更新。`SetWindowTextW` 程序化设置文本时，`EN_CHANGE` 通知不一定可靠触发。
-
-**解决**：`SetText` 在设置文本后直接调用 `GenerateQr()`，确保二维码同步更新。
-
-### 9. Runtime Error 异常崩溃
-
-**问题**：`compressText` 和 `brotliCompress` 会抛出 `std::runtime_error` 异常，但 `GenerateQr()` 等调用方没有捕获。
-
-**解决**：给 `GenerateQr()`、`OnCapture()`、`OnUpload()` 等关键函数加 try-catch，防止未捕获异常导致程序崩溃。
-
-### 10. 多显示器 DPI 缩放导致坐标偏移
-
-**问题**：Windows 在副屏上自动 DPI 缩放，导致截图坐标和实际位置不匹配。
-
-**解决**：在 `WinMain` 中调用 `SetProcessDPIAware()` 声明 DPI 感知，避免系统自动缩放。
-
-### 11. Windows min/max 宏与 std::min/std::max 冲突
-
-**问题**：`<windows.h>` 定义了 `min`/`max` 宏，与 `<algorithm>` 中的 `std::min`/`std::max` 冲突。
-
-**解决**：在 CMakeLists.txt 中全局定义 `NOMINMAX` 宏，并在代码中使用 `(std::min)` 带括号的写法防止宏展开。
-
-### 12. CRT 链接不一致
-
-**问题**：主程序使用 `/MT`（静态 CRT），但 brotli/zlib 默认使用 `/MD`（动态 CRT），混合链接会导致运行时问题。
-
-**解决**：通过 `set_property(TARGET ... PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")` 强制所有依赖库使用 `/MT`。
-
-### 13. exe 体积偏大
-
-**问题**：初始构建约 1.8MB，主要因为 zxing-cpp 包含所有条码格式的解码器。
-
-**解决**：
-- 不使用 `MultiFormatReader`，改用 `QRCode::Reader` 直接解码
-- 只编译 QR 相关源文件（约 30 个 .cpp）到自定义 `zxing_qr` 静态库
-- 启用 `/GL /LTCG /OPT:REF /OPT:ICF` 链接时优化
-- 最终体积降至 ~1.4MB
-
 ## 🚧 踩坑记录与解决方案
-
-本章节记录开发过程中遇到的所有问题及解决方案，供后续优化参考。
-
----
 
 ### 1. Win7 兼容性问题（最高优先级）
 
@@ -389,44 +283,97 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
    - 用 Dependency Walker 检查 exe 依赖，确认无 `api-ms-win-core-*.dll` 等 Win8+ DLL
    - 确认所有导入函数在 kernel32.dll/user32.dll 等 Win7 原生 DLL 中存在
 
----
+### 2. 窗口创建后点击没反应
 
-### 2. exe 体积偏大问题
+**问题**：`WM_CREATE` 触发 `BuildUI()` 时，`m_hWnd` 仍为 NULL（`CreateWindowExW` 尚未返回），导致所有子控件以 NULL 父窗口创建，控件不可见也不响应。
 
-**问题现象**：初始构建约 1.8MB，主要因为 zxing-cpp 包含所有条码格式的解码器
+**解决**：在 `WM_NCCREATE` 阶段提前设置 `pThis->m_hWnd = hWnd`，确保后续 `WM_CREATE` → `BuildUI()` 时 `m_hWnd` 已有效。
 
-**解决方案**：
+### 3. 编辑框不支持 Ctrl+A 全选
+
+**问题**：Win32 标准 EDIT 控件默认不处理 Ctrl+A 快捷键。
+
+**解决**：通过 `SetWindowSubclass` 子类化编辑框，拦截 `WM_CHAR` 消息中 `wParam == 1`（Ctrl+A），发送 `EM_SETSEL(0, -1)` 全选文本。
+
+### 4. QR 码生成后无法识别
+
+**问题**：多个原因叠加导致：
+- 小版本 QR 码静区不足 4 模块
+- STATIC 控件 `SS_REALSIZECONTROL` 拉伸位图导致 QR 码变形
+- `CreateCompatibleBitmap(NULL DC)` 创建的是 1 位单色位图
+
+**解决**：
+- 强制保留 4 模块宽度的白色静区
+- 移除 STATIC 控件，改为 `WM_PAINT` 自定义绘制，1:1 等比缩放
+- 使用屏幕 DC 创建兼容位图，确保 32 位真彩色
+
+### 5. quirc 解码器识别能力不足
+
+**问题**：quirc 使用简单全局阈值，对截图中的 QR 码解码能力远不如 C# 版 ZXing.Net（带 HybridBinarizer 自适应二值化）。quirc 能检测到 QR 码位置但解码失败（ECC 校验错误）。
+
+**解决**：将 quirc 替换为 zxing-cpp（ZXing 的 C++ 移植版），和 C# 版使用同一套解码引擎。使用 `QRCode::Reader` 直接解码（而非 `MultiFormatReader`），避免拉入其他条码格式的代码。**禁止换回 quirc**，识别率差距非常明显（zxing-cpp >95% vs quirc ~60%）。
+
+### 6. GDI+ 缩放导致 QR 码解码失败
+
+**问题**：`InterpolationModeHighQualityBicubic` 双三次插值在黑白 QR 码边缘产生灰色中间值，导致解码器无法正确识别模块边界。
+
+**解决**：改用最近邻缩放（`scaleGrayscale`），直接对灰度数组做整数倍放大，保持黑白锐利边界。同时在解码前做二值化处理（0 或 255），消除抗锯齿。
+
+### 7. toGrayscale 不支持所有像素格式
+
+**问题**：`toGrayscale` 只处理 `PixelFormat24bppRGB` 和 `PixelFormat32bppARGB`，截图位图通常是 `PixelFormat32bppPARGB`（预乘 Alpha），导致灰度数组全是 255（白色），解码器看到白图。
+
+**解决**：统一用 `LockBits` 转换为 `PixelFormat32bppARGB` 再处理，兼容所有源像素格式。
+
+### 8. Base45 解码 bug
+
+**问题**：`base45Decode` 中检查尾部 2 字符时用了 `i + 1 == len`，应该是 `i + 2 == len`。循环 `while (i + 2 < len)` 结束后 `i` 指向剩余字符起始位置，剩余 2 字符时 `i + 2 == len` 才正确。
+
+**解决**：修正条件为 `i + 2 == len`。
+
+### 9. 识别后二维码不回显
+
+**问题**：截图识别成功后文本框填入文字，但二维码区域不更新。`SetWindowTextW` 程序化设置文本时，`EN_CHANGE` 通知不一定可靠触发。
+
+**解决**：`SetText` 在设置文本后直接调用 `GenerateQr()`，确保二维码同步更新。
+
+### 10. Runtime Error 异常崩溃
+
+**问题**：`compressText` 和 `brotliCompress` 会抛出 `std::runtime_error` 异常，但 `GenerateQr()` 等调用方没有捕获。
+
+**解决**：给 `GenerateQr()`、`OnCapture()`、`OnUpload()` 等关键函数加 try-catch，防止未捕获异常导致程序崩溃。
+
+### 11. 多显示器 DPI 缩放导致坐标偏移
+
+**问题**：Windows 在副屏上自动 DPI 缩放，导致截图坐标和实际位置不匹配。
+
+**解决**：在 `WinMain` 中调用 `SetProcessDPIAware()` 声明 DPI 感知，避免系统自动缩放。
+
+### 12. Windows min/max 宏与 std::min/std::max 冲突
+
+**问题**：`<windows.h>` 定义了 `min`/`max` 宏，与 `<algorithm>` 中的 `std::min`/`std::max` 冲突。
+
+**解决**：在 CMakeLists.txt 中全局定义 `NOMINMAX` 宏，并在代码中使用 `(std::min)` 带括号的写法防止宏展开。
+
+### 13. CRT 链接不一致
+
+**问题**：主程序使用 `/MT`（静态 CRT），但 brotli/zlib 默认使用 `/MD`（动态 CRT），混合链接会导致运行时问题。
+
+**解决**：通过 `set_property(TARGET ... PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")` 强制所有依赖库使用 `/MT`。
+
+### 14. exe 体积偏大
+
+**问题**：初始构建约 1.8MB，主要因为 zxing-cpp 包含所有条码格式的解码器。
+
+**解决**：
 - 不使用 `MultiFormatReader`，改用 `QRCode::Reader` 直接解码
 - 只编译 QR 相关源文件（约 30 个 .cpp）到自定义 `zxing_qr` 静态库
 - 启用 `/GL /LTCG /OPT:REF /OPT:ICF` 链接时优化
-- 最终体积降至 **~1.4MB**
+- 最终体积降至 ~1.4MB
 
----
+### 15. 多页扫描用户体验问题
 
-### 3. 依赖库 CRT 不匹配问题
-
-**问题现象**：第三方库（brotli/zlib）默认用 `/MD` 动态 CRT，与主程序 `/MT` 冲突，导致链接错误 LNK2038
-
-**解决方案**：
-- CMakeLists.txt 中强制设置所有依赖库的 `MSVC_RUNTIME_LIBRARY` 为 `MultiThreaded`（第 116-118 行、第 130 行）
-- 每个目标库单独设置属性，确保 CRT 链接方式完全一致
-
----
-
-### 4. zxing-cpp 解码率不足问题
-
-**问题现象**：早期用 quirc 解码库，复杂/模糊/小尺寸二维码识别失败率高
-
-**解决方案**：
-- 改用 zxing-cpp v2.2.1 的 `HybridBinarizer` 二值化算法
-- **禁止换回 quirc**，识别率差距非常明显（zxing-cpp >95% vs quirc ~60%）
-- 仅编译 QR 相关代码，不影响体积
-
----
-
-### 5. 多页扫描用户体验问题
-
-**问题现象**：原设计扫描到多页二维码时弹 MessageBox 提示每一页，严重打断用户操作流程
+**问题现象**：原设计扫描到多页二维码时弹 MessageBox 提示每一页，严重打断用户操作流程。
 
 **解决方案**：
 - 改为悬浮进度窗提示，支持拖拽移动（位置记忆）
@@ -435,9 +382,7 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 - 悬浮窗定位在二维码显示区域，不遮挡工具栏
 - 点击截图时若文本框有内容则先清空，重置多页拼合状态
 
----
-
-### 6. 设置对话框无法弹出问题
+### 16. 设置对话框无法弹出问题
 
 **问题现象**：使用 `DialogBoxIndirectParamW` 内存模板创建的设置对话框无法正常弹出（函数返回 -1）
 
@@ -445,9 +390,7 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 - 改用 `CreateWindowExW` 直接创建弹出窗口实现
 - 快捷键捕获子类化逻辑仍需验证
 
----
-
-### 7. 截图模式居中提示文字未生效
+### 17. 截图模式居中提示文字未生效
 
 **问题现象**：代码已修改为在截图遮罩层中央显示「请拖拽选择截图区域」提示文字，但实际运行时未生效（仍只显示十字光标，无提示）
 
@@ -460,13 +403,11 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 ### 待优化项
 
 1. **日志系统** — 当前使用简单的文件追加写入（`qr_debug.log`），生产环境应移除或改为条件编译。
-
 2. **移除 zlib 依赖** — 当前仅用于兼容旧 "GZ:" 格式的 GZip 解压。如果确认不再需要兼容旧数据，可移除 zlib 和 `gzipDecompress` 函数，预计减小约 100KB。
 
 ### 已知 Bug
 
 1. **截图模式居中提示文字未生效** — 代码已修改为在截图遮罩层中央显示"请拖拽选择截图区域"提示文字，但实际运行时未生效（仍只显示十字光标，无提示）。原因待排查，可能与遮罩窗口的绘制时机或消息处理有关。
-
 2. **设置对话框无法弹出** — 使用 `DialogBoxIndirectParamW` 内存模板创建的设置对话框无法正常弹出（`DialogBoxIndirectParamW` 返回 -1），已改用 `CreateWindowExW` 直接创建弹出窗口实现，但快捷键捕获子类化逻辑仍需验证。
 
 ### 已完成的优化
@@ -480,45 +421,28 @@ HBITMAP → toGrayscale(统一转 32bppARGB) → 灰度数组
 ### 待扩展功能
 
 1. **二维码导出** — 加"保存为 PNG"按钮，多页时批量导出所有页面。
-
 2. **拖拽识别** — 支持拖拽图片文件到窗口直接识别二维码，不用点上传。
-
 3. **剪贴板监听** — 监听剪贴板中的图片，自动识别二维码。
-
 4. **历史记录** — 记录最近生成/扫描的内容，方便回看，支持点击重新加载。
-
 5. **批量生成** — 输入多行文本，每行生成一个二维码，方便批量打印。
-
 6. **二维码美化** — 加 Logo、改颜色、圆角模块等，提升视觉辨识度。
-
 7. **WiFi 二维码** — 输入 WiFi 信息生成 `WIFI:T:WPA;S:xxx;P:xxx;;` 格式二维码，手机扫了直接连网。
-
 8. **名片二维码** — 生成 vCard 格式二维码。
 
 ### 不建议改动
 
 - **解码引擎**：zxing-cpp 的 `HybridBinarizer` 是识别率的关键，不要换回 quirc
 - **CRT 链接方式**：保持 `/MT` 静态链接，确保零运行时依赖
-- **压缩算法**：Brotli+Base45 是和 C# 版一致的方案，改换会导致跨版本不兼容；且 Brotli 已是通用压缩算法中压缩率最高的，换其他算法提升微乎其微
 - **多页协议**：M5: 协议需与扫描端保持一致，不可随意修改前缀格式
-- **编码方式**：Base45 + QR 字母数字模式 vs 二进制模式的容量差异仅约 3%，不值得改
 
 ## 与 C# 版的兼容性
 
 两个版本的 QR 码完全互通：
-
 - C# 版生成的压缩 QR 码（B5: 前缀）→ C++ 版可识别并解压
 - C++ 版生成的压缩 QR 码（B5: 前缀）→ C# 版可识别并解压
 - C++ 版还兼容 C# 旧版的 GZ: 前缀格式
 - 纯文本 QR 码任何扫码器都能识别
 
-## 许可证
+---
 
-本项目使用的第三方库许可证：
-
-| 库 | 许可证 |
-|----|--------|
-| qrcodegen | MIT |
-| zxing-cpp | Apache 2.0 |
-| brotli | MIT |
-| zlib | zlib License |
+*最后更新：2026-07-31*

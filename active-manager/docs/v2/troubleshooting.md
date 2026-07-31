@@ -1,12 +1,12 @@
-# active-manager 踩坑记录与解决方案
+# active-manager 常见问题与解决方案速查手册
 
-本文件记录激活码管理系统（active-manager）开发过程中遇到的所有问题及解决方案，供后续优化参考。
+本文档聚合了激活码管理系统开发过程中遇到的所有问题、根因分析和解决方案，按问题类型分类索引。
 
 ---
 
 ## 一、Win7 兼容性问题（最高优先级）
 
-### 1. std::chrono 时间戳在 Win7 上崩溃
+### 1.1 std::chrono 时间戳在 Win7 上崩溃
 
 **问题现象**：C++ 客户端在 Win7 上启动崩溃，调试发现 `std::chrono::system_clock::now()` 调用失败
 
@@ -20,7 +20,7 @@
 
 ---
 
-### 2. 未声明版本宏导致隐式链接 Win8+ API
+### 1.2 未声明版本宏导致隐式链接 Win8+ API
 
 **问题现象**：exe 在 Win7 上启动失败，提示「不是有效的 Win32 应用程序」
 
@@ -28,7 +28,7 @@
 - 未显式声明 `_WIN32_WINNT` 版本宏时，编译器默认目标是 Win8+
 - 链接器会隐式链接 Win8 新增的 API，Win7 上找不到入口
 
-**解决方案**（提交 `18c0fd9` / `c24760c`）：
+**解决方案**（提交 `18c0fd9` / `c2e060c`）：
 - CMakeLists.txt 全局声明：
   ```cmake
   add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 NTDDI_VERSION=0x06010000)
@@ -37,9 +37,9 @@
 
 ---
 
-## 二、序列号解析问题
+## 二、序列号解析与协议问题
 
-### 1. 序列号分隔符冲突
+### 2.1 序列号分隔符冲突
 
 **问题现象**：C++ 客户端生成的序列号用 `|` 分隔，但服务端解析时与 payload 的 `|` 冲突，导致解析失败
 
@@ -53,7 +53,7 @@
 
 ---
 
-### 2. null deviceId 导致 payload 段数不足
+### 2.2 null deviceId 导致 payload 段数不足
 
 **问题现象**：生成激活码时 deviceId 为 null，只生成 2 段 payload，客户端解析失败（期望固定 3 段）
 
@@ -69,7 +69,7 @@
 
 ## 三、时间戳与时区问题
 
-### 1. 时区偏移导致过期误判
+### 3.1 时区偏移导致过期误判
 
 **问题现象**：不同时区的客户端激活码过期时间计算错误，提前或延后几小时过期
 
@@ -85,7 +85,7 @@
 
 ## 四、前端 UI 缺陷
 
-### 1. 操作日志页序列号丢失
+### 4.1 操作日志页序列号丢失
 
 **问题现象**：操作日志页序列号列显示为空，后端接口返回的序列号字段丢失
 
@@ -95,7 +95,7 @@
 
 ---
 
-### 2. 日志页缺少每页条数选择器
+### 4.2 日志页缺少每页条数选择器
 
 **问题现象**：操作日志页没有每页条数选择器，与激活码记录页 UI 不一致
 
@@ -104,7 +104,7 @@
 
 ---
 
-### 3. 错误信息不匹配错误码
+### 4.3 错误信息不匹配错误码
 
 **问题现象**：前端显示的错误信息与实际错误码不匹配，误导用户
 
@@ -114,9 +114,9 @@
 
 ---
 
-## 五、安全与安全加固问题
+## 五、安全与加密问题
 
-### 1. 无效序列号被接受
+### 5.1 无效序列号被接受
 
 **问题现象**：格式无效的序列号被服务端接受，没有做格式校验
 
@@ -126,9 +126,58 @@
 
 ---
 
-## 六、架构与设计决策
+### 5.2 BCrypt API 参数传递错误
 
-### 1. 容器 restart 策略设计
+**问题现象**：`BCryptEncrypt` / `BCryptDecrypt` 调用失败，返回无效参数错误
+
+**根本原因**：
+- `BCRYPT_BLOCK_PADDING` 标志应作为 `dwFlags`（最后一个参数）传递，而不是作为 `pPaddingInfo`（第5个参数）指针传递
+- `BCRYPT_BLOCK_PADDING` 是一个标志值（0x00000001），不是结构体指针
+
+**正确用法**：
+```cpp
+// ❌ 错误：paddingInfo 作为指针传递
+BCryptEncrypt(hKey, data, dataLen, NULL, iv, 16, out, outLen, &outLen, &paddingInfo);
+
+// ✅ 正确：padding 作为 flag 传递
+BCryptEncrypt(hKey, data, dataLen, NULL, iv, 16, out, outLen, &outLen, BCRYPT_BLOCK_PADDING);
+```
+
+**教训**：BCrypt 系列 API 的 padding 参数设计容易混淆。对称加密（AES-CBC）用 `BCRYPT_BLOCK_PADDING` 作为 flag，而非认证加密（AES-GCM）才需要传 `BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO` 结构体作为 paddingInfo。
+
+---
+
+## 六、数据库变更问题
+
+### 6.1 ALTER TABLE ADD COLUMN IF NOT EXISTS 在 MySQL 上静默失败
+
+**问题现象**：新增列的 SQL 执行后列不存在，无报错，静默失败
+
+**根本原因**：
+- `ALTER TABLE ADD COLUMN IF NOT EXISTS` 是 MariaDB 特有语法，MySQL 不支持
+- MySQL 遇到不认识的语法直接忽略，不报错
+
+**解决方案**：
+- 新增列：先查询 `information_schema.COLUMNS` 判断列是否存在，不存在才 `ALTER TABLE ADD COLUMN`
+- 新增索引：先查询 `information_schema.STATISTICS` 判断索引是否存在，不存在才 `ALTER TABLE ADD INDEX`
+
+```java
+// 伪代码示例
+boolean exists = jdbc.queryForObject(
+    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+    "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+    Integer.class, dbName, tableName, columnName) > 0;
+
+if (!exists) {
+    jdbc.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " ...");
+}
+```
+
+---
+
+## 七、架构与运维决策
+
+### 7.1 容器 restart 策略设计
 
 **设计决策**：active-manager docker-compose 用 `restart: on-failure:5`，**不是** `restart: always`
 
@@ -143,9 +192,20 @@
 
 ---
 
-## 七、多页二维码协议问题
+## 八、开发规范与禁止事项
 
-### 1. 多页二维码分页协议
+1. **禁止修改已上线的协议格式**：M5: 多页协议、B5: 压缩前缀，修改会导致版本不兼容
+2. **禁止换回 quirc 解码库**：zxing-cpp 识别率远高于 quirc（>95% vs ~60%）
+3. **禁止修改 CRT 链接方式**：保持 `/MT` 静态链接，确保零运行时依赖
+4. **所有改动必须走 Woodpecker 流水线部署**，禁止手工 docker run 覆盖部署
+5. Win7 兼容性是硬性要求，所有 C++ 代码必须在 Win7 上测试通过才能合并
+6. **数据库变更必须先查 information_schema**，禁止使用 MariaDB 特有语法
+
+---
+
+## 九、多页二维码协议参考
+
+### 多页二维码分页协议
 
 **协议格式**：`M5:<页码>/<总页数>/<内容>`
 - 例：`M5:1/3/...` 表示第 1 页，共 3 页
@@ -157,10 +217,5 @@
 
 ---
 
-## 开发规范与禁止事项
-
-1. **禁止修改已上线的协议格式**：M5: 多页协议、B5: 压缩前缀，修改会导致版本不兼容
-2. **禁止换回 quirc 解码库**：zxing-cpp 识别率远高于 quirc（>95% vs ~60%）
-3. **禁止修改 CRT 链接方式**：保持 `/MT` 静态链接，确保零运行时依赖
-4. **所有改动必须走 Woodpecker 流水线部署**，禁止手工 docker run 覆盖部署
-5. Win7 兼容性是硬性要求，所有 C++ 代码必须在 Win7 上测试通过才能合并
+*文档索引：按问题类型分类，共 9 大类，16 个常见问题*
+*最后更新：2026-07-31*
