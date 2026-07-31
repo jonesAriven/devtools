@@ -175,6 +175,41 @@ if (!exists) {
 
 ---
 
+### 5.3 RSA 密钥对不匹配（激活码永远验证失败）
+
+**问题现象**：
+- 服务端生成的激活码，客户端验证永远返回失败
+- 前端显示「激活码无效」或「签名验证失败」
+- 服务端日志无报错，客户端激活失败
+
+**根本原因**：
+- **服务端生成激活码的私钥** 与 **客户端验证签名的公钥** 不是一对
+- 密钥轮换后，客户端内嵌的公钥没有同步更新
+- 测试环境和生产环境用了不同的密钥对
+
+**解决方案**：
+1. **确认密钥对一致性**：
+   - 服务端私钥位置：`activation-code-server/src/main/resources/rsa-private.pem`
+   - 客户端公钥位置：`activation-code-verifier/cpp/include/Jones/RsaKey.h`
+   - 用 `openssl rsa -in private.pem -pubout` 导出公钥，与客户端硬编码的公钥对比
+
+2. **密钥轮换流程**：
+   - 先生成新的密钥对，同时保留旧密钥 30 天用于过渡
+   - 先更新客户端内嵌的公钥，发布新版客户端
+   - 再更新服务端的私钥，生成新格式的激活码
+   - 过渡期允许旧格式激活码继续有效
+
+3. **快速验证命令**：
+   ```bash
+   # 从私钥导出公钥
+   openssl rsa -in rsa-private.pem -pubout -out derived-public.pem
+   
+   # 对比客户端内嵌的公钥
+   diff derived-public.pem client-public.pem
+   ```
+
+---
+
 ## 七、架构与运维决策
 
 ### 7.1 容器 restart 策略设计
