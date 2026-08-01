@@ -1444,6 +1444,9 @@ INT_PTR CALLBACK MainWindow::SettingsDlgProc(HWND hDlg, UINT message, WPARAM wPa
         DestroyWindow(hDlg);
         return TRUE;
     }
+
+    default:
+        return DefWindowProcW(hDlg, message, wParam, lParam);
     }
 
     return FALSE;
@@ -1468,8 +1471,14 @@ void MainWindow::ShowSettingsDialog()
         registered = true;
     }
 
+    // Get screen DPI for scaling
+    HDC hdc = GetDC(nullptr);
+    int dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+    ReleaseDC(nullptr, hdc);
+    auto S = [dpi](int v) -> int { return MulDiv(v, dpi, 96); };
+
     // Calculate centered position
-    int dlgW = 320, dlgH = 230;
+    int dlgW = S(320), dlgH = S(230);
     RECT parentRc;
     GetWindowRect(m_hWnd, &parentRc);
     int dlgX = parentRc.left + (parentRc.right - parentRc.left - dlgW) / 2;
@@ -1486,6 +1495,9 @@ void MainWindow::ShowSettingsDialog()
 
     if (!hDlg) return;
 
+    // Hook up SettingsDlgProc so button clicks are handled
+    SetWindowLongPtrW(hDlg, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(SettingsDlgProc));
+
     // Disable parent window (modal behavior)
     EnableWindow(m_hWnd, FALSE);
 
@@ -1497,49 +1509,49 @@ void MainWindow::ShowSettingsDialog()
     HWND hChkEnable = CreateWindowExW(0, L"BUTTON",
         L"\u542F\u7528\u5168\u5C40\u5FEB\u6377\u952E",
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        16, 12, 200, 20,
+        S(16), S(12), S(200), S(20),
         hDlg, reinterpret_cast<HMENU>(IDC_CHK_HOTKEY_ENABLE), nullptr, nullptr);
     SendMessageW(hChkEnable, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hLblMod = CreateWindowExW(0, L"STATIC",
         L"\u4FEE\u9970\u952E\uFF1A",
         WS_CHILD | WS_VISIBLE,
-        16, 42, 70, 18,
+        S(16), S(42), S(70), S(18),
         hDlg, reinterpret_cast<HMENU>(IDC_LBL_HOTKEY_MOD), nullptr, nullptr);
     SendMessageW(hLblMod, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hChkCtrl = CreateWindowExW(0, L"BUTTON", L"Ctrl",
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        90, 40, 50, 20,
+        S(90), S(40), S(50), S(20),
         hDlg, reinterpret_cast<HMENU>(IDC_CHK_MOD_CTRL), nullptr, nullptr);
     SendMessageW(hChkCtrl, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hChkAlt = CreateWindowExW(0, L"BUTTON", L"Alt",
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        146, 40, 42, 20,
+        S(146), S(40), S(42), S(20),
         hDlg, reinterpret_cast<HMENU>(IDC_CHK_MOD_ALT), nullptr, nullptr);
     SendMessageW(hChkAlt, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hChkShift = CreateWindowExW(0, L"BUTTON", L"Shift",
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        194, 40, 52, 20,
+        S(194), S(40), S(52), S(20),
         hDlg, reinterpret_cast<HMENU>(IDC_CHK_MOD_SHIFT), nullptr, nullptr);
     SendMessageW(hChkShift, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hChkWin = CreateWindowExW(0, L"BUTTON", L"Win",
         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        252, 40, 46, 20,
+        S(252), S(40), S(46), S(20),
         hDlg, reinterpret_cast<HMENU>(IDC_CHK_MOD_WIN), nullptr, nullptr);
     SendMessageW(hChkWin, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hLblKey = CreateWindowExW(0, L"STATIC",
         L"\u6309\u952E\uFF1A",
         WS_CHILD | WS_VISIBLE,
-        16, 70, 70, 18,
+        S(16), S(70), S(70), S(18),
         hDlg, reinterpret_cast<HMENU>(IDC_LBL_HOTKEY_KEY), nullptr, nullptr);
     SendMessageW(hLblKey, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hEdtKey = CreateWindowExW(0, L"EDIT",
         L"",
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY,
-        90, 68, 60, 22,
+        S(90), S(68), S(60), S(22),
         hDlg, reinterpret_cast<HMENU>(IDC_EDT_HOTKEY_KEY), nullptr, nullptr);
     SendMessageW(hEdtKey, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
@@ -1549,33 +1561,33 @@ void MainWindow::ShowSettingsDialog()
     HWND hBtnReset = CreateWindowExW(0, L"BUTTON",
         L"\u91CD\u7F6E",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        160, 68, 50, 22,
+        S(160), S(68), S(50), S(22),
         hDlg, reinterpret_cast<HMENU>(IDC_BTN_HOTKEY_RESET), nullptr, nullptr);
     SendMessageW(hBtnReset, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hLblHint = CreateWindowExW(0, L"STATIC",
         L"\u70B9\u51FB\u201C\u6309\u952E\u201D\u6846\u540E\u6309\u4E0B\u65B0\u7684\u5FEB\u6377\u952E",
         WS_CHILD | WS_VISIBLE,
-        16, 98, 280, 18,
+        S(16), S(98), S(280), S(18),
         hDlg, nullptr, nullptr, nullptr);
     SendMessageW(hLblHint, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 
     HWND hBtnOK = CreateWindowExW(0, L"BUTTON",
         L"\u786E\u5B9A",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
-        60, 160, 70, 26,
+        S(50), S(130), S(70), S(26),
         hDlg, reinterpret_cast<HMENU>(IDOK), nullptr, nullptr);
     SendMessageW(hBtnOK, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hBtnAbout = CreateWindowExW(0, L"BUTTON",
         L"\u5173\u4E8E",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        140, 160, 70, 26,
+        S(130), S(130), S(70), S(26),
         hDlg, reinterpret_cast<HMENU>(IDC_BTN_ABOUT), nullptr, nullptr);
     SendMessageW(hBtnAbout, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
     HWND hBtnCancel = CreateWindowExW(0, L"BUTTON",
         L"\u53D6\u6D88",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        180, 160, 70, 26,
+        S(210), S(130), S(70), S(26),
         hDlg, reinterpret_cast<HMENU>(IDCANCEL), nullptr, nullptr);
     SendMessageW(hBtnCancel, WM_SETFONT, reinterpret_cast<WPARAM>(hDlgFont), TRUE);
 

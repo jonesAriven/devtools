@@ -1,6 +1,9 @@
 #include <windows.h>
 #include "../src/Resource.h"
 
+// 声明源文件使用 UTF-8 编码，否则中文 Windows 上 RC 编译器默认按 GBK 解析会导致中文乱码
+#pragma code_page(65001)
+
 IDR_ICON1 ICON "app.ico"
 
 // 版本号从 CMake configure_file 注入
