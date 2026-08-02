@@ -268,7 +268,7 @@ def call_llm(config: dict, prompt: str) -> str:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 2048,
+        "max_tokens": 4096,
     }
     url = f"{llm_cfg['base_url'].rstrip('/')}/chat/completions"
     headers = {
