@@ -196,12 +196,62 @@ def api_stats():
         conn.close()
 
 
-# ── 前端路由 ──────────────────────────────────────────────────────────
+# ── SSR 首页（数据内嵌，零API请求） ────────────────────────────────────
+
+
+def _get_initial_data():
+    """获取首页初始数据，直接嵌入HTML，免去前端串行API请求"""
+    conn = get_db()
+    try:
+        # 统计数据
+        total_sessions = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        total_extracts = conn.execute("SELECT COUNT(*) FROM extracts").fetchone()[0]
+        last = conn.execute("SELECT MAX(processed_at) FROM sessions").fetchone()[0]
+
+        type_dist = {}
+        for row in conn.execute(
+            "SELECT type, COUNT(*) as cnt FROM extracts GROUP BY type ORDER BY cnt DESC"
+        ).fetchall():
+            type_dist[row["type"]] = row["cnt"]
+
+        # 最近会话（前20条）
+        sessions = []
+        for row in conn.execute(
+            """SELECT s.*,
+                (SELECT COUNT(*) FROM extracts e WHERE e.session_id = s.session_id) as extract_count
+                FROM sessions s
+                ORDER BY s.processed_at DESC
+                LIMIT 20"""
+        ).fetchall():
+            s = dict(row)
+            s["processed_at_str"] = ts_to_str(s.get("processed_at"))
+            s["started_at_str"] = ts_to_str(s.get("started_at"))
+            s["ended_at_str"] = ts_to_str(s.get("ended_at"))
+            sessions.append(s)
+
+        # 最近知识条目（前30条）— 懒加载，不嵌入首页HTML
+        extracts = []
+
+        return {
+            "stats": {
+                "total_sessions": total_sessions,
+                "total_extracts": total_extracts,
+                "last_processed_at": ts_to_str(last),
+                "type_distribution": type_dist,
+            },
+            "sessions": sessions,
+            "sessions_total": total_sessions,
+            "extracts": extracts,
+            "extracts_total": total_extracts,
+        }
+    finally:
+        conn.close()
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    data = _get_initial_data()
+    return render_template("index.html", initial_data=json.dumps(data, ensure_ascii=False))
 
 
 @app.route("/static/<path:filename>")

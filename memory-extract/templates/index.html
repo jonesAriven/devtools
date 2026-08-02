@@ -217,29 +217,100 @@ body {
 
 <script>
 const API_BASE = '';
+const INITIAL_DATA = {{ initial_data|safe }};
 
 let currentTab = 'sessions';
 let currentPage = 1;
 let searchTimer = null;
+let extractsLoaded = false; // 懒加载标记
 
-// 初始化
-async function init() {
-  await loadStats();
-  await loadSessions();
+// 初始化 — 直接用 SSR 内嵌数据，零API请求
+function init() {
+  renderStats(INITIAL_DATA.stats);
+  renderTypeBars(INITIAL_DATA.stats.type_distribution);
+  renderSessions(INITIAL_DATA.sessions, INITIAL_DATA.sessions_total);
+  // extracts 懒加载，用户切到标签页时再加载
 }
 
 // 统计数据
-async function loadStats() {
-  try {
-    const r = await fetch(`${API_BASE}/api/stats`);
-    const data = await r.json();
-    document.getElementById('stat-sessions').textContent = data.total_sessions;
-    document.getElementById('stat-extracts').textContent = data.total_extracts;
-    document.getElementById('stat-last').textContent = data.last_processed_at || '-';
-  } catch(e) { console.error('stats error', e); }
+function renderStats(data) {
+  document.getElementById('stat-sessions').textContent = data.total_sessions;
+  document.getElementById('stat-extracts').textContent = data.total_extracts;
+  document.getElementById('stat-last').textContent = data.last_processed_at || '-';
 }
 
-// 会话列表
+// 类型分布条
+function renderTypeBars(dist) {
+  const el = document.getElementById('type-bars');
+  const colors = {decision:'#3fb950', lesson:'#d29922', architecture:'#56d4dd',
+    preference:'#bc8cff', fact:'#58a6ff', detail:'#f778ba', general:'#8b949e'};
+  const labels = {decision:'决策', lesson:'经验', architecture:'方案',
+    preference:'偏好', fact:'事实', detail:'细节', general:'其他'};
+  el.innerHTML = Object.entries(dist).map(([k,v]) =>
+    `<div class="type-bar"><span class="count" style="color:${colors[k]||'#8b949e'}">${v}</span><span class="label">${labels[k]||k}</span></div>`
+  ).join('');
+}
+
+// 渲染会话列表
+function renderSessions(sessions, total) {
+  const grid = document.getElementById('sessions-grid');
+  grid.innerHTML = '';
+  if (sessions.length === 0) {
+    grid.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
+  } else {
+    sessions.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="card-title">${escapeHtml(s.title || s.session_id)}</div>
+        <div class="card-meta">
+          <span>📄 ${s.extract_count} 条</span>
+          <span>💬 ${s.message_count} 消息</span>
+          <span>🕐 ${s.processed_at_str}</span>
+          <span>📱 ${s.source || '-'}</span>
+        </div>
+        <div class="card-summary">${escapeHtml(s.conversation_summary || '')}</div>
+      `;
+      card.onclick = () => loadSessionDetail(s.session_id);
+      grid.appendChild(card);
+    });
+  }
+  renderPagination('sessions-pagination', {page:1, total_pages:Math.ceil(total/20), total}, (p) => loadSessions(p));
+}
+
+// 渲染知识条目列表
+function renderExtracts(extracts, total) {
+  const list = document.getElementById('extracts-list');
+  list.innerHTML = '';
+  if (extracts.length === 0) {
+    list.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
+  } else {
+    extracts.forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'extract-item';
+      item.innerHTML = `
+        <div class="extract-header">
+          <span class="extract-type ${e.type}">${e.type}</span>
+          <span style="font-size:12px;color:var(--text-muted)">
+            ${escapeHtml(e.session_title || e.session_id)}
+            · ${e.created_at_str}
+          </span>
+        </div>
+        <div class="extract-content">${escapeHtml(e.content)}</div>
+        <div class="extract-tags">
+          ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
+          ${e.category ? `<span class="extract-tag">${escapeHtml(e.category)}</span>` : ''}
+        </div>
+      `;
+      item.onclick = () => loadSessionDetail(e.session_id);
+      item.style.cursor = 'pointer';
+      list.appendChild(item);
+    });
+  }
+  renderPagination('extracts-pagination', {page:1, total_pages:Math.ceil(total/30), total}, (p) => loadExtracts(p));
+}
+
+// 会话列表（翻页走API）
 async function loadSessions(page) {
   if (page) currentPage = page;
   const grid = document.getElementById('sessions-grid');
@@ -248,28 +319,7 @@ async function loadSessions(page) {
   try {
     const r = await fetch(`${API_BASE}/api/sessions?page=${currentPage}&per_page=20&search=${encodeURIComponent(search)}`);
     const data = await r.json();
-    grid.innerHTML = '';
-    if (data.sessions.length === 0) {
-      grid.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
-    } else {
-      data.sessions.forEach(s => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="card-title">${escapeHtml(s.title || s.session_id)}</div>
-          <div class="card-meta">
-            <span>📄 ${s.extract_count} 条</span>
-            <span>💬 ${s.message_count} 消息</span>
-            <span>🕐 ${s.processed_at_str}</span>
-            <span>📱 ${s.source || '-'}</span>
-          </div>
-          <div class="card-summary">${escapeHtml(s.conversation_summary || '')}</div>
-        `;
-        card.onclick = () => loadSessionDetail(s.session_id);
-        grid.appendChild(card);
-      });
-    }
-    renderPagination('sessions-pagination', data, (p) => loadSessions(p));
+    renderSessions(data.sessions, data.total);
   } catch(e) {
     grid.innerHTML = `<div class="empty"><h3>加载失败</h3><p>${e.message}</p></div>`;
   }
@@ -320,7 +370,7 @@ function closeDetail() {
   document.getElementById('detail-panel').style.display = 'none';
 }
 
-// 知识条目视图
+// 知识条目视图（翻页/搜索走API）
 async function loadExtracts(page) {
   if (page) currentPage = page;
   const list = document.getElementById('extracts-list');
@@ -330,33 +380,7 @@ async function loadExtracts(page) {
   try {
     const r = await fetch(`${API_BASE}/api/extracts?page=${currentPage}&per_page=30&search=${encodeURIComponent(search)}&type=${etype}`);
     const data = await r.json();
-    list.innerHTML = '';
-    if (data.extracts.length === 0) {
-      list.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
-    } else {
-      data.extracts.forEach(e => {
-        const item = document.createElement('div');
-        item.className = 'extract-item';
-        item.innerHTML = `
-          <div class="extract-header">
-            <span class="extract-type ${e.type}">${e.type}</span>
-            <span style="font-size:12px;color:var(--text-muted)">
-              ${escapeHtml(e.session_title || e.session_id)}
-              · ${e.created_at_str}
-            </span>
-          </div>
-          <div class="extract-content">${escapeHtml(e.content)}</div>
-          <div class="extract-tags">
-            ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
-            ${e.category ? `<span class="extract-tag">${escapeHtml(e.category)}</span>` : ''}
-          </div>
-        `;
-        item.onclick = () => loadSessionDetail(e.session_id);
-        item.style.cursor = 'pointer';
-        list.appendChild(item);
-      });
-    }
-    renderPagination('extracts-pagination', data, (p) => loadExtracts(p));
+    renderExtracts(data.extracts, data.total);
   } catch(e) {
     list.innerHTML = `<div class="empty"><h3>加载失败</h3><p>${e.message}</p></div>`;
   }
@@ -398,7 +422,10 @@ function switchTab(tab) {
   document.getElementById('extracts-view').style.display = tab === 'extracts' ? 'block' : 'none';
   document.getElementById('type-filter').style.display = tab === 'extracts' ? 'inline-block' : 'none';
   if (tab === 'sessions') loadSessions(1);
-  else loadExtracts(1);
+  else {
+    if (!extractsLoaded) { extractsLoaded = true; }
+    loadExtracts(1);
+  }
 }
 
 // 搜索防抖
