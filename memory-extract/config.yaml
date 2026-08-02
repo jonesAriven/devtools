@@ -9,9 +9,9 @@ extract_db: /root/devtools/memory-extract/memory-extracts.db
 
 # --- 提炼模型 ---
 llm:
-  base_url: https://ark.cn-beijing.volces.com/api/plan/v3
-  api_key: ark-8a555b84-ce24-417f-81ce-621a6a9d236f-dbb6b
-  model: doubao-seed-2-0-lite-260428
+  base_url: https://api.stepfun.com/step_plan/v1
+  api_key: 69matBHMApNprfarjTAPZW8EDzRhQGOIhdtAUeqbcTsKJIcGjXV6vtuCobTnX7dvS
+  model: step-3.7-flash
   timeout: 120
 
 # --- 定时任务 ---
