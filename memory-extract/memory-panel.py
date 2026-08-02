@@ -117,6 +117,41 @@ def api_session_detail(session_id):
         conn.close()
 
 
+@app.route("/api/extracts/<extract_id>")
+def api_extract_detail(extract_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            """SELECT e.*, s.title as session_title, s.conversation_summary,
+                s.started_at, s.ended_at, s.message_count, s.source
+                FROM extracts e
+                LEFT JOIN sessions s ON e.session_id = s.session_id
+                WHERE e.id = ?""",
+            (extract_id,),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "not found"}), 404
+
+        data = dict(row)
+        data["created_at_str"] = ts_to_str(data.get("created_at"))
+        data["started_at_str"] = ts_to_str(data.get("started_at"))
+        data["ended_at_str"] = ts_to_str(data.get("ended_at"))
+
+        # 解析 context JSON
+        ctx = data.get("context", "")
+        if ctx:
+            try:
+                data["context_parsed"] = json.loads(ctx)
+            except (json.JSONDecodeError, TypeError):
+                data["context_parsed"] = None
+        else:
+            data["context_parsed"] = None
+
+        return jsonify({"extract": data})
+    finally:
+        conn.close()
+
+
 @app.route("/api/extracts")
 def api_extracts():
     conn = get_db()
