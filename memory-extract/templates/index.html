@@ -339,7 +339,7 @@ function renderSessions(sessions, total) {
         </div>
         <div class="card-summary">${escapeHtml(s.conversation_summary || '')}</div>
       `;
-      card.onclick = () => loadSessionDetail(s.session_id);
+      card.onclick = () => showSessionPreview(s.session_id);
       grid.appendChild(card);
     });
   }
@@ -472,49 +472,61 @@ async function loadSessions(page) {
   }
 }
 
-// 会话详情
-async function loadSessionDetail(sessionId) {
-  document.getElementById('detail-panel').style.display = 'block';
-  document.getElementById('detail-title').textContent = '加载中...';
+// 会话详情预览弹窗
+async function showSessionPreview(sessionId) {
+  const modal = document.getElementById('detail-modal');
+  const body = document.getElementById('modal-body');
+  document.getElementById('modal-title').textContent = '加载中...';
+  body.innerHTML = '<div class="loading">加载中</div>';
+  modal.classList.add('show');
+
   try {
     const r = await fetch(`${API_BASE}/api/sessions/${sessionId}`);
     const data = await r.json();
     const s = data.session;
-    document.getElementById('detail-title').textContent = s.title || s.session_id;
-    document.getElementById('detail-meta').innerHTML = `
-      <dt>会话 ID</dt><dd>${escapeHtml(s.session_id)}</dd>
-      <dt>来源</dt><dd>${escapeHtml(s.source || '-')}</dd>
-      <dt>开始</dt><dd>${s.started_at_str}</dd>
-      <dt>结束</dt><dd>${s.ended_at_str}</dd>
-      <dt>消息数</dt><dd>${s.message_count}</dd>
-      <dt>Token</dt><dd>输入 ${s.input_tokens || 0} / 输出 ${s.output_tokens || 0}</dd>
-      <dt>摘要</dt><dd>${escapeHtml(s.conversation_summary || '-')}</dd>
-    `;
-    const el = document.getElementById('detail-extracts');
-    el.innerHTML = '';
-    data.extracts.forEach(e => {
-      const item = document.createElement('div');
-      item.className = 'extract-item';
-      item.innerHTML = `
-        <div class="extract-header">
-          <span class="extract-type ${e.type}">${e.type}</span>
-          <span class="extract-meta" style="font-size:12px;color:var(--text-muted)">${e.created_at_str}</span>
-        </div>
-        <div class="extract-content">${escapeHtml(e.content)}</div>
-        <div class="extract-tags">
-          ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
-          ${e.category ? `<span class="extract-tag">${escapeHtml(e.category)}</span>` : ''}
-        </div>
-      `;
-      el.appendChild(item);
-    });
-  } catch(e) {
-    document.getElementById('detail-title').textContent = '加载失败';
-  }
-}
 
-function closeDetail() {
-  document.getElementById('detail-panel').style.display = 'none';
+    document.getElementById('modal-title').textContent = escapeHtml(s.title || s.session_id);
+
+    body.innerHTML = `
+      <div class="modal-section">
+        <div class="modal-section-label">会话信息</div>
+        <div class="modal-meta-grid">
+          <dt>会话 ID</dt><dd style="font-family:monospace;font-size:12px">${escapeHtml(s.session_id)}</dd>
+          <dt>来源</dt><dd>${escapeHtml(s.source || '-')}</dd>
+          <dt>开始</dt><dd>${s.started_at_str || '-'}</dd>
+          <dt>结束</dt><dd>${s.ended_at_str || '-'}</dd>
+          <dt>消息数</dt><dd>${s.message_count}</dd>
+          <dt>Token</dt><dd>输入 ${s.input_tokens || 0} / 输出 ${s.output_tokens || 0}</dd>
+        </div>
+      </div>
+
+      ${s.conversation_summary ? `
+      <div class="modal-section">
+        <div class="modal-section-label">会话摘要</div>
+        <div class="modal-section-content" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;color:var(--text-muted)">${escapeHtml(s.conversation_summary)}</div>
+      </div>` : ''}
+
+      <div class="modal-section">
+        <div class="modal-section-label">提炼的知识条目（${data.extracts.length} 条）</div>
+        ${data.extracts.length === 0 ? '<div style="color:var(--text-muted);font-size:13px">暂无</div>' :
+          data.extracts.map(e => `
+            <div class="extract-item" style="margin-bottom:8px;cursor:pointer" onclick="showExtractDetail('${e.id}')">
+              <div class="extract-header">
+                <span class="extract-type ${e.type}">${e.type}</span>
+                <span style="font-size:12px;color:var(--text-muted)">${e.created_at_str}</span>
+              </div>
+              <div class="extract-content">${escapeHtml(e.content)}</div>
+              <div class="extract-tags">
+                ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
+              </div>
+            </div>
+          `).join('')
+        }
+      </div>
+    `;
+  } catch(e) {
+    body.innerHTML = `<div class="empty"><h3>加载失败</h3><p>${e.message}</p></div>`;
+  }
 }
 
 // 知识条目视图（翻页/搜索走API）

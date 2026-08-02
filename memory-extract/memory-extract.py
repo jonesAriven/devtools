@@ -422,12 +422,25 @@ def main() -> int:
     # 解析参数
     dry_run = "--dry-run" in sys.argv
     force_session = None
+    reset = "--reset" in sys.argv
+    custom_limit = None
     for arg in sys.argv:
         if arg.startswith("--force-session="):
             force_session = arg.split("=", 1)[1]
+        elif arg.startswith("--limit="):
+            custom_limit = int(arg.split("=", 1)[1])
 
     # 确保 DB 已初始化
     init_db(config["extract_db"])
+
+    if reset:
+        print("🧹 清空现有数据...", file=sys.stderr)
+        conn = sqlite3.connect(config["extract_db"])
+        conn.execute("DELETE FROM extracts")
+        conn.execute("DELETE FROM sessions")
+        conn.commit()
+        conn.close()
+        print("✅ 已清空", file=sys.stderr)
 
     if force_session:
         # 处理指定会话
@@ -449,7 +462,7 @@ def main() -> int:
 
     # 正常模式：扫未处理会话
     sessions = get_unprocessed_sessions(
-        config["state_db"], config["extract_db"]
+        config["state_db"], config["extract_db"], limit=custom_limit or 5
     )
     if not sessions:
         print(f"✅ 无新会话需要处理", file=sys.stderr)
