@@ -1,0 +1,23 @@
+# memory-extract 配置 — 可移植，所有路径可调
+# 复制为 config.yaml 使用
+
+# --- Hermes 数据源 ---
+state_db: /root/.hermes/state.db
+
+# --- 提炼存储 ---
+extract_db: /root/devtools/memory-extract/memory-extracts.db
+
+# --- 提炼模型 ---
+llm:
+  base_url: https://ark.cn-beijing.volces.com/api/plan/v3
+  api_key: ark-8a555b84-ce24-417f-81ce-621a6a9d236f-dbb6b
+  model: doubao-seed-2-0-lite-260428
+  timeout: 120
+
+# --- 定时任务 ---
+schedule_minutes: 15
+
+# --- 面板 ---
+panel:
+  host: 0.0.0.0
+  port: 8720

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>记忆提炼面板</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #bc8cff;
+  --teal: #56d4dd;
+  --pink: #f778ba;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 20px;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+/* 头部 */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 24px; font-weight: 600; }
+.header .stats {
+  display: flex; gap: 20px; font-size: 14px; color: var(--text-muted);
+}
+.header .stats span { color: var(--accent); font-weight: 600; }
+/* 标签导航 */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  background: var(--card); border-radius: 8px; padding: 4px;
+  width: fit-content;
+}
+.tab-btn {
+  padding: 8px 20px; border: none; border-radius: 6px;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; transition: all 0.2s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { background: var(--accent); color: #fff; }
+/* 搜索栏 */
+.search-bar {
+  display: flex; gap: 10px; margin-bottom: 20px; align-items: center;
+}
+.search-bar input {
+  flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); color: var(--text);
+  font-size: 14px; outline: none;
+}
+.search-bar input:focus { border-color: var(--accent); }
+.search-bar select {
+  padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); color: var(--text);
+  font-size: 14px; outline: none;
+}
+/* 卡片区域 */
+.grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; cursor: pointer;
+  transition: all 0.2s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.card-title {
+  font-size: 15px; font-weight: 600; margin-bottom: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-meta {
+  font-size: 12px; color: var(--text-muted);
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.card-summary {
+  font-size: 13px; color: var(--text-muted); margin-top: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* 提取条目 */
+.extract-list { margin-top: 20px; }
+.extract-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-bottom: 12px;
+}
+.extract-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.extract-type {
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 500;
+}
+.extract-type.decision { background: #1a3a2a; color: var(--green); }
+.extract-type.lesson { background: #3a2a1a; color: var(--orange); }
+.extract-type.architecture { background: #1a2a3a; color: var(--teal); }
+.extract-type.preference { background: #2a1a3a; color: var(--purple); }
+.extract-type.fact { background: #1a2a2a; color: var(--accent); }
+.extract-type.detail { background: #2a1a2a; color: var(--pink); }
+.extract-type.general { background: #2a2a2a; color: var(--text-muted); }
+.extract-content { font-size: 14px; line-height: 1.7; }
+.extract-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.extract-tag {
+  padding: 2px 8px; border-radius: 4px;
+  background: #21262d; color: var(--text-muted); font-size: 12px;
+}
+/* 详情面板 */
+.detail-panel {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; margin-bottom: 20px;
+}
+.detail-panel h2 { font-size: 18px; margin-bottom: 12px; }
+.detail-meta {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
+  font-size: 13px; margin-bottom: 16px;
+}
+.detail-meta dt { color: var(--text-muted); }
+.detail-meta dd { color: var(--text); }
+/* 分页 */
+.pagination {
+  display: flex; justify-content: center; gap: 8px; margin-top: 20px;
+}
+.pagination button {
+  padding: 6px 14px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); color: var(--text);
+  cursor: pointer; font-size: 13px;
+}
+.pagination button:hover { border-color: var(--accent); }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Loading */
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+.loading::after { content: '...'; animation: blink 1.5s infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
+/* 空状态 */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty h3 { font-size: 18px; margin-bottom: 8px; }
+.empty p { font-size: 14px; }
+/* 类型分布条 */
+.type-bars { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.type-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  font-size: 13px;
+}
+.type-bar .count { font-weight: 600; }
+.type-bar .label { color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="header">
+    <h1>🧠 记忆提炼面板</h1>
+    <div class="stats">
+      <div>会话: <span id="stat-sessions">-</span></div>
+      <div>知识条目: <span id="stat-extracts">-</span></div>
+      <div>最后处理: <span id="stat-last">-</span></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('sessions')">会话列表</button>
+    <button class="tab-btn" onclick="switchTab('extracts')">知识条目</button>
+  </div>
+
+  <div class="search-bar">
+    <input id="search-input" type="text" placeholder="搜索..." oninput="debounceSearch()">
+    <select id="type-filter" onchange="switchTab(currentTab)">
+      <option value="">所有类型</option>
+      <option value="decision">决策</option>
+      <option value="lesson">经验教训</option>
+      <option value="architecture">技术方案</option>
+      <option value="preference">偏好</option>
+      <option value="fact">事实</option>
+      <option value="detail">技术细节</option>
+      <option value="general">一般</option>
+    </select>
+  </div>
+
+  <!-- 会话视图 -->
+  <div id="sessions-view">
+    <div class="type-bars" id="type-bars"></div>
+    <div id="sessions-grid" class="grid"></div>
+    <div class="pagination" id="sessions-pagination"></div>
+  </div>
+
+  <!-- 知识条目视图 -->
+  <div id="extracts-view" style="display:none">
+    <div id="extracts-list" class="extract-list"></div>
+    <div class="pagination" id="extracts-pagination"></div>
+  </div>
+
+  <!-- 会话详情弹层 -->
+  <div id="detail-panel" class="detail-panel" style="display:none">
+    <button onclick="closeDetail()" style="float:right;background:none;border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:4px;cursor:pointer">关闭</button>
+    <h2 id="detail-title">-</h2>
+    <div class="detail-meta" id="detail-meta"></div>
+    <div id="detail-extracts"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+
+let currentTab = 'sessions';
+let currentPage = 1;
+let searchTimer = null;
+
+// 初始化
+async function init() {
+  await loadStats();
+  await loadSessions();
+}
+
+// 统计数据
+async function loadStats() {
+  try {
+    const r = await fetch(`${API_BASE}/api/stats`);
+    const data = await r.json();
+    document.getElementById('stat-sessions').textContent = data.total_sessions;
+    document.getElementById('stat-extracts').textContent = data.total_extracts;
+    document.getElementById('stat-last').textContent = data.last_processed_at || '-';
+  } catch(e) { console.error('stats error', e); }
+}
+
+// 会话列表
+async function loadSessions(page) {
+  if (page) currentPage = page;
+  const grid = document.getElementById('sessions-grid');
+  grid.innerHTML = '<div class="loading">加载中</div>';
+  const search = document.getElementById('search-input').value.trim();
+  try {
+    const r = await fetch(`${API_BASE}/api/sessions?page=${currentPage}&per_page=20&search=${encodeURIComponent(search)}`);
+    const data = await r.json();
+    grid.innerHTML = '';
+    if (data.sessions.length === 0) {
+      grid.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
+    } else {
+      data.sessions.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-title">${escapeHtml(s.title || s.session_id)}</div>
+          <div class="card-meta">
+            <span>📄 ${s.extract_count} 条</span>
+            <span>💬 ${s.message_count} 消息</span>
+            <span>🕐 ${s.processed_at_str}</span>
+            <span>📱 ${s.source || '-'}</span>
+          </div>
+          <div class="card-summary">${escapeHtml(s.conversation_summary || '')}</div>
+        `;
+        card.onclick = () => loadSessionDetail(s.session_id);
+        grid.appendChild(card);
+      });
+    }
+    renderPagination('sessions-pagination', data, (p) => loadSessions(p));
+  } catch(e) {
+    grid.innerHTML = `<div class="empty"><h3>加载失败</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// 会话详情
+async function loadSessionDetail(sessionId) {
+  document.getElementById('detail-panel').style.display = 'block';
+  document.getElementById('detail-title').textContent = '加载中...';
+  try {
+    const r = await fetch(`${API_BASE}/api/sessions/${sessionId}`);
+    const data = await r.json();
+    const s = data.session;
+    document.getElementById('detail-title').textContent = s.title || s.session_id;
+    document.getElementById('detail-meta').innerHTML = `
+      <dt>会话 ID</dt><dd>${escapeHtml(s.session_id)}</dd>
+      <dt>来源</dt><dd>${escapeHtml(s.source || '-')}</dd>
+      <dt>开始</dt><dd>${s.started_at_str}</dd>
+      <dt>结束</dt><dd>${s.ended_at_str}</dd>
+      <dt>消息数</dt><dd>${s.message_count}</dd>
+      <dt>Token</dt><dd>输入 ${s.input_tokens || 0} / 输出 ${s.output_tokens || 0}</dd>
+      <dt>摘要</dt><dd>${escapeHtml(s.conversation_summary || '-')}</dd>
+    `;
+    const el = document.getElementById('detail-extracts');
+    el.innerHTML = '';
+    data.extracts.forEach(e => {
+      const item = document.createElement('div');
+      item.className = 'extract-item';
+      item.innerHTML = `
+        <div class="extract-header">
+          <span class="extract-type ${e.type}">${e.type}</span>
+          <span class="extract-meta" style="font-size:12px;color:var(--text-muted)">${e.created_at_str}</span>
+        </div>
+        <div class="extract-content">${escapeHtml(e.content)}</div>
+        <div class="extract-tags">
+          ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
+          ${e.category ? `<span class="extract-tag">${escapeHtml(e.category)}</span>` : ''}
+        </div>
+      `;
+      el.appendChild(item);
+    });
+  } catch(e) {
+    document.getElementById('detail-title').textContent = '加载失败';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').style.display = 'none';
+}
+
+// 知识条目视图
+async function loadExtracts(page) {
+  if (page) currentPage = page;
+  const list = document.getElementById('extracts-list');
+  list.innerHTML = '<div class="loading">加载中</div>';
+  const search = document.getElementById('search-input').value.trim();
+  const etype = document.getElementById('type-filter').value;
+  try {
+    const r = await fetch(`${API_BASE}/api/extracts?page=${currentPage}&per_page=30&search=${encodeURIComponent(search)}&type=${etype}`);
+    const data = await r.json();
+    list.innerHTML = '';
+    if (data.extracts.length === 0) {
+      list.innerHTML = '<div class="empty"><h3>暂无数据</h3><p>等待记忆提炼脚本运行</p></div>';
+    } else {
+      data.extracts.forEach(e => {
+        const item = document.createElement('div');
+        item.className = 'extract-item';
+        item.innerHTML = `
+          <div class="extract-header">
+            <span class="extract-type ${e.type}">${e.type}</span>
+            <span style="font-size:12px;color:var(--text-muted)">
+              ${escapeHtml(e.session_title || e.session_id)}
+              · ${e.created_at_str}
+            </span>
+          </div>
+          <div class="extract-content">${escapeHtml(e.content)}</div>
+          <div class="extract-tags">
+            ${e.tags ? e.tags.split(',').map(t => `<span class="extract-tag">${escapeHtml(t.trim())}</span>`).join('') : ''}
+            ${e.category ? `<span class="extract-tag">${escapeHtml(e.category)}</span>` : ''}
+          </div>
+        `;
+        item.onclick = () => loadSessionDetail(e.session_id);
+        item.style.cursor = 'pointer';
+        list.appendChild(item);
+      });
+    }
+    renderPagination('extracts-pagination', data, (p) => loadExtracts(p));
+  } catch(e) {
+    list.innerHTML = `<div class="empty"><h3>加载失败</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// 分页
+function renderPagination(containerId, data, callback) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  if (data.total_pages <= 1) return;
+  const prev = document.createElement('button');
+  prev.textContent = '‹';
+  prev.disabled = data.page <= 1;
+  prev.onclick = () => callback(data.page - 1);
+  el.appendChild(prev);
+  const start = Math.max(1, data.page - 2);
+  const end = Math.min(data.total_pages, data.page + 2);
+  for (let i = start; i <= end; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    if (i === data.page) btn.className = 'active';
+    btn.onclick = () => callback(i);
+    el.appendChild(btn);
+  }
+  const next = document.createElement('button');
+  next.textContent = '›';
+  next.disabled = data.page >= data.total_pages;
+  next.onclick = () => callback(data.page + 1);
+  el.appendChild(next);
+}
+
+// 标签切换
+function switchTab(tab) {
+  currentTab = tab;
+  currentPage = 1;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn')[tab === 'sessions' ? 0 : 1].classList.add('active');
+  document.getElementById('sessions-view').style.display = tab === 'sessions' ? 'block' : 'none';
+  document.getElementById('extracts-view').style.display = tab === 'extracts' ? 'block' : 'none';
+  document.getElementById('type-filter').style.display = tab === 'extracts' ? 'inline-block' : 'none';
+  if (tab === 'sessions') loadSessions(1);
+  else loadExtracts(1);
+}
+
+// 搜索防抖
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    if (currentTab === 'sessions') loadSessions(1);
+    else loadExtracts(1);
+  }, 300);
+}
+
+// 工具
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
