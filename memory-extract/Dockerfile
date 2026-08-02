@@ -1,8 +1,10 @@
-FROM python:3.11-slim
+FROM alpine:latest
+
+RUN apk add --no-cache python3 py3-pip && \
+    python3 -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir flask gunicorn
 
 WORKDIR /app
-
-RUN pip install --no-cache-dir flask gunicorn
 
 COPY memory-panel.py .
 COPY config.yaml .
@@ -11,4 +13,4 @@ COPY static/ static/
 
 EXPOSE 8720
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8720", "--workers", "2", "--timeout", "60", "memory-panel:app"]
+CMD ["/venv/bin/gunicorn", "--bind", "0.0.0.0:8720", "--workers", "2", "--timeout", "60", "memory-panel:app"]
