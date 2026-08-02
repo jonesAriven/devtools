@@ -1,0 +1,11 @@
+services:
+  memory-panel:
+    build: .
+    container_name: memory-panel
+    restart: on-failure:5
+    ports:
+      - "8720:8720"
+    volumes:
+      - ./memory-extracts.db:/app/memory-extracts.db
+    environment:
+      - TZ=Asia/Shanghai
