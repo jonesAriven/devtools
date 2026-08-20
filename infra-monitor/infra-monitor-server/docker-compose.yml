@@ -21,7 +21,7 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATA_MONGODB_URI=mongodb://kb:kb123456@127.0.0.1:27017/infra_monitor?authSource=admin
-      - JWT_SECRET=YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!
+      - JWT_SECRET=YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
       - CRYPTO_AES_KEY=YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=
       - INFRA_ADMIN_USER=admin
       - INFRA_ADMIN_PASS=admin123
