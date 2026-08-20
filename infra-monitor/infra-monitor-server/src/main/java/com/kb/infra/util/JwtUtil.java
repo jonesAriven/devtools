@@ -38,7 +38,10 @@ public class JwtUtil {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return claims.getSubject();
+            // kb-auth 签发: {sub: "1", username: "admin", type: "access"}
+            // infra-monitor 签发: {sub: "admin"}
+            String username = claims.get("username", String.class);
+            return username != null ? username : claims.getSubject();
         } catch (Exception e) {
             return null;
         }
