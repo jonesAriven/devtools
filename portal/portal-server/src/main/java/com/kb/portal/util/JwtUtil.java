@@ -16,7 +16,7 @@ public class JwtUtil {
     private final JWTSigner signer;
     private final long expireTime;
 
-    public JwtUtil(@Value("${portal.jwt.secret:PortalJwtSecretKey2026!}") String secret,
+    public JwtUtil(@Value("${portal.jwt.secret:PortalJwtSecretKey2026!MustBe32Bytes!!}") String secret,
                    @Value("${portal.jwt.expire-hours:24}") int expireHours) {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         this.signer = JWTSignerUtil.hs256(keyBytes);
