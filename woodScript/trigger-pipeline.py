@@ -45,6 +45,7 @@ PROJECT_MAP = {
     "portal-web": "portal-web",
     "portal-server": "portal-server",
     "workcheck-python": "workcheck-python",
+    "platform": "platform",
     "all": "",
 }
 
@@ -55,6 +56,7 @@ PROJECT_DISPLAY = {
     "infra-monitor-web": "监控前端(im-web)", "active-manager": "激活码(active-mgr)",
     "portal-web": "门户前端(portal-web)", "portal-server": "门户后端(portal-svr)",
     "workcheck-python": "工作量管理(workcheck)",
+    "platform": "平台中间件(platform)",
     "all": "全量(all)",
 }
 
