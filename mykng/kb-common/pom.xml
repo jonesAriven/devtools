@@ -100,6 +100,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Logstash Logback Encoder（结构化 JSON 日志输出，Loki 友好） -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
