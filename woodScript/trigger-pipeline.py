@@ -32,7 +32,7 @@ from datetime import datetime
 DEFAULT_URL = "https://woodci.marschat.online"
 REPO_ID = 1
 
-WOODPECKER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoidXNlciIsInVzZXItaWQiOiIxIn0.471qau5gcvZNQnxV4KfpE5VMnZ_9Q16IzNMESLfdmE4"
+WOODPECKER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoidXNlciIsInVzZXItaWQiOiIxIn0.XvzTfuP27o9KPyE50Mxjeyw4MSD1qiOcJS8_D2sKQc8"
 
 PROJECT_MAP = {
     "mykng": "mykng",
