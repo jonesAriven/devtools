@@ -22,7 +22,7 @@ services:
       - "8090:8080"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
@@ -45,7 +45,7 @@ services:
       - "8085:8085"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
@@ -75,7 +75,7 @@ services:
       - "8089:8089"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
@@ -106,7 +106,7 @@ services:
       - "8092:8092"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
@@ -140,7 +140,7 @@ services:
       - "8086:8086"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
@@ -174,7 +174,7 @@ services:
       - "8084:8084"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
@@ -201,7 +201,7 @@ services:
       - "8087:8087"
     environment:
       - TZ=Asia/Shanghai
-      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
