@@ -283,6 +283,22 @@ steps:
       script:
         - bash /mnt/shared/woodScript/cd/deploy-portal-server.sh portal-server-latest.tar.gz
 
+  # ==================== platform (基础中间件层) ====================
+  - name: platform-deploy
+    image: appleboy/drone-ssh
+    depends_on: [sync-ci-scripts]
+    when: [{ event: manual, evaluate: 'DEPLOY_TARGET == "" || DEPLOY_TARGET == "all" || DEPLOY_TARGET == "platform"' }]
+    settings:
+      host: 192.168.31.105
+      username: root
+      key: { from_secret: ssh_key_mykng }
+      port: 22
+      script_stop: false
+      command_timeout: 10m
+      script:
+        - cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d --no-deps platform-kafka 2>&1
+        - echo "=== Kafka 启动完成 ==="
+
   # ==================== cleanup ====================
   - name: cleanup
     image: appleboy/drone-ssh
