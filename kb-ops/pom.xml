@@ -148,6 +148,13 @@
             <version>${logstash-encoder.version}</version>
         </dependency>
 
+        <!-- Logback Kafka Appender（日志推送到 Kafka） -->
+        <dependency>
+            <groupId>com.github.danielwegener</groupId>
+            <artifactId>logback-kafka-appender</artifactId>
+            <version>0.2.0-RC2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

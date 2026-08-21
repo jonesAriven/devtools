@@ -107,6 +107,13 @@
             <version>8.0</version>
         </dependency>
 
+        <!-- Logback Kafka Appender（日志推送到 Kafka，按 profile 启用） -->
+        <dependency>
+            <groupId>com.github.danielwegener</groupId>
+            <artifactId>logback-kafka-appender</artifactId>
+            <version>0.2.0-RC2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
