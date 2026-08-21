@@ -19,7 +19,7 @@
 
     <groupId>com.kb</groupId>
     <artifactId>kb-common</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <name>kb-common</name>
     <description>公共模块（独立 jar）：统一返回、异常体系、链路追踪、工具类、事件总线 - 发布到 Nexus 供 mykng 各服务引用</description>
 
