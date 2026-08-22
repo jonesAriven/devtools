@@ -20,9 +20,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
-      - "33061:33061"
+    network_mode: "host"
     volumes:
       - platform-mysql-data:/var/lib/mysql
       - /mnt/shared/platform/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
@@ -39,8 +37,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - platform-net
     mem_limit: 512m
 
   # ========== Redis ==========
@@ -58,8 +54,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks:
-      - platform-net
+    mem_limit: 512m
 
   # ========== MongoDB ==========
   platform-mongo:
