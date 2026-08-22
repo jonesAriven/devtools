@@ -36,22 +36,16 @@ log_step 2 6 "解压 & 分发 JAR"
 mkdir -p "${APP_DIR}/target"
 extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 
-# ====== Step 3: 检查并同步 compose/Dockerfile ======
+# ====== Step 3: 同步 compose 文件 ======
 log_step 3 6 "环境准备"
 if [ ! -f "${COMPOSE_FILE}" ]; then
   log_err "compose 文件不存在: ${COMPOSE_FILE}"
   exit 1
 fi
-log_ok "compose 文件就绪: ${COMPOSE_FILE}"
-# 同步 sync-ci-scripts 传来的 compose 文件和 Dockerfile 到 APP_DIR
-# 确保 build context (APP_DIR) 下有最新的配置
+# 同步 sync-ci-scripts 传来的 compose 文件到 APP_DIR
+# 确保 build context (APP_DIR) 下有最新的 compose 配置
 cp -f "${COMPOSE_FILE}" "${APP_DIR}/$(basename ${COMPOSE_FILE})"
-SYNC_DIR="$(dirname "${COMPOSE_FILE}")"
-if [ -f "${SYNC_DIR}/Dockerfile" ]; then
-  cp -f "${SYNC_DIR}/Dockerfile" "${APP_DIR}/Dockerfile"
-  log_ok "已同步 Dockerfile 到 ${APP_DIR}"
-fi
-log_ok "已同步 compose 文件到 ${APP_DIR}"
+log_ok "compose 文件已同步: ${COMPOSE_FILE} -> ${APP_DIR}"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
