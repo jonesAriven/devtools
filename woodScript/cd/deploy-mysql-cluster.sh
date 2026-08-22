@@ -51,8 +51,12 @@ log_ok "Node2+Node3 已重启"
 echo ""
 echo ">>> [3/3] 等待 GR 集群恢复 <<<"
 sleep 10
+
+# 全量重启时需要引导 Node1（因为所有节点同时重启，没有引导者）
+# 等待 20s，如果还是 0 ONLINE，说明需要引导
 max_wait=90
 elapsed=0
+bootstrap_done=false
 while [ $elapsed -lt $max_wait ]; do
   member_count=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \
     "SELECT COUNT(*) FROM performance_schema.replication_group_members WHERE MEMBER_STATE='ONLINE'" 2>/dev/null || echo "0")
@@ -66,6 +70,17 @@ while [ $elapsed -lt $max_wait ]; do
     echo "  ✅ MySQL GR 集群重启完成!"
     echo "============================================="
     exit 0
+  fi
+  
+  # 全量重启后 20s 仍然 0 ONLINE，引导 Node1
+  if [ "$member_count" = "0" ] && [ "$bootstrap_done" = "false" ] && [ $elapsed -ge 20 ]; then
+    log_info "全量重启检测：引导 Node1..."
+    docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+      "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>/dev/null || true
+    bootstrap_done=true
+    log_ok "Node1 引导已执行，等待其他节点加入..."
+    sleep 5
+    continue
   fi
   
   echo "  ⏳ 等待中... (${member_count}/3 ONLINE, ${elapsed}s/${max_wait}s)"
