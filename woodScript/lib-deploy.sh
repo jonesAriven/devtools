@@ -127,7 +127,13 @@ extract_artifact() {
 # 检查所有 platform 容器是否在运行，缺失则自动启动
 # 并发安全: 多个 deploy 步骤并行时，通过 flock 保证只有一个执行恢复，
 #           其余等锁后复查发现已恢复则直接跳过（2026-08-22 竞态事故修复）
-PLATFORM_SERVICES=("platform-mysql" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
+# 注意: MySQL GR 集群由独立的 docker-compose.mysql-cluster.yml 管理，
+#       容器名是 platform-mysql-1/2/3，不归 docker-compose.platform.yml 管。
+#       这里检查 Node1 (platform-mysql-1) 的运行状态即可确认 MySQL 可用性。
+# PLATFORM_CHECK_SERVICES: 健康检查用（含 MySQL Node1）
+# PLATFORM_COMPOSE_SERVICES: compose 恢复用（不含 MySQL，MySQL 由独立脚本管理）
+PLATFORM_CHECK_SERVICES=("platform-mysql-1" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
+PLATFORM_COMPOSE_SERVICES=("platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
 PLATFORM_COMPOSE_FILE="/mnt/shared/platform/docker-compose.platform.yml"
 PLATFORM_PROJECT="platform"
 PLATFORM_LOCK="/tmp/platform-recovery.lock"
@@ -146,7 +152,7 @@ _platform_check() {
   # 检查每个容器状态
   local missing=()
   local unhealthy=()
-  for svc in "${PLATFORM_SERVICES[@]}"; do
+  for svc in "${PLATFORM_CHECK_SERVICES[@]}"; do
     local status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
 
     if [ "$status" = "not-found" ]; then
@@ -165,7 +171,7 @@ _platform_check() {
 
 ensure_platform() {
   if _platform_check; then
-    log_ok "全局基础设施层就绪 (${#PLATFORM_SERVICES[@]}/${#PLATFORM_SERVICES[@]} 服务运行中)"
+    log_ok "全局基础设施层就绪 (${#PLATFORM_CHECK_SERVICES[@]}/${#PLATFORM_CHECK_SERVICES[@]} 服务运行中)"
     return 0
   fi
 
@@ -190,7 +196,7 @@ _start_platform() {
   local compose_dir=$(dirname "${PLATFORM_COMPOSE_FILE}")
 
   # 先清理同名残留容器（只清理由非本 compose project 创建的，compose 管理的留给 compose 自己重建）
-  for svc in "${PLATFORM_SERVICES[@]}"; do
+  for svc in "${PLATFORM_CHECK_SERVICES[@]}"; do
     local orphan=$(docker ps -a --filter "name=^${svc}$" -q 2>/dev/null || true)
     if [ -n "$orphan" ]; then
       # 用 inspect --format 精确读 label，避免 grep 单引号/空格陷阱（2026-08-22 修复）
@@ -206,7 +212,7 @@ _start_platform() {
   # 显式指定服务列表：排除 kafka-ui（可选调试工具，其镜像经 CDN 拉取极慢会阻塞部署）
   # nacos-init 作为 platform-nacos 的 depends_on 依赖自动执行
   timeout 300 docker compose -p "${PLATFORM_PROJECT}" -f "${PLATFORM_COMPOSE_FILE}" \
-    up -d "${PLATFORM_SERVICES[@]}" platform-kafka 2>&1
+    up -d "${PLATFORM_COMPOSE_SERVICES[@]}" platform-kafka 2>&1
   local compose_exit=$?
   if [ ${compose_exit} -eq 124 ]; then
     log_err "平台层 compose up 超时 (300s)，可能有镜像拉取卡死"
@@ -217,7 +223,7 @@ _start_platform() {
   local max_wait=12
   for i in $(seq 1 $max_wait); do
     local all_ok=true
-    for svc in "${PLATFORM_SERVICES[@]}"; do
+    for svc in "${PLATFORM_CHECK_SERVICES[@]}"; do
       local st=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
       if [ "$st" != "running" ]; then
         all_ok=false
