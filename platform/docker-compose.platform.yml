@@ -22,6 +22,7 @@ services:
       TZ: Asia/Shanghai
     ports:
       - "3306:3306"
+      - "33061:33061"
     volumes:
       - platform-mysql-data:/var/lib/mysql
       - /mnt/shared/platform/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
