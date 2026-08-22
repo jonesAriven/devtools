@@ -43,6 +43,9 @@ echo ""
 echo ">>> [1/4] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
 # 清除 mysqld-auto.cnf（SET PERSIST 持久化的旧变量），确保读取 cluster.cnf
 docker exec platform-mysql-1 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null || true
+# 临时禁用 start_on_boot，防止 MySQL 启动时自动尝试加入不存在的组（官方文档 20.5.2）
+# cluster.cnf 中 start_on_boot=ON 会导致自动启动失败后 GR 进入 ERROR 状态
+docker exec platform-mysql-1 bash -c 'sed -i "s/group_replication_start_on_boot = ON/group_replication_start_on_boot = OFF/" /etc/mysql/conf.d/cluster.cnf 2>/dev/null || true'
 docker restart platform-mysql-1 2>&1
 log_ok "Node1 已重启"
 
@@ -63,10 +66,20 @@ if [ "$node1_ready" = false ]; then
 fi
 
 # 引导 Node1（全量重启时没有引导者，必须手动引导）
-# 参考官方文档 20.5.2: STOP → bootstrap ON → START → bootstrap OFF
+# 参考官方文档 20.5.2: bootstrap ON → START GROUP_REPLICATION → bootstrap OFF
+# 注意: start_on_boot 已在重启前临时改为 OFF，所以 MySQL 启动后 GR 未自动启动
+#       不需要先 STOP GROUP_REPLICATION（它根本没启动过）
 log_info "引导 Node1 (bootstrap group)..."
 docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
-  "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
+  "SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1
+bootstrap_rc=$?
+if [ $bootstrap_rc -ne 0 ]; then
+  log_err "Node1 bootstrap 失败 (rc=${bootstrap_rc})"
+  # 尝试 STOP 后重新引导（万一 GR 自动启动残留）
+  log_info "尝试 STOP GROUP_REPLICATION 后重新引导..."
+  docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+    "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
+fi
 
 # 确认 Node1 已 ONLINE
 sleep 3
