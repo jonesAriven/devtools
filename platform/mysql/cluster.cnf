@@ -6,7 +6,6 @@
 # 基础配置
 port = 3306
 bind-address = 0.0.0.0
-# 禁用 mysqlx（host网络模式下避免端口冲突）
 mysqlx = 0
 
 # 二进制日志（GR 必需）
@@ -27,12 +26,10 @@ server-id = 1
 report_host = 192.168.31.105
 
 # Group Replication 多主模式
-# 注意: plugin_load_add 已移除，插件通过 INSTALL PLUGIN 持久化到 mysql.plugin 表
 group_replication_group_name = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 group_replication_local_address = "192.168.31.105:33061"
-# 引导节点只需自己的地址，其他节点启动后会自动加入并同步成员列表
-group_replication_group_seeds = "192.168.31.105:33061"
+group_replication_group_seeds = "192.168.31.105:33061,192.168.31.182:33061,192.168.31.182:33062"
 group_replication_bootstrap_group = OFF
-group_replication_start_on_boot = OFF
+group_replication_start_on_boot = ON
 group_replication_single_primary_mode = OFF
 group_replication_enforce_update_everywhere_checks = ON
