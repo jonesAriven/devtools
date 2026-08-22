@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # lib-deploy.sh — 标准化部署公共函数库
-# 最后更新: 2026-07-12 (路径迁移到 /mnt/shared/woodDeploy 独立目录)
+# 最后更新: 2026-08-22 (ensure_platform flock 并发安全 + 残留检测 label 精确匹配 + 恢复排除 kafka-ui)
 # ============================================================
 
 # ====== 信号处理: 防止 SSH 断连时被 SIGTERM 杀掉 ======
@@ -125,59 +125,93 @@ extract_artifact() {
 # ====== 确保全局基础设施层就绪 ======
 # 用法: ensure_platform
 # 检查所有 platform 容器是否在运行，缺失则自动启动
+# 并发安全: 多个 deploy 步骤并行时，通过 flock 保证只有一个执行恢复，
+#           其余等锁后复查发现已恢复则直接跳过（2026-08-22 竞态事故修复）
 PLATFORM_SERVICES=("platform-mysql" "platform-redis" "platform-mongo" "platform-minio" "platform-meilisearch" "platform-nacos")
 PLATFORM_COMPOSE_FILE="/mnt/shared/platform/docker-compose.platform.yml"
 PLATFORM_PROJECT="platform"
+PLATFORM_LOCK="/tmp/platform-recovery.lock"
 
-ensure_platform() {
-  local missing=()
-  local unhealthy=()
-  
+# 内部: 检查平台层健康状态
+# 返回 0=健康 1=需要恢复；异常详情写入 PLATFORM_ISSUES
+_platform_check() {
+  PLATFORM_ISSUES=""
+
   # 检查网络是否存在
   if ! docker network ls --format '{{.Name}}' | grep -q '^platform-net$'; then
-    log_warn "platform-net 网络不存在，正在启动基础设施层..."
-    _start_platform
-    return
+    PLATFORM_ISSUES="platform-net 网络不存在"
+    return 1
   fi
-  
+
   # 检查每个容器状态
+  local missing=()
+  local unhealthy=()
   for svc in "${PLATFORM_SERVICES[@]}"; do
     local status=$(docker inspect --format='{{.State.Status}}' "$svc" 2>/dev/null || echo "not-found")
-    
+
     if [ "$status" = "not-found" ]; then
       missing+=("$svc")
     elif [ "$status" != "running" ]; then
       unhealthy+=("$svc ($status)")
     fi
   done
-  
+
   if [ ${#missing[@]} -gt 0 ] || [ ${#unhealthy[@]} -gt 0 ]; then
-    log_warn "基础设施异常: 缺失=[${missing[*]:-无}] 异常=[${unhealthy[*]:-无}]"
+    PLATFORM_ISSUES="缺失=[${missing[*]:-无}] 异常=[${unhealthy[*]:-无}]"
+    return 1
+  fi
+  return 0
+}
+
+ensure_platform() {
+  if _platform_check; then
+    log_ok "全局基础设施层就绪 (${#PLATFORM_SERVICES[@]}/${#PLATFORM_SERVICES[@]} 服务运行中)"
+    return 0
+  fi
+
+  log_warn "基础设施异常: ${PLATFORM_ISSUES}"
+  log_info "等待平台恢复锁 (最多 300s)..."
+  (
+    flock -x -w 300 9 || { echo "  ❌ 获取平台恢复锁超时 (300s)"; exit 1; }
+
+    # 拿锁后复查：并发部署可能已完成恢复，避免重复 rm/重建
+    if _platform_check; then
+      echo "  ✅ 平台层已被并发部署恢复，跳过重复恢复"
+      exit 0
+    fi
+
     log_info "正在启动/恢复基础设施层..."
     _start_platform
-  else
-    log_ok "全局基础设施层就绪 (${#PLATFORM_SERVICES[@]}/${#PLATFORM_SERVICES[@]} 服务运行中)"
-  fi
+  ) 9>"${PLATFORM_LOCK}"
 }
 
 # ====== 内部: 启动平台基础设施 ======
 _start_platform() {
   local compose_dir=$(dirname "${PLATFORM_COMPOSE_FILE}")
-  
-  # 先清理同名残留容器
+
+  # 先清理同名残留容器（只清理由非本 compose project 创建的，compose 管理的留给 compose 自己重建）
   for svc in "${PLATFORM_SERVICES[@]}"; do
     local orphan=$(docker ps -a --filter "name=^${svc}$" -q 2>/dev/null || true)
     if [ -n "$orphan" ]; then
-      local is_compose=$(docker inspect "$svc" 2>/dev/null | grep -q '"com.docker.compose.project":"${PLATFORM_PROJECT}"' && echo "yes" || echo "no")
-      if [ "$is_compose" = "no" ]; then
-        log_warn "清理残留容器: ${svc}"
+      # 用 inspect --format 精确读 label，避免 grep 单引号/空格陷阱（2026-08-22 修复）
+      local compose_project=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$svc" 2>/dev/null || echo "")
+      if [ "$compose_project" != "${PLATFORM_PROJECT}" ]; then
+        log_warn "清理残留容器: ${svc} (compose project: ${compose_project:-无})"
         docker rm -f "$orphan" 2>/dev/null || true
       fi
     fi
   done
-  
+
   cd "${compose_dir}"
-  docker compose -p "${PLATFORM_PROJECT}" -f "${PLATFORM_COMPOSE_FILE}" up -d 2>&1
+  # 显式指定服务列表：排除 kafka-ui（可选调试工具，其镜像经 CDN 拉取极慢会阻塞部署）
+  # nacos-init 作为 platform-nacos 的 depends_on 依赖自动执行
+  timeout 300 docker compose -p "${PLATFORM_PROJECT}" -f "${PLATFORM_COMPOSE_FILE}" \
+    up -d "${PLATFORM_SERVICES[@]}" platform-kafka 2>&1
+  local compose_exit=$?
+  if [ ${compose_exit} -eq 124 ]; then
+    log_err "平台层 compose up 超时 (300s)，可能有镜像拉取卡死"
+    return 1
+  fi
   
   # 等待关键服务就绪 (最多 60s)
   local max_wait=12

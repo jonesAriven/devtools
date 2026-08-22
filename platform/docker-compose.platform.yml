@@ -16,7 +16,7 @@ services:
   platform-mysql:
     image: mysql:8.0
     container_name: platform-mysql
-    restart: on-failure:5
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
       TZ: Asia/Shanghai
@@ -45,7 +45,7 @@ services:
   platform-redis:
     image: redis:7-alpine
     container_name: platform-redis
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -63,7 +63,7 @@ services:
   platform-mongo:
     image: mongo:7.0
     container_name: platform-mongo
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
@@ -85,7 +85,7 @@ services:
   platform-minio:
     image: minio/minio:latest
     container_name: platform-minio
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "9000:9000"
       - "19001:9001"
@@ -108,7 +108,7 @@ services:
   platform-meilisearch:
     image: getmeili/meilisearch:v1.12
     container_name: platform-meilisearch
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "7700:7700"
     environment:
@@ -144,7 +144,7 @@ services:
   platform-nacos:
     image: nacos/nacos-server:v2.4.3
     container_name: platform-nacos
-    restart: on-failure:5
+    restart: unless-stopped
     depends_on:
       nacos-init:
         condition: service_completed_successfully
@@ -177,7 +177,7 @@ services:
   platform-kafka:
     image: apache/kafka:3.7.1
     container_name: platform-kafka
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -197,7 +197,7 @@ services:
     volumes:
       - platform-kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -209,7 +209,7 @@ services:
   platform-kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: platform-kafka-ui
-    restart: on-failure:5
+    restart: unless-stopped
     ports:
       - "19092:8080"
     environment:
