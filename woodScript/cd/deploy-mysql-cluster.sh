@@ -35,6 +35,8 @@ echo "============================================="
 # ====== Step 1: 重启 mykng 上的 Node1 ======
 echo ""
 echo ">>> [1/3] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
+# 清除 mysqld-auto.cnf（SET PERSIST 持久化的旧变量），确保读取 cluster.cnf
+docker exec platform-mysql-1 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null || true
 docker restart platform-mysql-1 2>&1
 log_ok "Node1 已重启"
 
@@ -42,14 +44,14 @@ log_ok "Node1 已重启"
 echo ""
 echo ">>> [2/3] 重启 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
 ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
-  "docker restart platform-mysql-2 platform-mysql-3" 2>&1
+  "docker exec platform-mysql-2 rm -f /var/lib/mysql/mysqld-auto.cnf; docker exec platform-mysql-3 rm -f /var/lib/mysql/mysqld-auto.cnf; docker restart platform-mysql-2 platform-mysql-3" 2>&1
 log_ok "Node2+Node3 已重启"
 
 # ====== Step 3: 等待集群恢复 ======
 echo ""
 echo ">>> [3/3] 等待 GR 集群恢复 <<<"
 sleep 10
-max_wait=60
+max_wait=90
 elapsed=0
 while [ $elapsed -lt $max_wait ]; do
   member_count=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \

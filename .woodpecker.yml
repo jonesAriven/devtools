@@ -294,7 +294,7 @@ steps:
       key: { from_secret: ssh_key_mykng }
       port: 22
       script_stop: false
-      command_timeout: 10m
+      command_timeout: 15m
       script:
         # Kafka 重启
         - cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d --no-deps platform-kafka 2>&1
