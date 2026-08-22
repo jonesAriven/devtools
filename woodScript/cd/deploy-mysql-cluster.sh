@@ -11,7 +11,7 @@
 # 注意: 集群搭建是一次性操作，用 mysql_cluster_manager.py add-node 完成。
 #       此脚本只负责流水线中的重启操作。
 # ============================================================
-set -euo pipefail
+set -uo pipefail
 
 MYKNG_HOST="192.168.31.105"
 DEBIAN_HOST="192.168.31.182"
@@ -51,9 +51,10 @@ for i in $(seq 1 30); do
 done
 
 # 引导 Node1（全量重启时没有引导者，必须手动引导）
+# 先 STOP（如果 GR 已在运行），再 bootstrap
 log_info "引导 Node1..."
 docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
-  "SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>/dev/null
+  "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
 log_ok "Node1 引导完成"
 
 # 确认 Node1 已 ONLINE
