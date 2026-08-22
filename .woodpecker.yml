@@ -35,7 +35,7 @@ steps:
       - |
         for dir in active-manager/activation-code-server infra-monitor/infra-monitor-server mykng/docker platform; do
           if [ -d "$dir" ]; then
-            find "$dir" \( -name 'docker-compose*.yml' -o -name '*.sh' -o -name '*.cnf' \) | while read f; do
+            find "$dir" \( -name 'docker-compose*.yml' -o -name 'Dockerfile*' -o -name '*.sh' -o -name '*.cnf' \) | while read f; do
               dst="/mnt/shared/$f"
               mkdir -p "$(dirname "$dst")"
               sed 's/\r$//' "$f" > "$dst"

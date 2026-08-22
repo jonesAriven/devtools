@@ -22,6 +22,8 @@ COMPOSE_FILE="/mnt/shared/active-manager/activation-code-server/docker-compose.y
 SERVICES=("activation-code-server")
 HEALTH_URL="http://localhost:18080/activecode/login.html"
 APP_NAME="active-manager"
+# 容器名（docker-compose.yml 中 container_name），用于 health_check 的 docker ps 过滤
+HEALTH_CONTAINERS=("activecode")
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 
@@ -34,13 +36,22 @@ log_step 2 6 "解压 & 分发 JAR"
 mkdir -p "${APP_DIR}/target"
 extract_artifact "${TAR_FILE}" "${APP_DIR}/target"
 
-# ====== Step 3: 检查 compose 文件 ======
+# ====== Step 3: 检查并同步 compose/Dockerfile ======
 log_step 3 6 "环境准备"
 if [ ! -f "${COMPOSE_FILE}" ]; then
   log_err "compose 文件不存在: ${COMPOSE_FILE}"
   exit 1
 fi
 log_ok "compose 文件就绪: ${COMPOSE_FILE}"
+# 同步 sync-ci-scripts 传来的 compose 文件和 Dockerfile 到 APP_DIR
+# 确保 build context (APP_DIR) 下有最新的配置
+cp -f "${COMPOSE_FILE}" "${APP_DIR}/$(basename ${COMPOSE_FILE})"
+SYNC_DIR="$(dirname "${COMPOSE_FILE}")"
+if [ -f "${SYNC_DIR}/Dockerfile" ]; then
+  cp -f "${SYNC_DIR}/Dockerfile" "${APP_DIR}/Dockerfile"
+  log_ok "已同步 Dockerfile 到 ${APP_DIR}"
+fi
+log_ok "已同步 compose 文件到 ${APP_DIR}"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 6 "停止旧服务"
@@ -54,7 +65,7 @@ compose_up_services "${APP_DIR}" "${COMPOSE_PROJECT}" "$(basename ${COMPOSE_FILE
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"
-health_check "${HEALTH_URL}" "${SERVICES[@]}"
+health_check "${HEALTH_URL}" "${HEALTH_CONTAINERS[@]}"
 prune_images
 
 log_footer "${APP_NAME}" "${TAR_FILE}" "  激活码: http://localhost:18080/activecode/login.html"
