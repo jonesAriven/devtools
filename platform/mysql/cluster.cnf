@@ -27,8 +27,7 @@ server-id = 1
 report_host = 192.168.31.105
 
 # Group Replication 多主模式
-plugin_load_add = group_replication.so
-plugin_load_add = mysql_clone.so
+# 注意: plugin_load_add 已移除，插件通过 INSTALL PLUGIN 持久化到 mysql.plugin 表
 group_replication_group_name = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 group_replication_local_address = "192.168.31.105:33061"
 group_replication_group_seeds = "192.168.31.105:33061,192.168.31.182:33061,192.168.31.182:33062"

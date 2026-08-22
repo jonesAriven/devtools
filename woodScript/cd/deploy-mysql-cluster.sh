@@ -4,13 +4,14 @@
 # ============================================================
 # 由 .woodpecker.yml 的 platform-deploy 步骤调用
 # 功能:
-#   0. 首次执行时迁移旧 volume（platform_platform-mysql-data → mysql-cluster_platform-mysql-1-data）
-#   1. 在 mykng (105) 重启 Node1 (platform-mysql-1)
-#   2. 在 Debian (182) 重启 Node2+Node3 (platform-mysql-2/3)
-#   3. 等待集群恢复，检查成员状态
+#   0. 首次执行时迁移旧 volume
+#   1. 清理旧容器
+#   2. 启动 Node1 并引导集群（bootstrap group）
+#   3. 启动 Node2+Node3（自动加入集群）
+#   4. 等待集群恢复，检查成员状态
 #
-# 注意: MySQL GR 集群重启时，因为 group_replication_start_on_boot=ON 且数据已初始化，
-#       重启容器后 GR 会自动重新加入集群
+# 注意: 全量重启时需要先引导一个节点，否则所有节点同时启动
+#       会互相找不到对方，GR 无法形成集群
 # ============================================================
 set -euo pipefail
 
@@ -36,7 +37,7 @@ echo "============================================="
 
 # ====== Step 0: 数据卷迁移检查（仅首次需要） ======
 echo ""
-echo ">>> [0/4] 数据卷迁移检查 <<<"
+echo ">>> [0/5] 数据卷迁移检查 <<<"
 
 # mykng: 旧卷 platform_platform-mysql-data → 新卷 mysql-cluster_platform-mysql-1-data
 OLD_VOL_MYKNG="platform_platform-mysql-data"
@@ -55,9 +56,8 @@ else
   log_info "旧卷 ${OLD_VOL_MYKNG} 不存在（已迁移或首次部署）"
 fi
 
-# Debian: 旧卷 mysql-cluster_node2-data/node3-data → 新卷 mysql-cluster_platform-mysql-2-data/3-data
-# 由 SSH 在 Debian 上执行迁移
-ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} bash -s << 'MIGRATE_EOF'
+# Debian: 旧卷迁移
+ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} bash << 'MIGRATE_EOF'
 set -euo pipefail
 
 migrate_vol() {
@@ -82,51 +82,90 @@ MIGRATE_EOF
 
 log_ok "数据卷迁移检查完成"
 
-# ====== Step 1: 清理旧容器（如果存在） ======
+# ====== Step 1: 清理旧容器 ======
 echo ""
-echo ">>> [1/4] 清理旧容器 <<<"
+echo ">>> [1/5] 清理旧容器 <<<"
 
-# 清理 mykng 上的旧 platform-mysql 容器
 if docker ps -a --format '{{.Names}}' | grep -q '^platform-mysql$'; then
   log_info "移除旧容器 platform-mysql"
   docker rm -f platform-mysql 2>/dev/null || true
 fi
 
-# 清理 Debian 上的旧 mysql-cluster-node2/node3 容器
-ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} bash -c '
-  for c in mysql-cluster-node2 mysql-cluster-node3; do
-    if docker ps -a --format "{{.Names}}" | grep -q "^${c}$"; then
-      echo "  ℹ️ 移除旧容器 ${c}"
-      docker rm -f ${c} 2>/dev/null || true
-    fi
-  done
-' 2>&1
+ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} bash << 'CLEANUP_EOF'
+set -euo pipefail
+for c in mysql-cluster-node2 mysql-cluster-node3; do
+  if docker ps -a --format "{{.Names}}" | grep -q "^${c}$"; then
+    echo "  ℹ️ 移除旧容器 ${c}"
+    docker rm -f ${c} 2>/dev/null || true
+  fi
+done
+CLEANUP_EOF
 
 log_ok "旧容器清理完成"
 
-# ====== Step 2: 重启 mykng 上的 Node1 ======
+# ====== Step 2: 启动 Node1 并引导集群 ======
 echo ""
-echo ">>> [2/4] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
+echo ">>> [2/5] 启动 Node1 (mykng ${MYKNG_HOST}) <<<"
 if [ -f "${CLUSTER_COMPOSE_DIR}/docker-compose.mysql-cluster.yml" ]; then
   docker compose -p mysql-cluster -f "${CLUSTER_COMPOSE_DIR}/docker-compose.mysql-cluster.yml" up -d --force-recreate 2>&1
-  log_ok "Node1 重启完成"
+  log_ok "Node1 容器已启动"
 else
   log_err "compose 文件不存在: ${CLUSTER_COMPOSE_DIR}/docker-compose.mysql-cluster.yml"
   exit 1
 fi
 
-# ====== Step 3: SSH 重启 Debian 上的 Node2+Node3 ======
+# 等待 Node1 MySQL ready
+log_info "等待 Node1 MySQL 就绪..."
+max_wait_mysql=30
+elapsed=0
+while [ $elapsed -lt $max_wait_mysql ]; do
+  if docker exec platform-mysql-1 mysqladmin ping -uroot -p${MYSQL_ROOT_PASSWORD} 2>/dev/null | grep -q "alive"; then
+    log_ok "Node1 MySQL 已就绪"
+    break
+  fi
+  echo "  ⏳ MySQL 启动中... (${elapsed}s/${max_wait_mysql}s)"
+  sleep 3
+  elapsed=$((elapsed + 3))
+done
+
+if [ $elapsed -ge $max_wait_mysql ]; then
+  log_err "Node1 MySQL 启动超时"
+  exit 1
+fi
+
+# 引导集群：先停止 GR（如果在运行），设置 bootstrap=ON，启动 GR
+log_info "引导 GR 集群..."
+docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+  "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
+
+sleep 3
+
+# 检查 Node1 是否成功加入集群
+member_state=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \
+  "SELECT MEMBER_STATE FROM performance_schema.replication_group_members WHERE MEMBER_HOST='192.168.31.105'" 2>/dev/null || echo "ERROR")
+
+if [ "$member_state" = "ONLINE" ]; then
+  log_ok "Node1 引导成功，状态: ONLINE"
+else
+  log_err "Node1 引导失败，状态: ${member_state}"
+  log_info "查看 Node1 GR 日志..."
+  docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+    "SELECT * FROM performance_schema.replication_group_members" 2>/dev/null || true
+  exit 1
+fi
+
+# ====== Step 3: 启动 Node2+Node3 ======
 echo ""
-echo ">>> [3/4] 重启 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
+echo ">>> [3/5] 启动 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
 ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
   "docker compose -p mysql-cluster -f ${CLUSTER_COMPOSE_DIR}/docker-compose.mysql-cluster.debian.yml up -d --force-recreate" 2>&1
-log_ok "Node2+Node3 重启完成"
+log_ok "Node2+Node3 容器已启动"
 
 # ====== Step 4: 等待集群恢复 ======
 echo ""
-echo ">>> [4/4] 等待 GR 集群恢复 <<<"
+echo ">>> [4/5] 等待 Node2+Node3 加入集群 <<<"
 sleep 10
-max_wait=60
+max_wait=90
 elapsed=0
 while [ $elapsed -lt $max_wait ]; do
   member_count=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \
@@ -134,13 +173,7 @@ while [ $elapsed -lt $max_wait ]; do
   
   if [ "$member_count" = "3" ]; then
     log_ok "GR 集群恢复完成 (3/3 节点 ONLINE)"
-    docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
-      "SELECT MEMBER_HOST, MEMBER_PORT, MEMBER_STATE, MEMBER_ROLE FROM performance_schema.replication_group_members" 2>/dev/null
-    echo ""
-    echo "============================================="
-    echo "  ✅ MySQL GR 集群重启完成!"
-    echo "============================================="
-    exit 0
+    break
   fi
   
   echo "  ⏳ 等待中... (${member_count}/3 ONLINE, ${elapsed}s/${max_wait}s)"
@@ -148,7 +181,20 @@ while [ $elapsed -lt $max_wait ]; do
   elapsed=$((elapsed + 5))
 done
 
-log_err "GR 集群恢复超时 (${max_wait}s)"
+if [ "$member_count" != "3" ]; then
+  log_err "GR 集群恢复超时 (${max_wait}s)"
+  docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+    "SELECT MEMBER_HOST, MEMBER_PORT, MEMBER_STATE, MEMBER_ROLE FROM performance_schema.replication_group_members" 2>/dev/null || true
+  exit 1
+fi
+
+# ====== Step 5: 最终状态确认 ======
+echo ""
+echo ">>> [5/5] 集群状态确认 <<<"
 docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
-  "SELECT MEMBER_HOST, MEMBER_PORT, MEMBER_STATE, MEMBER_ROLE FROM performance_schema.replication_group_members" 2>/dev/null || true
-exit 1
+  "SELECT MEMBER_HOST, MEMBER_PORT, MEMBER_STATE, MEMBER_ROLE FROM performance_schema.replication_group_members" 2>/dev/null
+
+echo ""
+echo "============================================="
+echo "  ✅ MySQL GR 集群重启完成!"
+echo "============================================="
