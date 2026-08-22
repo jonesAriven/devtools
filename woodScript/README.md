@@ -258,10 +258,11 @@ cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d -
 bash /mnt/shared/woodScript/cd/deploy-mysql-cluster.sh
 ```
 
-`deploy-mysql-cluster.sh` 的工作流程：
-1. 在 mykng (105) 重启 Node1 (platform-mysql-1)
-2. SSH 到 Debian (182) 重启 Node2+Node3 (platform-mysql-2/3)
-3. 等待 GR 集群恢复（检查 3/3 节点 ONLINE）
+`deploy-mysql-cluster.sh` 的工作流程（参考 MySQL 官方文档 20.5.2 "Restarting a Group"）：
+1. 在 mykng (105) 重启 Node1 (platform-mysql-1)，等待 MySQL 就绪后引导集群（bootstrap_group=ON → START GROUP_REPLICATION → OFF）
+2. SSH 到 Debian (182) 重启 Node2+Node3 (platform-mysql-2/3)，等待 MySQL 就绪
+3. 对 Node2+Node3 显式执行 `START GROUP_REPLICATION` 加入集群（因为 `group_replication_start_on_boot=OFF`，不会自动加入）
+4. 等待 GR 集群恢复（检查 3/3 节点 ONLINE）
 
 **Redis/Mongo/MinIO/Meili/Nacos 的首次安装和重启都走 start-platform.sh 手动执行**，流水线不管，避免 CI 误重启。
 

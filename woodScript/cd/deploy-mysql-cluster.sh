@@ -6,7 +6,13 @@
 # 功能:
 #   1. 重启并引导 Node1 (mykng 105)
 #   2. 等 Node1 ONLINE 后重启 Node2+Node3 (Debian 182)
-#   3. 等待 3/3 节点 ONLINE
+#   3. 对 Node2+Node3 执行 START GROUP_REPLICATION 加入集群
+#   4. 等待 3/3 节点 ONLINE
+#
+# 根据 MySQL 官方文档 20.5.2 "Restarting a Group":
+#   - 全量重启后，引导节点用 bootstrap_group=ON 启动
+#   - 其余节点必须显式 START GROUP_REPLICATION 加入（不会自动加入）
+#   - 因为 node2.cnf/node3.cnf 中 group_replication_start_on_boot=OFF
 #
 # 注意: 集群搭建是一次性操作，用 mysql_cluster_manager.py add-node 完成。
 #       此脚本只负责流水线中的重启操作。
@@ -34,7 +40,7 @@ echo "============================================="
 
 # ====== Step 1: 重启并引导 Node1 ======
 echo ""
-echo ">>> [1/3] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
+echo ">>> [1/4] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
 # 清除 mysqld-auto.cnf（SET PERSIST 持久化的旧变量），确保读取 cluster.cnf
 docker exec platform-mysql-1 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null || true
 docker restart platform-mysql-1 2>&1
@@ -42,20 +48,25 @@ log_ok "Node1 已重启"
 
 # 等待 MySQL 就绪
 log_info "等待 Node1 MySQL 就绪..."
+node1_ready=false
 for i in $(seq 1 30); do
   if docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e "SELECT 1" &>/dev/null; then
     log_ok "Node1 MySQL 已就绪 (${i}s)"
+    node1_ready=true
     break
   fi
   sleep 1
 done
+if [ "$node1_ready" = false ]; then
+  log_err "Node1 MySQL 30s 内未就绪，退出"
+  exit 1
+fi
 
 # 引导 Node1（全量重启时没有引导者，必须手动引导）
-# 先 STOP（如果 GR 已在运行），再 bootstrap
-log_info "引导 Node1..."
+# 参考官方文档 20.5.2: STOP → bootstrap ON → START → bootstrap OFF
+log_info "引导 Node1 (bootstrap group)..."
 docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
   "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
-log_ok "Node1 引导完成"
 
 # 确认 Node1 已 ONLINE
 sleep 3
@@ -68,18 +79,74 @@ else
   exit 1
 fi
 
-# ====== Step 2: 重启 Node2+Node3（Node1 已在线，它们会自动加入） ======
+# ====== Step 2: 重启 Node2+Node3 ======
 echo ""
-echo ">>> [2/3] 重启 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
+echo ">>> [2/4] 重启 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
 ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
   "docker exec platform-mysql-2 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null; docker exec platform-mysql-3 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null; docker restart platform-mysql-2 platform-mysql-3" 2>&1
+ssh_rc=$?
+if [ $ssh_rc -ne 0 ]; then
+  log_err "SSH 到 Debian (${DEBIAN_HOST}) 失败 (rc=${ssh_rc})，Node2+Node3 未重启"
+  exit 1
+fi
 log_ok "Node2+Node3 已重启"
 
-# ====== Step 3: 等待 3/3 节点 ONLINE ======
+# ====== Step 3: 等待 Node2+Node3 MySQL 就绪后执行 START GROUP_REPLICATION ======
 echo ""
-echo ">>> [3/3] 等待 GR 集群恢复 <<<"
-sleep 10
-max_wait=90
+echo ">>> [3/4] 等待 Node2+Node3 MySQL 就绪并加入集群 <<<"
+
+# 等待 Node2 MySQL 就绪
+log_info "等待 Node2 MySQL 就绪..."
+node2_ready=false
+for i in $(seq 1 30); do
+  if ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
+    "docker exec platform-mysql-2 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1'" &>/dev/null; then
+    log_ok "Node2 MySQL 已就绪 (${i}s)"
+    node2_ready=true
+    break
+  fi
+  sleep 1
+done
+if [ "$node2_ready" = false ]; then
+  log_err "Node2 MySQL 30s 内未就绪"
+  exit 1
+fi
+
+# 等待 Node3 MySQL 就绪
+log_info "等待 Node3 MySQL 就绪..."
+node3_ready=false
+for i in $(seq 1 30); do
+  if ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
+    "docker exec platform-mysql-3 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1'" &>/dev/null; then
+    log_ok "Node3 MySQL 已就绪 (${i}s)"
+    node3_ready=true
+    break
+  fi
+  sleep 1
+done
+if [ "$node3_ready" = false ]; then
+  log_err "Node3 MySQL 30s 内未就绪"
+  exit 1
+fi
+
+# 对 Node2 执行 START GROUP_REPLICATION
+# 参考官方文档 20.5.2: 非引导节点显式 START GROUP_REPLICATION 加入集群
+log_info "Node2 执行 START GROUP_REPLICATION..."
+ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
+  "docker exec platform-mysql-2 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'START GROUP_REPLICATION;'" 2>&1 || true
+log_ok "Node2 START GROUP_REPLICATION 已发送"
+
+# 对 Node3 执行 START GROUP_REPLICATION
+log_info "Node3 执行 START GROUP_REPLICATION..."
+ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
+  "docker exec platform-mysql-3 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'START GROUP_REPLICATION;'" 2>&1 || true
+log_ok "Node3 START GROUP_REPLICATION 已发送"
+
+# ====== Step 4: 等待 3/3 节点 ONLINE ======
+echo ""
+echo ">>> [4/4] 等待 GR 集群恢复 <<<"
+sleep 5
+max_wait=120
 elapsed=0
 while [ $elapsed -lt $max_wait ]; do
   member_count=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \
