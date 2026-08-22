@@ -133,7 +133,11 @@ if [ $elapsed -ge $max_wait_mysql ]; then
   exit 1
 fi
 
-# 引导集群：先停止 GR（如果在运行），设置 bootstrap=ON，启动 GR
+# 引导集群：先清除持久化的旧 GR 变量，停止 GR，设置 bootstrap=ON，启动 GR
+log_info "清除持久化的旧 GR 变量..."
+docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+  "RESET PERSIST group_replication_group_seeds; RESET PERSIST group_replication_start_on_boot;" 2>/dev/null || true
+
 log_info "引导 GR 集群..."
 docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
   "STOP GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;" 2>&1 || true
@@ -160,6 +164,21 @@ echo ">>> [3/5] 启动 Node2+Node3 (Debian ${DEBIAN_HOST}) <<<"
 ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} \
   "docker compose -p mysql-cluster -f ${CLUSTER_COMPOSE_DIR}/docker-compose.mysql-cluster.debian.yml up -d --force-recreate" 2>&1
 log_ok "Node2+Node3 容器已启动"
+
+# 等待 Node2/Node3 MySQL ready，然后手动启动 GR（因为 start_on_boot=OFF）
+log_info "等待 Node2/Node3 MySQL 就绪并启动 GR..."
+sleep 15
+
+# 清除持久化的旧 GR 变量并启动 GR
+ssh -o StrictHostKeyChecking=no root@${DEBIAN_HOST} bash << 'START_GR_EOF'
+set -euo pipefail
+for node in platform-mysql-2 platform-mysql-3; do
+  echo "  ℹ️ 清除 ${node} 旧 GR 变量并启动 GR..."
+  docker exec ${node} mysql -uroot -pkb123456 -e \
+    "RESET PERSIST group_replication_group_seeds; RESET PERSIST group_replication_start_on_boot; STOP GROUP_REPLICATION; START GROUP_REPLICATION;" 2>/dev/null || true
+  echo "  ✅ ${node} GR 已启动"
+done
+START_GR_EOF
 
 # ====== Step 4: 等待集群恢复 ======
 echo ""

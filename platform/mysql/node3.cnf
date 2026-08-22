@@ -42,6 +42,6 @@ group_replication_group_name = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 group_replication_local_address = "192.168.31.182:33062"
 group_replication_group_seeds = "192.168.31.105:33061,192.168.31.182:33061,192.168.31.182:33062"
 group_replication_bootstrap_group = OFF
-group_replication_start_on_boot = ON
+group_replication_start_on_boot = OFF
 group_replication_single_primary_mode = OFF
 group_replication_enforce_update_everywhere_checks = ON
