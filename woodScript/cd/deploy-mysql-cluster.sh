@@ -43,9 +43,8 @@ echo ""
 echo ">>> [1/4] 重启 Node1 (mykng ${MYKNG_HOST}) <<<"
 # 清除 mysqld-auto.cnf（SET PERSIST 持久化的旧变量），确保读取 cluster.cnf
 docker exec platform-mysql-1 rm -f /var/lib/mysql/mysqld-auto.cnf 2>/dev/null || true
-# 临时禁用 start_on_boot，防止 MySQL 启动时自动尝试加入不存在的组（官方文档 20.5.2）
-# cluster.cnf 中 start_on_boot=ON 会导致自动启动失败后 GR 进入 ERROR 状态
-docker exec platform-mysql-1 bash -c 'sed -i "s/group_replication_start_on_boot = ON/group_replication_start_on_boot = OFF/" /etc/mysql/conf.d/cluster.cnf 2>/dev/null || true'
+# cluster.cnf 中 group_replication_start_on_boot=OFF，MySQL 启动后 GR 不会自动启动
+# 避免了自动启动失败导致 GR 进入 ERROR 状态的问题（官方文档 20.5.2 推荐）
 docker restart platform-mysql-1 2>&1
 log_ok "Node1 已重启"
 
