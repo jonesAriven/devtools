@@ -4,6 +4,7 @@
 # ============================================================
 # 由 .woodpecker.yml 的 platform-deploy 步骤调用
 # 功能:
+#   0. 检查集群健康状态，3/3 ONLINE 则跳过重启
 #   1. 重启并引导 Node1 (mykng 105)
 #   2. 等 Node1 ONLINE 后重启 Node2+Node3 (Debian 182)
 #   3. 对 Node2+Node3 执行 START GROUP_REPLICATION 加入集群
@@ -16,6 +17,7 @@
 #
 # 注意: 集群搭建是一次性操作，用 mysql_cluster_manager.py add-node 完成。
 #       此脚本只负责流水线中的重启操作。
+#       集群健康时不重启，避免不必要的停机。
 # ============================================================
 set -uo pipefail
 
@@ -37,6 +39,24 @@ echo "============================================="
 echo "  🔄 MySQL GR 集群 — 重启"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================="
+
+# ====== Step 0: 健康检查 — 集群已健康则跳过重启 ======
+echo ""
+echo ">>> [0/4] 检查集群健康状态 <<<"
+member_count=$(docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \
+  "SELECT COUNT(*) FROM performance_schema.replication_group_members WHERE MEMBER_STATE='ONLINE'" 2>/dev/null || echo "0")
+if [ "$member_count" = "3" ]; then
+  log_ok "GR 集群已健康 (3/3 节点 ONLINE)，跳过重启"
+  docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e \
+    "SELECT MEMBER_HOST, MEMBER_PORT, MEMBER_STATE, MEMBER_ROLE FROM performance_schema.replication_group_members" 2>/dev/null
+  echo ""
+  echo "============================================="
+  echo "  ✅ MySQL GR 集群已健康，无需重启!"
+  echo "============================================="
+  exit 0
+else
+  log_info "集群不健康 (${member_count}/3 ONLINE)，执行重启流程..."
+fi
 
 # ====== Step 1: 重启并引导 Node1 ======
 echo ""
