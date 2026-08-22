@@ -1,0 +1,67 @@
+# ============================================================
+# docker-compose.mysql-cluster.debian.yml — MySQL GR 集群 Node2+Node3 (Debian)
+# ============================================================
+# 部署位置: 内网 Debian 主机 (192.168.31.182)
+# 容器名: platform-mysql-2 (端口 3307, GR 通信 33061)
+#          platform-mysql-3 (端口 3308, GR 通信 33062)
+# 网络模式: host (端口直接监听在宿主机)
+# 数据卷: platform-mysql-2-data, platform-mysql-3-data
+#
+# 用法:
+#   启动: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.debian.yml up -d
+#   停止: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.debian.yml down
+#   日志: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.debian.yml logs -f
+# ============================================================
+
+services:
+  # ========== GR Node2 ==========
+  platform-mysql-2:
+    image: mysql:8.0
+    container_name: platform-mysql-2
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
+      TZ: Asia/Shanghai
+    volumes:
+      - platform-mysql-2-data:/var/lib/mysql
+      - /mnt/shared/platform/mysql/node2.cnf:/etc/mysql/conf.d/my.cnf
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-P", "3307", "-p${MYSQL_ROOT_PASSWORD:-kb123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  # ========== GR Node3 ==========
+  platform-mysql-3:
+    image: mysql:8.0
+    container_name: platform-mysql-3
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
+      TZ: Asia/Shanghai
+    volumes:
+      - platform-mysql-3-data:/var/lib/mysql
+      - /mnt/shared/platform/mysql/node3.cnf:/etc/mysql/conf.d/my.cnf
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-P", "3308", "-p${MYSQL_ROOT_PASSWORD:-kb123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+volumes:
+  platform-mysql-2-data:
+    driver: local
+  platform-mysql-3-data:
+    driver: local

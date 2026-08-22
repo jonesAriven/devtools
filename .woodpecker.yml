@@ -296,8 +296,11 @@ steps:
       script_stop: false
       command_timeout: 10m
       script:
+        # Kafka 重启
         - cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d --no-deps platform-kafka 2>&1
         - echo "=== Kafka 启动完成 ==="
+        # MySQL GR 集群重启 (Node1 本机 + SSH 到 Debian 重启 Node2/3)
+        - bash /mnt/shared/woodScript/cd/deploy-mysql-cluster.sh 2>&1
 
   # ==================== cleanup ====================
   - name: cleanup

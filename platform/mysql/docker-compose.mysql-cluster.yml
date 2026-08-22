@@ -1,0 +1,44 @@
+# ============================================================
+# docker-compose.mysql-cluster.yml — MySQL GR 集群 Node1 (mykng)
+# ============================================================
+# 部署位置: mykng 主机 (192.168.31.105)
+# 容器名: platform-mysql-1
+# 网络模式: host (端口 3306, GR 通信 33061)
+# 数据卷: platform-mysql-1-data
+#
+# 用法:
+#   启动: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.yml up -d
+#   停止: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.yml down
+#   日志: docker compose -p mysql-cluster -f docker-compose.mysql-cluster.yml logs -f
+# ============================================================
+
+services:
+  platform-mysql-1:
+    image: mysql:8.0
+    container_name: platform-mysql-1
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-kb123456}
+      TZ: Asia/Shanghai
+    volumes:
+      - platform-mysql-1-data:/var/lib/mysql
+      - /mnt/shared/platform/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - /mnt/shared/platform/mysql/cluster.cnf:/etc/mysql/conf.d/cluster.cnf:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-client-handshake=FALSE
+      - --init-connect='SET NAMES utf8mb4'
+      - --skip-character-set-client-handshake=FALSE
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-kb123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+volumes:
+  platform-mysql-1-data:
+    driver: local

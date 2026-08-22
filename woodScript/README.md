@@ -33,6 +33,7 @@ woodScript/
     ├── deploy-active-manager.sh
     ├── deploy-portal-server.sh
     ├── deploy-portal-web.sh
+    ├── deploy-mysql-cluster.sh   # MySQL GR 集群重启（Node1 本机 + SSH 到 Debian Node2/3）
     └── cleanup-pnpm-store.sh
 ```
 
@@ -73,7 +74,7 @@ python woodScript/trigger-pipeline.py all
 | `portal-web` | 门户前端 | portal-web |
 | `portal-server` | 门户后端 | portal-server |
 | `workcheck-python` | 工作量管理 | **独立仓库，不走本脚本**（见下文） |
-| `platform` | 平台中间件 | 仅触发 platform-deploy 步骤（当前只起 Kafka） |
+| `platform` | 平台中间件 | platform-deploy 步骤（起 Kafka + 重启 MySQL GR 集群） |
 | `all` | 全量 | 以上全部 |
 
 ### 2. 查询状态 — check-pipeline.py
@@ -190,7 +191,9 @@ bash cleanup-pnpm-store.sh --force  # 强制清理
 
 | 组件 | 容器名 | 镜像 | 端口 |
 |------|--------|------|------|
-| MySQL | platform-mysql | mysql:8.0 | 3306 |
+| MySQL GR Node1 | platform-mysql-1 | mysql:8.0 | 3306, 33061 (GR) |
+| MySQL GR Node2 | platform-mysql-2 | mysql:8.0 | 3307, 33061 (GR) |
+| MySQL GR Node3 | platform-mysql-3 | mysql:8.0 | 3308, 33062 (GR) |
 | Redis | platform-redis | redis:7-alpine | 6379 |
 | MongoDB | platform-mongo | mongo:7.0 | 27017 |
 | MinIO | platform-minio | minio/minio:latest | 9000 (API), 19001 (控制台) |
@@ -199,7 +202,15 @@ bash cleanup-pnpm-store.sh --force  # 强制清理
 | Kafka | platform-kafka | apache/kafka:3.7.1 | 9092 |
 | Kafka UI | platform-kafka-ui | provectuslabs/kafka-ui:latest | 19092 |
 
-compose 文件：`platform/docker-compose.platform.yml`，统一网络 `platform-net`（external）。
+compose 文件：
+- `platform/docker-compose.platform.yml` — Redis/Mongo/MinIO/Meili/Nacos/Kafka，统一网络 `platform-net`（external）
+- `platform/mysql/docker-compose.mysql-cluster.yml` — MySQL GR Node1 (mykng)
+- `platform/mysql/docker-compose.mysql-cluster.debian.yml` — MySQL GR Node2+Node3 (Debian)
+
+MySQL GR 集群配置文件：
+- `platform/mysql/cluster.cnf` — Node1 (server-id=1, port=3306)
+- `platform/mysql/node2.cnf` — Node2 (server-id=2, port=3307)
+- `platform/mysql/node3.cnf` — Node3 (server-id=3, port=3308)
 
 ### start-platform.sh — 基础设施启动（手动）
 
@@ -235,19 +246,33 @@ bash platform/migrate-to-platform.sh             # 实际迁移
 
 ### 流水线中的 platform-deploy 步骤
 
-`DEPLOY_TARGET=platform`（或 all）时，流水线只做一件事：
+`DEPLOY_TARGET=platform`（或 all）时，流水线执行两件事：
 
+1. 重启 Kafka：
 ```bash
 cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d --no-deps platform-kafka
 ```
 
-即只负责起 Kafka（Kafka 是后来加入流水线的组件）。**MySQL/Redis/Mongo/MinIO/Meili/Nacos 的首次安装和重启都走 start-platform.sh 手动执行**，流水线不管，避免 CI 误重启数据库。
+2. 重启 MySQL GR 集群（通过 `deploy-mysql-cluster.sh`）：
+```bash
+bash /mnt/shared/woodScript/cd/deploy-mysql-cluster.sh
+```
+
+`deploy-mysql-cluster.sh` 的工作流程：
+1. 在 mykng (105) 重启 Node1 (platform-mysql-1)
+2. SSH 到 Debian (182) 重启 Node2+Node3 (platform-mysql-2/3)
+3. 等待 GR 集群恢复（检查 3/3 节点 ONLINE）
+
+**Redis/Mongo/MinIO/Meili/Nacos 的首次安装和重启都走 start-platform.sh 手动执行**，流水线不管，避免 CI 误重启。
 
 ### 其他文件
 
 | 文件 | 作用 |
 |------|------|
-| `platform/mysql/my.cnf` | MySQL 自定义配置，挂载到 `/etc/mysql/conf.d/custom.cnf` |
+| `platform/mysql/my.cnf` | MySQL Node1 自定义配置，挂载到 `/etc/mysql/conf.d/custom.cnf` |
+| `platform/mysql/cluster.cnf` | MySQL GR Node1 集群配置 (server-id=1) |
+| `platform/mysql/node2.cnf` | MySQL GR Node2 集群配置 (server-id=2) |
+| `platform/mysql/node3.cnf` | MySQL GR Node3 集群配置 (server-id=3) |
 | `platform/nacos/init-nacos.sh` | Nacos 初始化脚本（nacos-init 一次性容器执行，`restart: "no"`） |
 
 ### 重启策略分层（铁律）
@@ -259,7 +284,7 @@ cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d -
 
 1. **workcheck-python 是独立仓库**（`/root/workcheck_python`，Woodpecker repo_id=2，分支 main），不走 trigger-pipeline.py，必须用它自己的流水线。
 2. **部署分层**：
-   - 平台层（MySQL/Redis/Mongo/MinIO/Kafka/Nacos/Meili）→ `restart: unless-stopped`
+   - 平台层（MySQL GR 集群/Redis/Mongo/MinIO/Kafka/Nacos/Meili）→ `restart: unless-stopped`
    - 应用层（kb-*/portal/infra-monitor 等）→ `restart: on-failure:5`，防代码 bug 循环 crash
 3. **产物流转**：CI 容器构建 → `/mnt/shared/woodScript/publish/*.tar.gz` → drone-ssh 到目标机 → deploy-*.sh 解压重建。
 4. **首次/定位问题**时可手动操作，日常变更一律走流水线。

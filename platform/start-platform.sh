@@ -5,7 +5,8 @@
 # 用法: bash start-platform.sh
 # 功能:
 #   1. 清理占用 platform 容器名的残留容器（解决 Conflict 错误）
-#   2. 启动所有基础设施服务 (MySQL/Redis/MongoDB/MinIO/MeiliSearch/Nacos)
+#   2. 启动基础设施服务 (Redis/MongoDB/MinIO/MeiliSearch/Nacos)
+#      注意: MySQL 已迁移到 GR 集群，由 platform/mysql/ 单独管理
 #   3. 等待所有服务健康检查通过
 #
 # 注意: 不归任何流水线管理，手动执行，持久运行
@@ -30,9 +31,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.platform.yml"
 COMPOSE_PROJECT="platform"
 
-# 基础设施容器名列表（与 docker-compose.platform.yml 中 container_name 一致）
+# 基础设施容器名列表（MySQL 已迁移到 GR 集群，单独管理）
 PLATFORM_SERVICES=(
-  "platform-mysql"
   "platform-redis"
   "platform-mongo"
   "platform-minio"
@@ -155,7 +155,7 @@ docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" ps 2>/dev/null || \
 echo ""
 echo "============================================="
 echo "  ✅ 基础设施层启动完成!"
-echo "  MySQL:     localhost:3306"
+echo "  MySQL:     GR 集群 (platform-mysql-1/2/3，见 platform/mysql/)"
 echo "  Redis:     localhost:6379"
 echo "  MongoDB:   localhost:27017"
 echo "  MinIO:     localhost:9000 (控制台: 9001)"
