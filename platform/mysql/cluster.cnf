@@ -9,12 +9,12 @@ relay_log_info_repository = TABLE
 transaction_write_set_extraction = XXHASH64
 
 # Group Replication
-plugin_load_add = 'group_replication.so'
 group_replication_group_name = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 group_replication_start_on_boot = off
-group_replication_local_address = "192.168.31.105:33061"
-group_replication_group_seeds = "192.168.31.105:33061,192.168.31.182:33061,192.168.31.182:33071"
 group_replication_bootstrap_group = off
 
 # 确保 server-id 唯一
 server-id = 1
+
+# 解决 MySQL Shell host 校验问题
+report_host = 192.168.31.105
