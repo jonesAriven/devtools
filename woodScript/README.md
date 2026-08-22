@@ -73,7 +73,7 @@ python woodScript/trigger-pipeline.py all
 | `portal-web` | 门户前端 | portal-web |
 | `portal-server` | 门户后端 | portal-server |
 | `workcheck-python` | 工作量管理 | **独立仓库，不走本脚本**（见下文） |
-| `platform` | 平台中间件 | MySQL/Redis/Mongo 等基础设施 |
+| `platform` | 平台中间件 | 仅触发 platform-deploy 步骤（当前只起 Kafka） |
 | `all` | 全量 | 以上全部 |
 
 ### 2. 查询状态 — check-pipeline.py
@@ -184,7 +184,78 @@ bash cleanup-pnpm-store.sh --force  # 强制清理
 - `trap '' TERM` — 防止 drone-ssh 的 SIGTERM 中断部署
 - 提供 `verify_artifact` / `extract_artifact` / `compose_stop_services` / `compose_up_services` / 健康检查 / 心跳等原语
 
-## 五、注意事项
+## 五、基础组件（platform 层）脚本
+
+全局基础设施中间件，代码在 `/root/devtools/platform/`，所有应用（mykng/kb-ops/portal/infra-monitor 等）共享这一套。
+
+| 组件 | 容器名 | 镜像 | 端口 |
+|------|--------|------|------|
+| MySQL | platform-mysql | mysql:8.0 | 3306 |
+| Redis | platform-redis | redis:7-alpine | 6379 |
+| MongoDB | platform-mongo | mongo:7.0 | 27017 |
+| MinIO | platform-minio | minio/minio:latest | 9000 (API), 19001 (控制台) |
+| MeiliSearch | platform-meilisearch | getmeili/meilisearch:v1.12 | 7700 |
+| Nacos | platform-nacos | nacos/nacos-server:v2.4.3 | 8848 (HTTP), 9848 (gRPC) |
+| Kafka | platform-kafka | apache/kafka:3.7.1 | 9092 |
+| Kafka UI | platform-kafka-ui | provectuslabs/kafka-ui:latest | 19092 |
+
+compose 文件：`platform/docker-compose.platform.yml`，统一网络 `platform-net`（external）。
+
+### start-platform.sh — 基础设施启动（手动）
+
+```bash
+bash platform/start-platform.sh
+```
+
+**唯一允许手动执行的 compose 启动**（基础设施层例外，不归流水线管）。流程：
+
+1. 清理占用 platform-* 容器名的残留容器（解决 Conflict 错误）
+2. 检查旧 `kb-*` 数据卷兼容性，提示迁移命令
+3. `docker compose -p platform up -d` 启动全部中间件
+4. 等待所有容器健康检查通过（最长 2 分钟）
+
+⚠️ 不要手动 `docker network create platform-net`——compose 声明了 `external: true`，手动创建的裸网络缺 compose label 会导致 up 报错。
+
+### migrate-to-platform.sh — 旧 kb-* 迁移（一次性）
+
+```bash
+bash platform/migrate-to-platform.sh --dry-run   # 预览，不执行
+bash platform/migrate-to-platform.sh             # 实际迁移
+```
+
+历史遗留迁移工具：旧基础设施容器名是 `kb-mysql`/`kb-redis` 等，数据卷是 `kb-*-data`，本脚本停旧容器 → 迁移数据卷到 `platform-*-data` → 删旧容器 → 清旧网络。
+
+**执行顺序（不能反）**：
+1. `git pull` 拉最新代码
+2. `bash platform/migrate-to-platform.sh`（先迁移）
+3. `bash platform/start-platform.sh`（再启动）
+4. 触发流水线重新部署应用层
+
+前置：磁盘可用 ≥ 旧卷总大小 ×2（迁移期间新旧卷共存）；建议先 mysqldump 备份。已完成迁移的环境此脚本不再需要。
+
+### 流水线中的 platform-deploy 步骤
+
+`DEPLOY_TARGET=platform`（或 all）时，流水线只做一件事：
+
+```bash
+cd /mnt/shared/platform && docker compose -f docker-compose.platform.yml up -d --no-deps platform-kafka
+```
+
+即只负责起 Kafka（Kafka 是后来加入流水线的组件）。**MySQL/Redis/Mongo/MinIO/Meili/Nacos 的首次安装和重启都走 start-platform.sh 手动执行**，流水线不管，避免 CI 误重启数据库。
+
+### 其他文件
+
+| 文件 | 作用 |
+|------|------|
+| `platform/mysql/my.cnf` | MySQL 自定义配置，挂载到 `/etc/mysql/conf.d/custom.cnf` |
+| `platform/nacos/init-nacos.sh` | Nacos 初始化脚本（nacos-init 一次性容器执行，`restart: "no"`） |
+
+### 重启策略分层（铁律）
+
+- **平台层**（platform-* 全部）→ `restart: on-failure:5` 运行中；docker daemon 重启后靠 `@reboot` 拉起脚本恢复（排除 wp_*/infra-monitor-web）
+- **应用层**（kb-*/portal-*/infra-monitor 等）→ `restart: on-failure:5`，且**只能走流水线部署**
+
+## 六、注意事项
 
 1. **workcheck-python 是独立仓库**（`/root/workcheck_python`，Woodpecker repo_id=2，分支 main），不走 trigger-pipeline.py，必须用它自己的流水线。
 2. **部署分层**：
