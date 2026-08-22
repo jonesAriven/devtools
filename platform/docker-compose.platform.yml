@@ -25,6 +25,7 @@ services:
     volumes:
       - platform-mysql-data:/var/lib/mysql
       - ./mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - ./mysql/cluster.cnf:/etc/mysql/conf.d/cluster.cnf:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
