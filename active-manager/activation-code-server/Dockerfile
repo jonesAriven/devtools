@@ -7,8 +7,8 @@ EXPOSE 8080
 # 设置容器时区为上海时间
 ENV TZ=Asia/Shanghai
 
-# 数据库连接默认指向宿主机MySQL（Docker内通过host.docker.internal访问宿主机）
-ENV SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+# 数据库连接指向 MySQL GR 集群（3节点多主 failover）
+ENV SPRING_DATASOURCE_URL=jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/tools?loadBalanceStrategy=random&loadBalanceHostRemoval=true&failOverReadOnly=false&retriesAllDown=3&connectTimeout=5000&socketTimeout=30000&autoReconnect=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
 ENV SPRING_DATASOURCE_USERNAME=tools
 ENV SPRING_DATASOURCE_PASSWORD=toolsmarschat
 

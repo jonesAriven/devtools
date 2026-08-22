@@ -52,6 +52,9 @@ services:
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
       - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=kb_auth
@@ -81,6 +84,9 @@ services:
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
       - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -112,6 +118,9 @@ services:
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
       - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -146,6 +155,9 @@ services:
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
       - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -176,6 +188,9 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=kb_ops
@@ -203,6 +218,9 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod,kafka-log
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
+      # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
+      #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
+      #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=tools

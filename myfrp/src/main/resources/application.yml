@@ -2,14 +2,17 @@ spring:
   application:
     name: frp-manager
   datasource:
-    url: jdbc:mysql://100.105.196.63:3306/frp_manager?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    # MySQL GR 集群多主 failover（3节点随机负载均衡 + 自动故障转移）
+    url: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/frp_manager?loadBalanceStrategy=random&loadBalanceHostRemoval=true&failOverReadOnly=false&retriesAllDown=3&connectTimeout=5000&socketTimeout=30000&autoReconnect=true&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
     username: frpadmin
     password: Frp@1120930
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
-      connection-timeout: 30000
+      connection-timeout: 10000
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
 
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss

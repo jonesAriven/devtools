@@ -9,7 +9,8 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/tools?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    # MySQL GR 集群多主 failover（3节点随机负载均衡 + 自动故障转移）
+    url: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/tools?loadBalanceStrategy=random&loadBalanceHostRemoval=true&failOverReadOnly=false&retriesAllDown=3&connectTimeout=5000&socketTimeout=30000&autoReconnect=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: tools
     password: toolsmarschat
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -18,7 +19,9 @@ spring:
       maximum-pool-size: 20
       idle-timeout: 30000
       max-lifetime: 1800000
-      connection-timeout: 30000
+      connection-timeout: 10000
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
       pool-name: ActivationCodeHikariCP
 
   sql:
