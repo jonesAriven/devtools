@@ -52,8 +52,9 @@
         <failsafe-report.dir>${test-output.dir}/integration/java/failsafe-reports</failsafe-report.dir>
     </properties>
 
-    <!-- 子模块（M1 重构：kb-common 已独立为 jar 发布到 Nexus，不再参与 reactor 构建） -->
+    <!-- 子模块（M1 重构：kb-common 加回 reactor：保证 logback 配置与依赖同步（Nexus 旧 pom 缺 kafka-appender 依赖曾致启动崩溃）） -->
     <modules>
+        <module>../kb-common</module>
         <module>../kb-gateway</module>
         <module>../kb-auth</module>
         <module>../kb-file</module>
