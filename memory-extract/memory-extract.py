@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -236,24 +237,20 @@ def build_extract_prompt(messages: list[dict]) -> str:
 
     chat_text = "\n\n".join(conversation)
 
-    prompt = f"""从以下对话中提取有长期价值的知识条目，输出 JSON 数组。
+    prompt = f"""你是知识提取助手。从以下对话提取有长期价值的知识，严格输出纯 JSON 数组，不要任何其他文字。
 
-每条知识条目包含：
-- type: 类型（decision:架构决策, lesson:经验教训, architecture:技术方案, preference:偏好, fact:事实信息, detail:技术细节, general:一般）
-- content: 知识内容（中文，简洁完整）
-- tags: 标签（逗号分隔，如 "docker,deploy,踩坑"）
-- category: 分类（如 "运维", "开发", "架构", "配置"）
+格式：[{{"type":"decision|lesson|architecture|preference|fact|detail|general","content":"中文完整内容","tags":"逗号分隔标签","category":"运维/开发/架构/配置"}}]
 
-要求：
-- 提取所有有保留价值的内容，包括决策、踩坑、方案、偏好、配置细节
-- 每条独立完整，不依赖上下文也能理解
-- 跳过问候、闲聊、确认回复等无长期价值内容
-- 保留技术细节（端口、路径、命令、版本号等）
+规则：
+- 只输出 JSON 数组，禁止解释/思考/前缀
+- 每条独立完整，不依赖上下文
+- 保留端口/路径/命令/版本等细节
+- 无价值内容跳过
 
-对话内容：
+对话：
 {chat_text}
 
-只输出 JSON 数组，不要其他说明文字。"""
+JSON输出："""
 
     return prompt
 
@@ -284,7 +281,11 @@ def call_llm(config: dict, prompt: str) -> str:
     timeout = int(llm_cfg.get("timeout", 120))
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         result = json.loads(resp.read().decode("utf-8"))
-    content = result["choices"][0]["message"]["content"]
+    content = result["choices"][0]["message"].get("content") or ""
+    if not content:
+        rc = result["choices"][0]["message"].get("reasoning_content")
+        if isinstance(rc, str):
+            content = rc
     return content
 
 
@@ -304,7 +305,14 @@ def parse_extracts(llm_output: str) -> list[dict]:
             return items
         return []
     except json.JSONDecodeError:
-        print(f"[parse] JSON 解析失败，原始输出: {text[:200]}", file=sys.stderr)
+        # 尝试从原始输出中正则提取 JSON 数组
+        m = re.search(r'\[[\s\S]*\]', llm_output)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                pass
+        print(f"[parse] JSON 解析失败，原始输出: {llm_output[:200]}", file=sys.stderr)
         return []
 
 

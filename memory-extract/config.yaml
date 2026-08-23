@@ -9,7 +9,7 @@ extract_db: /root/devtools/memory-extract/memory-extracts.db
 
 # --- 提炼模型 ---
 llm:
-  base_url: https://api.stepfun.com/step_plan/v1
+  base_url: https://api.stepfun.com/v1
   api_key: 69matBHMApNprfarjTAPZW8EDzRhQGOIhdtAUeqbcTsKJIcGjXV6vtuCobTnX7dvS
   model: step-3.7-flash
   timeout: 120
