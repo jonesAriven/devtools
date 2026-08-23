@@ -112,29 +112,45 @@ public abstract class AbstractEventConsumer {
             redisTemplate.opsForStream().createGroup(getStream(), ReadOffset.from("0"), getGroup());
             log.info("创建消费者组成功 stream={} group={}", getStream(), getGroup());
         } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage() : "";
-            if (msg.contains("BUSYGROUP") || msg.contains("already exists")) {
+            // Spring Data Redis 会把 BUSYGROUP 包装成 RedisSystemException("Error in execution")，
+            // 真实原因藏在 cause 链中，必须遍历判断
+            if (isBusyGroup(e)) {
                 log.debug("消费者组已存在 stream={} group={}", getStream(), getGroup());
             } else {
                 log.warn("创建消费者组失败，尝试创建Stream后重试 stream={} group={} err={}",
-                        getStream(), getGroup(), msg);
+                        getStream(), getGroup(), e.getMessage());
                 try {
-                    // 通过添加一条初始消息来创建 Stream
-                    redisTemplate.opsForStream().add(getStream(), java.util.Map.of("_init", "1"));
+                    // Stream 不存在时才加初始消息创建 Stream，避免重启时塞垃圾消息
+                    if (Boolean.FALSE.equals(redisTemplate.hasKey(getStream()))) {
+                        redisTemplate.opsForStream().add(getStream(), java.util.Map.of("_init", "1"));
+                    }
                     // 重试创建消费者组
                     redisTemplate.opsForStream().createGroup(getStream(), ReadOffset.from("0"), getGroup());
                     log.info("创建消费者组成功（重试） stream={} group={}", getStream(), getGroup());
                 } catch (Exception retryEx) {
-                    String retryMsg = retryEx.getMessage() != null ? retryEx.getMessage() : "";
-                    if (retryMsg.contains("BUSYGROUP") || retryMsg.contains("already exists")) {
+                    if (isBusyGroup(retryEx)) {
                         log.debug("消费者组已存在 stream={} group={}", getStream(), getGroup());
                     } else {
                         log.error("创建消费者组最终失败 stream={} group={} err={}",
-                                getStream(), getGroup(), retryMsg);
+                                getStream(), getGroup(), retryEx.getMessage());
                     }
                 }
             }
         }
+    }
+
+    /**
+     * 判断异常（含 cause 链）是否为"消费者组已存在"（BUSYGROUP）。
+     * Spring 包装后 getMessage() 只剩 Error in execution，必须拆到内层。
+     */
+    private static boolean isBusyGroup(Throwable e) {
+        for (Throwable t = e; t != null; t = (t.getCause() == t ? null : t.getCause())) {
+            String m = t.getMessage();
+            if (m != null && (m.contains("BUSYGROUP") || m.contains("already exists"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
