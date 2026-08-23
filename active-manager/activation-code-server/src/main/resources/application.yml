@@ -5,6 +5,8 @@ server:
       timeout: 1h
 
 spring:
+  application:
+    name: activecode
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
