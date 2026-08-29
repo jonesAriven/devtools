@@ -86,7 +86,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     @r.post("/projects/{pid}/copy", status_code=201)
     def copy_project(pid: int, user: dict = Depends(require_role("editor"))):
-        """深拷贝副本：同需求新工作线（活数据，可继续编写）。"""
+        """深拷贝副本：同需求新工作线（活数据，可继续编写）。仅编写库。"""
+        if not writable:
+            raise HTTPException(403, "归档库只读")
         src = db.query(db_name, "SELECT * FROM projects WHERE id=%s", (pid,), one=True)
         if not src:
             raise HTTPException(404, "项目不存在")
@@ -123,6 +125,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     @r.put("/projects/{pid}/primary")
     def set_primary(pid: int, user: dict = Depends(require_role("editor"))):
+        if not writable:
+            raise HTTPException(403, "归档库只读")
         src = db.query(db_name, "SELECT requirement_id FROM projects WHERE id=%s", (pid,), one=True)
         if not src:
             raise HTTPException(404, "项目不存在")
@@ -296,6 +300,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     @r.post("/fps/{fid}/diversify")
     def diversify_fp_attrs(fid: int, user: dict = Depends(require_role("editor"))):
         """按字段池对该 FP 全部子过程执行属性差异化（md5(fp_id) 种子，可复现）。"""
+        if not writable:
+            raise HTTPException(403, "归档库只读")
         if not derive.auto_diversify_fp(db_name, fid):
             raise HTTPException(422, "字段池未收录该数据组（请到规范中心/词库侧补充字段池）")
         return {"diversified": True}
