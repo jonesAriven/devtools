@@ -33,8 +33,10 @@ log_err()  { echo -e "  ${RED}❌${NC} $1"; }
 log_info() { echo -e "  ${YELLOW}ℹ️${NC} $1"; }
 
 mysql_n1() { docker exec platform-mysql-1 mysql -uroot -p${MYSQL_ROOT_PASSWORD} "$@" 2>/dev/null; }
+# 注意: SQL 必须整体加引号传给远端 mysql -e，否则被 ssh 二次拆词导致查询失败
+# （远端用双引号包裹：SQL 内含单引号，不含 $/反引号/双引号）
 mysql_n2() { ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@${DEBIAN_HOST} \
-  "docker exec platform-mysql-2 mysql -uroot -p${MYSQL_ROOT_PASSWORD} $*" 2>/dev/null; }
+  "docker exec platform-mysql-2 mysql -uroot -p${MYSQL_ROOT_PASSWORD} -N -e \"$*\"" 2>/dev/null; }
 
 echo "============================================="
 echo "  🔄 MySQL GR 集群 — 恢复/重启"
@@ -50,13 +52,12 @@ n1_count=$(mysql_n1 -N -e \
   "SELECT COUNT(*) FROM performance_schema.replication_group_members WHERE MEMBER_STATE='ONLINE'" || echo "0")
 
 # Node2 侧 ONLINE 成员数与成员列表（Node2/3 自组成组时以它为准）
-n2_count=$(mysql_n2 -N -e \
+n2_count=$(mysql_n2 \
   "SELECT COUNT(*) FROM performance_schema.replication_group_members WHERE MEMBER_STATE='ONLINE'" || echo "0")
-n2_members=$(mysql_n2 -N -e \
+n2_members=$(mysql_n2 \
   "SELECT CONCAT(MEMBER_HOST,':',MEMBER_PORT,'=',MEMBER_STATE) FROM performance_schema.replication_group_members" || echo "")
-n1_in_group=$(mysql_n2 -N -e \
-  "SELECT COUNT(*) FROM performance_schema.replication_group_members \
-   WHERE MEMBER_STATE='ONLINE' AND MEMBER_HOST='192.168.31.105'" || echo "0")
+n1_in_group=$(mysql_n2 \
+  "SELECT COUNT(*) FROM performance_schema.replication_group_members WHERE MEMBER_STATE='ONLINE' AND MEMBER_HOST='192.168.31.105'" || echo "0")
 
 log_info "Node1 视角 ONLINE: ${n1_count}/3 | Node2 视角 ONLINE: ${n2_count}/3"
 [ -n "$n2_members" ] && log_info "Node2 视角成员: ${n2_members//$'\n'/ | }"
