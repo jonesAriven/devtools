@@ -1,0 +1,22 @@
+services:
+  cosmic-studio:
+    build: .
+    image: cosmic-studio:0.1.0
+    container_name: cosmic-studio
+    restart: unless-stopped
+    ports:
+      - "8310:8000"
+    environment:
+      DB_HOST: 192.168.31.105        # platform-mysql（host 网络 3306）
+      DB_PORT: "3306"
+      DB_USER: cosmic
+      DB_PASSWORD: cosmic_2026
+      DATA_DIR: /data
+    volumes:
+      - /root/devtools/cosmic-studio/data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
