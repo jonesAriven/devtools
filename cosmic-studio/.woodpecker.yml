@@ -1,0 +1,24 @@
+# cosmic-studio 部署流水线
+# 触发：push 到 main 或手动（Woodpecker UI）
+# 前置（一次性）：
+#   1. Woodpecker 启用本仓库（forge 对应 GitHub/Gitee）
+#   2. 仓库 Secrets 配置 ssh_key_mykng（mykng root 私钥）
+#   3. mykng /root/devtools/cosmic-studio 已转为 git clone（见 DEPLOY.md §发布）
+# 前端 dist 与 app/static 构建产物入库：mykng 无 Node，流水线直接用入库产物构建镜像
+when:
+  event: [push, manual]
+  branch: [main, dev]
+
+steps:
+  - name: deploy
+    image: appleboy/drone-ssh
+    settings:
+      host: 192.168.31.105
+      username: root
+      key:
+        from_secret: ssh_key_mykng
+      port: 22
+      script_stop: true
+      command_timeout: 20m
+      script:
+        - bash /root/devtools/cosmic-studio/scripts/ci/deploy.sh
