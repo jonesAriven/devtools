@@ -40,7 +40,27 @@
       <el-table-column prop="move" label="类型" width="55" />
       <el-table-column prop="desc" label="子过程描述" min-width="180" show-overflow-tooltip />
       <el-table-column prop="group" label="数据组" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="attrs" label="数据属性" min-width="210" show-overflow-tooltip />
+      <el-table-column label="评审意见" width="120">
+        <template #default="s">
+          <template v-if="s.row.reviews && s.row.reviews.length">
+            <el-tooltip placement="top" effect="light">
+              <template #content>
+                <div v-for="r in s.row.reviews" :key="r.id" style="max-width:320px; margin-bottom:4px">
+                  <b>{{ { pending: '[待处理]', manual_done: '[已手动修订]', auto_done: '[已AI修订]', needs_manual: '[需人工]', wont_fix: '[不修改]' }[r.disposition] }}</b>
+                  {{ r.content }}
+                </div>
+              </template>
+              <el-tag size="small" style="cursor:pointer"
+                      :type="s.row.reviewPending ? 'danger' : 'success'"
+                      @click="reviewDrawer = true">
+                📝 {{ s.row.reviews.length }} 条{{ s.row.reviewPending ? '待处理' : '' }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+          <span v-else style="color:#cdd0d6">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="attrs" label="数据属性" min-width="180" show-overflow-tooltip />
       <el-table-column v-if="canEdit" label="操作" width="190" fixed="right">
         <template #default="s">
           <template v-if="s.row.kind === 'fp'">
@@ -274,6 +294,17 @@ const attrCount = computed(() => subForm.attributes.split('、').filter(f => f.t
 
 const tableRows = computed(() => {
   if (!tree.value) return []
+  // 评审意见按行索引：sub→子过程 id，fp→FP id（project 级意见不挂行）
+  const byTarget = {}
+  for (const r of reviews.value) {
+    if (r.target_type === 'project') continue
+    const key = `${r.target_type}-${r.target_id}`
+    ;(byTarget[key] ||= []).push(r)
+  }
+  const attach = (kind, id) => {
+    const list = byTarget[`${kind}-${id}`] || []
+    return { reviews: list, reviewPending: list.some(r => r.disposition === 'pending') }
+  }
   const rows = []
   tree.value.modules?.forEach(m => {
     const mkey = `m${m.id}`
@@ -286,10 +317,12 @@ const tableRows = computed(() => {
           rowKey: fkey, kind: 'fp', id: f.id, moduleId: m.id, module: m.level3,
           fp: f.fp_name, move: '', desc: f.trigger_event, group: '', attrs: '',
           fu: f.functional_user,
+          ...attach('fp', f.id),
           children: f.subs.map(s => ({
             rowKey: `${fkey}-s${s.id}`, kind: 'sub', id: s.id, fpId: f.id,
             module: m.level3, fp: f.fp_name, move: s.data_move_type,
-            desc: s.description, group: s.data_group_name, attrs: s.data_attributes
+            desc: s.description, group: s.data_group_name, attrs: s.data_attributes,
+            ...attach('sub', s.id)
           }))
         }]
       })
