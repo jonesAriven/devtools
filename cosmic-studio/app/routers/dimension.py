@@ -5,11 +5,12 @@ archive 差异：写操作（建项目/模块/FP/子过程/derive/版本）仅�
 """
 import os
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from .. import config, db
+from ..auth import ROLE_RANK, require_role
 from ..engines import derive, linter
 from ..services import json_io, versioning, xlsx_export, xlsx_import
 
@@ -56,7 +57,9 @@ class VersionIn(BaseModel):
 
 
 def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
-    r = APIRouter(prefix=f"/api/{dim}", tags=[dim])
+    # 路由级默认：所有端点要求登录（viewer 起）；写端点在签名上再升权
+    r = APIRouter(prefix=f"/api/{dim}", tags=[dim],
+                  dependencies=[Depends(require_role("viewer"))])
 
     # ── 项目 ──
     @r.get("/projects")
@@ -70,7 +73,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         """)
 
     @r.post("/projects", status_code=201)
-    def create_project(body: ProjectIn):
+    def create_project(body: ProjectIn, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读：归档数据请走导入通道")
         pid = db.execute(db_name, """
@@ -88,7 +91,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return tree
 
     @r.delete("/projects/{pid}")
-    def delete_project(pid: int, confirm: str = ""):
+    def delete_project(pid: int, confirm: str = "", user: dict = Depends(require_role("admin"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         if confirm != dim:
@@ -103,7 +106,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     # ── 模块 ──
     @r.post("/projects/{pid}/modules", status_code=201)
-    def create_module(pid: int, body: ModuleIn):
+    def create_module(pid: int, body: ModuleIn, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         n = db.query(db_name, "SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM modules WHERE project_id=%s",
@@ -114,7 +117,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"id": mid}
 
     @r.delete("/modules/{mid}")
-    def delete_module(mid: int, cascade: bool = False):
+    def delete_module(mid: int, cascade: bool = False, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         fps = db.query(db_name, "SELECT id FROM fps WHERE module_id=%s", (mid,))
@@ -130,7 +133,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     # ── FP ──
     @r.post("/projects/{pid}/fps", status_code=201)
-    def create_fp(pid: int, body: FPIn):
+    def create_fp(pid: int, body: FPIn, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         mod = db.query(db_name, "SELECT * FROM modules WHERE id=%s AND project_id=%s",
@@ -163,7 +166,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"id": fid, "user": user, "event": event}
 
     @r.put("/fps/{fid}")
-    def update_fp(fid: int, body: FPUpdate):
+    def update_fp(fid: int, body: FPUpdate, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         sets, params = [], []
@@ -178,7 +181,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"updated": True}
 
     @r.delete("/fps/{fid}")
-    def delete_fp(fid: int, cascade: bool = False):
+    def delete_fp(fid: int, cascade: bool = False, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         subs = db.query(db_name, "SELECT COUNT(*) AS n FROM sub_processes WHERE fp_id=%s", (fid,), one=True)
@@ -192,7 +195,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     # ── 子过程 ──
     @r.post("/fps/{fid}/subs", status_code=201)
-    def create_sub(fid: int, body: SubIn):
+    def create_sub(fid: int, body: SubIn, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         fp = db.query(db_name, "SELECT f.*, m.level3 FROM fps f JOIN modules m ON m.id=f.module_id WHERE f.id=%s",
@@ -222,7 +225,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"id": sid, "description": desc, "group_name": group}
 
     @r.put("/subs/{sid}")
-    def update_sub(sid: int, body: dict):
+    def update_sub(sid: int, body: dict, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         allowed = {k: v for k, v in body.items()
@@ -234,7 +237,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"updated": True}
 
     @r.delete("/subs/{sid}")
-    def delete_sub(sid: int):
+    def delete_sub(sid: int, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
         db.execute(db_name, "DELETE FROM sub_processes WHERE id=%s", (sid,))
@@ -242,9 +245,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     # ── 推导 & 门禁 ──
     @r.post("/projects/{pid}/derive")
-    def derive_all(pid: int, fix: bool = False):
-        if fix and not writable:
-            raise HTTPException(403, "归档库只读")
+    def derive_all(pid: int, fix: bool = False, user: dict = Depends(require_role("viewer"))):
+        if fix and ROLE_RANK.get(user["role"], 0) < ROLE_RANK["editor"]:
+            raise HTTPException(403, "fix 修复需要 editor 及以上权限")
         issues = derive.derive_all(db_name, pid, fix=fix)
         return {"issues": issues, "count": len(issues), "fixed": fix}
 
@@ -260,9 +263,14 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                              project_id: int | None = None,
                              project_code: str = "", client_name: str = "",
                              requirement_id: str = "", requirement_name: str = "",
-                             confirm: str = ""):
-        if mode == "overwrite" and not project_id and confirm != dim:
-            raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
+                             confirm: str = "", user: dict = Depends(require_role("editor"))):
+        if mode == "overwrite" and not project_id:
+            if ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
+                raise HTTPException(403, "整库覆盖导入需要 admin 权限")
+            if confirm != dim:
+                raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
+        if mode == "overwrite" and project_id and ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
+            raise HTTPException(403, "覆盖导入需要 admin 权限")
         meta = {k: v for k, v in dict(project_code=project_code, client_name=client_name,
                                       requirement_id=requirement_id,
                                       requirement_name=requirement_name).items() if v}
@@ -275,9 +283,13 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     @r.post("/import/json")
     async def import_json_ep(payload: dict,
                              mode: str = Query("incremental", pattern="^(incremental|overwrite)$"),
-                             project_id: int | None = None, confirm: str = ""):
-        if mode == "overwrite" and not project_id and confirm != dim:
-            raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
+                             project_id: int | None = None, confirm: str = "",
+                             user: dict = Depends(require_role("editor"))):
+        if mode == "overwrite" and not project_id:
+            if ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
+                raise HTTPException(403, "整库覆盖导入需要 admin 权限")
+            if confirm != dim:
+                raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
         report = json_io.import_json(db_name, payload, mode=mode, project_id=project_id)
         job = _record_job(dim, mode, "payload.json", report)
         report["job_id"] = job
@@ -313,7 +325,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     # ── 版本（active 专属；归档库版本无意义）──
     if writable:
         @r.post("/projects/{pid}/versions", status_code=201)
-        def snapshot_version(pid: int, body: VersionIn):
+        def snapshot_version(pid: int, body: VersionIn, user: dict = Depends(require_role("editor"))):
             try:
                 return versioning.snapshot(db_name, pid, body.label, body.changelog, body.author)
             except ValueError as e:
