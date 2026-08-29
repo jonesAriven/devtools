@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from .routers import auth, chat, dimension, studio
+from .routers import auth, chat, dimension, reviews, studio
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -26,6 +26,7 @@ app.include_router(studio.pub)
 app.include_router(auth.r)
 app.include_router(studio.r)
 app.include_router(chat.r)
+app.include_router(reviews.r)
 app.include_router(dimension.make_dimension_router("active", "cosmic_active", writable=True))
 app.include_router(dimension.make_dimension_router("archive", "cosmic_archive", writable=False))
 
