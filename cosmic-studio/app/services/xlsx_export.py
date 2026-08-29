@@ -155,6 +155,92 @@ def export_xlsx(dim_db: str, project_id: int, author: str = "") -> tuple[bytes, 
     return buf.getvalue(), meta
 
 
+def build_import_template() -> bytes:
+    """导入模板：COSMIC 表头 + 灰色示例行 + 「填写说明」sheet。"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font as _F
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "COSMIC"
+    max_col = 16
+
+    ws.merge_cells("A1:P1")
+    c = ws.cell(1, 1, "通用软件评估模型（导入模板）")
+    c.font, c.fill, c.alignment = FONT_TITLE, FILL_GRAY, ALIGN_HEADER
+    for rng, text in (("A2:E2", "度量策略阶段"), ("F2:K2", "映射阶段"), ("L2:P2", "度量阶段")):
+        ws.merge_cells(rng)
+        cell = ws.cell(2, COL[rng[0]], text)
+        cell.font, cell.fill, cell.alignment = FONT_HEADER, FILL_GRAY, ALIGN_HEADER
+    headers_3 = {"A": "客户需求", "B": "功能用户需求", "E": "功能用户", "F": "触发事件",
+                 "G": "功能过程", "H": "子过程描述", "I": "数据移动类型", "J": "数据组",
+                 "K": "数据属性", "L": "功能过程截图\n（可以放多张）",
+                 "N": "cosmic编写人", "O": "评审意见", "P": "是否修改"}
+    for col, text in headers_3.items():
+        c = ws.cell(3, COL[col], text)
+        c.font, c.fill, c.alignment = FONT_HEADER, FILL_GRAY, ALIGN_HEADER
+    ws.merge_cells("B3:D3")
+    for col in ["A", "E", "F", "G", "H", "I", "J", "K", "N", "O", "P"]:
+        ws.merge_cells(f"{col}3:{col}4")
+    ws.merge_cells("L3:M4")
+    for col, text in {"B": "一级模块", "C": "二级模块", "D": "三级模块"}.items():
+        c = ws.cell(4, COL[col], text)
+        c.font, c.fill, c.alignment = FONT_HEADER, FILL_GRAY, ALIGN_HEADER
+    _apply_border(ws, 1, 4, 1, max_col)
+    for col_letter, width in COL_WIDTHS.items():
+        ws.column_dimensions[col_letter].width = width
+    for row_num, height in ROW_HEIGHTS.items():
+        ws.row_dimensions[row_num].height = height
+
+    # 示例数据行（第5行，灰色斜体，提示导入前删除或直接覆盖）
+    demo = ["【202607270156】互联网卡片-已订购业务卡片支持展示资费标准",
+            "互联网卡片", "卡片管理", "资费标准配置管理",
+            "发起者：一线坐席\n接收者：多媒体卡片平台",
+            "一线坐席新增资费标准显隐开关时触发", "新增资费标准显隐开关",
+            "接收一线坐席发起新增资费标准显隐开关请求", "E",
+            "资费标准显隐开关新增请求数据",
+            "开关编号、卡片类型编码、目标省份编码、显隐状态"]
+    f_demo = Font(name="Noto Sans CJK SC", size=11, italic=True, color="FF808080")
+    for ci, val in enumerate(demo, 1):
+        cell = ws.cell(5, ci, val)
+        cell.font, cell.alignment, cell.border = f_demo, ALIGN_DATA, THIN_BORDER
+        if ci == 9:
+            cell.font = Font(name="宋体", size=11, italic=True, color="FF808080")
+            cell.alignment = ALIGN_I_COL
+    ws.row_dimensions[5].height = 60.0
+
+    # 填写说明 sheet
+    guide = wb.create_sheet("填写说明")
+    guide.column_dimensions["A"].width = 20
+    guide.column_dimensions["B"].width = 100
+    rows = [
+        ("列", "填写要求"),
+        ("数据起始行", "第 5 行起；L-P 列为展示列（截图/编写人/评审），导入时不读取"),
+        ("B/C/D 列", "一级/二级/三级模块名。三级模块名禁含禁词（记录、日志、导入、缓存、明细、列表、详情、效果）"),
+        ("E 列", "功能用户，固定两行格式：第一行「发起者：XX」，第二行「接收者：XX」"),
+        ("F 列", "触发事件，格式「{发起者}{功能过程名}时触发」，不含接收者、不换行"),
+        ("G 列", "功能过程名，动词开头（新增/修改/删除/查询/预览 + 业务对象）"),
+        ("H 列", "子过程描述，E 类以「接收」开头、X 类以「返回」开头，不含逗号断句"),
+        ("I 列", "数据移动类型：E(输入)/W(写入)/R(读取)/X(输出)。新增/修改/删除类 FP 用 EW，查询/预览类用 ERX"),
+        ("J 列", "数据组名，每子过程独立不合并。E 类以「请求数据」结尾，W 类以「数据」结尾，R 类以「查询数据」结尾，X 类以「查询结果」结尾"),
+        ("K 列", "数据属性，用「、」分隔（禁用逗号），每行至少 3 个字段（建议≥4）；字段须为真实数据库列名，禁行为词/统计值/PII（客户姓名、证件号等）"),
+        ("增量导入", "按业务主键 upsert：模块=(一级+二级+三级)，功能过程=(模块+G列名)。命中的 FP 更新并整体重写其子过程，未命中新建；不触碰库内其他数据"),
+        ("覆盖导入", "清空目标（所选项目或整库）后按文件重灌；导入前系统自动备份现有数据到 /data/backups/；需 admin 权限"),
+        ("导入后建议", "到项目详情页点「推导检查」和「质量门禁」，errors=0 再交付；格式类问题可用「一键修复推导列」自动修正"),
+    ]
+    for ri, (a, b) in enumerate(rows, 1):
+        ca = guide.cell(ri, 1, a)
+        cb = guide.cell(ri, 2, b)
+        ca.font = _F(name="Noto Sans CJK SC", size=11, bold=(ri == 1))
+        cb.font = _F(name="Noto Sans CJK SC", size=11, bold=(ri == 1))
+        cb.alignment = ALIGN_DATA
+        guide.row_dimensions[ri].height = 30
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def _embed_screenshots(dim_db, ws, tree, first_row):
     """FP 有截图记录时嵌入 L 列（每 FP 取第一张）。"""
     total = 0

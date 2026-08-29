@@ -272,6 +272,15 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return report
 
     # ── 导入导出 ──
+    @r.get("/import/template")
+    def import_template():
+        """导入模板（COSMIC 表头 + 示例行 + 填写说明 sheet），两维度通用。"""
+        from urllib.parse import quote
+        content = xlsx_export.build_import_template()
+        return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition":
+                                 f"attachment; filename*=UTF-8''{quote('cosmic导入模板.xlsx')}"})
+
     @r.post("/import/xlsx")
     async def import_xlsx_ep(file: UploadFile = File(...),
                              mode: str = Query("incremental", pattern="^(incremental|overwrite)$"),
