@@ -84,3 +84,8 @@ cd /root/devtools/cosmic-studio && git pull && docker compose up -d --build
 - 版本文件（/data/versions）与备份（/data/backups）无自动清理，需人工定期处理
 - LLM 配置未设置时，对话与「自动优化」功能返回 409 提示（属预期）
 - 服务重启不丢数据（数据全在 MySQL 与 /data 卷）
+
+## 8. 双推顺序约定
+
+- 流水线在 mykng 上 git pull 的源是 **Gitee（origin）**
+- 发布顺序约定：**先推 Gitee、后推 GitHub**（GitHub push 仅作为 Woodpecker 触发信号）；顺序颠倒会导致部署版本落后一拍，再跑一次流水线即可对齐
