@@ -7,7 +7,7 @@ import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .. import config, db
 from ..auth import ROLE_RANK, require_role
@@ -22,6 +22,14 @@ class ProjectIn(BaseModel):
     requirement_name: str
     client_contract: str = ""
     batch_no: str = ""
+
+    @field_validator("requirement_id", "requirement_name")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("需求编号/名称不能为空")
+        return v
 
 
 class ModuleIn(BaseModel):
