@@ -1,8 +1,9 @@
-"""studio 路由：健康检查、规则管理（禁词/伪字段/字段池）、词库查询。"""
+"""studio 路由：健康检查、规则管理（禁词/伪字段/字段池）、规范中心（spec_rules）、词库查询。"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import config, db
+from ..engines import spec
 
 r = APIRouter(prefix="/api", tags=["studio"])
 
@@ -80,6 +81,42 @@ def upsert_pool(body: PoolIn):
         ON DUPLICATE KEY UPDATE fields=VALUES(fields), updated_at=NOW()
     """, (body.data_group, body.fields))
     return {"data_group": body.data_group, "size": len(body.fields)}
+
+
+# ── 规范中心：编写规范 + 截图规范（spec_rules，即改即生效）──
+class SpecIn(BaseModel):
+    value: object
+    category: str = ""
+    description: str = ""
+
+
+@r.get("/studio/specs")
+def list_specs(category: str = ""):
+    data = spec.load_all(category or None)
+    return {"count": len(data), "specs": data}
+
+
+@r.get("/studio/specs/{spec_key}")
+def get_spec(spec_key: str):
+    if spec_key not in spec.SEED_SPECS:
+        raise HTTPException(404, f"未知规范键: {spec_key}")
+    return {"spec_key": spec_key, **spec.load_all()[spec_key]}
+
+
+@r.put("/studio/specs/{spec_key}")
+def put_spec(spec_key: str, body: SpecIn):
+    if spec_key not in spec.SEED_SPECS:
+        raise HTTPException(404, f"未知规范键（不允许新增自由键）: {spec_key}")
+    return spec.upsert_spec(spec_key, body.value, body.category, body.description)
+
+
+@r.delete("/studio/specs/{spec_key}")
+def reset_spec(spec_key: str):
+    """删除自定义值，回落种子规范。"""
+    if spec_key not in spec.SEED_SPECS:
+        raise HTTPException(404, f"未知规范键: {spec_key}")
+    db.execute(config.DB_STUDIO, "DELETE FROM spec_rules WHERE spec_key=%s", (spec_key,))
+    return {"reset": spec_key, "value": spec.SEED_SPECS[spec_key]["value"]}
 
 
 # ── 词库 ──

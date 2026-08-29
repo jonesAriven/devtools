@@ -1,13 +1,13 @@
 FROM python:3.12-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PIP_INDEX_URL=http://192.168.31.105:8081/repository/pypi-public/simple \
-    PIP_TRUSTED_HOST=192.168.31.105
+ENV PYTHONUNBUFFERED=1
+ENV PIP_INDEX_URL=http://192.168.31.105:8081/repository/pypi-public/simple
+ENV PIP_TRUSTED_HOST=192.168.31.105
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 60 --retries 10 -r requirements.txt
 
 COPY app ./app
 COPY scripts ./scripts

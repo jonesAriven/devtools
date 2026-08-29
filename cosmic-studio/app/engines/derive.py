@@ -1,87 +1,80 @@
 """推导引擎：从 Hermes cosmic_derive.py / cosmic_cli.py 移植。
 
-可推导列规则（与校验器 linter.py 保持同一套约定，derive 产出必须能过 check）：
-  F列(功能用户)  配置管理类→一线坐席 / 数据查询类→终端用户 / 其他→终端用户（cli 默认）
-  E列(触发事件)  {发起者}{FP名}时触发
-  EWX           新增/修改/删除=EW，查询/预览=ERX
-  H列(子过程描述) E=接收{发起者}发起{FP名}请求 / W按动词 / R=读取{对象}详情 / X=返回{FP名}结果
-  J列(数据组)    {业务对象}{动词}{后缀}，后缀按 E/W/R/X + 预览特判
-  K列(数据属性)  字段池差异化（md5(fp_id) 种子，可复现）
+可推导列规则（与校验器 linter.py 保持同一套约定，derive 产出必须能过 check）。
+全部规则从 spec_rules 规范表读取（ewx_rules / functional_user_map /
+trigger_event_template / sub_desc_templates / data_group_templates），
+改规范立即生效，代码不再硬编码任何业务规则。
 """
 import hashlib
 import random
 import re
 
 from .. import config, db
+from . import spec
 
 VERB_RE = re.compile(r"^(新增|修改|删除|查询|预览)")
 SUFFIX_RE = re.compile(r"(查询请求数据|查询数据|查询结果|预览查询数据|预览结果数据|数据)$")
-EWX_RULES = {"新增": "EW", "修改": "EW", "删除": "EW", "查询": "ERX", "预览": "ERX"}
-ALLOWED_VERBS = ["新增", "修改", "删除", "查询", "预览", "同步", "导出"]
 
 
 def fp_verb(fp_name: str):
+    """提取 FP 动词与业务对象：(动词, 去动词后的对象名)。"""
     m = VERB_RE.match(fp_name or "")
     if m:
         return m.group(1), (fp_name or "")[2:]
     return None, fp_name or ""
 
 
+def allowed_verbs() -> list:
+    return spec.load_spec("allowed_verbs")
+
+
 def expected_ewx(fp_name: str) -> str:
     verb, _ = fp_verb(fp_name)
-    return EWX_RULES.get(verb, "")
+    return spec.load_spec("ewx_rules").get(verb, "")
+
+
+def allowed_sub_moves() -> list:
+    return spec.load_spec("sub_move_types")
 
 
 def derive_functional_user(level3: str) -> str:
-    if "配置管理" in (level3 or ""):
-        initiator = "一线坐席"
-    elif "数据查询" in (level3 or ""):
-        initiator = "终端用户"
-    else:
-        initiator = "终端用户"  # cli add-fp 默认
-    return f"发起者：{initiator}\n接收者：{config.DEFAULT_RECEIVER}"
+    m = spec.load_spec("functional_user_map")
+    initiator = m.get("default_initiator", "终端用户")
+    for item in m.get("matches", []):
+        if item["keyword"] in (level3 or ""):
+            initiator = item["initiator"]
+            break
+    return f"发起者：{initiator}\n接收者：{m.get('receiver', '多媒体卡片平台')}"
 
 
 def initiator_of(functional_user: str) -> str:
     fu = functional_user or ""
     if "\n" in fu and "发起者：" in fu:
         return fu.split("\n")[0].split("：", 1)[1]
-    return config.DEFAULT_INITIATOR
+    return spec.load_spec("functional_user_map").get("default_initiator", "一线坐席")
 
 
 def derive_trigger_event(fp_name: str, initiator: str) -> str:
-    return f"{initiator}{fp_name}时触发"
+    return spec.load_spec("trigger_event_template").format(
+        initiator=initiator, fp_name=fp_name)
 
 
 def derive_sub_columns(fp_name: str, initiator: str, move_type: str):
-    """返回 (H列描述, J列数据组名)，业务对象=FP名去掉动词。"""
+    """返回 (H列描述, J列数据组名)，业务对象 obj=FP名去掉动词。模板见 spec_rules。"""
     verb, obj = fp_verb(fp_name)
-    if move_type == "E":
-        return f"接收{initiator}发起{fp_name}请求", f"{obj}{verb}请求数据"
-    if move_type == "W":
-        if verb == "新增":
-            desc = f"新增{obj}到数据库"
-        elif verb == "修改":
-            desc = f"修改数据库中{obj}记录"
-        elif verb == "删除":
-            desc = f"从数据库中删除{obj}记录"
-        else:
-            desc = f"保存{obj}到数据库"
-        return desc, f"{obj}{verb}数据"
-    if move_type == "R":
-        suffix = "预览查询数据" if verb == "预览" else "查询数据"
-        return f"读取{obj}详情", f"{obj}{suffix}"
-    if move_type == "X":
-        suffix = "预览结果数据" if verb == "预览" else "查询结果"
-        return f"返回{fp_name}结果", f"{obj}{suffix}"
-    return "", ""
+    tpls = spec.load_spec("sub_desc_templates")
+    desc = tpls.get(f"W_{verb}", tpls.get("W_default", "")) if move_type == "W" \
+        else tpls.get(move_type, "")
+    groups = spec.load_spec("data_group_templates")
+    gkey = f"{move_type}_预览" if verb == "预览" and f"{move_type}_预览" in groups else move_type
+    group = groups.get(gkey, "").format(obj=obj, verb=verb)
+    return desc.format(initiator=initiator, fp_name=fp_name, obj=obj), group
 
 
 def standard_subs_for(fp_name: str, initiator: str):
     """按 EWX 规范生成标准子过程序列 [(move_type, desc, group)]。"""
-    types = expected_ewx(fp_name)
     out = []
-    for mt in types:
+    for mt in expected_ewx(fp_name):
         desc, group = derive_sub_columns(fp_name, initiator, mt)
         out.append((mt, desc, group))
     return out
@@ -157,17 +150,13 @@ def auto_diversify_fp(dim_db: str, fp_id: int) -> bool:
     fp_fields = diversify_fp_attributes(pool, rng)
     subs = db.query(dim_db, "SELECT id, data_move_type FROM sub_processes WHERE fp_id=%s ORDER BY sort_order", (fp_id,))
     used: set = set()
-    with tx_ctx(dim_db) as cur:
+    from ..db import tx
+    with tx(dim_db) as cur:
         for sp in subs:
             fields = diversify_sub_attributes(sp["data_move_type"], fp_fields, rng, used)
             cur.execute("UPDATE sub_processes SET data_attributes=%s WHERE id=%s",
                         ("、".join(fields), sp["id"]))
     return True
-
-
-def tx_ctx(db_name: str):
-    from ..db import tx
-    return tx(db_name)
 
 
 def project_fps(dim_db: str, project_id: int):
@@ -185,7 +174,7 @@ def fp_subs(dim_db: str, fp_id: int):
 
 
 def derive_all(dim_db: str, project_id: int, fix: bool = False):
-    """检查/修复可推导列，返回 issues 列表（与 cosmic_derive.py 同口径）。"""
+    """检查/修复可推导列，返回 issues 列表。期望值全部由规范模板实时计算。"""
     issues = []
     fps = project_fps(dim_db, project_id)
     for fp in fps:
@@ -215,7 +204,8 @@ def derive_all(dim_db: str, project_id: int, fix: bool = False):
                                "col": f"数据组名[{sp['sort_order']}:{sp['data_move_type']}]",
                                "actual": sp["data_group_name"], "expected": exp_group})
     if fix and issues:
-        with tx_ctx(dim_db) as cur:
+        from ..db import tx
+        with tx(dim_db) as cur:
             for fp in fps:
                 expected_fu = derive_functional_user(fp["level3"])
                 initiator = initiator_of(expected_fu)

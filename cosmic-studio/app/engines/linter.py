@@ -1,12 +1,14 @@
 """质量门禁引擎：全量规范检查（移植 Hermes cosmic_cli.check_all / preflight）。
 
-规则即数据：禁词表 rule_forbidden_words、伪字段黑名单 rule_pseudo_fields、
-字段池 attr_pools 都存 cosmic_studio 库，评审反哺 = 插规则行，立即全局生效。
+规范全部配置化，三处来源（优先级从高到低）：
+  1. spec_rules 表（writing 类键值，PUT /api/studio/specs/{key} 即改即生效）
+  2. rule_forbidden_words / rule_pseudo_fields 独立词表（可 API 增删）
+  3. spec.py 种子值兜底（表被清空也不失守）
 检查输出统一结构：{check, level, ref, message}，errors 非空 = 门禁不通过。
 """
 from collections import defaultdict
 
-from . import derive, similarity
+from . import derive, similarity, spec
 from .. import config, db
 
 FALLBACK_FORBIDDEN = ["记录", "日志", "导入", "缓存", "明细", "列表", "详情", "效果"]
@@ -41,6 +43,21 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     warnings = []
     add = lambda *a: issues.append(_issue(*a))  # noqa: E731
     warn = lambda *a: warnings.append(_issue(*a))  # noqa: E731
+
+    # ── 一次性载入规范 ──
+    ewx_rules = spec.load_spec("ewx_rules")
+    e_prefix = spec.load_spec("e_desc_prefix")
+    x_prefix = spec.load_spec("x_desc_prefix")
+    min_err = spec.load_spec("min_fields_error")
+    min_warn = spec.load_spec("min_fields_warn")
+    jac_threshold = spec.load_spec("jaccard_same_module")
+    sim_same = spec.load_spec("sim_same_req")
+    sim_cross = spec.load_spec("sim_cross_archive")
+    e_exempt = spec.load_spec("e_class_exempt")
+    crud_exempt = spec.load_spec("crud_sibling_exempt")
+    cross_check = spec.load_spec("cross_archive_check") and include_archive_similarity \
+        and dim_db == config.DB_ACTIVE
+    pool_check = spec.load_spec("pool_coverage_check")
 
     proj = db.query(dim_db, "SELECT * FROM projects WHERE id=%s", (project_id,), one=True)
     if not proj:
@@ -86,7 +103,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 3. EWX 规范
     for fp in fps:
         types = "".join(sp["data_move_type"] for sp in subs_by_fp[fp["id"]])
-        expected = derive.expected_ewx(fp["fp_name"])
+        expected = ewx_rules.get(derive.fp_verb(fp["fp_name"])[0], "")
         if expected and types != expected:
             add("EWX规范", "error", f"FP#{fp['id']} {fp['fp_name']}",
                 f"期望={expected} 实际={types or '无子过程'}")
@@ -94,13 +111,13 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 4. 子过程描述
     for sp in all_subs:
         desc = sp["description"] or ""
-        ref = f"子过程#{sp['id']} {sp['description'][:20]}"
+        ref = f"子过程#{sp['id']} {desc[:20]}"
         if "，" in desc:
             add("子过程描述", "error", ref, "含断句'，'")
-        if sp["data_move_type"] == "E" and not desc.startswith("接收"):
-            add("子过程描述", "error", ref, "E类不以'接收'开头")
-        if sp["data_move_type"] == "X" and not desc.startswith("返回"):
-            add("子过程描述", "error", ref, "X类不以'返回'开头")
+        if sp["data_move_type"] == "E" and e_prefix and not desc.startswith(e_prefix):
+            add("子过程描述", "error", ref, f"E类不以'{e_prefix}'开头")
+        if sp["data_move_type"] == "X" and x_prefix and not desc.startswith(x_prefix):
+            add("子过程描述", "error", ref, f"X类不以'{x_prefix}'开头")
 
     # 5. 数据组名后缀
     for sp in all_subs:
@@ -109,20 +126,12 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
         fp_name = next((f["fp_name"] for f in fps if f["id"] == sp["fp_id"]), "")
         verb = fp_name[:2]
         ref = f"子过程#{sp['id']} {dgn}"
-        if dmt == "E" and not dgn.endswith("请求数据"):
-            add("数据组后缀", "error", ref, "E类后缀应为'请求数据'")
-        elif dmt == "W" and not dgn.endswith("数据"):
-            add("数据组后缀", "error", ref, "W类后缀应为'数据'")
-        elif dmt == "R":
-            if verb == "预览" and not dgn.endswith("预览查询数据"):
-                add("数据组后缀", "error", ref, "预览R类后缀应为'预览查询数据'")
-            elif verb != "预览" and not dgn.endswith("查询数据"):
-                add("数据组后缀", "error", ref, "查询R类后缀应为'查询数据'")
-        elif dmt == "X":
-            if verb == "预览" and not dgn.endswith("预览结果数据"):
-                add("数据组后缀", "error", ref, "预览X类后缀应为'预览结果数据'")
-            elif verb != "预览" and not dgn.endswith("查询结果"):
-                add("数据组后缀", "error", ref, "查询X类后缀应为'查询结果'")
+        groups = spec.load_spec("data_group_templates")
+        # 期望后缀 = 模板去掉 {obj}{verb} 后的固定部分
+        gkey = f"{dmt}_预览" if verb == "预览" and f"{dmt}_预览" in groups else dmt
+        suffix = groups.get(gkey, "").format(obj="", verb="").replace("{obj}", "").replace("{verb}", "")
+        if suffix and not dgn.endswith(suffix):
+            add("数据组后缀", "error", ref, f"{dmt}类后缀应为'{suffix}'")
 
     # 6/7. 数据属性：分隔符 + 字段数
     for sp in all_subs:
@@ -131,10 +140,10 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
         if "," in attrs:
             add("数据属性", "error", ref, "含逗号分隔符，必须用、")
         n = len(_split_fields(attrs))
-        if n < 3:
-            add("数据属性", "error", ref, f"字段数={n}，至少3个")
-        elif n < 4:
-            warn("数据属性", "warn", ref, f"字段数={n}，建议≥4")
+        if n < min_err:
+            add("数据属性", "error", ref, f"字段数={n}，至少{min_err}个")
+        elif min_warn and n < min_warn:
+            warn("数据属性", "warn", ref, f"字段数={n}，建议≥{min_warn}")
 
     # 8. 禁词（仅 FP 名）
     for fp in fps:
@@ -174,30 +183,30 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 sb = set((fp_attrs.get(b["id"], [""])[0] or "").split("、")) - {""}
                 if sa and sb:
                     jac = similarity.jaccard(sa, sb)
-                    if jac >= 0.85:
+                    if jac >= jac_threshold:
                         add("属性池化", "error", f"FP#{a['id']} ↔ FP#{b['id']}",
-                            f"同模块同动词属性Jaccard={jac:.2f}: {a['fp_name']} ↔ {b['fp_name']}")
+                            f"同模块同动词属性Jaccard={jac:.2f}≥{jac_threshold}: {a['fp_name']} ↔ {b['fp_name']}")
 
-    # 11. 相似度：同需求内 FP 名 + 子过程描述（E 类豁免 / CRUD 兄弟豁免）
-    # FP 名：动词不同 = 新增/修改/删除/查询 同一业务对象的合法 CRUD 家族，不比对；
-    #        动词相同且文本相似 >65% = 真重复，拦截。
+    # 11. 相似度：同需求内 FP 名 + 子过程描述
     def fp_crud_exempt(a, b):
+        if not crud_exempt:
+            return False
         return a["verb"] != b["verb"]
 
-    fp_items = [{"key": f"FP#{f['id']}", "text": f["fp_name"], "verb": f["fp_name"][:2]}
-                for f in fps]
-    for a, b, r in similarity.pairwise_same_project(fp_items, exempt_pair=fp_crud_exempt):
+    fp_items = [{"key": f"FP#{f['id']}", "text": f["fp_name"], "verb": f["fp_name"][:2],
+                 "exempt": False} for f in fps]
+    for a, b, r in similarity.pairwise_same_project(fp_items, sim_same, exempt_pair=fp_crud_exempt):
         add("相似度", "error", f"{a['key']} ↔ {b['key']}",
-            f"FP名相似度 {r:.0%} 超同需求阈值 65%")
+            f"FP名相似度 {r:.0%} 超同需求阈值 {sim_same:.0%}")
     sub_items = [{"key": f"子过程#{sp['id']}", "text": sp["description"],
-                  "exempt": sp["data_move_type"] == "E"}
+                  "exempt": e_exempt and sp["data_move_type"] == "E"}
                  for sp in all_subs if sp["description"]]
-    for a, b, r in similarity.pairwise_same_project(sub_items):
+    for a, b, r in similarity.pairwise_same_project(sub_items, sim_same):
         add("相似度", "error", f"{a['key']} ↔ {b['key']}",
-            f"子过程描述相似度 {r:.0%} 超同需求阈值 65%")
+            f"子过程描述相似度 {r:.0%} 超同需求阈值 {sim_same:.0%}")
 
-    # 12. 跨库相似度（编写库 ↔ 归档库，85%）
-    if include_archive_similarity and dim_db == config.DB_ACTIVE:
+    # 12. 跨库相似度（编写库 ↔ 归档库）
+    if cross_check:
         arch_fps = db.query(config.DB_ARCHIVE, """
             SELECT f.fp_name, p.requirement_id FROM fps f
             JOIN modules m ON m.id = f.module_id
@@ -205,13 +214,13 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
             ORDER BY p.id, m.sort_order, f.sort_order
         """)
         arch_items = [{"key": f"归档[{r['requirement_id']}]", "text": r["fp_name"]} for r in arch_fps]
-        for a, b, r in similarity.cross_archive(fp_items, arch_items):
+        for a, b, r in similarity.cross_archive(fp_items, arch_items, sim_cross):
             add("跨库相似度", "warn", f"{a['key']} ↔ {b['key']}",
-                f"与归档FP'{b['text'][:30]}'相似度 {r:.0%} 超跨批次阈值 85%")
+                f"与归档FP'{b['text'][:30]}'相似度 {r:.0%} 超跨批次阈值 {sim_cross:.0%}")
 
     # 13. 字段池覆盖（preflight 同款，warn 级）
-    pools = derive.load_pools()
-    if dim_db == config.DB_ACTIVE:
+    if pool_check and dim_db == config.DB_ACTIVE:
+        pools = derive.load_pools()
         for sp in all_subs:
             if sp["data_group_name"] and not derive.pool_for(sp["data_group_name"], pools):
                 warn("字段池", "warn", f"子过程#{sp['id']}",

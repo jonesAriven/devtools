@@ -140,8 +140,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         for w in linter.forbidden_words():
             if w in body.name:
                 raise HTTPException(422, f"FP名含禁词'{w}': {body.name}")
-        if not any(body.name.startswith(v) for v in derive.ALLOWED_VERBS):
-            raise HTTPException(422, f"FP名应以动词开头: {derive.ALLOWED_VERBS}")
+        verbs = derive.allowed_verbs()
+        if not any(body.name.startswith(v) for v in verbs):
+            raise HTTPException(422, f"FP名应以动词开头: {verbs}")
         user, event = body.user, body.event
         if user is None or event is None:
             fu = derive.derive_functional_user(mod["level3"])
@@ -198,8 +199,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                       (fid,), one=True)
         if not fp:
             raise HTTPException(404, "FP不存在")
-        if body.move_type not in ("E", "W", "R", "X"):
-            raise HTTPException(422, "move_type 必须是 E/W/R/X")
+        if body.move_type not in derive.allowed_sub_moves():
+            raise HTTPException(422, f"move_type 必须是 {derive.allowed_sub_moves()}")
         expected = derive.expected_ewx(fp["fp_name"])
         if expected and body.move_type not in expected:
             raise HTTPException(422, f"{fp['fp_name']} 是{fp['fp_name'][:2]}类FP，只允许{list(expected)}子过程")
