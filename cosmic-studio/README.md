@@ -74,9 +74,11 @@ A-C 跨需求合并 / D 按模块 / E-G+L-M+按 FP / H/I/J/K 每行独立（J �
 
 ## 部署
 
-- mykng（192.168.31.105），Docker Compose，端口 8310
-- MySQL：platform-mysql（host 网络 3306），库 cosmic_active/cosmic_archive/cosmic_studio
-- 流水线就绪后接入 Woodpecker；当前手动 `docker compose up -d --build`
+- **前后端分离容器**：`cosmic-web`（nginx 托管前端 + /api 反代，对外 8310）+ `cosmic-api`（FastAPI，仅内网）
+- **数据库**：platform-mysql **GR 集群**（105:3306 入口，多主同步 182:3307/3308），库 cosmic_active/cosmic_archive/cosmic_studio
+- 构建与发布步骤见 **[docs/DEPLOY.md](docs/DEPLOY.md)**；使用说明见 **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**；架构决策见 **[docs/adr/](docs/adr/)**
+- 流水线就绪后接入 Woodpecker；当前手动 `docker compose up -d --build`（必须 --build，restart 不更新镜像内代码）
+- 仓库：Gitee `git@gitee.com:jonesAriven/cosmic-studio.git`（remote 已配，仓库建立后 `git push -u gitee main`）
 
 ## 路线
 

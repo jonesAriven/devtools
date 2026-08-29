@@ -191,9 +191,11 @@ check("T38", "增量导入 upsert 生效", st38 == 200 and d38["updated"]["fps"]
 check("T39", "upsert 后属性已更新", "增量字段一" in fp2_after["subs"][1]["data_attributes"],
       fp2_after["subs"][1]["data_attributes"])
 
-# 覆盖导入（项目级）
-st40, d40 = call("POST", f"/api/active/import/json?mode=overwrite&project_id={qa_pid}", ed_tok, j37)
-check("T40", "项目级覆盖导入 + 自动备份", st40 == 200 and d40.get("backup", "").endswith(".json"), (st40, d40.get("backup")))
+# 覆盖导入（项目级，admin专属——editor应403）
+st_ed40, _ = call("POST", f"/api/active/import/json?mode=overwrite&project_id={qa_pid}", ed_tok, j37)
+check("T39b", "editor项目级覆盖403（权限收紧回归）", st_ed40 == 403, st_ed40)
+st40, d40 = call("POST", f"/api/active/import/json?mode=overwrite&project_id={qa_pid}", admin_token, j37)
+check("T40", "admin项目级覆盖导入 + 自动备份", st40 == 200 and d40.get("backup", "").endswith(".json"), (st40, d40.get("backup")))
 jobs = call("GET", "/api/active/import/jobs", ed_tok)[1]
 check("T41", "导入任务留痕", len(jobs) >= 2, len(jobs))
 

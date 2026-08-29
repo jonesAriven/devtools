@@ -1,13 +1,17 @@
+# cosmic-studio：前后端分离容器化
+#   cosmic-web  nginx 托管前端 + /api 反代（对外唯一入口 8310）
+#   cosmic-api  FastAPI 后端（仅 compose 内网络可见）
+# 数据库：platform-mysql 集群（105:3306 为集群成员入口，GR 多主同步 182:3307/3308）
 services:
-  cosmic-studio:
-    build: .
-    image: cosmic-studio:0.1.0
-    container_name: cosmic-studio
+  cosmic-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cosmic-studio-api:0.2.0
+    container_name: cosmic-api
     restart: unless-stopped
-    ports:
-      - "8310:8000"
     environment:
-      DB_HOST: 192.168.31.105        # platform-mysql（host 网络 3306）
+      DB_HOST: 192.168.31.105        # platform-mysql 集群成员（host 网络 3306）
       DB_PORT: "3306"
       DB_USER: cosmic
       DB_PASSWORD: cosmic_2026
@@ -20,3 +24,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  cosmic-web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.web
+    image: cosmic-studio-web:0.2.0
+    container_name: cosmic-web
+    restart: unless-stopped
+    ports:
+      - "8310:80"
+    depends_on:
+      cosmic-api:
+        condition: service_started
