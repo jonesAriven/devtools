@@ -52,12 +52,19 @@ docker exec cosmic-api python scripts/migrate_from_hermes.py --hermes-dir /root/
 curl -s http://127.0.0.1:8310/api/health     # {"status":"ok",...三个 db 全 true}
 ```
 
-## 4. 日常发布（更新代码）
+## 4. 日常发布（流水线，已接入 Woodpecker）
+
+- **自动发布**：push 到 main → Woodpecker 自动执行 `scripts/ci/deploy.sh`（git pull → compose build → health check）
+- **手动发布**：Woodpecker UI（woodci.marschat.online → jonesAriven/cosmic-studio → New Pipeline）或 CLI 触发
+- 前端有改动时：构建机先 `npm run build` 后 commit（dist 已入库，流水线无需 Node）
+- ⚠️ 必须 `--build`：`docker compose restart` 不会更新镜像内代码（踩过）
+
+## 4b. 手动发布（绕过流水线的应急方式）
 
 ```bash
-# 构建机：改代码 → 前端有改动则先 build → tar 同步（同上）→ 服务器：
-cd /root/devtools/cosmic-studio && docker compose up -d --build
-# ⚠️ 必须带 --build：docker compose restart 不会更新镜像内代码（踩过：更新了宿主脚本容器里依旧旧代码）
+# 构建机：改代码 → 前端有改动则先 build → tar 同步（见 §3）→ 服务器：
+cd /root/devtools/cosmic-studio && git pull && docker compose up -d --build
+# 或直接执行流水线同款脚本：bash scripts/ci/deploy.sh
 ```
 
 ## 5. 回滚
