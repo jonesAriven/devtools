@@ -121,14 +121,20 @@ def _llm_cfg():
 
 
 def _call_llm(cfg: dict, messages: list) -> dict:
+    import urllib.error
     import urllib.request
     url = cfg["base_url"].rstrip("/") + "/chat/completions"
     payload = {"model": cfg["model"], "messages": messages, "temperature": 0.2}
     req = urllib.request.Request(url, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  headers={"Content-Type": "application/json",
                                           "Authorization": f"Bearer {cfg['api_key']}"})
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        raise HTTPException(502, f"LLM 返回错误 {e.code}: {e.read()[:200]}")
+    except urllib.error.URLError as e:
+        raise HTTPException(502, f"LLM 端点不可达（{e.reason}），请检查 系统管理→LLM配置 的 Base URL")
 
 
 def _fp_context(cur, fp_id: int):

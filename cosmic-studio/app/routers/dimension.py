@@ -219,6 +219,12 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         verbs = derive.allowed_verbs()
         if not any(body.name.startswith(v) for v in verbs):
             raise HTTPException(422, f"FP名应以动词开头: {verbs}")
+        if len(body.name) > 200:
+            raise HTTPException(422, f"FP名过长（{len(body.name)}字），上限200字")
+        dup = db.query(db_name, "SELECT id FROM fps WHERE module_id=%s AND fp_name=%s",
+                       (body.module_id, body.name), one=True)
+        if dup:
+            raise HTTPException(409, f"该模块下已存在同名功能过程「{body.name}」（id={dup['id']}），请改名或直接编辑")
         user, event = body.user, body.event
         if user is None or event is None:
             fu = derive.derive_functional_user(mod["level3"])
@@ -242,6 +248,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     def update_fp(fid: int, body: FPUpdate, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
+        if body.name is not None and len(body.name) > 200:
+            raise HTTPException(422, f"FP名过长（{len(body.name)}字），上限200字")
         sets, params = [], []
         for col, v in (("fp_name", body.name), ("functional_user", body.user), ("trigger_event", body.event)):
             if v is not None:
@@ -282,6 +290,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
             raise HTTPException(422, f"{fp['fp_name']} 是{fp['fp_name'][:2]}类FP，只允许{list(expected)}子过程")
         if "," in body.attributes:
             raise HTTPException(422, "数据属性分隔符必须用、")
+        if body.desc and len(body.desc) > 500:
+            raise HTTPException(422, f"子过程描述过长（{len(body.desc)}字），上限500字")
         fields = [f.strip() for f in body.attributes.split("、") if f.strip()]
         if len(fields) < 3:
             raise HTTPException(422, f"数据属性至少3个字段，当前{len(fields)}个")
@@ -381,6 +391,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                 raise HTTPException(403, "整库覆盖导入需要 admin 权限")
             if confirm != dim:
                 raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
+        if mode == "overwrite" and project_id and ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
+            raise HTTPException(403, "覆盖导入需要 admin 权限")
         report = json_io.import_json(db_name, payload, mode=mode, project_id=project_id)
         job = _record_job(dim, mode, "payload.json", report)
         report["job_id"] = job
