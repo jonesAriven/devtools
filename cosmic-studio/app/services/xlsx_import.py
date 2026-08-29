@@ -170,13 +170,12 @@ def import_xlsx(dim_db: str, xlsx_bytes: bytes, mode: str = "incremental",
 
 
 def _wipe(cur, project_id: int | None = None):
-    """清库（整维度或单项目），顺序：截图→子过程→FP→模块→项目。"""
+    """清数据（整维度或单项目）。项目级覆盖只清数据保留项目壳，防孤儿模块。"""
     if project_id:
         cur.execute("DELETE FROM screenshots WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (project_id,))
         cur.execute("DELETE FROM sub_processes WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (project_id,))
         cur.execute("DELETE FROM fps WHERE module_id IN (SELECT id FROM modules WHERE project_id=%s)", (project_id,))
         cur.execute("DELETE FROM modules WHERE project_id=%s", (project_id,))
-        cur.execute("DELETE FROM projects WHERE id=%s", (project_id,))
     else:
         for t in ("screenshots", "sub_processes", "fps", "modules", "projects"):
             cur.execute(f"DELETE FROM {t}")

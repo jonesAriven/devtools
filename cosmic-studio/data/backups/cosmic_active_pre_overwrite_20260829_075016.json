@@ -1,0 +1,1750 @@
+[
+ {
+  "project": {
+   "project_code": "ngcard",
+   "client_name": "中移动在线基地",
+   "requirement_id": "202607270156",
+   "requirement_name": "互联网卡片-已订购业务卡片支持展示资费标准",
+   "status": "draft"
+  },
+  "modules": [
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网卡片管理",
+    "level3": "已订购业务卡片配置管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息新增请求数据",
+        "data_attributes": "发送场景、创建时间、短信内容、更新时间"
+       },
+       {
+        "description": "新增已订购业务卡片业务短信内容设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息新增数据",
+        "data_attributes": "短信内容、适用业务、签名标识、发送场景、模板状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息修改请求数据",
+        "data_attributes": "失效时间、适用业务、发送场景、更新时间、短信内容"
+       },
+       {
+        "description": "修改数据库中已订购业务卡片业务短信内容设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息修改数据",
+        "data_attributes": "失效时间、短信内容、短信模板编号、更新时间、模板状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息删除请求数据",
+        "data_attributes": "适用业务、失效时间、签名标识、短信内容、发送场景"
+       },
+       {
+        "description": "从数据库中删除已订购业务卡片业务短信内容设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息删除数据",
+        "data_attributes": "更新时间、短信内容、失效时间、签名标识"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询请求数据",
+        "data_attributes": "签名标识、适用业务、短信内容、失效时间"
+       },
+       {
+        "description": "读取已订购业务卡片业务短信内容设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询数据",
+        "data_attributes": "模板状态、短信内容、创建时间、适用业务、失效时间、发送场景"
+       },
+       {
+        "description": "返回查询已订购业务卡片业务短信内容设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询结果",
+        "data_attributes": "发送场景、适用业务、短信内容、模板状态、签名标识"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息新增请求数据",
+        "data_attributes": "展示规则、适用范围、创建人、适用业务"
+       },
+       {
+        "description": "新增已订购业务卡片多月份展示设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息新增数据",
+        "data_attributes": "展示规则、创建时间、创建人、适用业务、适用范围"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息修改请求数据",
+        "data_attributes": "起始月份、创建时间、适用业务、适用范围、展示开关"
+       },
+       {
+        "description": "修改数据库中已订购业务卡片多月份展示设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息修改数据",
+        "data_attributes": "适用范围、起始月份、展示规则、创建时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息删除请求数据",
+        "data_attributes": "展示月数、起始月份、适用范围、展示开关"
+       },
+       {
+        "description": "从数据库中删除已订购业务卡片多月份展示设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息删除数据",
+        "data_attributes": "展示月数、创建时间、创建人、适用范围"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询请求数据",
+        "data_attributes": "展示规则、起始月份、展示月数、截止时间"
+       },
+       {
+        "description": "读取已订购业务卡片多月份展示设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询数据",
+        "data_attributes": "适用业务、展示规则、创建人、展示月数、截止时间、创建时间"
+       },
+       {
+        "description": "返回查询已订购业务卡片多月份展示设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询结果",
+        "data_attributes": "起始月份、适用业务、展示规则、创建人、展示月数、截止时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购卡片资费标签设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息新增请求数据",
+        "data_attributes": "创建时间、适用业务、生效时间、标签颜色"
+       },
+       {
+        "description": "新增已订购卡片资费标签设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息新增数据",
+        "data_attributes": "生效时间、适用业务、失效时间、标签颜色、标签优先级"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购卡片资费标签设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息修改请求数据",
+        "data_attributes": "标签类型、创建时间、标签优先级、适用业务、失效时间"
+       },
+       {
+        "description": "修改数据库中已订购卡片资费标签设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息修改数据",
+        "data_attributes": "失效时间、标签颜色、标签类型、标签优先级、适用业务"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购卡片资费标签设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息删除请求数据",
+        "data_attributes": "创建时间、展示位置、标签优先级、适用业务"
+       },
+       {
+        "description": "从数据库中删除已订购卡片资费标签设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息删除数据",
+        "data_attributes": "创建时间、标签颜色、适用业务、失效时间、生效时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购卡片资费标签设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息查询请求数据",
+        "data_attributes": "生效时间、标签优先级、标签颜色、失效时间、创建人"
+       },
+       {
+        "description": "读取已订购卡片资费标签设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购卡片资费标签设置信息查询数据",
+        "data_attributes": "标签优先级、失效时间、标签颜色、创建人、生效时间、适用业务"
+       },
+       {
+        "description": "返回查询已订购卡片资费标签设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购卡片资费标签设置信息查询结果",
+        "data_attributes": "标签优先级、失效时间、标签颜色、适用业务、创建时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购业务套餐生效规则配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购业务套餐生效规则配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购业务套餐生效规则配置请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则配置新增请求数据",
+        "data_attributes": "规则状态、规则名称、生效时间、生效方式"
+       },
+       {
+        "description": "新增已订购业务套餐生效规则配置到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则配置新增数据",
+        "data_attributes": "生效方式、更新时间、适用套餐、规则名称"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务套餐生效规则配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购业务套餐生效规则配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购业务套餐生效规则配置请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则配置修改请求数据",
+        "data_attributes": "生效时间、生效方式、适用套餐、规则名称、规则编码"
+       },
+       {
+        "description": "修改数据库中已订购业务套餐生效规则配置记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则配置修改数据",
+        "data_attributes": "生效时间、规则名称、适用渠道、规则编码"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务套餐生效规则配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购业务套餐生效规则配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购业务套餐生效规则配置请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则配置删除请求数据",
+        "data_attributes": "规则编码、规则状态、规则名称、生效方式"
+       },
+       {
+        "description": "从数据库中删除已订购业务套餐生效规则配置记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则配置删除数据",
+        "data_attributes": "规则状态、失效时间、规则名称、规则编码"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务套餐生效规则配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购业务套餐生效规则配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购业务套餐生效规则配置请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则配置查询请求数据",
+        "data_attributes": "适用套餐、创建人、更新时间、生效时间、规则状态"
+       },
+       {
+        "description": "读取已订购业务套餐生效规则配置详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务套餐生效规则配置查询数据",
+        "data_attributes": "适用套餐、规则状态、生效时间、生效方式、规则名称"
+       },
+       {
+        "description": "返回查询已订购业务套餐生效规则配置结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务套餐生效规则配置查询结果",
+        "data_attributes": "生效方式、生效时间、适用套餐、规则名称、规则状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购卡片排序规则",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购卡片排序规则时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购卡片排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片排序规则新增请求数据",
+        "data_attributes": "排序字段、创建人、权重值、规则名称"
+       },
+       {
+        "description": "新增已订购卡片排序规则到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片排序规则新增数据",
+        "data_attributes": "排序方向、权重值、排序字段、规则名称、创建人"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购卡片排序规则",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购卡片排序规则时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购卡片排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片排序规则修改请求数据",
+        "data_attributes": "排序方向、规则名称、权重值、创建人"
+       },
+       {
+        "description": "修改数据库中已订购卡片排序规则记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片排序规则修改数据",
+        "data_attributes": "排序字段、更新时间、排序方向、创建人"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购卡片排序规则",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购卡片排序规则时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购卡片排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片排序规则删除请求数据",
+        "data_attributes": "排序字段、更新时间、规则名称、规则状态"
+       },
+       {
+        "description": "从数据库中删除已订购卡片排序规则记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片排序规则删除数据",
+        "data_attributes": "规则名称、权重值、适用场景、更新时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购卡片排序规则",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购卡片排序规则时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购卡片排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片排序规则查询请求数据",
+        "data_attributes": "排序方向、规则名称、权重值、排序字段、创建人"
+       },
+       {
+        "description": "读取已订购卡片排序规则详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购卡片排序规则查询数据",
+        "data_attributes": "规则状态、排序方向、排序字段、生效时间、规则名称、更新时间"
+       },
+       {
+        "description": "返回查询已订购卡片排序规则结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购卡片排序规则查询结果",
+        "data_attributes": "规则状态、更新时间、权重值、排序字段、排序方向、生效时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购业务到期提醒设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息新增请求数据",
+        "data_attributes": "短信模板、接收人、提醒文案、创建时间"
+       },
+       {
+        "description": "新增已订购业务到期提醒设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息新增数据",
+        "data_attributes": "提醒方式、接收人、创建时间、适用业务、短信模板"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务到期提醒设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息修改请求数据",
+        "data_attributes": "短信模板、适用业务、接收人、提醒天数"
+       },
+       {
+        "description": "修改数据库中已订购业务到期提醒设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息修改数据",
+        "data_attributes": "创建时间、提醒天数、提醒方式、接收人"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务到期提醒设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息删除请求数据",
+        "data_attributes": "创建人、适用业务、提醒天数、更新时间"
+       },
+       {
+        "description": "从数据库中删除已订购业务到期提醒设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息删除数据",
+        "data_attributes": "更新时间、创建人、提醒文案、适用业务、创建时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务到期提醒设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息查询请求数据",
+        "data_attributes": "提醒天数、创建时间、适用业务、更新时间"
+       },
+       {
+        "description": "读取已订购业务到期提醒设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务到期提醒设置信息查询数据",
+        "data_attributes": "更新时间、适用业务、提醒文案、提醒天数、提醒方式"
+       },
+       {
+        "description": "返回查询已订购业务到期提醒设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务到期提醒设置信息查询结果",
+        "data_attributes": "创建时间、提醒文案、更新时间、提醒方式、适用业务、提醒天数"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增已订购业务分组设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息新增请求数据",
+        "data_attributes": "备注说明、分组排序、创建人、分组图标、分组名称"
+       },
+       {
+        "description": "新增已订购业务分组设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息新增数据",
+        "data_attributes": "分组图标、分组排序、展示位置、更新时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务分组设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息修改请求数据",
+        "data_attributes": "分组类型、包含业务、备注说明、分组名称、更新时间"
+       },
+       {
+        "description": "修改数据库中已订购业务分组设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息修改数据",
+        "data_attributes": "分组名称、分组类型、分组排序、备注说明"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务分组设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息删除请求数据",
+        "data_attributes": "备注说明、分组图标、包含业务、展示位置、创建人"
+       },
+       {
+        "description": "从数据库中删除已订购业务分组设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息删除数据",
+        "data_attributes": "展示位置、分组名称、分组排序、分组类型、创建人"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务分组设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息查询请求数据",
+        "data_attributes": "包含业务、分组图标、更新时间、分组名称、创建人"
+       },
+       {
+        "description": "读取已订购业务分组设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务分组设置信息查询数据",
+        "data_attributes": "分组类型、创建人、包含业务、分组图标、分组名称、分组排序"
+       },
+       {
+        "description": "返回查询已订购业务分组设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务分组设置信息查询结果",
+        "data_attributes": "更新时间、分组图标、创建人、包含业务、分组排序、分组类型"
+       }
+      ]
+     },
+     {
+      "fp_name": "新增用户订购产品包设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息新增请求数据",
+        "data_attributes": "包类型、失效时间、产品包编码、生效时间"
+       },
+       {
+        "description": "新增用户订购产品包设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息新增数据",
+        "data_attributes": "包类型、生效时间、产品包编码、产品包名称"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改用户订购产品包设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席修改用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起修改用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息修改请求数据",
+        "data_attributes": "包含业务、订购渠道、适用地市、生效时间、失效时间"
+       },
+       {
+        "description": "修改数据库中用户订购产品包设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息修改数据",
+        "data_attributes": "产品包编码、包含业务、更新时间、生效时间、失效时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除用户订购产品包设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席删除用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起删除用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息删除请求数据",
+        "data_attributes": "产品包名称、产品包编码、包含业务、生效时间、失效时间"
+       },
+       {
+        "description": "从数据库中删除用户订购产品包设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息删除数据",
+        "data_attributes": "生效时间、产品包名称、产品包编码、失效时间、订购渠道"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询用户订购产品包设置信息",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息查询请求数据",
+        "data_attributes": "订购渠道、产品包名称、包含业务、失效时间"
+       },
+       {
+        "description": "读取用户订购产品包设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "用户订购产品包设置信息查询数据",
+        "data_attributes": "订购渠道、失效时间、产品包编码、包含业务、产品包名称"
+       },
+       {
+        "description": "返回查询用户订购产品包设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "用户订购产品包设置信息查询结果",
+        "data_attributes": "产品包编码、包含业务、失效时间、产品包名称、更新时间"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网卡片管理",
+    "level3": "已订购业务卡片数据查询",
+    "fps": [
+     {
+      "fp_name": "查询已订购业务使用进度",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务使用进度时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务使用进度请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务使用进度查询请求数据",
+        "data_attributes": "统计周期、单位、剩余量、总量"
+       },
+       {
+        "description": "读取已订购业务使用进度详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务使用进度查询数据",
+        "data_attributes": "单位、已用量、剩余量、统计周期、业务名称、总量"
+       },
+       {
+        "description": "返回查询已订购业务使用进度结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务使用进度查询结果",
+        "data_attributes": "总量、统计周期、已用量、单位、业务名称、剩余量"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务归属地信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务归属地信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务归属地信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务归属地信息查询请求数据",
+        "data_attributes": "在网时长、归属省份、客户状态、业务名称"
+       },
+       {
+        "description": "读取已订购业务归属地信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务归属地信息查询数据",
+        "data_attributes": "客户状态、归属省份、归属地市、用户号码、在网时长"
+       },
+       {
+        "description": "返回查询已订购业务归属地信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务归属地信息查询结果",
+        "data_attributes": "客户状态、归属地市、归属省份、在网时长、业务名称、用户号码"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务套餐",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务套餐时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务套餐请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐查询请求数据",
+        "data_attributes": "生效时间、套餐编码、套餐资费、出账周期、套餐状态"
+       },
+       {
+        "description": "读取已订购业务套餐详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务套餐查询数据",
+        "data_attributes": "套餐编码、套餐状态、套餐名称、用户号码、套餐资费"
+       },
+       {
+        "description": "返回查询已订购业务套餐结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务套餐查询结果",
+        "data_attributes": "用户号码、套餐名称、套餐编码、生效时间、出账周期、套餐资费"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询用户已订购增值服务",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询用户已订购增值服务时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询用户已订购增值服务请求",
+        "data_move_type": "E",
+        "data_group_name": "用户已订购增值服务查询请求数据",
+        "data_attributes": "开通时间、服务状态、资费标准、开通渠道"
+       },
+       {
+        "description": "读取用户已订购增值服务详情",
+        "data_move_type": "R",
+        "data_group_name": "用户已订购增值服务查询数据",
+        "data_attributes": "开通渠道、资费标准、开通时间、退订时间、服务状态"
+       },
+       {
+        "description": "返回查询用户已订购增值服务结果",
+        "data_move_type": "X",
+        "data_group_name": "用户已订购增值服务查询结果",
+        "data_attributes": "开通时间、服务状态、资费标准、退订时间、增值服务名称、开通渠道"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务关联套餐信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务关联套餐信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务关联套餐信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务关联套餐信息查询请求数据",
+        "data_attributes": "生效时间、套餐名称、套餐编码、包含业务"
+       },
+       {
+        "description": "读取已订购业务关联套餐信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务关联套餐信息查询数据",
+        "data_attributes": "套餐编码、包含业务、套餐名称、生效时间、用户号码"
+       },
+       {
+        "description": "返回查询已订购业务关联套餐信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务关联套餐信息查询结果",
+        "data_attributes": "套餐资费、套餐名称、包含业务、用户号码、套餐编码、生效时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务计费周期",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务计费周期时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务计费周期请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务计费周期查询请求数据",
+        "data_attributes": "扣费方式、生效时间、扣费时间、出账日期"
+       },
+       {
+        "description": "读取已订购业务计费周期详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务计费周期查询数据",
+        "data_attributes": "业务名称、生效时间、扣费方式、计费周期、扣费时间、出账日期"
+       },
+       {
+        "description": "返回查询已订购业务计费周期结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务计费周期查询结果",
+        "data_attributes": "计费周期、扣费方式、生效时间、扣费时间、业务名称"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "project": {
+   "project_code": "ngcard",
+   "client_name": "中移动在线基地",
+   "requirement_id": "202607270156",
+   "requirement_name": "互联网卡片-已订购业务卡片支持展示资费标准",
+   "status": "draft"
+  },
+  "modules": [
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "业务分组管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务分组设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息新增请求数据",
+        "data_attributes": "分组编码、包含业务、展示位置、创建时间"
+       },
+       {
+        "description": "新增已订购业务分组设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息新增数据",
+        "data_attributes": "业务编码、包含业务、展示终端、创建时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务分组设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息修改请求数据",
+        "data_attributes": "排序权重、分组颜色、展示终端、业务名称"
+       },
+       {
+        "description": "修改数据库中已订购业务分组设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息修改数据",
+        "data_attributes": "分组名称、排序权重、业务编码、分组颜色、业务名称"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务分组设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息删除请求数据",
+        "data_attributes": "分组描述、排序权重、分组名称、分组类型、分组背景"
+       },
+       {
+        "description": "从数据库中删除已订购业务分组设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务分组设置信息删除数据",
+        "data_attributes": "分组名称、分组背景、分组描述、排序权重"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务分组设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务分组设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务分组设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务分组设置信息查询请求数据",
+        "data_attributes": "分组名称、排序权重、包含业务、更新时间、分组类型"
+       },
+       {
+        "description": "读取已订购业务分组设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务分组设置信息查询数据",
+        "data_attributes": "包含业务、更新时间、备注说明、分组名称、排序权重、分组类型"
+       },
+       {
+        "description": "返回查询已订购业务分组设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务分组设置信息查询结果",
+        "data_attributes": "更新时间、排序权重、包含业务、分组名称、备注说明"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "业务到期提醒设置",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务到期提醒设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息新增请求数据",
+        "data_attributes": "提醒频次、创建时间、提前天数、接收人、提醒方式"
+       },
+       {
+        "description": "新增已订购业务到期提醒设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息新增数据",
+        "data_attributes": "提前天数、提醒频次、业务编码、接收人"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务到期提醒设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息修改请求数据",
+        "data_attributes": "创建人、短信模板、提醒频次、模板编码、开关状态"
+       },
+       {
+        "description": "修改数据库中已订购业务到期提醒设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息修改数据",
+        "data_attributes": "提醒频次、模板编码、短信模板、阅读状态、开关状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务到期提醒设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息删除请求数据",
+        "data_attributes": "开关状态、提前天数、接收人、提醒级别"
+       },
+       {
+        "description": "从数据库中删除已订购业务到期提醒设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务到期提醒设置信息删除数据",
+        "data_attributes": "提醒周期、审核状态、提前天数、接收人、提醒级别"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务到期提醒设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务到期提醒设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务到期提醒设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务到期提醒设置信息查询请求数据",
+        "data_attributes": "创建人、提醒级别、失效时间、模板编码、提醒内容"
+       },
+       {
+        "description": "读取已订购业务到期提醒设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务到期提醒设置信息查询数据",
+        "data_attributes": "提醒级别、生效时间、创建人、模板编码、失效时间、业务编码"
+       },
+       {
+        "description": "返回查询已订购业务到期提醒设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务到期提醒设置信息查询结果",
+        "data_attributes": "模板编码、业务编码、提醒级别、提醒内容、失效时间、生效时间"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "业务排序规则管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购卡片业务排序规则",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购卡片业务排序规则时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购卡片业务排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片业务排序规则新增请求数据",
+        "data_attributes": "更新时间、渠道编码、优先级、创建时间、排序层级"
+       },
+       {
+        "description": "新增已订购卡片业务排序规则到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片业务排序规则新增数据",
+        "data_attributes": "排序层级、创建时间、备注说明、渠道编码、优先级"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购卡片业务排序规则",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购卡片业务排序规则时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购卡片业务排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片业务排序规则修改请求数据",
+        "data_attributes": "备注说明、权重值、生效范围、生效时间、规则状态"
+       },
+       {
+        "description": "修改数据库中已订购卡片业务排序规则记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片业务排序规则修改数据",
+        "data_attributes": "更新时间、创建人、规则状态、生效时间"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购卡片业务排序规则",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购卡片业务排序规则时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购卡片业务排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片业务排序规则删除请求数据",
+        "data_attributes": "排序上限、排序字段、规则状态、生效范围、备注说明"
+       },
+       {
+        "description": "从数据库中删除已订购卡片业务排序规则记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片业务排序规则删除数据",
+        "data_attributes": "适用场景、备注说明、排序字段、规则状态、适用业务"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购卡片业务排序规则",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购卡片业务排序规则时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购卡片业务排序规则请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片业务排序规则查询请求数据",
+        "data_attributes": "生效范围、更新时间、排序上限、渠道编码"
+       },
+       {
+        "description": "读取已订购卡片业务排序规则详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购卡片业务排序规则查询数据",
+        "data_attributes": "生效范围、渠道编码、展示位置、规则状态、规则编码、排序上限"
+       },
+       {
+        "description": "返回查询已订购卡片业务排序规则结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购卡片业务排序规则查询结果",
+        "data_attributes": "更新时间、规则状态、生效范围、规则编码、排序上限、展示位置"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "业务短信内容管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息新增请求数据",
+        "data_attributes": "通道编码、回复号码、发送场景、备注说明、短信签名"
+       },
+       {
+        "description": "新增已订购业务卡片业务短信内容设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息新增数据",
+        "data_attributes": "签名标识、备注说明、通道编码、发送场景、短信签名"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息修改请求数据",
+        "data_attributes": "模板编码、发送时间、签名标识、审核状态"
+       },
+       {
+        "description": "修改数据库中已订购业务卡片业务短信内容设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息修改数据",
+        "data_attributes": "审核状态、签名标识、回复号码、发送频次"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息删除请求数据",
+        "data_attributes": "模板编码、短信内容、模板状态、接入代码"
+       },
+       {
+        "description": "从数据库中删除已订购业务卡片业务短信内容设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息删除数据",
+        "data_attributes": "接入代码、短信内容、短信标题、模板编码"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务卡片业务短信内容设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务卡片业务短信内容设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务卡片业务短信内容设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询请求数据",
+        "data_attributes": "短信内容、发送状态、短信标题、接入代码、签名标识"
+       },
+       {
+        "description": "读取已订购业务卡片业务短信内容设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询数据",
+        "data_attributes": "接入代码、回复号码、短信内容、短信标题、发送状态"
+       },
+       {
+        "description": "返回查询已订购业务卡片业务短信内容设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务卡片业务短信内容设置信息查询结果",
+        "data_attributes": "短信标题、签名标识、接收号码、发送状态、短信内容"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "产品包订购设置",
+    "fps": [
+     {
+      "fp_name": "新增用户订购产品包设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息新增请求数据",
+        "data_attributes": "续费标志、排序权重、订购渠道、退订时间、生效时间"
+       },
+       {
+        "description": "新增用户订购产品包设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息新增数据",
+        "data_attributes": "续费标志、排序权重、创建时间、生效时间、订购渠道"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改用户订购产品包设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息修改请求数据",
+        "data_attributes": "产品包名称、备注说明、原价、优惠价、适用地市"
+       },
+       {
+        "description": "修改数据库中用户订购产品包设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息修改数据",
+        "data_attributes": "优惠价、排序权重、适用渠道、产品包名称、备注说明"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除用户订购产品包设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息删除请求数据",
+        "data_attributes": "订购时间、业务名称、失效时间、备注说明"
+       },
+       {
+        "description": "从数据库中删除用户订购产品包设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "用户订购产品包设置信息删除数据",
+        "data_attributes": "业务名称、备注说明、订购时间、折扣率、续费周期"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询用户订购产品包设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询用户订购产品包设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询用户订购产品包设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "用户订购产品包设置信息查询请求数据",
+        "data_attributes": "备注说明、订购渠道、业务编码、适用渠道"
+       },
+       {
+        "description": "读取用户订购产品包设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "用户订购产品包设置信息查询数据",
+        "data_attributes": "业务编码、包资费、备注说明、适用渠道、续费周期"
+       },
+       {
+        "description": "返回查询用户订购产品包设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "用户订购产品包设置信息查询结果",
+        "data_attributes": "订购渠道、续费周期、备注说明、生效时间、适用渠道、包资费"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "多月份展示管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息新增请求数据",
+        "data_attributes": "创建人、展示样式、展示月数、规则编码"
+       },
+       {
+        "description": "新增已订购业务卡片多月份展示设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息新增数据",
+        "data_attributes": "展示样式、规则编码、审核状态、优先级、适用业务"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息修改请求数据",
+        "data_attributes": "更新时间、适用业务、展示背景、适用范围"
+       },
+       {
+        "description": "修改数据库中已订购业务卡片多月份展示设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息修改数据",
+        "data_attributes": "适用业务、适用范围、展示背景、排序权重、规则名称"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息删除请求数据",
+        "data_attributes": "展示高度、创建人、展示终端、展示背景、更新时间"
+       },
+       {
+        "description": "从数据库中删除已订购业务卡片多月份展示设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务卡片多月份展示设置信息删除数据",
+        "data_attributes": "优先级、展示终端、备注说明、创建人"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务卡片多月份展示设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务卡片多月份展示设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务卡片多月份展示设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询请求数据",
+        "data_attributes": "失效时间、展示宽度、排序权重、优先级、展示规则"
+       },
+       {
+        "description": "读取已订购业务卡片多月份展示设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询数据",
+        "data_attributes": "展示位置、展示宽度、更新时间、排序权重、失效时间"
+       },
+       {
+        "description": "返回查询已订购业务卡片多月份展示设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务卡片多月份展示设置信息查询结果",
+        "data_attributes": "展示规则、展示开关、展示位置、更新时间、展示宽度"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "套餐生效规则管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购业务套餐生效规则设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购业务套餐生效规则设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购业务套餐生效规则设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则设置信息新增请求数据",
+        "data_attributes": "业务名称、生效时间、规则版本、规则状态"
+       },
+       {
+        "description": "新增已订购业务套餐生效规则设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则设置信息新增数据",
+        "data_attributes": "生效范围、生效时间、规则状态、优先级"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购业务套餐生效规则设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购业务套餐生效规则设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购业务套餐生效规则设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则设置信息修改请求数据",
+        "data_attributes": "适用渠道、套餐名称、排序权重、规则状态"
+       },
+       {
+        "description": "修改数据库中已订购业务套餐生效规则设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则设置信息修改数据",
+        "data_attributes": "套餐名称、规则状态、创建人、排序权重、审核状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购业务套餐生效规则设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购业务套餐生效规则设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购业务套餐生效规则设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则设置信息删除请求数据",
+        "data_attributes": "生效范围、套餐名称、生效次数、生效时段、生效日期"
+       },
+       {
+        "description": "从数据库中删除已订购业务套餐生效规则设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购业务套餐生效规则设置信息删除数据",
+        "data_attributes": "生效日期、生效区域、生效优先级、套餐名称、生效时段"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务套餐生效规则设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务套餐生效规则设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务套餐生效规则设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐生效规则设置信息查询请求数据",
+        "data_attributes": "规则类型、失效时间、生效优先级、生效条件"
+       },
+       {
+        "description": "读取已订购业务套餐生效规则设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务套餐生效规则设置信息查询数据",
+        "data_attributes": "生效条件、创建人、生效次数、规则描述、生效优先级、失效时间"
+       },
+       {
+        "description": "返回查询已订购业务套餐生效规则设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务套餐生效规则设置信息查询结果",
+        "data_attributes": "创建人、规则状态、生效优先级、生效次数、规则类型"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "已订购业务数据查询",
+    "fps": [
+     {
+      "fp_name": "查询已订购业务归属地信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务归属地信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务归属地信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务归属地信息查询请求数据",
+        "data_attributes": "失效时间、归属地市、客户类型、归属省份"
+       },
+       {
+        "description": "读取已订购业务归属地信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务归属地信息查询数据",
+        "data_attributes": "失效时间、客户类型、客户状态、归属省份、归属区县、审核状态"
+       },
+       {
+        "description": "返回查询已订购业务归属地信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务归属地信息查询结果",
+        "data_attributes": "归属地市、客户状态、归属省份、审核状态、归属区县、客户类型"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务套餐",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务套餐时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务套餐请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务套餐查询请求数据",
+        "data_attributes": "用户号码、更新时间、业务名称、出账周期"
+       },
+       {
+        "description": "读取已订购业务套餐详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务套餐查询数据",
+        "data_attributes": "展示位置、用户号码、更新时间、出账周期、业务名称、套餐状态"
+       },
+       {
+        "description": "返回查询已订购业务套餐结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务套餐查询结果",
+        "data_attributes": "用户号码、业务名称、展示位置、更新时间、出账周期、套餐状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询用户已订购增值服务",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询用户已订购增值服务时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询用户已订购增值服务请求",
+        "data_move_type": "E",
+        "data_group_name": "用户已订购增值服务查询请求数据",
+        "data_attributes": "审核状态、开通渠道、业务名称、服务状态、生效时间"
+       },
+       {
+        "description": "读取用户已订购增值服务详情",
+        "data_move_type": "R",
+        "data_group_name": "用户已订购增值服务查询数据",
+        "data_attributes": "生效时间、业务名称、审核状态、服务类型、服务状态、开通渠道"
+       },
+       {
+        "description": "返回查询用户已订购增值服务结果",
+        "data_move_type": "X",
+        "data_group_name": "用户已订购增值服务查询结果",
+        "data_attributes": "开通渠道、业务名称、生效时间、服务状态、服务类型、审核状态"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务关联套餐信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务关联套餐信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务关联套餐信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务关联套餐信息查询请求数据",
+        "data_attributes": "业务名称、排序权重、业务编码、套餐名称、创建时间"
+       },
+       {
+        "description": "读取已订购业务关联套餐信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务关联套餐信息查询数据",
+        "data_attributes": "创建时间、包含业务、套餐资费、排序权重、备注说明"
+       },
+       {
+        "description": "返回查询已订购业务关联套餐信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务关联套餐信息查询结果",
+        "data_attributes": "排序权重、备注说明、套餐名称、业务编码、套餐资费、业务名称"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购业务计费周期",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购业务计费周期时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购业务计费周期请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购业务计费周期查询请求数据",
+        "data_attributes": "更新时间、计费类型、计费周期、生效时间、出账周期"
+       },
+       {
+        "description": "读取已订购业务计费周期详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购业务计费周期查询数据",
+        "data_attributes": "扣费金额、计费类型、更新时间、出账周期、计费周期、生效时间"
+       },
+       {
+        "description": "返回查询已订购业务计费周期结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购业务计费周期查询结果",
+        "data_attributes": "出账周期、扣费金额、更新时间、计费类型、扣费状态、计费周期"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "level1": "拓展多媒体卡片业务支撑能力",
+    "level2": "互联网已订购业务卡片管理",
+    "level3": "资费标签管理",
+    "fps": [
+     {
+      "fp_name": "新增已订购卡片资费标签设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户新增已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起新增已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息新增请求数据",
+        "data_attributes": "更新时间、标签尺寸、标签优先级、标签颜色、展示位置"
+       },
+       {
+        "description": "新增已订购卡片资费标签设置信息到数据库",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息新增数据",
+        "data_attributes": "标签优先级、更新时间、业务编码、展示位置"
+       }
+      ]
+     },
+     {
+      "fp_name": "修改已订购卡片资费标签设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户修改已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起修改已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息修改请求数据",
+        "data_attributes": "展示终端、标签类型、业务编码、备注说明"
+       },
+       {
+        "description": "修改数据库中已订购卡片资费标签设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息修改数据",
+        "data_attributes": "审核状态、标签尺寸、备注说明、业务编码"
+       }
+      ]
+     },
+     {
+      "fp_name": "删除已订购卡片资费标签设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户删除已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起删除已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息删除请求数据",
+        "data_attributes": "展示终端、标签字体、标签颜色、适用业务"
+       },
+       {
+        "description": "从数据库中删除已订购卡片资费标签设置信息记录",
+        "data_move_type": "W",
+        "data_group_name": "已订购卡片资费标签设置信息删除数据",
+        "data_attributes": "排序权重、标签字体、展示终端、更新时间、标签描述"
+       }
+      ]
+     },
+     {
+      "fp_name": "查询已订购卡片资费标签设置信息",
+      "functional_user": "发起者：终端用户\n接收者：多媒体卡片平台",
+      "trigger_event": "终端用户查询已订购卡片资费标签设置信息时触发",
+      "subs": [
+       {
+        "description": "接收终端用户发起查询已订购卡片资费标签设置信息请求",
+        "data_move_type": "E",
+        "data_group_name": "已订购卡片资费标签设置信息查询请求数据",
+        "data_attributes": "生效时间、标签优先级、资费标准、标签颜色"
+       },
+       {
+        "description": "读取已订购卡片资费标签设置信息详情",
+        "data_move_type": "R",
+        "data_group_name": "已订购卡片资费标签设置信息查询数据",
+        "data_attributes": "失效时间、生效时间、标签名称、标签类型、标签颜色"
+       },
+       {
+        "description": "返回查询已订购卡片资费标签设置信息结果",
+        "data_move_type": "X",
+        "data_group_name": "已订购卡片资费标签设置信息查询结果",
+        "data_attributes": "标签名称、标签颜色、标签类型、标签分组、标签优先级"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "project": {
+   "project_code": "qa",
+   "client_name": "测试客户",
+   "requirement_id": "QA-2a1be8",
+   "requirement_name": "自动化测试项目QA",
+   "status": "draft"
+  },
+  "modules": [
+   {
+    "level1": "测试一级",
+    "level2": "测试二级",
+    "level3": "测试配置管理",
+    "fps": [
+     {
+      "fp_name": "新增资费标准测试字段配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席新增资费标准测试字段配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起新增资费标准测试字段配置请求",
+        "data_move_type": "E",
+        "data_group_name": "资费标准测试字段配置新增请求数据",
+        "data_attributes": ""
+       },
+       {
+        "description": "新增资费标准测试字段配置到数据库",
+        "data_move_type": "W",
+        "data_group_name": "资费标准测试字段配置新增数据",
+        "data_attributes": ""
+       }
+      ]
+     },
+     {
+      "fp_name": "查询资费标准测试字段配置",
+      "functional_user": "发起者：一线坐席\n接收者：多媒体卡片平台",
+      "trigger_event": "一线坐席查询资费标准测试字段配置时触发",
+      "subs": [
+       {
+        "description": "接收一线坐席发起查询资费标准测试字段配置请求",
+        "data_move_type": "E",
+        "data_group_name": "资费标准测试字段配置查询请求数据",
+        "data_attributes": ""
+       },
+       {
+        "description": "读取资费标准测试字段配置详情",
+        "data_move_type": "R",
+        "data_group_name": "资费标准测试字段配置查询数据",
+        "data_attributes": "增量字段一、增量字段二、增量字段三、增量字段四"
+       },
+       {
+        "description": "返回查询资费标准测试字段配置结果",
+        "data_move_type": "X",
+        "data_group_name": "资费标准测试字段配置查询结果",
+        "data_attributes": ""
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+]
