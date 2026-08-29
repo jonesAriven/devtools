@@ -232,6 +232,13 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                          (fid, n, desc, body.move_type, group, body.attributes))
         return {"id": sid, "description": desc, "group_name": group}
 
+    @r.post("/fps/{fid}/diversify")
+    def diversify_fp_attrs(fid: int, user: dict = Depends(require_role("editor"))):
+        """按字段池对该 FP 全部子过程执行属性差异化（md5(fp_id) 种子，可复现）。"""
+        if not derive.auto_diversify_fp(db_name, fid):
+            raise HTTPException(422, "字段池未收录该数据组（请到规范中心/词库侧补充字段池）")
+        return {"diversified": True}
+
     @r.put("/subs/{sid}")
     def update_sub(sid: int, body: dict, user: dict = Depends(require_role("editor"))):
         if not writable:
