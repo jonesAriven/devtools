@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
             from omnifind.layers.l3_semantic.builder import make_embedder
             from omnifind.layers.l3_semantic.index import SemanticIndex
             emb = make_embedder(cfg)
-            l3 = SemanticIndex(emb, dim=emb.dim)
+            l3 = SemanticIndex(emb, dim=emb.dim, min_score=cfg.semantic_min_score)
     except Exception as e:  # noqa: BLE001
         print(f"[L3] 语义层不可用(跳过):{e}")
     router = QueryRouter(l1=l1, l2=l2, l3=l3)
@@ -173,6 +173,7 @@ _CONFIG_SCHEMA: dict[str, type] = {
     "max_fulltext_mb": int,
     "chunk_size": int,
     "chunk_overlap": int,
+    "semantic_min_score": float,
     "l1_backend": str,
 }
 
@@ -197,6 +198,9 @@ def update_config(data: dict):
     for k, v in data.items():
         if v is not None:
             setattr(cfg, k, v)
+            # 阈值类运行态参数需同步到已实例化的对象,否则热更新不生效
+            if k == "semantic_min_score" and _state.get("l3") is not None:
+                _state["l3"].min_score = float(v)
             changed = True
     if changed:
         # 保存到 config.local.yaml

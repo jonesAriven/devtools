@@ -46,10 +46,14 @@ def chunk_text(text: str, size: int = 512, overlap: int = 64) -> list[str]:
 class SemanticIndex:
     TABLE = "chunks"
 
-    def __init__(self, embedder, db_path: Path | None = None, dim: int = 512):
+    def __init__(self, embedder, db_path: Path | None = None, dim: int = 512,
+                 min_score: float = 0.5):
         self.embedder = embedder
         self.db_path = str(db_path or (DATA_DIR / "lancedb"))
         self.dim = dim
+        # 相关性阈值: bge-small-zh 余弦相似度分布整体偏高(实测无关查询 top1 也可达 ~0.46,
+        # 真相关 >=0.52), 默认 0.5 以滤掉"什么词都能捞回全部语料"的噪音命中。
+        self.min_score = min_score
         self._db = None
         self._table = None
         import threading
@@ -98,10 +102,12 @@ class SemanticIndex:
             self._table.add(rows)
         return len(chunks)
 
-    def search(self, query: str, limit: int = 30, min_score: float = 0.30) -> list[SemanticHit]:
+    def search(self, query: str, limit: int = 30,
+               min_score: float | None = None) -> list[SemanticHit]:
         self._connect()
         if self._table is None:
             return []
+        threshold = self.min_score if min_score is None else min_score
         qv = self.embedder.encode_one(query, is_query=True)
         # 多取一些 chunk 再按文档聚合
         with self._lock:
@@ -111,7 +117,7 @@ class SemanticIndex:
         for r in raw:
             # lancedb 返回 _distance(cosine 距离),转相似度分
             score = 1.0 - float(r.get("_distance", 1.0))
-            if score < min_score:
+            if score < threshold:
                 continue
             path = r["path"]
             if path not in best or score > best[path].score:

@@ -102,6 +102,9 @@ class OmniConfig:
     semantic_full_disk: bool = False  # 是否对全盘可读文档做语义(默认否,避免爆库)
     chunk_size: int = 512
     chunk_overlap: int = 64
+    # L3 相关性阈值(余弦相似度):低于该分的语义命中丢弃。
+    # bge-small-zh 分数整体偏高,0.3 会连无关词都全量命中;实测相关 >=0.52 / 无关 <=0.46
+    semantic_min_score: float = 0.5
 
     # ---- 模型(相对 data_dir,方便打包时一键指向 %ProgramData%\omnifind\models\) ----
     # 若显式设置绝对路径则用绝对路径,否则拼 data_dir/models/bge-small-zh-v1.5

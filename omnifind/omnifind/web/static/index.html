@@ -1213,7 +1213,8 @@ function fillQuery(q) {
   document.getElementById('searchHistory').classList.remove('show');
 }
 
-/** 语法 chip：追加到现有输入而非整体覆盖，避免丢失已输入的关键词 */
+/** 语法 chip：语法前缀必须位于查询串开头才被后端解析,故前插;避免丢失已输入的关键词 */
+const SYNTAX_PREFIX_RE = /^(filename:|name:|content:|all:|re:|filename-re:|name-re:|\?|ext:\S*|sort:\S*)/i;
 function addSyntax(s) {
   const input = document.getElementById('q');
   let v = input.value;
@@ -1226,8 +1227,13 @@ function addSyntax(s) {
   }
   // 避免重复添加同一前缀
   if (v.toLowerCase().includes(token.toLowerCase())) { input.focus(); return; }
-  if (v && !v.endsWith(' ') && !v.endsWith('\n')) v += ' ';
-  input.value = v + s;
+  const rest = v.trim();
+  if (SYNTAX_PREFIX_RE.test(token)) {
+    // 前插:语法 token 置于开头,原关键词跟在后面(如 "filename:报告")
+    input.value = token + (token === '?' ? '' : ' ') + rest;
+  } else {
+    input.value = (v && !v.endsWith(' ') && !v.endsWith('\n') ? v + ' ' : v) + s;
+  }
   input.focus();
   document.getElementById('searchHistory').classList.remove('show');
 }
@@ -1282,6 +1288,8 @@ async function loadStatus() {
   } catch(e) {
     document.getElementById('status').textContent = '状态获取失败';
   }
+  // L3 可用性就绪后必须刷新层筛选控件,否则"语义"单选停留在初始硬编码的禁用态
+  updateLayerFilterUI();
 }
 
 /* ========== 搜索功能 ========== */

@@ -280,11 +280,18 @@ class QueryRouter:
                 ))
 
         # L3 语义(单次搜索,结果同时供命中采集与计数,避免同查询向量化+检索两遍)
-        l3_all: list = []
+        # l3_raw 保留全量供分面对账; hits/counts 按需过 ext
+        l3_raw: list = []
+        l3_kept = 0
         if "l3" in active and self.l3:
             try:
-                l3_all = self.l3.search(final_q, limit=COUNT_CAP + 1)
-                for h in l3_all[:limit]:
+                l3_raw = self.l3.search(final_q, limit=COUNT_CAP + 1)
+                l3_hits = l3_raw
+                if final_ext:
+                    l3_hits = [h for h in l3_raw
+                               if os.path.splitext(h.path)[1].lower() == final_ext.lower()]
+                l3_kept = len(l3_hits)
+                for h in l3_hits[:limit]:
                     resp.hits.append(UnifiedHit(
                         h.path, h.title, snippet=h.snippet,
                         layer="l3", score=h.score,
@@ -302,24 +309,33 @@ class QueryRouter:
             g: dict[str, int] = {}
             for ext_key in [""] + FACET_EXTS:
                 g[ext_key] = 0
-            # 各层分别 grouped:分面(facet)跨层合并,单层计数(l1/l2)保持独立
-            l1g = self.l1.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP) if self.l1 else {}
-            l2g = self.l2.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP) if self.l2 else {}
+            # 分面口径 = 当前模式激活层计数之和(与 total/"全部按钮=点击后条数"一致):
+            # L1/L2 走 grouped 扫描; L3 用本次检索结果按后缀分桶(零额外向量检索)
+            l1g = (self.l1.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP)
+                   if ("l1" in active and self.l1) else {})
+            l2g = (self.l2.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP)
+                   if ("l2" in active and self.l2) else {})
             for src in (l1g, l2g):
                 for k, v in src.items():
                     g[k] = g.get(k, 0) + v
+            if "l3" in active and self.l3:
+                for h in l3_raw:
+                    e = os.path.splitext(h.path)[1].lower()
+                    if e in g:
+                        g[e] += 1
+                    g[""] += 1
             facet_counts = g
-            # counts["l1"/"l2"] = 该层在 final_ext 筛选下的命中数:
-            #   无筛选 -> 全量; 筛选值在固定白名单内 -> 取该层自己的分面; 自定义后缀 -> 单独精确计数
-            for layer, lgrp in (("l1", l1g), ("l2", l2g)):
-                if not lgrp:
+            # counts["l1"/"l2"] = 该层在 final_ext 筛选下的命中数(始终全算供单层对比):
+            #   无筛选 -> 全量; 筛选值在固定白名单内 -> 取该层分面; 自定义后缀 -> 单独精确计数
+            for layer in ("l1", "l2"):
+                idx = self.l1 if layer == "l1" else self.l2
+                if not idx:
                     counts[layer] = 0
                 elif not final_ext:
-                    counts[layer] = lgrp.get("", 0)
+                    counts[layer] = (l1g if layer == "l1" else l2g).get("", 0)
                 elif final_ext.lower() in g:
-                    counts[layer] = lgrp.get(final_ext.lower(), 0)
+                    counts[layer] = (l1g if layer == "l1" else l2g).get(final_ext.lower(), 0)
                 else:
-                    idx = self.l1 if layer == "l1" else self.l2
                     n, capped = idx.count_match(final_q, final_ext, cap=COUNT_CAP)
                     counts[layer] = n
                     if capped:
@@ -336,10 +352,9 @@ class QueryRouter:
 
         if self.l3:
             if "l3" in active:
-                # 复用上方单次搜索结果,不再二次向量化+检索
-                n = len(l3_all)
-                counts["l3"] = min(n, COUNT_CAP)
-                if n > COUNT_CAP:
+                # 复用上方单次搜索结果(已过 ext),不再二次向量化+检索
+                counts["l3"] = min(l3_kept, COUNT_CAP)
+                if l3_kept > COUNT_CAP:
                     counts["l3_capped"] = True
             else:
                 # 单层(filename/fulltext)模式下语义计数置 0:
