@@ -101,6 +101,18 @@
             div.innerHTML = html;
         }
 
+        // 分钟数 → 人性化时长
+        function formatExpireMinutes(minutes) {
+            if (!minutes || minutes <= 0) return '-';
+            if (minutes < 60) return minutes + '分钟';
+            if (minutes < 1440) { const h = Math.floor(minutes / 60), m = minutes % 60; return h + '小时' + (m > 0 ? m + '分钟' : ''); }
+            if (minutes < 43200) { const d = Math.floor(minutes / 1440), h = minutes % 1440; return d + '天' + (h >= 60 ? Math.floor(h / 60) + '小时' : ''); }
+            if (minutes % 525600 === 0) return (minutes / 525600) + '年';
+            if (minutes % 43200 === 0) return (minutes / 43200) + '个月';
+            const d = Math.floor(minutes / 1440);
+            return d + '天';
+        }
+
         async function generateCode() {
             const serialNumber = document.getElementById('genSerialNumber').value.trim();
             const resultDiv = document.getElementById('genResult');
@@ -131,7 +143,7 @@
                         <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
                         ${infoHtml}
                         <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
-                        <p><span class="rl">有效期：</span><span class="rv">' + (data.expireLabel || formatExpireFromMinutes(data.expireMinutes)) + '</span></p>
+                        <p><span class="rl">有效期：</span><span class="rv">${data.expireLabel || formatExpireMinutes(data.expireMinutes)}</span></p>
                         <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
                         <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
                     `);

@@ -50,6 +50,7 @@
             <p>为客户端软件生成激活码，绑定设备与有效期</p>
         </div>
         <div class="card-body">
+            <div style="margin-bottom:16px;"><a href="/activecode/main.html" style="font-size:13px;color:#667eea;text-decoration:none;">← 返回管理后台</a></div>
             <div class="steps">
                 <h3>使用步骤</h3>
                 <ol>
@@ -118,7 +119,7 @@
             btn.textContent = '生成中...';
 
             try {
-                const resp = await fetch('/api/activation/generate', {
+                const resp = await fetch('/activecode/api/activation/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ serialNumber, expireMinutes })

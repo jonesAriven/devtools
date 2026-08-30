@@ -50,7 +50,38 @@
     overflow: hidden;
 }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .table-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+        .table-scroll { overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0; }
+        /* 记录表 15 列：显式列宽 + 最小宽度，避免长序列号/激活码被均分挤压成 5-6 行碎片段 */
+        #recordsTab table { min-width: 1690px; }
+        #recordsTab th:nth-child(1), #recordsTab td:nth-child(1) { width: 40px; }
+        #recordsTab th:nth-child(2), #recordsTab td:nth-child(2) { width: 55px; }
+        #recordsTab th:nth-child(3), #recordsTab td:nth-child(3) { width: 170px; }
+        #recordsTab th:nth-child(4), #recordsTab td:nth-child(4) { width: 150px; }
+        #recordsTab th:nth-child(5), #recordsTab td:nth-child(5) { width: 115px; }
+        #recordsTab th:nth-child(6), #recordsTab td:nth-child(6) { width: 110px; }
+        #recordsTab th:nth-child(7), #recordsTab td:nth-child(7) { width: 150px; }
+        #recordsTab th:nth-child(8), #recordsTab td:nth-child(8) { width: 150px; }
+        #recordsTab th:nth-child(9), #recordsTab td:nth-child(9) { width: 80px; }
+        #recordsTab th:nth-child(10), #recordsTab td:nth-child(10) { width: 150px; }
+        #recordsTab th:nth-child(11), #recordsTab td:nth-child(11) { width: 95px; }
+        #recordsTab th:nth-child(12), #recordsTab td:nth-child(12) { width: 62px; }
+        #recordsTab th:nth-child(13), #recordsTab td:nth-child(13) { width: 150px; }
+        #recordsTab th:nth-child(14), #recordsTab td:nth-child(14) { width: 150px; }
+        #recordsTab th:nth-child(15), #recordsTab td:nth-child(15) { width: 110px; }
+        #recordsTab td { white-space: nowrap; }
+        .alias-cell { display: inline-block; max-width: 82px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+        /* 操作日志表 10 列 */
+        #logsTab table { min-width: 1280px; }
+        #logsTab th:nth-child(1), #logsTab td:nth-child(1) { width: 40px; }
+        #logsTab th:nth-child(2), #logsTab td:nth-child(2) { width: 60px; }
+        #logsTab th:nth-child(3), #logsTab td:nth-child(3) { width: 90px; }
+        #logsTab th:nth-child(4), #logsTab td:nth-child(4) { width: 200px; }
+        #logsTab th:nth-child(5), #logsTab td:nth-child(5) { width: 160px; }
+        #logsTab th:nth-child(6), #logsTab td:nth-child(6) { width: 100px; }
+        #logsTab th:nth-child(7), #logsTab td:nth-child(7) { width: 95px; }
+        #logsTab th:nth-child(8), #logsTab td:nth-child(8) { width: 280px; }
+        #logsTab th:nth-child(9), #logsTab td:nth-child(9) { width: 130px; }
+        #logsTab th:nth-child(10), #logsTab td:nth-child(10) { width: 150px; }
         .table-scroll thead { position: sticky; top: 0; z-index: 2; background: #fafafa; }
         th { background: #fafafa; padding: 10px 14px; text-align: left; font-size: 12px; color: #888; font-weight: 600; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
         td { padding: 10px 14px; font-size: 13px; color: #333; border-bottom: 1px solid #f5f5f5; }
@@ -82,6 +113,8 @@
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 2px solid #e8e8e8; border-radius: 6px; font-size: 13px; outline: none; }
+        /* radio/checkbox 不参与 width:100% 拉伸，保持原生尺寸 */
+        .form-group input[type="radio"], .form-group input[type="checkbox"] { width: auto; padding: 0; accent-color: #667eea; }
         .form-group input:focus, .form-group textarea:focus { border-color: #667eea; }
         .form-group textarea { resize: vertical; min-height: 70px; font-family: 'Consolas', monospace; }
         .form-row { display: flex; gap: 14px; }
@@ -133,15 +166,48 @@
         .toast.warning { background: #d97706; }
         @keyframes toast-in  { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes toast-out { to { transform: translateX(20px); opacity: 0; } }
+
+        /* 有效期快捷按钮：次要样式 + 选中态（替代全紫主按钮一排的视觉过重） */
+        .expire-preset { padding: 5px 14px; font-size: 12px; border: 1px solid #c7d2fe; border-radius: 6px; background: #fff; color: #667eea; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+        .expire-preset:hover { background: #eef2ff; border-color: #667eea; }
+        .expire-preset.selected { background: #667eea; border-color: #667eea; color: #fff; }
+
+        /* 确认对话框（替代原生 confirm，风格与页面统一） */
+        #confirmOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
+        #confirmOverlay.show { display: flex; }
+        .confirm-card { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 360px; max-width: calc(100vw - 40px); overflow: hidden; animation: confirm-in 0.18s ease; }
+        @keyframes confirm-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .confirm-body { padding: 24px 24px 8px; }
+        .confirm-body .confirm-icon { font-size: 30px; text-align: center; margin-bottom: 10px; }
+        .confirm-body .confirm-msg { font-size: 14px; color: #333; text-align: center; line-height: 1.7; word-break: break-all; }
+        .confirm-body .confirm-sub { font-size: 12px; color: #999; text-align: center; margin-top: 8px; }
+        .confirm-actions { display: flex; gap: 10px; padding: 18px 24px 20px; }
+        .confirm-actions button { flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s; }
+        .confirm-actions button:hover { opacity: 0.88; }
+        .btn-confirm-cancel { background: #f0f0f0; color: #555; }
+        .btn-confirm-ok { background: linear-gradient(135deg, #eb3349, #f45c43); color: #fff; }
     </style>
 </head>
 <body>
     <div id="toastContainer"></div>
+    <div id="confirmOverlay">
+        <div class="confirm-card">
+            <div class="confirm-body">
+                <div class="confirm-icon">⚠️</div>
+                <div class="confirm-msg" id="confirmMsg"></div>
+                <div class="confirm-sub" id="confirmSub">此操作不可撤销</div>
+            </div>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="btnConfirmCancel">取消</button>
+                <button class="btn-confirm-ok" id="btnConfirmOk">确定删除</button>
+            </div>
+        </div>
+    </div>
     <div class="header">
         <h1>激活码管理后台</h1>
         <div class="header-right">
             <span class="user-info" id="userInfo"></span>
-            <a href="/activecode/downloads.html" style="padding:5px 14px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;font-size:13px;text-decoration:none;transition:all 0.2s;">📥 工具下载</a>
+            <a href="/activecode/downloads.html" target="_blank" style="padding:5px 14px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;font-size:13px;text-decoration:none;transition:all 0.2s;">📥 工具下载</a>
             <button class="btn-logout" onclick="handleLogout()">退出登录</button>
         </div>
     </div>
@@ -231,14 +297,14 @@
                 </div>
                 <div class="form-group">
                     <label>有效期</label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(5)">5分钟</button>
-                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(60)">1小时</button>
-                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(1440)">1天</button>
-                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(43200)">30天</button>
-                        <button class="btn-primary" style="padding:5px 14px;font-size:12px;" onclick="setAdminExpire(525600)">1年</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;" id="expirePresetBar">
+                        <button type="button" class="expire-preset" data-mins="5" onclick="setAdminExpire(5, this)">5分钟</button>
+                        <button type="button" class="expire-preset" data-mins="60" onclick="setAdminExpire(60, this)">1小时</button>
+                        <button type="button" class="expire-preset" data-mins="1440" onclick="setAdminExpire(1440, this)">1天</button>
+                        <button type="button" class="expire-preset" data-mins="43200" onclick="setAdminExpire(43200, this)">30天</button>
+                        <button type="button" class="expire-preset" data-mins="525600" onclick="setAdminExpire(525600, this)">1年</button>
                     </div>
-                    <input type="number" id="genExpireMinutes" value="60" min="1" style="margin-top:8px;" placeholder="也可手动输入分钟数">
+                    <input type="number" id="genExpireMinutes" value="60" min="1" style="margin-top:8px;" placeholder="也可手动输入分钟数" oninput="syncExpirePresetHighlight()">
                 </div>
             </div>
             <button class="btn-primary" id="btnGenerateCode" onclick="generateCode()">生成激活码</button>
@@ -302,7 +368,7 @@
             </table>
             <div class="empty" id="recordsEmpty" style="display:none;">暂无数据</div>
                         </div>
-            <div class="batch-actions" id="batchActionsBar" style="display:none;padding:8px 0;border-top:1px solid #e8e8e8;display:flex;align-items:center;gap:10px;">
+            <div class="batch-actions" id="batchActionsBar" style="display:none;padding:8px 0;border-top:1px solid #e8e8e8;align-items:center;gap:10px;">
                 <span style="font-size:13px;color:#666;">已选 <strong id="selectedCount2" style="color:#f5222d">0</strong> 项</span>
                 <button class="btn-sm btn-danger" onclick="batchDeleteRecords()" title="删除选中的记录">批量删除</button>
                 <button class="btn-sm btn-default" onclick="clearSelection()" style="padding:2px 8px;font-size:12px;border:1px solid #d9d9d9;background:#fff;cursor:pointer;border-radius:3px;">取消选择</button>
@@ -395,6 +461,18 @@
                     if (d.success) {
                         defaultExpireMinutes = d.defaultExpireMinutes;
                         document.getElementById('currentDefaultExpire').textContent = d.defaultExpireLabel + ' (' + d.defaultExpireMinutes + ' 分钟)';
+                        // 回填下拉框：精确匹配预设项，匹配不上则切自定义并预填，防止"打开页面直接点保存"静默改掉线上配置
+                        const select = document.getElementById('defaultExpireSelect');
+                        const customInput = document.getElementById('customDefaultExpire');
+                        const match = Array.from(select.options).find(o => o.value !== 'custom' && parseInt(o.value) === d.defaultExpireMinutes);
+                        if (match) {
+                            select.value = match.value;
+                            customInput.style.display = 'none';
+                        } else {
+                            select.value = 'custom';
+                            customInput.style.display = 'inline-block';
+                            customInput.value = d.defaultExpireMinutes;
+                        }
                     }
                 })
                 .catch(() => {});
@@ -441,8 +519,17 @@
             });
         }
 
-function setAdminExpire(minutes) {
+function setAdminExpire(minutes, btn) {
             document.getElementById('genExpireMinutes').value = minutes;
+            syncExpirePresetHighlight();
+        }
+
+        // 快捷按钮选中态：与输入框当前值保持一致，手动改数也同步
+        function syncExpirePresetHighlight() {
+            const val = parseInt(document.getElementById('genExpireMinutes').value);
+            document.querySelectorAll('#expirePresetBar .expire-preset').forEach(b => {
+                b.classList.toggle('selected', parseInt(b.dataset.mins) === val);
+            });
         }
 
         function switchTab(tab) {
@@ -453,6 +540,7 @@ function setAdminExpire(minutes) {
             document.getElementById(tab + 'Tab').classList.add('active');
             if (tab === 'records') loadRecords();
             else if (tab === 'logs') loadLogs();
+            if (('#' + tab) !== location.hash) history.replaceState(null, '', '#' + tab);
         }
 
         async function generateCode() {
@@ -481,15 +569,16 @@ function setAdminExpire(minutes) {
                 if (data.success) {
                     const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
                     showResult(resultDiv, true, `
-                        <p><span class="rl">序列号：</span><span class="rv">${data.serialNumber}</span></p>
-                        <p><span class="rl">初始序列号：</span><span class="rv">${data.initialSerial || '-'}</span></p>
-                        <p><span class="rl">机器码：</span><span class="rv">${data.machineCode || '-'}</span></p>
-                        <p><span class="rl">设备ID：</span><span class="rv">${data.deviceId || '未绑定'}</span></p>
+                        <p><span class="rl">序列号：</span><span class="rv">${escapeHtml(data.serialNumber)}</span></p>
+                        <p><span class="rl">初始序列号：</span><span class="rv">${escapeHtml(data.initialSerial || '-')}</span></p>
+                        <p><span class="rl">机器码：</span><span class="rv">${escapeHtml(data.machineCode || '-')}</span></p>
+                        <p><span class="rl">设备ID：</span><span class="rv">${escapeHtml(data.deviceId || '未绑定')}</span></p>
+                        <p><span class="rl">有效期：</span><span class="rv">${escapeHtml(data.expireLabel || formatExpireMinutes(data.expireMinutes))}</span></p>
                         <p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>
-                        <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${data.activationCode}</div>
+                        <div class="code-box"><button class="btn-copy" onclick="copyText(this)">复制</button>${escapeHtml(data.activationCode)}</div>
                     `);
                 } else {
-                    let html = `<p style="color:#dc2626;">${data.message}</p>`;
+                    let html = `<p style="color:#dc2626;">${escapeHtml(data.message)}</p>`;
                     if (data.activationCode) {
                         const expireDate = new Date(data.expireTime).toLocaleString('zh-CN');
                         html += `<p><span class="rl">过期时间：</span><span class="rv">${expireDate}</span></p>`;
@@ -555,6 +644,37 @@ function setAdminExpire(minutes) {
         function showResult(div, success, html) {
             div.className = 'result-box show ' + (success ? 'success' : 'error');
             div.innerHTML = html;
+        }
+
+        // HTML 转义：表格/结果区所有动态字段统一走这里，防止别名等用户输入注入标记
+        function escapeHtml(v) {
+            if (v === null || v === undefined) return '';
+            return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // 分钟数 → 人性化时长（与列表"有效期"列口径一致）
+        function formatExpireMinutes(minutes) {
+            if (!minutes || minutes <= 0) return '-';
+            if (minutes < 60) return minutes + '分钟';
+            if (minutes < 1440) { const h = Math.floor(minutes / 60), m = minutes % 60; return h + '小时' + (m > 0 ? m + '分钟' : ''); }
+            if (minutes < 43200) { const d = Math.floor(minutes / 1440), h = minutes % 1440; return d + '天' + (h >= 60 ? Math.floor(h / 60) + '小时' : ''); }
+            if (minutes % 525600 === 0) return (minutes / 525600) + '年';
+            if (minutes % 43200 === 0) return (minutes / 43200) + '个月';
+            const d = Math.floor(minutes / 1440);
+            return d + '天';
+        }
+
+        // 后端 LocalDateTime 字符串（2026-08-20T09:01:52）→ 本地化显示，epoch 毫秒也能处理
+        function formatDateTime(v) {
+            if (!v) return '-';
+            if (typeof v === 'number') return new Date(v).toLocaleString('zh-CN');
+            const s = String(v).trim();
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(s)) {
+                const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+                return `${+m[1]}/${+m[2]}/${+m[3]} ${m[4]}:${m[5]}:${m[6]}`;
+            }
+            const d = new Date(s);
+            return isNaN(d) ? s : d.toLocaleString('zh-CN');
         }
 
         // 全局 Toast（替代 alert）：type 支持 success/error/info/warning，duration 毫秒
@@ -638,7 +758,7 @@ function setAdminExpire(minutes) {
                     recPages = data.pages;
                     recPage = data.page;
                     renderRecords(data.data);
-                    updateStats(data.total, currentTime, data.data);
+                    updateStats(data.total, currentTime, data.data, data.activeCount, data.expiredCount);
                     renderPagination('recPagination', recPage, recPages, recTotal, loadRecords);
                     setQueryStatus('rec', 'clear');
                 } else {
@@ -669,19 +789,20 @@ function setAdminExpire(minutes) {
                 const statusHtml = isExpired ? '<span class="badge badge-expired">已过期</span>' : '<span class="badge badge-active">有效</span>';
                 const expireDate = new Date(r.expireTime).toLocaleString('zh-CN');
                 const createDate = r.createTime ? new Date(r.createTime).toLocaleString('zh-CN') : '-';
-                const activatedDate = r.activatedTime ? new Date(r.activatedTime).toLocaleString('zh-CN') : '<span style="color:#aaa">未激活</span>';
-                const expireMin = r.expireMinutes ? r.expireMinutes + '分钟' : '-';
+                const activatedDate = r.activatedTime ? formatDateTime(r.activatedTime) : '<span style="color:#aaa">未激活</span>';
+                const expireMin = r.expireMinutes ? formatExpireMinutes(r.expireMinutes) : '-';
                 const codePreview = r.activationCode
-                    ? `<span class="mono" title="${r.activationCode}">${r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
+                    ? `<span class="mono" title="${escapeHtml(r.activationCode)}">${escapeHtml(r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode)}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
                     : '-';
+                const alias = r.deviceAlias || '';
                 return `<tr>
                     <td style="text-align:center"><input type="checkbox" class="row-checkbox" value="${r.id}" onchange="updateBatchDeleteBtn()"></td>
                     <td>${r.id}</td>
-                    <td><span class="mono">${r.serialNumber || '-'}</span></td>
-                    <td><span class="mono">${r.initialSerial || '-'}</span></td>
-                    <td><span class="mono">${r.machineCode || '-'}</span></td>
-                    <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id}, '${(r.deviceAlias || '').replace(/'/g, "\\'")}')" style="cursor:pointer;color:${r.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;" title="点击编辑">${r.deviceAlias || '点击设置'}</span></td>
-                    <td><span class="mono">${r.deviceId || '-'}</span></td>
+                    <td><span class="mono" title="${escapeHtml(r.serialNumber || '')}">${escapeHtml(r.serialNumber || '-')}</span></td>
+                    <td><span class="mono" title="${escapeHtml(r.initialSerial || '')}">${escapeHtml(r.initialSerial || '-')}</span></td>
+                    <td><span class="mono" title="${escapeHtml(r.machineCode || '')}">${escapeHtml(r.machineCode || '-')}</span></td>
+                    <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id})" style="cursor:pointer;color:${alias ? '#667eea' : '#aaa'};font-size:13px;" title="点击编辑">${alias ? escapeHtml(alias) : '点击设置'}</span></td>
+                    <td><span class="mono" title="${escapeHtml(r.deviceId || '')}">${escapeHtml(r.deviceId || '-')}</span></td>
                     <td>${codePreview}</td>
                     <td>${expireMin}</td>
                     <td>${expireDate}</td>
@@ -690,11 +811,13 @@ function setAdminExpire(minutes) {
                     <td>${createDate}</td>
                     <td>${activatedDate}</td>
                     <td>
-                        <button class="btn-sm btn-info" onclick="viewLogs(${r.id},'${r.serialNumber || ''}')">日志</button>
+                        <button class="btn-sm btn-info" onclick="viewLogs(${r.id})">日志</button>
                         <button class="btn-sm btn-danger" onclick="deleteRecord(${r.id})">删除</button>
                     </td>
                 </tr>`;
             }).join('');
+            // 渲染后恢复批量选择栏状态（当前页可能仍有勾选残留则清空）
+            clearSelection();
         }
 
         function changePageSize(newSize) {
@@ -702,11 +825,19 @@ function setAdminExpire(minutes) {
             loadRecords(1);
         }
 
-        function updateStats(total, now, records) {
-            const active = records ? records.filter(r => r.expireTime >= now).length : 0;
+        // 统计卡使用后端全库状态统计（activeCount/expiredCount），当前页勾选/翻页不影响口径
+        function updateStats(total, now, records, activeCount, expiredCount) {
+            let active, expired;
+            if (typeof activeCount === 'number' && typeof expiredCount === 'number') {
+                active = activeCount;
+                expired = expiredCount;
+            } else {
+                active = records ? records.filter(r => r.expireTime >= now).length : 0;
+                expired = total - active;
+            }
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statActive').textContent = active;
-            document.getElementById('statExpired').textContent = total - active;
+            document.getElementById('statExpired').textContent = expired;
         }
 
         async function loadLogs(page) {
@@ -779,12 +910,12 @@ function setAdminExpire(minutes) {
                     <td style="text-align:center"><input type="checkbox" class="row-checkbox-logs" value="${l.id}"></td>
                     <td>${l.id}</td>
                     <td>${l.recordId || '-'}</td>
-                    <td><span class="mono">${l.serialNumber || '-'}</span></td>
-                    <td><span class="mono">${l.deviceId || '-'}</span></td>
-                    <td><span style="color:${l.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;">${l.deviceAlias || '-'}</span></td>
+                    <td><span class="mono" title="${escapeHtml(l.serialNumber || '')}">${escapeHtml(l.serialNumber || '-')}</span></td>
+                    <td><span class="mono" title="${escapeHtml(l.deviceId || '')}">${escapeHtml(l.deviceId || '-')}</span></td>
+                    <td><span style="color:${l.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;">${l.deviceAlias ? escapeHtml(l.deviceAlias) : '-'}</span></td>
                     <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
-                    <td style="max-width:260px;word-break:break-all;">${l.eventMessage || '-'}</td>
-                    <td><span class="mono">${l.clientIp || '-'}</span></td>
+                    <td style="max-width:260px;word-break:break-all;">${escapeHtml(l.eventMessage || '-')}</td>
+                    <td><span class="mono">${escapeHtml(l.clientIp || '-')}</span></td>
                     <td>${time}</td>
                 </tr>`;
             }).join('');
@@ -813,9 +944,10 @@ function setAdminExpire(minutes) {
             checkboxes.forEach(cb => cb.checked = source.checked);
         }
 
-        function viewLogs(recordId, serialNumber) {
+        function viewLogs(recordId) {
             switchTab('logs');
-            if (serialNumber) document.getElementById('logSerial').value = serialNumber;
+            const record = cachedRecords.find(r => r.id == recordId);
+            if (record && record.serialNumber) document.getElementById('logSerial').value = record.serialNumber;
             loadLogs(1);
         }
 
@@ -869,8 +1001,31 @@ function setAdminExpire(minutes) {
             }
         }
 
+        // 确认对话框（Promise 化，替代原生 confirm）：返回 true=确认 / false=取消
+        function showConfirm(msg, { okText = '确定删除', sub = '此操作不可撤销' } = {}) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('confirmOverlay');
+                document.getElementById('confirmMsg').textContent = msg;
+                document.getElementById('confirmSub').textContent = sub;
+                const okBtn = document.getElementById('btnConfirmOk');
+                okBtn.textContent = okText;
+                overlay.classList.add('show');
+                const done = val => {
+                    overlay.classList.remove('show');
+                    okBtn.onclick = null;
+                    document.getElementById('btnConfirmCancel').onclick = null;
+                    overlay.onclick = null;
+                    resolve(val);
+                };
+                okBtn.onclick = () => done(true);
+                document.getElementById('btnConfirmCancel').onclick = () => done(false);
+                overlay.onclick = e => { if (e.target === overlay) done(false); };
+                okBtn.focus();
+            });
+        }
+
         async function deleteRecord(id) {
-            if (!confirm('确定要删除此记录吗？')) return;
+            if (!await showConfirm('确定要删除此记录吗？')) return;
             try {
                 const resp = await fetch('/activecode/api/activation/' + id, { method: 'DELETE' });
                 const data = await resp.json();
@@ -883,16 +1038,34 @@ function setAdminExpire(minutes) {
             } catch (e) { showToast('删除失败: ' + (e.message || e), 'error'); }
         }
 
-        function editAlias(id, currentAlias) {
+        function editAlias(id) {
+            const record = cachedRecords.find(r => r.id == id);
+            const oldAlias = (record && record.deviceAlias) || '';
             const cell = document.getElementById('alias-' + id);
-            const oldAlias = currentAlias || '';
-            cell.innerHTML = `<input type="text" id="alias-input-${id}" value="${oldAlias}" style="width:100px;padding:2px 6px;border:1px solid #667eea;border-radius:4px;font-size:12px;outline:none;" onkeydown="if(event.key==='Enter')saveAlias(${id});if(event.key==='Escape'){this.parentElement.textContent='${oldAlias || '点击设置'}';this.parentElement.style.color='${oldAlias ? '#667eea' : '#aaa'}';}" onblur="saveAlias(${id})">`;
-            document.getElementById('alias-input-' + id).focus();
+            cell.innerHTML = `<input type="text" id="alias-input-${id}" value="${escapeHtml(oldAlias)}" maxlength="50" style="width:140px;padding:2px 6px;border:1px solid #667eea;border-radius:4px;font-size:12px;outline:none;">`;
+            const input = document.getElementById('alias-input-' + id);
+            input.dataset.saved = '';
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); saveAlias(id); }
+                if (e.key === 'Escape') { input.dataset.saved = '1'; restoreAliasCell(id); }
+            });
+            input.addEventListener('blur', () => saveAlias(id));
+            input.focus();
+            input.select();
+        }
+
+        // Escape/失焦恢复单元格显示（从缓存取旧值，避免内联注入）
+        function restoreAliasCell(id) {
+            const record = cachedRecords.find(r => r.id == id);
+            const alias = (record && record.deviceAlias) || '';
+            const cell = document.getElementById('alias-' + id);
+            cell.textContent = alias || '点击设置';
+            cell.style.color = alias ? '#667eea' : '#aaa';
         }
 
         async function saveAlias(id) {
             const input = document.getElementById('alias-input-' + id);
-            if (!input) return;
+            if (!input || input.dataset.saved === '1') return;  // Enter 保存后 blur 不再重复提交
             const newAlias = input.value.trim();
             const cell = document.getElementById('alias-' + id);
             try {
@@ -903,21 +1076,21 @@ function setAdminExpire(minutes) {
                 });
                 const data = await resp.json();
                 if (data.success) {
+                    input.dataset.saved = '1';
                     cell.textContent = newAlias || '点击设置';
                     cell.style.color = newAlias ? '#667eea' : '#aaa';
-                    cell.onclick = function() { editAlias(id, newAlias); };
                     // 更新缓存
                     const record = cachedRecords.find(r => r.id == id);
                     if (record) record.deviceAlias = newAlias;
                 } else {
+                    input.dataset.saved = '1';
                     showToast(data.message || '修改失败', 'error');
-                    cell.textContent = cell.dataset.oldAlias || '点击设置';
-                    cell.style.color = cell.dataset.oldAlias ? '#667eea' : '#aaa';
+                    restoreAliasCell(id);
                 }
             } catch (e) {
+                input.dataset.saved = '1';
                 showToast('修改失败: ' + (e.message || e), 'error');
-                cell.textContent = '点击设置';
-                cell.style.color = '#aaa';
+                restoreAliasCell(id);
             }
         }
 
@@ -993,10 +1166,10 @@ function setAdminExpire(minutes) {
                         <hr style="margin:8px 0;border-color:#e8e8e8;">
                         <p><span class="pl">记录ID：</span><span class="pv">${data.recordId}</span></p>
                         <p><span class="pl">设备ID：</span><span class="pv">${data.deviceId || '-'}</span></p>
-                        <p><span class="pl">有效期：</span><span class="pv">${data.expireMinutes ? data.expireMinutes + '分钟' : '-'}</span></p>
-                        <p><span class="pl">过期时间：</span><span class="pv">${data.expireTime ? new Date(data.expireTime).toLocaleString('zh-CN') : '-'}</span></p>
-                        <p><span class="pl">首次激活：</span><span class="pv">${data.activatedTime || '未激活'}</span></p>
-                        <p><span class="pl">生成时间：</span><span class="pv">${data.createTime || '-'}</span></p>
+                        <p><span class="pl">有效期：</span><span class="pv">${data.expireMinutes ? formatExpireMinutes(data.expireMinutes) : '-'}</span></p>
+                        <p><span class="pl">过期时间：</span><span class="pv">${formatDateTime(data.expireTime)}</span></p>
+                        <p><span class="pl">首次激活：</span><span class="pv">${data.activatedTime ? formatDateTime(data.activatedTime) : '未激活'}</span></p>
+                        <p><span class="pl">生成时间：</span><span class="pv">${formatDateTime(data.createTime)}</span></p>
                         <p><span class="pl">状态：</span><span class="pv" style="color:${data.expired ? '#dc2626' : '#16a34a'}">${data.expired ? '已过期' : '有效'}</span></p>
                     `;
                 } else {
@@ -1196,7 +1369,7 @@ function setAdminExpire(minutes) {
                 return;
             }
             const ids = Array.from(checked).map(cb => parseInt(cb.value));
-            if (!confirm('确定要删除选中的 ' + ids.length + ' 条记录吗？此操作不可撤销！')) return;
+            if (!await showConfirm('确定要删除选中的 ' + ids.length + ' 条记录吗？')) return;
             
             try {
                 showToast('正在删除...', 'info', 2000);
@@ -1217,11 +1390,17 @@ function setAdminExpire(minutes) {
             }
         }
 
-        // Clear selections when loading new page
-        const _origLoadRec = typeof loadRecords !== 'undefined' ? loadRecords : null;
-    
+        // Clear selections when loading new page（renderRecords 内已统一 clearSelection）
+
         // 页面加载时获取默认有效期配置
         loadDefaultExpireConfig();
+        // 有效期快捷按钮初始选中态
+        syncExpirePresetHighlight();
+        // 支持 /activecode/main.html#records 直达页签（刷新不丢页签）
+        (function() {
+            const h = (location.hash || '').replace('#', '');
+            if (tabNames.includes(h) && h !== 'tool') switchTab(h);
+        })();
 </script>
 </body>
 </html>

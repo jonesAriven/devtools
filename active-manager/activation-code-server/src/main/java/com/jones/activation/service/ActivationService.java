@@ -282,6 +282,12 @@ public class ActivationService {
         Page<ActivationRecord> pageResult = activationRecordMapper.selectPage(new Page<>(page, size), queryWrapper);
         long now = System.currentTimeMillis();
 
+        // 全库状态统计（不受 keyword/status 筛选影响），供前端统计卡展示真实水位
+        long activeCount = activationRecordMapper.selectCount(
+                new LambdaQueryWrapper<ActivationRecord>().gt(ActivationRecord::getExpireTime, now));
+        long expiredCount = activationRecordMapper.selectCount(
+                new LambdaQueryWrapper<ActivationRecord>().le(ActivationRecord::getExpireTime, now));
+
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("success", true);
         result.put("data", pageResult.getRecords());
@@ -289,6 +295,8 @@ public class ActivationService {
         result.put("page", pageResult.getCurrent());
         result.put("size", pageResult.getSize());
         result.put("pages", pageResult.getPages());
+        result.put("activeCount", activeCount);
+        result.put("expiredCount", expiredCount);
         result.put("currentTime", now);
         return result;
     }
