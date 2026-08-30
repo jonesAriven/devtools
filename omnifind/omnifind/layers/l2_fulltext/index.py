@@ -194,6 +194,11 @@ class FullTextIndex:
                                  snippet, flags=re.IGNORECASE)
             except re.error:
                 pass
+        # FTS 存的是 jieba 分词文本(空格分隔),直接展示会出现 "包含 检索 功能" 式碎裂。
+        # 只合并 CJK 字符(含高亮私有区标记)之间的空格,英文/代码 token 间空格保留。
+        _HL = r'\ue000-\ue001'
+        snippet = re.sub(
+            rf'(?<=[\u4e00-\u9fff{_HL}])\s+(?=[\u4e00-\u9fff{_HL}])', '', snippet)
         return snippet
 
     def count_match(self, query: str, ext_filter: str | None = None,
