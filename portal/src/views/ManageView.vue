@@ -165,6 +165,9 @@
         </el-form-item>
         <el-form-item label="登录密码" prop="loginPassword">
           <el-input v-model="formData.loginPassword" placeholder="请输入登录密码，留空则不修改" show-password />
+          <el-checkbox v-if="isEdit" v-model="clearPassword" style="margin-top:4px">
+            清空已存密码（勾选后保存将删除该系统的登录密码）
+          </el-checkbox>
         </el-form-item>
         <div class="form-tip">
           <el-icon class="tip-icon"><InfoFilled /></el-icon>
@@ -311,9 +314,13 @@ function handleAdd() {
   dialogVisible.value = true
 }
 
+// 编辑态：勾选后提交时显式发送空串，后端将已存密码置空（null 表示不修改）
+const clearPassword = ref(false)
+
 function handleEdit(row: SystemConfig) {
   isEdit.value = true
   editId.value = row.id
+  clearPassword.value = false
   Object.assign(formData, { ...row })
   dialogVisible.value = true
 }
@@ -325,7 +332,11 @@ async function handleSubmit() {
     submitLoading.value = true
     try {
       if (isEdit.value) {
+        if (clearPassword.value) {
+          formData.loginPassword = '' // 显式清空：后端将已存密码置 null
+        }
         await updateSystem(editId.value, formData)
+        clearPassword.value = false
         ElMessage.success('更新成功')
       } else {
         await createSystem(formData)
