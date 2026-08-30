@@ -164,7 +164,7 @@
           <el-input v-model="formData.loginUsername" placeholder="请输入登录账号" />
         </el-form-item>
         <el-form-item label="登录密码" prop="loginPassword">
-          <el-input v-model="formData.loginPassword" placeholder="请输入登录密码，留空则不修改" show-password />
+          <el-input v-model="formData.loginPassword" placeholder="已回填当前密码，可修改；清空并保存=删除密码" show-password />
           <el-checkbox v-if="isEdit" v-model="clearPassword" style="margin-top:4px">
             清空已存密码（勾选后保存将删除该系统的登录密码）
           </el-checkbox>
@@ -187,7 +187,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search, Edit, Delete, InfoFilled } from '@element-plus/icons-vue'
 import { categoryLabels, type SystemConfig, type SystemCategory } from '@/config/systems'
-import { getSystemList, createSystem, updateSystem, deleteSystem } from '@/api/system'
+import { getSystemList, createSystem, updateSystem, deleteSystem, getSystemCredentials } from '@/api/system'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -317,12 +317,19 @@ function handleAdd() {
 // 编辑态：勾选后提交时显式发送空串，后端将已存密码置空（null 表示不修改）
 const clearPassword = ref(false)
 
-function handleEdit(row: SystemConfig) {
+async function handleEdit(row: SystemConfig) {
   isEdit.value = true
   editId.value = row.id
   clearPassword.value = false
   Object.assign(formData, { ...row })
+  formData.loginPassword = '' // 先置空，随后回填已存密码（所见即所得）
   dialogVisible.value = true
+  try {
+    const creds = await getSystemCredentials(row.id)
+    if (creds?.password) formData.loginPassword = creds.password
+  } catch {
+    /* 拉取失败保持为空：不动密码，清空需勾选清空已存密码 */
+  }
 }
 
 async function handleSubmit() {
