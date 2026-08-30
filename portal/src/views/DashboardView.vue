@@ -74,6 +74,24 @@
       </div>
     </div>
 
+    <div v-if="uncategorizedSystems.length > 0" class="section-wrapper" id="category-unknown">
+      <div class="section-title">
+        <span>未分类</span>
+        <span class="section-count">({{ uncategorizedSystems.length }})</span>
+      </div>
+      <div>
+        <div class="cards-grid">
+          <SystemCard
+            v-for="sys in uncategorizedSystems"
+            :key="sys.id"
+            :config="sys"
+            :status="healthMap.get(sys.id)?.status || 'unknown'"
+            :latency="healthMap.get(sys.id)?.latency"
+          />
+        </div>
+      </div>
+    </div>
+
     <el-empty v-if="filteredSystems.length === 0" description="没有找到匹配的系统" />
   </div>
 </template>
@@ -131,6 +149,13 @@ function getSystemsByCategory(cat: SystemCategory): SystemConfig[] {
     s => s.category === cat && !favoritesStore.isFavorite(s.id)
   )
 }
+
+// 未分类（category 为空或不在固定四类）的系统也必须在看板可见，否则"保存了却看不见"
+const uncategorizedSystems = computed((): SystemConfig[] =>
+  filteredSystems.value.filter(
+    s => !categories.includes(s.category) && !favoritesStore.isFavorite(s.id)
+  )
+)
 
 async function fetchSystems() {
   try {
