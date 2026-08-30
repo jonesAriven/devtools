@@ -255,6 +255,15 @@ call("DELETE", f"/api/active/projects/{CPID}?confirm=active", admin)
 st, _ = call("DELETE", f"/api/active/projects/{PID}?confirm=active", admin)
 check("X29", "清理全部测试项目", st == 200, st)
 
+# X29b 清理历史残留（前缀制：本脚本任何一次运行的崩溃遗留全部回收）
+plist = call("GET", "/api/active/projects", admin)[1]
+cleaned = 0
+for p in plist:
+    if p["requirement_id"].startswith(("QA3-", "QA3E-")):
+        call("DELETE", f"/api/active/projects/{p['id']}?confirm=active", admin)
+        cleaned += 1
+check("X29b", "历史残留清理（前缀制）", True, f"cleaned={cleaned}")
+
 # X30 管理端点未授权
 st, _ = call("PUT", "/api/studio/specs/min_fields_error", None, {"value": 9})
 check("X30", "未登录改规范 401", st == 401, st)

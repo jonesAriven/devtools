@@ -216,7 +216,16 @@ def chat(body: ChatIn, user: dict = Depends(require_role("viewer"))):
             except json.JSONDecodeError:
                 args = {}
             result = _exec_tool(fn, args, user)
-            tools_used.append({"tool": fn, "args": args})
+            # 工具结果摘要透出给用户（错误/权限拒绝可见，成功给关键计数）
+            if isinstance(result, dict) and result.get("error"):
+                summary = {"error": result["error"]}
+            elif isinstance(result, list):
+                summary = {"rows": len(result)}
+            elif isinstance(result, dict):
+                summary = {k: result[k] for k in ("summary", "issue_count", "download", "label", "spec_key") if k in result}
+            else:
+                summary = {"ok": True}
+            tools_used.append({"tool": fn, "args": args, "result": summary})
             messages.append({"role": "tool", "tool_call_id": c["id"],
                              "content": json.dumps(result, ensure_ascii=False)[:4000]})
     _log(body.message, "(达到工具调用轮次上限)", tools_used, user)
