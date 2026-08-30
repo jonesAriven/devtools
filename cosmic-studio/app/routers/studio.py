@@ -110,8 +110,9 @@ def get_spec(spec_key: str):
 
 @r.put("/studio/specs/{spec_key}")
 def put_spec(spec_key: str, body: SpecIn, user: dict = Depends(require_role("admin"))):
-    if spec_key not in spec.SEED_SPECS:
-        raise HTTPException(404, f"未知规范键（不允许新增自由键）: {spec_key}")
+    err = spec.validate_value(spec_key, body.value)
+    if err:
+        raise HTTPException(422, err)
     return spec.upsert_spec(spec_key, body.value, body.category, body.description)
 
 

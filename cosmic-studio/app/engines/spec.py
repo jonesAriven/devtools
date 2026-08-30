@@ -139,15 +139,59 @@ SEED_SPECS = {
 
 
 def load_spec(spec_key: str):
-    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后）。"""
+    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后，含类型矫正）。"""
     try:
         row = db.query(config.DB_STUDIO, "SELECT value FROM spec_rules WHERE spec_key=%s",
                        (spec_key,), one=True)
         if row:
-            return row["value"] if not isinstance(row["value"], str) else json.loads(row["value"])
+            v = row["value"] if not isinstance(row["value"], str) else json.loads(row["value"])
+            return _coerce(spec_key, v)
     except Exception:
         pass
     return SEED_SPECS[spec_key]["value"]
+
+
+# 数值/布尔类规范键的类型契约（防脏值入表后 lint 崩溃）
+_NUMERIC_SPECS = {"min_fields_error", "min_fields_warn", "jaccard_same_module",
+                  "sim_same_req", "sim_cross_archive"}
+_BOOL_SPECS = {"e_class_exempt", "crud_sibling_exempt", "cross_archive_check", "pool_coverage_check"}
+
+
+def _coerce(spec_key: str, v):
+    """读时矫正：数值键转 float，布尔键转 bool；矫正失败回落种子值。"""
+    try:
+        if spec_key in _NUMERIC_SPECS:
+            f = float(v)
+            return f
+        if spec_key in _BOOL_SPECS:
+            return bool(v) if not isinstance(v, bool) else v
+    except (TypeError, ValueError):
+        return SEED_SPECS[spec_key]["value"]
+    return v
+
+
+def validate_value(spec_key: str, v) -> str | None:
+    """PUT 时校验：返回错误消息或 None。"""
+    if spec_key not in SEED_SPECS:
+        return f"未知规范键（不允许新增自由键）: {spec_key}"
+    if spec_key in _NUMERIC_SPECS:
+        try:
+            f = float(v)
+            if spec_key.startswith("min_fields") and f < 1:
+                return "字段数下限必须 ≥1"
+            if spec_key.startswith("sim_") or spec_key == "jaccard_same_module":
+                if not 0 < f < 1:
+                    return "相似度/Jaccard 阈值必须在 (0,1) 区间"
+        except (TypeError, ValueError):
+            return f"{spec_key} 必须是数值，收到: {v!r}"
+    if spec_key in _BOOL_SPECS and not isinstance(v, bool):
+        return f"{spec_key} 必须是布尔值，收到: {v!r}"
+    if spec_key in ("ewx_rules", "sub_desc_templates", "data_group_templates",
+                    "functional_user_map") and not isinstance(v, dict):
+        return f"{spec_key} 必须是对象"
+    if spec_key in ("allowed_verbs", "sub_move_types") and not isinstance(v, list):
+        return f"{spec_key} 必须是数组"
+    return None
 
 
 def load_all(category: str | None = None) -> dict:

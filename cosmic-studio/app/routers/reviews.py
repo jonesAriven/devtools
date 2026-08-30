@@ -152,10 +152,7 @@ def _fp_context(cur, fp_id: int):
 
 @r.post("/projects/{pid}/reviews/auto-fix")
 def auto_fix(pid: int, body: AutoFixIn, user: dict = Depends(require_role("editor"))):
-    cfg = _llm_cfg()
-    if not cfg.get("enabled") or not cfg.get("base_url") or not cfg.get("model"):
-        raise HTTPException(409, "LLM 未配置：请到 系统管理→LLM配置 填写并启用后再使用自动优化")
-
+    # 先校验意见存在性，再查 LLM（避免"LLM未配置"掩盖"意见不存在"）
     if body.review_ids:
         ph = ",".join(["%s"] * len(body.review_ids))
         items = db.query(config.DB_ACTIVE,
@@ -165,7 +162,11 @@ def auto_fix(pid: int, body: AutoFixIn, user: dict = Depends(require_role("edito
         items = db.query(config.DB_ACTIVE,
                          "SELECT * FROM review_items WHERE project_id=%s AND disposition='pending'", (pid,))
     if not items:
-        raise HTTPException(422, "没有待处理的评审意见")
+        raise HTTPException(422, "没有待处理的评审意见（或指定的意见不在待处理状态）")
+
+    cfg = _llm_cfg()
+    if not cfg.get("enabled") or not cfg.get("base_url") or not cfg.get("model"):
+        raise HTTPException(409, "LLM 未配置：请到 系统管理→LLM配置 填写并启用后再使用自动优化")
 
     before_lint = linter.lint_project(config.DB_ACTIVE, pid)
     applied, skipped, llm_changes = [], [], []
