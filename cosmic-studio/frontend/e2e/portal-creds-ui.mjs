@@ -28,19 +28,31 @@ if (page.url().includes('login')) {
 ok('P1 登录进入看板', !page.url().includes('login'), page.url())
 
 // P2 管理页新建条目（带账密）；间歇性401弹回登录时自动重登重试
-const gotoManage = async () => {
-  await page.goto(BASE + '/portal/manage')
-  await page.waitForTimeout(2000)
-  if (page.url().includes('login')) {
-    await page.fill('input >> nth=0', 'admin')
-    await page.fill('input[type=password]', 'admin123')
-    await page.click('button >> nth=0')
+const ensureRows = async () => {
+  // 列表偶发加载失败（空表）：刷新重试最多 2 次
+  for (let i = 0; i < 2; i++) {
+    await page.waitForTimeout(1500)
+    if (await page.locator('.el-table__row').count() > 0) return
+    await page.reload()
     await page.waitForTimeout(2500)
+  }
+}
+const gotoManage = async () => {
+  for (let i = 0; i < 3; i++) {
     await page.goto(BASE + '/portal/manage')
     await page.waitForTimeout(2000)
+    if (page.url().includes('login')) {
+      await page.fill('input >> nth=0', 'admin')
+      await page.fill('input[type=password]', 'admin123')
+      await page.click('button >> nth=0')
+      await page.waitForTimeout(2500)
+      continue
+    }
+    return
   }
 }
 await gotoManage()
+await ensureRows()
 await page.click('button:has-text("新增系统")')
 await page.waitForTimeout(800)
 ok('P2 新建对话框打开', await page.locator('.el-dialog').count() > 0)
@@ -73,9 +85,10 @@ ok('P4b 写入时查看账密=UiPass@123', lastCredResp?.data?.password === 'UiP
 
 // P5 编辑：清空密码 → 保存（bug 复现点）
 await gotoManage()
+await ensureRows()
 await page.locator('.el-table__row', { hasText: 'QA账密UI测试' }).locator('button', { hasText: '编辑' }).click()
 await page.waitForTimeout(800)
-await page.locator('.el-dialog .el-form-item', { has: page.locator('.el-form-item__label:text-is("登录密码")') }).locator('input').fill('')
+await page.click('.el-dialog .el-checkbox:has-text("清空已存密码")')  // 勾选清空（新功能）
 await page.click('.el-dialog button:has-text("确定")')
 await page.waitForTimeout(1500)
 
@@ -88,10 +101,11 @@ await card2.locator('button', { hasText: '账密' }).click()
 await page.waitForTimeout(600)
 await page.click('.el-dropdown-menu__item:has-text("复制密码")')
 await page.waitForTimeout(1500)
-ok('P5 BUG复现：UI清空密码保存后，账密仍是旧密码', lastCredResp?.data?.password === 'UiPass@123', JSON.stringify(lastCredResp))
+ok('P5 修复验证：UI清空密码保存后，账密已清空', !lastCredResp?.data?.password, JSON.stringify(lastCredResp))
 
 // P7 清理：UI 删除测试条目
 await gotoManage()
+await ensureRows()
 await page.locator('.el-table__row', { hasText: 'QA账密UI测试' }).locator('button', { hasText: '删除' }).click()
 await page.waitForTimeout(600)
 await page.click('.el-message-box button:has-text("确定")')

@@ -60,8 +60,8 @@ await clearToasts()
 await openCredMenu('cosmic-studio', '复制密码')
 log = await page.evaluate(() => window.__copyLog)
 toasts = await getToasts()
-const silent = log.length === 0 && toasts.length === 0
-ok('C1b BUG复现：未配置密码时复制密码 → 静默无反应（无提示无复制）', silent, JSON.stringify({ log, toasts }))
+const warned = toasts.some(t => t.includes('未配置登录密码'))
+ok('C1b 修复验证：未配置密码时复制密码 → 提示"未配置登录密码"', warned, JSON.stringify({ log, toasts }))
 await page.screenshot({ path: 'e2e_portal_copy_silent.png' })
 
 // C2 已配置密码的条目：复制账号/复制密码都应正常
