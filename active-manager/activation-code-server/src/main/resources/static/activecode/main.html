@@ -70,6 +70,7 @@
         #recordsTab th:nth-child(15), #recordsTab td:nth-child(15) { width: 110px; }
         #recordsTab td { white-space: nowrap; }
         .alias-cell { display: inline-block; max-width: 82px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+        .ellip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
         /* 操作日志表 10 列 */
         #logsTab table { min-width: 1280px; }
         #logsTab th:nth-child(1), #logsTab td:nth-child(1) { width: 40px; }
@@ -792,17 +793,17 @@ function setAdminExpire(minutes, btn) {
                 const activatedDate = r.activatedTime ? formatDateTime(r.activatedTime) : '<span style="color:#aaa">未激活</span>';
                 const expireMin = r.expireMinutes ? formatExpireMinutes(r.expireMinutes) : '-';
                 const codePreview = r.activationCode
-                    ? `<span class="mono" title="${escapeHtml(r.activationCode)}">${escapeHtml(r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode)}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
+                    ? `<span class="mono ellip" title="${escapeHtml(r.activationCode)}">${escapeHtml(r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode)}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
                     : '-';
                 const alias = r.deviceAlias || '';
                 return `<tr>
                     <td style="text-align:center"><input type="checkbox" class="row-checkbox" value="${r.id}" onchange="updateBatchDeleteBtn()"></td>
                     <td>${r.id}</td>
-                    <td><span class="mono" title="${escapeHtml(r.serialNumber || '')}">${escapeHtml(r.serialNumber || '-')}</span></td>
-                    <td><span class="mono" title="${escapeHtml(r.initialSerial || '')}">${escapeHtml(r.initialSerial || '-')}</span></td>
-                    <td><span class="mono" title="${escapeHtml(r.machineCode || '')}">${escapeHtml(r.machineCode || '-')}</span></td>
+                    <td><span class="mono ellip" title="${escapeHtml(r.serialNumber || '')}">${escapeHtml(r.serialNumber || '-')}</span></td>
+                    <td><span class="mono ellip" title="${escapeHtml(r.initialSerial || '')}">${escapeHtml(r.initialSerial || '-')}</span></td>
+                    <td><span class="mono ellip" title="${escapeHtml(r.machineCode || '')}">${escapeHtml(r.machineCode || '-')}</span></td>
                     <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id})" style="cursor:pointer;color:${alias ? '#667eea' : '#aaa'};font-size:13px;" title="点击编辑">${alias ? escapeHtml(alias) : '点击设置'}</span></td>
-                    <td><span class="mono" title="${escapeHtml(r.deviceId || '')}">${escapeHtml(r.deviceId || '-')}</span></td>
+                    <td><span class="mono ellip" title="${escapeHtml(r.deviceId || '')}">${escapeHtml(r.deviceId || '-')}</span></td>
                     <td>${codePreview}</td>
                     <td>${expireMin}</td>
                     <td>${expireDate}</td>
