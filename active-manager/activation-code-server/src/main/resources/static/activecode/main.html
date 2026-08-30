@@ -7,50 +7,89 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>激活码管理后台</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea'/%3E%3Cstop offset='100%25' style='stop-color:%23764ba2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%234f46e5'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
     <style>
+        /* ===== 设计 token：与 login/index/downloads/tool 保持同一套 ===== */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-soft: #eef2ff;
+            --primary-ring: rgba(79, 70, 229, 0.14);
+            --bg: #f6f7f9;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --border-light: #f0f1f4;
+            --text: #111827;
+            --text-2: #6b7280;
+            --text-3: #9ca3af;
+            --green: #059669;
+            --green-soft: #ecfdf5;
+            --red: #dc2626;
+            --red-soft: #fef2f2;
+            --amber: #d97706;
+            --amber-soft: #fffbeb;
+            --radius: 12px;
+            --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 40px; display: flex; align-items: center; justify-content: space-between; }
-        .header h1 { color: #fff; font-size: 20px; }
-        .header-right { display: flex; align-items: center; gap: 16px; }
-        .header-right .user-info { color: rgba(255,255,255,0.85); font-size: 14px; }
-        .header-right .btn-logout { padding: 5px 14px; background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-        .header-right .btn-logout:hover { background: rgba(255,255,255,0.3); }
-        .tabs-bar { background: #fff; padding: 0 24px; display: flex; border-bottom: 2px solid #f0f0f0; overflow-x: auto; }
-        .tab-btn { padding: 12px 20px; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; }
-        .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
-        .tab-btn:hover { color: #667eea; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+        /* ===== 顶栏：白底细边框，品牌色只留 logo 点缀 ===== */
+        .header { background: var(--surface); border-bottom: 1px solid var(--border-light); padding: 0 28px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+        .header-brand { display: flex; align-items: center; gap: 10px; }
+        .header-logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3); }
+        .header h1 { color: var(--text); font-size: 16px; font-weight: 600; letter-spacing: 0.2px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .header-right .user-info { color: var(--text-2); font-size: 13px; background: var(--bg); border: 1px solid var(--border-light); padding: 5px 12px; border-radius: 999px; }
+        .header-right .btn-logout, .header-right .btn-download-link { padding: 6px 14px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .header-right .btn-logout:hover, .header-right .btn-download-link:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+
+        /* ===== 页签 ===== */
+        .tabs-bar { background: var(--surface); padding: 0 28px; display: flex; gap: 4px; border-bottom: 1px solid var(--border-light); overflow-x: auto; }
+        .tab-btn { padding: 14px 16px; font-size: 13.5px; font-weight: 500; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; white-space: nowrap; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+        .tab-btn:hover { color: var(--primary); }
+
         .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .toolbar { background: #fff; padding: 14px 24px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #e8e8e8; flex-wrap: wrap; }
-        .toolbar input, .toolbar select { padding: 7px 12px; border: 2px solid #e8e8e8; border-radius: 6px; font-size: 13px; outline: none; }
-        .toolbar input:focus, .toolbar select:focus { border-color: #667eea; }
-        .toolbar input { width: 240px; }
-        .toolbar select { width: 130px; }
-        .btn-primary { padding: 7px 18px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
-        .btn-primary:hover { opacity: 0.9; }
-        .btn-green { padding: 7px 18px; background: linear-gradient(135deg, #11998e, #38ef7d); color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
-        .btn-green:hover { opacity: 0.9; }
-        .stats { display: flex; gap: 14px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #e8e8e8; }
-        .stat-card { flex: 1; padding: 14px 18px; border-radius: 10px; color: #fff; }
-        .stat-card.total { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .stat-card.active { background: linear-gradient(135deg, #11998e, #38ef7d); }
-        .stat-card.expired { background: linear-gradient(135deg, #eb3349, #f45c43); }
-        .stat-card .num { font-size: 26px; font-weight: 700; }
-        .stat-card .label { font-size: 12px; opacity: 0.85; margin-top: 2px; }
-        .table-wrap { 
-    margin: 14px 24px; 
-    background: #fff; 
-    border-radius: 10px; 
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06); 
+        .tab-content.active { display: block; max-width: 1400px; margin: 0 auto; padding: 20px 28px 48px; }
+
+        /* ===== 工具页：设置/表单卡片 ===== */
+        .section { margin: 0 0 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow); }
+        .section h3 { font-size: 15px; color: var(--text); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .section h3::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--primary); flex: none; }
+        .section .sec-desc { font-size: 12.5px; color: var(--text-3); margin-bottom: 16px; }
+        /* 设置类表单限宽，避免大屏输入框拉满整行 */
+        .section .form-max { max-width: 760px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; background: var(--surface); transition: border-color 0.15s, box-shadow 0.15s; }
+        .form-group input[type="radio"], .form-group input[type="checkbox"] { width: auto; padding: 0; accent-color: var(--primary); }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+        .form-group textarea { resize: vertical; min-height: 76px; font-family: 'SFMono-Regular', Consolas, monospace; }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+
+        /* 版本校验模式选项卡 */
+        .vc-mode-option { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; transition: all 0.15s; }
+        .vc-mode-option:hover { border-color: #c7d2fe; background: #fafaff; }
+
+        /* ===== 按钮 ===== */
+        .btn-primary { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; transition: background 0.15s, box-shadow 0.15s; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3); }
+        .btn-green { padding: 8px 18px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; transition: background 0.15s, box-shadow 0.15s; }
+        .btn-green:hover { background: #047857; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); }
+        .btn-primary:disabled, .btn-green:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+        .table-wrap {
+    margin: 0;
+    background: var(--surface);
+    border-radius: 0 0 var(--radius) var(--radius);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 260px);
     overflow: hidden;
 }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .table-scroll { overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0; }
+        .table-scroll { overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0; max-height: calc(100vh - 340px); }
         /* 记录表 15 列：显式列宽 + 最小宽度，避免长序列号/激活码被均分挤压成 5-6 行碎片段 */
         #recordsTab table { min-width: 1690px; }
         #recordsTab th:nth-child(1), #recordsTab td:nth-child(1) { width: 40px; }
@@ -69,7 +108,7 @@
         #recordsTab th:nth-child(14), #recordsTab td:nth-child(14) { width: 150px; }
         #recordsTab th:nth-child(15), #recordsTab td:nth-child(15) { width: 110px; }
         #recordsTab td { white-space: nowrap; }
-        .alias-cell { display: inline-block; max-width: 82px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+        .alias-cell { display: inline-block; max-width: 80px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
         .ellip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
         /* 操作日志表 10 列 */
         #logsTab table { min-width: 1280px; }
@@ -79,114 +118,119 @@
         #logsTab th:nth-child(4), #logsTab td:nth-child(4) { width: 200px; }
         #logsTab th:nth-child(5), #logsTab td:nth-child(5) { width: 160px; }
         #logsTab th:nth-child(6), #logsTab td:nth-child(6) { width: 100px; }
-        #logsTab th:nth-child(7), #logsTab td:nth-child(7) { width: 95px; }
+        #logsTab th:nth-child(7), #logsTab td:nth-child(7) { width: 106px; }
         #logsTab th:nth-child(8), #logsTab td:nth-child(8) { width: 280px; }
         #logsTab th:nth-child(9), #logsTab td:nth-child(9) { width: 130px; }
         #logsTab th:nth-child(10), #logsTab td:nth-child(10) { width: 150px; }
-        .table-scroll thead { position: sticky; top: 0; z-index: 2; background: #fafafa; }
-        th { background: #fafafa; padding: 10px 14px; text-align: left; font-size: 12px; color: #888; font-weight: 600; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
-        td { padding: 10px 14px; font-size: 13px; color: #333; border-bottom: 1px solid #f5f5f5; }
-        tr:hover td { background: #fafbff; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-        .badge-active { background: #e6f9ee; color: #16a34a; }
-        .badge-expired { background: #fef2f2; color: #dc2626; }
-        .badge-generate { background: #eef2ff; color: #667eea; }
-        .badge-verify { background: #e6f9ee; color: #16a34a; }
-        .badge-fail { background: #fef2f2; color: #dc2626; }
-        .badge-expired-log { background: #fff7ed; color: #ea580c; }
-        .badge-mismatch { background: #fef2f2; color: #dc2626; }
-        .badge-duplicate { background: #fff7ed; color: #ea580c; }
-        .badge-invalid { background: #fef2f2; color: #dc2626; }
-        .badge-version-rejected { background: #fff7ed; color: #ea580c; }
-        .btn-sm { padding: 3px 10px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 12px; cursor: pointer; background: #fff; }
-        .btn-sm:hover { background: #f5f5f5; }
-        .btn-danger { color: #dc2626; border-color: #fecaca; }
-        .btn-danger:hover { background: #fef2f2; }
-        .btn-info { color: #667eea; border-color: #c7d2fe; }
-        .btn-info:hover { background: #eef2ff; }
-        .mono { font-family: 'Consolas', monospace; font-size: 12px; word-break: break-all; }
-        .empty { text-align: center; padding: 50px 20px; color: #aaa; font-size: 14px; }
-        .remain-ok { color: #16a34a; }
-        .remain-warn { color: #f59e0b; }
-        .remain-expired { color: #dc2626; }
-        .section { margin: 14px 24px; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .section h3 { font-size: 15px; color: #333; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
-        .form-group { margin-bottom: 14px; }
-        .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 2px solid #e8e8e8; border-radius: 6px; font-size: 13px; outline: none; }
-        /* radio/checkbox 不参与 width:100% 拉伸，保持原生尺寸 */
-        .form-group input[type="radio"], .form-group input[type="checkbox"] { width: auto; padding: 0; accent-color: #667eea; }
-        .form-group input:focus, .form-group textarea:focus { border-color: #667eea; }
-        .form-group textarea { resize: vertical; min-height: 70px; font-family: 'Consolas', monospace; }
-        .form-row { display: flex; gap: 14px; }
-        .form-row .form-group { flex: 1; }
-        .result-box { margin-top: 14px; padding: 14px; border-radius: 8px; font-size: 13px; display: none; }
-        .result-box.show { display: block; }
-        .result-box.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
-        .result-box.error { background: #fef2f2; border: 1px solid #fecaca; }
-        .result-box.loading { background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; display: flex; align-items: center; gap: 8px; }
-        .result-box p { margin: 4px 0; }
-        .result-box .rl { color: #888; display: inline-block; width: 100px; }
-        .result-box .rv { color: #333; font-weight: 500; font-family: 'Consolas', monospace; word-break: break-all; }
-        .code-box { background: #f5f5f5; padding: 10px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 12px; word-break: break-all; margin-top: 8px; position: relative; }
-        .btn-copy { position: absolute; top: 6px; right: 6px; padding: 3px 10px; background: #e0e0e0; color: #555; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
-        .btn-copy:hover { background: #d0d0d0; }
-        .parse-result { margin-top: 14px; padding: 14px; background: #f9fafb; border-radius: 8px; font-size: 13px; }
-        .parse-result p { margin: 4px 0; }
-        .parse-result .pl { color: #888; display: inline-block; width: 100px; }
-        .parse-result .pv { color: #333; font-weight: 500; font-family: 'Consolas', monospace; word-break: break-all; }
-        .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 24px; background: #fff; border-top: 1px solid #f0f0f0; }
-        .pagination button { padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fff; font-size: 12px; cursor: pointer; color: #555; }
-        .pagination button:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+        .table-scroll thead { position: sticky; top: 0; z-index: 2; }
+        th { background: #f9fafb; padding: 9px 12px; text-align: left; font-size: 11.5px; color: var(--text-3); font-weight: 600; letter-spacing: 0.4px; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+        td { padding: 10px 12px; font-size: 13px; color: var(--text); border-bottom: 1px solid #f3f4f6; }
+        tbody tr:hover td { background: #f8faff; }
+        .badge { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+        .badge-active, .badge-verify { background: var(--green-soft); color: var(--green); }
+        .badge-expired, .badge-fail, .badge-mismatch, .badge-invalid { background: var(--red-soft); color: var(--red); }
+        .badge-generate { background: var(--primary-soft); color: var(--primary); }
+        .badge-expired-log, .badge-duplicate, .badge-version-rejected { background: var(--amber-soft); color: var(--amber); }
+        .btn-sm { padding: 4px 11px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; cursor: pointer; background: var(--surface); transition: all 0.12s; }
+        .btn-sm:hover { background: var(--bg); }
+        .btn-danger { color: var(--red); border-color: #fecaca; }
+        .btn-danger:hover { background: var(--red-soft); border-color: #fca5a5; }
+        .btn-info { color: var(--primary); border-color: #c7d2fe; }
+        .btn-info:hover { background: var(--primary-soft); }
+        .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; word-break: break-all; color: #374151; }
+        .empty { text-align: center; padding: 56px 20px; color: var(--text-3); font-size: 13px; }
+        .remain-ok { color: var(--green); font-weight: 500; }
+        .remain-warn { color: var(--amber); font-weight: 500; }
+        .remain-expired { color: var(--red); font-weight: 500; }
+
+        /* ===== 列表页一体化卡片：toolbar + 统计 + 表格 + 分页 ===== */
+        .list-card { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .toolbar { padding: 14px 20px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; background: var(--surface); }
+        .toolbar input, .toolbar select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; background: var(--surface); transition: border-color 0.15s, box-shadow 0.15s; }
+        .toolbar input:focus, .toolbar select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+        .toolbar input { width: 250px; }
+        .toolbar select { width: 130px; }
+        .toolbar input[type="date"] { width: 145px; }
+
+        /* 统计卡：白底浅色图标 + 彩色数字，替代整块渐变色带 */
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+        .stat-card { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 10px; background: #fafbfc; border: 1px solid var(--border-light); }
+        .stat-ico { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex: none; }
+        .stat-card.total .stat-ico { background: var(--primary-soft); }
+        .stat-card.active .stat-ico { background: var(--green-soft); }
+        .stat-card.expired .stat-ico { background: var(--red-soft); }
+        .stat-card .num { font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .stat-card.active .num { color: var(--green); }
+        .stat-card.expired .num { color: var(--red); }
+        .stat-card .label { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+        .batch-actions { padding: 10px 20px; border-top: 1px solid var(--border-light); align-items: center; gap: 10px; background: var(--amber-soft); }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-top: 1px solid var(--border-light); flex-wrap: wrap; }
+        .pagination button { padding: 5px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 12px; cursor: pointer; color: var(--text-2); transition: all 0.12s; }
+        .pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
         .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .pagination button.active { background: #667eea; color: #fff; border-color: #667eea; }
-        .pagination .page-info { font-size: 12px; color: #888; margin: 0 8px; }
-        .toolbar input[type="date"] { width: 140px; }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination .page-info { font-size: 12px; color: var(--text-3); margin: 0 8px; }
+        .pagination select { padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-2); background: var(--surface); }
+
+        .result-box { margin-top: 14px; padding: 14px 16px; border-radius: 8px; font-size: 13px; display: none; }
+        .result-box.show { display: block; }
+        .result-box.success { background: var(--green-soft); border: 1px solid #a7f3d0; }
+        .result-box.error { background: var(--red-soft); border: 1px solid #fecaca; }
+        .result-box.loading { background: var(--primary-soft); border: 1px solid #c7d2fe; color: var(--primary-hover); display: flex; align-items: center; gap: 8px; }
+        .result-box p { margin: 4px 0; }
+        .result-box .rl { color: var(--text-3); display: inline-block; width: 100px; flex: none; }
+        .result-box .rv { color: var(--text); font-weight: 500; font-family: 'SFMono-Regular', Consolas, monospace; word-break: break-all; }
+        .code-box { background: #f8f9fb; border: 1px solid var(--border-light); padding: 12px 14px; border-radius: 8px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; word-break: break-all; margin-top: 10px; position: relative; color: #374151; }
+        .btn-copy { position: absolute; top: 7px; right: 7px; padding: 3px 11px; background: var(--primary); color: #fff; border: none; border-radius: 5px; font-size: 11px; cursor: pointer; transition: background 0.12s; }
+        .btn-copy:hover { background: var(--primary-hover); }
+        .parse-result { margin-top: 14px; padding: 14px 16px; background: #fafbfc; border: 1px solid var(--border-light); border-radius: 8px; font-size: 13px; }
+        .parse-result p { margin: 4px 0; }
+        .parse-result .pl { color: var(--text-3); display: inline-block; width: 110px; flex: none; }
+        .parse-result .pv { color: var(--text); font-weight: 500; font-family: 'SFMono-Regular', Consolas, monospace; word-break: break-all; }
 
         /* 查询反馈：按钮 loading 态 + 表格上方状态条 */
-        .btn-primary:disabled,
-        .btn-green:disabled { opacity: 0.65; cursor: not-allowed; }
-        .query-status { display: none; margin: 0 24px; padding: 10px 14px; border-radius: 6px; font-size: 13px; align-items: center; gap: 8px; }
+        .query-status { display: none; padding: 10px 20px; font-size: 13px; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-light); }
         .query-status.show { display: flex; }
-        .query-status.loading { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
-        .query-status.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-        .query-status .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: #4338ca; border-radius: 50%; animation: qs-spin 0.8s linear infinite; }
+        .query-status.loading { background: var(--primary-soft); color: var(--primary-hover); }
+        .query-status.error { background: var(--red-soft); color: #b91c1c; }
+        .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: var(--primary); border-radius: 50%; animation: qs-spin 0.8s linear infinite; flex: none; }
         @keyframes qs-spin { to { transform: rotate(360deg); } }
 
         /* parse-result loading 变体（覆盖默认灰底） */
-        .parse-result.loading { background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; display: flex; align-items: center; gap: 8px; }
-        .parse-result.loading .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #c7d2fe; border-top-color: #4338ca; border-radius: 50%; animation: qs-spin 0.8s linear infinite; }
+        .parse-result.loading { background: var(--primary-soft); border: 1px solid #c7d2fe; color: var(--primary-hover); display: flex; align-items: center; gap: 8px; }
+        .parse-result.loading .spinner { border-color: #c7d2fe; border-top-color: var(--primary); }
 
-        /* 全局 Toast：替换 alert() */
+        /* 全局 Toast：白底 + 左侧状态色条 */
         #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-        .toast { min-width: 220px; max-width: 380px; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toast-in 0.25s ease; pointer-events: auto; }
+        .toast { min-width: 220px; max-width: 380px; padding: 11px 16px; border-radius: 8px; font-size: 13px; color: var(--text); background: var(--surface); box-shadow: 0 8px 24px rgba(16, 24, 40, 0.14), 0 1px 3px rgba(16, 24, 40, 0.08); animation: toast-in 0.25s ease; pointer-events: auto; border-left: 3px solid var(--text-3); }
         .toast.hide { animation: toast-out 0.25s ease forwards; }
-        .toast.success { background: #16a34a; }
-        .toast.error   { background: #dc2626; }
-        .toast.info    { background: #4338ca; }
-        .toast.warning { background: #d97706; }
+        .toast.success { border-left-color: var(--green); }
+        .toast.error   { border-left-color: var(--red); }
+        .toast.info    { border-left-color: var(--primary); }
+        .toast.warning { border-left-color: var(--amber); }
         @keyframes toast-in  { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes toast-out { to { transform: translateX(20px); opacity: 0; } }
 
-        /* 有效期快捷按钮：次要样式 + 选中态（替代全紫主按钮一排的视觉过重） */
-        .expire-preset { padding: 5px 14px; font-size: 12px; border: 1px solid #c7d2fe; border-radius: 6px; background: #fff; color: #667eea; cursor: pointer; transition: all 0.15s; font-weight: 500; }
-        .expire-preset:hover { background: #eef2ff; border-color: #667eea; }
-        .expire-preset.selected { background: #667eea; border-color: #667eea; color: #fff; }
+        /* 有效期快捷按钮：次要样式 + 选中态 */
+        .expire-preset { padding: 5px 14px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-2); cursor: pointer; transition: all 0.12s; font-weight: 500; }
+        .expire-preset:hover { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+        .expire-preset.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
 
         /* 确认对话框（替代原生 confirm，风格与页面统一） */
-        #confirmOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
+        #confirmOverlay { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.5); z-index: 10000; display: none; align-items: center; justify-content: center; }
         #confirmOverlay.show { display: flex; }
-        .confirm-card { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 360px; max-width: calc(100vw - 40px); overflow: hidden; animation: confirm-in 0.18s ease; }
+        .confirm-card { background: var(--surface); border-radius: 14px; box-shadow: 0 20px 60px rgba(16, 24, 40, 0.25); width: 360px; max-width: calc(100vw - 40px); overflow: hidden; animation: confirm-in 0.18s ease; }
         @keyframes confirm-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .confirm-body { padding: 24px 24px 8px; }
-        .confirm-body .confirm-icon { font-size: 30px; text-align: center; margin-bottom: 10px; }
-        .confirm-body .confirm-msg { font-size: 14px; color: #333; text-align: center; line-height: 1.7; word-break: break-all; }
-        .confirm-body .confirm-sub { font-size: 12px; color: #999; text-align: center; margin-top: 8px; }
+        .confirm-body { padding: 26px 24px 8px; text-align: center; }
+        .confirm-body .confirm-icon { width: 46px; height: 46px; margin: 0 auto 12px; border-radius: 50%; background: var(--red-soft); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .confirm-body .confirm-msg { font-size: 14px; color: var(--text); text-align: center; line-height: 1.7; word-break: break-all; }
+        .confirm-body .confirm-sub { font-size: 12px; color: var(--text-3); text-align: center; margin-top: 8px; }
         .confirm-actions { display: flex; gap: 10px; padding: 18px 24px 20px; }
         .confirm-actions button { flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s; }
         .confirm-actions button:hover { opacity: 0.88; }
-        .btn-confirm-cancel { background: #f0f0f0; color: #555; }
-        .btn-confirm-ok { background: linear-gradient(135deg, #eb3349, #f45c43); color: #fff; }
+        .btn-confirm-cancel { background: #f3f4f6; color: var(--text-2); }
+        .btn-confirm-ok { background: var(--red); color: #fff; }
     </style>
 </head>
 <body>
@@ -205,10 +249,13 @@
         </div>
     </div>
     <div class="header">
-        <h1>激活码管理后台</h1>
+        <div class="header-brand">
+            <div class="header-logo">🔑</div>
+            <h1>激活码管理后台</h1>
+        </div>
         <div class="header-right">
             <span class="user-info" id="userInfo"></span>
-            <a href="/activecode/downloads.html" target="_blank" style="padding:5px 14px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;font-size:13px;text-decoration:none;transition:all 0.2s;">📥 工具下载</a>
+            <a href="/activecode/downloads.html" target="_blank" class="btn-download-link">📥 工具下载</a>
             <button class="btn-logout" onclick="handleLogout()">退出登录</button>
         </div>
     </div>
@@ -223,15 +270,16 @@
     <div id="toolTab" class="tab-content active">
         <!-- 版本限制设置 -->
         <div class="section" id="versionCheckSection">
-            <h3>🔒 版本限制设置</h3>
-            <p style="font-size:12px;color:#888;margin-bottom:14px;">控制客户端版本校验策略，可强制用户更新到指定版本</p>
+            <h3>版本限制设置</h3>
+            <p class="sec-desc">控制客户端版本校验策略，可强制用户更新到指定版本</p>
+            <div class="form-max">
             <div class="form-group">
                 <label>启用版本校验</label>
-                <div style="display:flex;gap:12px;align-items:center;margin-top:6px;">
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
+                <div style="display:flex;gap:18px;align-items:center;margin-top:4px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
                         <input type="radio" name="vcEnabled" value="false" checked onchange="onVcEnabledChange(false)"> 关闭
                     </label>
-                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
                         <input type="radio" name="vcEnabled" value="true" onchange="onVcEnabledChange(true)"> 开启
                     </label>
                 </div>
@@ -240,20 +288,20 @@
                 <div class="form-group">
                     <label>校验模式</label>
                     <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeNone">
+                        <label class="vc-mode-option" id="vcModeNone">
                             <input type="radio" name="vcMode" value="none" checked onchange="onVcModeChange()"> 不校验 — 允许所有客户端生成激活码
                         </label>
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeRequired">
+                        <label class="vc-mode-option" id="vcModeRequired">
                             <input type="radio" name="vcMode" value="required" onchange="onVcModeChange()"> 必须传版本号 — 客户端未传版本号时拒绝生成
                         </label>
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;" id="vcModeMinimum">
+                        <label class="vc-mode-option" id="vcModeMinimum">
                             <input type="radio" name="vcMode" value="minimum" onchange="onVcModeChange()"> 最低版本要求 — 版本号低于设定值时拒绝生成
                         </label>
                     </div>
                 </div>
                 <div class="form-group" id="vcMinVersionGroup" style="display:none;">
                     <label>最低版本号</label>
-                    <input type="text" id="vcMinVersion" placeholder="例如：V202607152217 或 3.1.0" style="font-family:'Consolas',monospace;">
+                    <input type="text" id="vcMinVersion" placeholder="例如：V202607152217 或 3.1.0" style="font-family:'SFMono-Regular',Consolas,monospace;">
                 </div>
                 <div class="form-group">
                     <label>下载链接（版本过低时提示用户）</label>
@@ -262,38 +310,43 @@
             </div>
             <button class="btn-primary" id="btnSaveVc" onclick="saveVersionCheckConfig()" style="margin-top:8px;">保存版本限制配置</button>
             <div id="vcResult" class="result-box"></div>
+            </div>
         </div>
 
         <!-- 默认有效期配置（使用页面index.html的默认有效期） -->
         <div class="section">
-            <h3>⏱ 默认有效期设置</h3>
-            <p style="font-size:12px;color:#888;margin-bottom:14px;">设置使用页面（index.html）生成激活码时的默认有效期。管理页面手动生成时仍可单独指定。</p>
+            <h3>默认有效期设置</h3>
+            <p class="sec-desc">设置使用页面（index.html）生成激活码时的默认有效期。管理页面手动生成时仍可单独指定。</p>
+            <div class="form-max">
             <div class="form-group">
-                <label>当前默认有效期：<strong id="currentDefaultExpire" style="color:#667eea">加载中...</strong></label>
+                <label>当前默认有效期：<strong id="currentDefaultExpire" style="color:var(--primary)">加载中...</strong></label>
                 <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-                    <select id="defaultExpireSelect" style="padding:6px 12px;font-size:13px;border:2px solid #e8e8e8;border-radius:6px;outline:none;min-width:120px;" onchange="onExpireSelectChange(this.value)">
+                    <select id="defaultExpireSelect" style="padding:8px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;outline:none;min-width:130px;background:#fff;" onchange="onExpireSelectChange(this.value)">
                         <option value="43200">1个月</option>
                         <option value="129600">3个月</option>
                         <option value="525600">1年</option>
                         <option value="1051200">2年</option>
                         <option value="custom">自定义</option>
                     </select>
-                    <input type="number" id="customDefaultExpire" min="1" max="5256000" style="width:100px;padding:6px 10px;font-size:13px;border:2px solid #e8e8e8;border-radius:6px;display:none;" placeholder="分钟数">
+                    <input type="number" id="customDefaultExpire" min="1" max="5256000" style="width:110px;padding:8px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;display:none;" placeholder="分钟数">
                     <button class="btn-primary" onclick="saveDefaultExpire()">保存</button>
                 </div>
             </div>
             <div id="defaultExpireResult" class="result-box"></div>
+            </div>
         </div>
 
         <div class="section">
             <h3>生成激活码</h3>
+            <p class="sec-desc">粘贴客户端弹窗中的唯一序列号，服务端自动解析设备信息并绑定</p>
+            <div class="form-max">
             <div class="form-group">
-                <label>唯一序列号（客户端弹窗中显示的加密序列号）</label>
+                <label>唯一序列号</label>
                 <input type="text" id="genSerialNumber" placeholder="粘贴客户端弹窗中的唯一序列号，服务端将自动解析设备信息">
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>设备ID（自动从序列号解析，也可手动指定）</label>
+                    <label>设备ID（可选，留空自动解析）</label>
                     <input type="text" id="genDeviceId" placeholder="留空则自动从唯一序列号中解析">
                 </div>
                 <div class="form-group">
@@ -310,10 +363,13 @@
             </div>
             <button class="btn-primary" id="btnGenerateCode" onclick="generateCode()">生成激活码</button>
             <div id="genResult" class="result-box"></div>
+            </div>
         </div>
 
         <div class="section">
             <h3>验证激活码</h3>
+            <p class="sec-desc">校验激活码有效性，可选验证设备匹配</p>
+            <div class="form-max">
             <div class="form-group">
                 <label>激活码</label>
                 <textarea id="verifyCode" placeholder="请输入需要验证的激活码"></textarea>
@@ -324,10 +380,12 @@
             </div>
             <button class="btn-green" id="btnVerifyCode" onclick="verifyCode()">验证激活码</button>
             <div id="verifyResult" class="result-box"></div>
+            </div>
         </div>
     </div>
 
     <div id="recordsTab" class="tab-content">
+        <div class="list-card">
         <div class="toolbar">
             <input type="text" id="recKeyword" placeholder="搜索序列号/设备ID/别名..." onkeydown="if(event.key==='Enter')loadRecords(1)">
             <select id="recStatus">
@@ -339,9 +397,9 @@
         </div>
         <div class="query-status" id="recStatus_msg"></div>
         <div class="stats">
-            <div class="stat-card total"><div class="num" id="statTotal">0</div><div class="label">总记录数</div></div>
-            <div class="stat-card active"><div class="num" id="statActive">0</div><div class="label">有效</div></div>
-            <div class="stat-card expired"><div class="num" id="statExpired">0</div><div class="label">已过期</div></div>
+            <div class="stat-card total"><div class="stat-ico">🗂️</div><div><div class="num" id="statTotal">0</div><div class="label">总记录数</div></div></div>
+            <div class="stat-card active"><div class="stat-ico">✅</div><div><div class="num" id="statActive">0</div><div class="label">有效</div></div></div>
+            <div class="stat-card expired"><div class="stat-ico">⏳</div><div><div class="num" id="statExpired">0</div><div class="label">已过期</div></div></div>
         </div>
         <div class="table-wrap">
             <div class="table-scroll">
@@ -369,16 +427,18 @@
             </table>
             <div class="empty" id="recordsEmpty" style="display:none;">暂无数据</div>
                         </div>
-            <div class="batch-actions" id="batchActionsBar" style="display:none;padding:8px 0;border-top:1px solid #e8e8e8;align-items:center;gap:10px;">
-                <span style="font-size:13px;color:#666;">已选 <strong id="selectedCount2" style="color:#f5222d">0</strong> 项</span>
+            <div class="batch-actions" id="batchActionsBar" style="display:none;padding:10px 20px;border-top:1px solid var(--border-light);align-items:center;gap:10px;">
+                <span style="font-size:13px;color:var(--text-2);">已选 <strong id="selectedCount2" style="color:var(--red)">0</strong> 项</span>
                 <button class="btn-sm btn-danger" onclick="batchDeleteRecords()" title="删除选中的记录">批量删除</button>
-                <button class="btn-sm btn-default" onclick="clearSelection()" style="padding:2px 8px;font-size:12px;border:1px solid #d9d9d9;background:#fff;cursor:pointer;border-radius:3px;">取消选择</button>
+                <button class="btn-sm btn-default" onclick="clearSelection()" style="padding:3px 10px;font-size:12px;border:1px solid var(--border);background:#fff;cursor:pointer;border-radius:6px;">取消选择</button>
             </div>
             <div class="pagination" id="recPagination"></div>
+        </div>
         </div>
     </div>
 
     <div id="logsTab" class="tab-content">
+        <div class="list-card">
         <div class="toolbar">
             <input type="text" id="logSerial" placeholder="序列号..." onkeydown="if(event.key==='Enter')loadLogs(1)">
             <input type="text" id="logDeviceId" placeholder="设备ID..." onkeydown="if(event.key==='Enter')loadLogs(1)">
@@ -399,9 +459,9 @@
         </div>
         <div class="query-status" id="logStatus_msg"></div>
         <div class="stats" id="logStats" style="display:none;">
-            <div class="stat-card total"><div class="num" id="logStatTotal">0</div><div class="label">总日志数</div></div>
-            <div class="stat-card active"><div class="num" id="logStatGenerate">0</div><div class="label">生成成功</div></div>
-            <div class="stat-card expired"><div class="num" id="logStatError">0</div><div class="label">异常/拒绝</div></div>
+            <div class="stat-card total"><div class="stat-ico">📋</div><div><div class="num" id="logStatTotal">0</div><div class="label">总日志数</div></div></div>
+            <div class="stat-card active"><div class="stat-ico">✨</div><div><div class="num" id="logStatGenerate">0</div><div class="label">生成成功</div></div></div>
+            <div class="stat-card expired"><div class="stat-ico">⚠️</div><div><div class="num" id="logStatError">0</div><div class="label">异常/拒绝</div></div></div>
         </div>
         <div class="table-wrap">
             <div class="table-scroll">
@@ -425,6 +485,7 @@
             <div class="empty" id="logsEmpty" style="display:none;">暂无日志</div>
                         </div>
             <div class="pagination" id="logPagination"></div>
+        </div>
         </div>
     </div>
 
@@ -802,7 +863,7 @@ function setAdminExpire(minutes, btn) {
                     <td><span class="mono ellip" title="${escapeHtml(r.serialNumber || '')}">${escapeHtml(r.serialNumber || '-')}</span></td>
                     <td><span class="mono ellip" title="${escapeHtml(r.initialSerial || '')}">${escapeHtml(r.initialSerial || '-')}</span></td>
                     <td><span class="mono ellip" title="${escapeHtml(r.machineCode || '')}">${escapeHtml(r.machineCode || '-')}</span></td>
-                    <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id})" style="cursor:pointer;color:${alias ? '#667eea' : '#aaa'};font-size:13px;" title="点击编辑">${alias ? escapeHtml(alias) : '点击设置'}</span></td>
+                    <td><span class="alias-cell" id="alias-${r.id}" onclick="editAlias(${r.id})" style="cursor:pointer;color:${alias ? '#4f46e5' : '#aaa'};font-size:13px;" title="点击编辑">${alias ? escapeHtml(alias) : '点击设置'}</span></td>
                     <td><span class="mono ellip" title="${escapeHtml(r.deviceId || '')}">${escapeHtml(r.deviceId || '-')}</span></td>
                     <td>${codePreview}</td>
                     <td>${expireMin}</td>
@@ -913,7 +974,7 @@ function setAdminExpire(minutes, btn) {
                     <td>${l.recordId || '-'}</td>
                     <td><span class="mono" title="${escapeHtml(l.serialNumber || '')}">${escapeHtml(l.serialNumber || '-')}</span></td>
                     <td><span class="mono" title="${escapeHtml(l.deviceId || '')}">${escapeHtml(l.deviceId || '-')}</span></td>
-                    <td><span style="color:${l.deviceAlias ? '#667eea' : '#aaa'};font-size:13px;">${l.deviceAlias ? escapeHtml(l.deviceAlias) : '-'}</span></td>
+                    <td><span style="color:${l.deviceAlias ? '#4f46e5' : '#aaa'};font-size:13px;">${l.deviceAlias ? escapeHtml(l.deviceAlias) : '-'}</span></td>
                     <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
                     <td style="max-width:260px;word-break:break-all;">${escapeHtml(l.eventMessage || '-')}</td>
                     <td><span class="mono">${escapeHtml(l.clientIp || '-')}</span></td>
@@ -1043,7 +1104,7 @@ function setAdminExpire(minutes, btn) {
             const record = cachedRecords.find(r => r.id == id);
             const oldAlias = (record && record.deviceAlias) || '';
             const cell = document.getElementById('alias-' + id);
-            cell.innerHTML = `<input type="text" id="alias-input-${id}" value="${escapeHtml(oldAlias)}" maxlength="50" style="width:140px;padding:2px 6px;border:1px solid #667eea;border-radius:4px;font-size:12px;outline:none;">`;
+            cell.innerHTML = `<input type="text" id="alias-input-${id}" value="${escapeHtml(oldAlias)}" maxlength="50" style="width:140px;padding:2px 6px;border:1px solid #4f46e5;border-radius:4px;font-size:12px;outline:none;">`;
             const input = document.getElementById('alias-input-' + id);
             input.dataset.saved = '';
             input.addEventListener('keydown', e => {
@@ -1061,7 +1122,7 @@ function setAdminExpire(minutes, btn) {
             const alias = (record && record.deviceAlias) || '';
             const cell = document.getElementById('alias-' + id);
             cell.textContent = alias || '点击设置';
-            cell.style.color = alias ? '#667eea' : '#aaa';
+            cell.style.color = alias ? '#4f46e5' : '#aaa';
         }
 
         async function saveAlias(id) {
@@ -1079,7 +1140,7 @@ function setAdminExpire(minutes, btn) {
                 if (data.success) {
                     input.dataset.saved = '1';
                     cell.textContent = newAlias || '点击设置';
-                    cell.style.color = newAlias ? '#667eea' : '#aaa';
+                    cell.style.color = newAlias ? '#4f46e5' : '#aaa';
                     // 更新缓存
                     const record = cachedRecords.find(r => r.id == id);
                     if (record) record.deviceAlias = newAlias;
@@ -1159,7 +1220,7 @@ function setAdminExpire(minutes, btn) {
                     <p><span class="pl">序列号：</span><span class="pv">${data.serialNumber}</span></p>
                     <p><span class="pl">初始序列号：</span><span class="pv">${data.initialSerial || '-'}</span></p>
                     <p><span class="pl">机器码：</span><span class="pv">${data.machineCode || '-'}</span></p>
-                    <p><span class="pl">版本号：</span><span class="pv" style="color:#667eea;font-weight:600;">${data.version || '未知'}</span></p>
+                    <p><span class="pl">版本号：</span><span class="pv" style="color:#4f46e5;font-weight:600;">${data.version || '未知'}</span></p>
                 `;
                 // 有记录时显示完整信息；无记录但有解析出的 deviceId 也显示
                 if (data.recordId) {
@@ -1219,8 +1280,8 @@ function setAdminExpire(minutes, btn) {
             // 高亮选中项
             ['None', 'Required', 'Minimum'].forEach(m => {
                 const el = document.getElementById('vcMode' + m);
-                el.style.borderColor = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#667eea' : '#e8e8e8';
-                el.style.background = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#f8f9ff' : '#fff';
+                el.style.borderColor = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#4f46e5' : '#e8e8e8';
+                el.style.background = ('vcMode' + m === 'vcMode' + mode.charAt(0).toUpperCase() + mode.slice(1)) ? '#eef2ff' : '#fff';
             });
         }
 
