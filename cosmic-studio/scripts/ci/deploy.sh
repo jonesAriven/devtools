@@ -6,8 +6,11 @@ APP_DIR="/root/devtools/cosmic-studio"
 HEALTH_URL="http://127.0.0.1:8310/api/health"
 
 cd "$APP_DIR"
-echo "==> git pull（$(git rev-parse --abbrev-ref HEAD) @ $(date '+%F %T')）"
-git pull --ff-only origin main || { echo "❌ git pull 失败"; exit 1; }
+echo "==> git 同步到 origin/main（$(date '+%F %T')）"
+# 部署目录语义 = 镜像仓库：fetch + reset --hard，自愈 scp/调试残留的脏树
+# （git pull 遇未提交修改会拒绝合并，正是流水线 #5/#7 失败的根因）
+git fetch origin main || { echo "❌ git fetch 失败"; exit 1; }
+git reset --hard origin/main || { echo "❌ git reset 失败"; exit 1; }
 echo "==> commit: $(git log -1 --oneline)"
 
 echo "==> docker compose build + up"
