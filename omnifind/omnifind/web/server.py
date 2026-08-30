@@ -247,8 +247,7 @@ def _run_build(type: str) -> None:
         if type in ("l1", "all"):
             _index_task["message"] = "正在重建文件名索引..."
             from omnifind.core.indexer import build_filename_index
-            l1.conn.execute("DELETE FROM entries")
-            l1.conn.commit()
+            l1.clear()
             n = build_filename_index(cfg, l1)
             _index_task["progress"] = n
             _index_task["total"] = n
@@ -257,9 +256,7 @@ def _run_build(type: str) -> None:
         if type in ("l2", "all"):
             _index_task["message"] = "正在重建全文索引..."
             from omnifind.core.indexer import build_fulltext_index
-            l2.conn.execute("DELETE FROM files")
-            l2.conn.execute("DELETE FROM fts")
-            l2.conn.commit()
+            l2.clear()
             n = build_fulltext_index(cfg, l2)
             _index_task["progress"] = n
             _index_task["total"] = n

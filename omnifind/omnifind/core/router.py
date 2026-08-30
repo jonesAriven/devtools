@@ -279,10 +279,12 @@ class QueryRouter:
                     extra={"size": h.size, "mtime": h.mtime, "ext": h.ext}
                 ))
 
-        # L3 语义
+        # L3 语义(单次搜索,结果同时供命中采集与计数,避免同查询向量化+检索两遍)
+        l3_all: list = []
         if "l3" in active and self.l3:
             try:
-                for h in self.l3.search(final_q, limit=limit):
+                l3_all = self.l3.search(final_q, limit=COUNT_CAP + 1)
+                for h in l3_all[:limit]:
                     resp.hits.append(UnifiedHit(
                         h.path, h.title, snippet=h.snippet,
                         layer="l3", score=h.score,
@@ -293,33 +295,56 @@ class QueryRouter:
 
         # ====================== counts: 始终计算所有可用层的真实计数 ======================
         # 修复 P0: 切换单层(mode=filename)时仍返回其它层的真实数, 供前端对比。
-        if self.l1:
-            if final_mode == "filename_regex":
-                # l1 已在上方正则分支设置(成功=真实正则命中数, 失败=0)
-                if "l1" not in counts:
-                    counts["l1"] = 0
-            else:
-                n, capped = self.l1.count_match(final_q, final_ext, cap=COUNT_CAP)
-                counts["l1"] = n
+        # L1/L2 用 count_match_grouped 一次扫描同时产出总数与 9 个分面计数
+        # (替代逐 ext 调 count_match 的 2x10 次全表扫描);正则模式计数已在上方设置。
+        facet_counts: dict[str, int] = {}
+        if final_mode != "filename_regex":
+            g: dict[str, int] = {}
+            for ext_key in [""] + FACET_EXTS:
+                g[ext_key] = 0
+            # 各层分别 grouped:分面(facet)跨层合并,单层计数(l1/l2)保持独立
+            l1g = self.l1.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP) if self.l1 else {}
+            l2g = self.l2.count_match_grouped(final_q, [""] + FACET_EXTS, cap=COUNT_CAP) if self.l2 else {}
+            for src in (l1g, l2g):
+                for k, v in src.items():
+                    g[k] = g.get(k, 0) + v
+            facet_counts = g
+            # counts["l1"/"l2"] = 该层在 final_ext 筛选下的命中数:
+            #   无筛选 -> 全量; 筛选值在固定白名单内 -> 取该层自己的分面; 自定义后缀 -> 单独精确计数
+            for layer, lgrp in (("l1", l1g), ("l2", l2g)):
+                if not lgrp:
+                    counts[layer] = 0
+                elif not final_ext:
+                    counts[layer] = lgrp.get("", 0)
+                elif final_ext.lower() in g:
+                    counts[layer] = lgrp.get(final_ext.lower(), 0)
+                else:
+                    idx = self.l1 if layer == "l1" else self.l2
+                    n, capped = idx.count_match(final_q, final_ext, cap=COUNT_CAP)
+                    counts[layer] = n
+                    if capped:
+                        counts[f"{layer}_capped"] = True
+        else:
+            counts["l1"] = 0 if "l1" not in counts else counts["l1"]
+            if self.l2:
+                n, capped = self.l2.count_match(final_q, final_ext, cap=COUNT_CAP)
+                counts["l2"] = n
                 if capped:
-                    counts["l1_capped"] = True
-        else:
-            counts["l1"] = 0
-
-        if self.l2:
-            n, capped = self.l2.count_match(final_q, final_ext, cap=COUNT_CAP)
-            counts["l2"] = n
-            if capped:
-                counts["l2_capped"] = True
-        else:
-            counts["l2"] = 0
+                    counts["l2_capped"] = True
+            else:
+                counts["l2"] = 0
 
         if self.l3:
-            l3_hits = self.l3.search(final_q, limit=COUNT_CAP + 1)
-            n = len(l3_hits)
-            counts["l3"] = n
-            if n > COUNT_CAP:
-                counts["l3_capped"] = True
+            if "l3" in active:
+                # 复用上方单次搜索结果,不再二次向量化+检索
+                n = len(l3_all)
+                counts["l3"] = min(n, COUNT_CAP)
+                if n > COUNT_CAP:
+                    counts["l3_capped"] = True
+            else:
+                # 单层(filename/fulltext)模式下语义计数置 0:
+                # 语义计数需向量化+向量检索,代价是 L1/L2 的百倍,不为展示计数付这笔钱
+                counts["l3"] = 0
         else:
             counts["l3"] = 0
 
@@ -334,25 +359,10 @@ class QueryRouter:
         counts["total"] = sum(counts.get(layer, 0) for layer in active)
 
         # ext facet: 每个固定扩展名在"当前模式+当前查询"下的命中总数,
-        # 口径与 counts["total"] 完全一致(各激活层 count_match(final_q, ext) 之和),
-        # 保证前端按钮上的数字与点击后看到的"共 N 条"相等。
+        # 口径与 counts["total"] 完全一致(已由 count_match_grouped 同批产出)。
         # 正则模式无法按 ext 高效计数, 跳过(前端检测缺失时不展示数字)。
-        # L3 语义层暂无按 ext 计数能力, 贡献记 0(当前 L3 未启用, 无影响)。
         if final_mode != "filename_regex":
-            facets: dict[str, int] = {}
-            # "" 键 = 无扩展名限定的总数(即"全部"按钮应显示的数字,
-            # 与当前是否已限定某扩展名无关)
-            for fext in [""] + FACET_EXTS:
-                n_sum = 0
-                ext_arg = fext or None
-                if "l1" in active and self.l1:
-                    n, _ = self.l1.count_match(final_q, ext_arg, cap=COUNT_CAP)
-                    n_sum += n
-                if "l2" in active and self.l2:
-                    n, _ = self.l2.count_match(final_q, ext_arg, cap=COUNT_CAP)
-                    n_sum += n
-                facets[fext] = n_sum
-            resp.ext_facets = facets
+            resp.ext_facets = facet_counts
 
         resp.counts = counts
         resp.hits = self._sort_hits(resp.hits, final_sort, query=final_q)

@@ -81,12 +81,16 @@ class FilenameIndex:
         """转义 LIKE 特殊字符(配合 ESCAPE '\\'),防搜 a_b 误中 axb。"""
         return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
+    @staticmethod
+    def _build_like(query: str) -> str:
+        """构造 LIKE 模式: * 通配转 %, 字面 % _ 转义(防 a_b 误中 axb)。"""
+        if "*" in query:
+            return "%".join(FilenameIndex._escape_like(seg) for seg in query.split("*"))
+        return f"%{FilenameIndex._escape_like(query)}%"
+
     def search(self, query: str, limit: int = 50, ext_filter: str | None = None) -> list[NameHit]:
         # 默认子串匹配(不区分大小写);支持 * 通配转 LIKE;字面 % _ 必须转义
-        if "*" in query:
-            like = "%".join(self._escape_like(seg) for seg in query.split("*"))
-        else:
-            like = f"%{self._escape_like(query)}%"
+        like = self._build_like(query)
         sql = "SELECT * FROM entries WHERE name LIKE ? ESCAPE '\\'"
         params: list = [like]
         if ext_filter:
@@ -107,10 +111,7 @@ class FilenameIndex:
           - count: 真实匹配数，但超过 cap 时返回 cap 并令 capped=True（表示真实数 >= cap）。
           - 用 SELECT COUNT(*) FROM (子查询 LIMIT cap+1) 实现早停，避免对超大结果集全表扫描。
         """
-        if "*" in query:
-            like = "%".join(self._escape_like(seg) for seg in query.split("*"))
-        else:
-            like = f"%{self._escape_like(query)}%"
+        like = self._build_like(query)
         sql = "SELECT 1 FROM entries WHERE name LIKE ? ESCAPE '\\'"
         params: list = [like]
         if ext_filter:
@@ -123,6 +124,33 @@ class FilenameIndex:
             n = self.conn.execute(capped_sql, params).fetchone()[0]
         capped = n > cap
         return (cap if capped else n, capped)
+
+    def count_match_grouped(self, query: str, exts: list[str],
+                            cap: int = 5000) -> dict[str, int]:
+        """一次扫描同时给出总命中数与各后缀分面计数(替代逐 ext 调 count_match 的 N 次全扫)。
+
+        exts: 形如 ['', '.py', '.md'] 的后缀列表; 返回 {ext: count}, '' 为总数。
+        总命中数超过 cap 时各计数同批截断到 cap(口径与 count_match 一致)。
+        分面前缀匹配用 name LIKE '%.ext'(等价后缀匹配), ext 来自固定白名单无通配符。
+        """
+        like = self._build_like(query)
+        suffixes = [e for e in exts if e]
+        sum_parts = ", ".join(
+            f"SUM(CASE WHEN name LIKE ? ESCAPE '\\' THEN 1 ELSE 0 END) AS s{i}"
+            for i in range(len(suffixes))
+        )
+        sql = (
+            "WITH m AS (SELECT name FROM entries WHERE name LIKE ? ESCAPE '\\' LIMIT ?) "
+            f"SELECT COUNT(*) AS total{', ' + sum_parts if sum_parts else ''} FROM m"
+        )
+        params: list = [like, cap + 1] + [("%" + e.lower()) for e in suffixes]
+        with self._lock:
+            row = self.conn.execute(sql, params).fetchone()
+        total = min(row["total"], cap)
+        out = {"": total}
+        for i, e in enumerate(suffixes):
+            out[e] = min(row[f"s{i}"] or 0, cap)
+        return out
 
     @staticmethod
     def _literal_prefix(pattern: str) -> str:
@@ -182,6 +210,12 @@ class FilenameIndex:
                     if len(hits) >= limit:
                         break
         return hits
+
+    def clear(self) -> None:
+        """清空全表(重建前调用)。走锁,禁止外部直接操作 conn。"""
+        with self._lock:
+            self.conn.execute("DELETE FROM entries")
+            self.conn.commit()
 
     def count(self) -> int:
         with self._lock:

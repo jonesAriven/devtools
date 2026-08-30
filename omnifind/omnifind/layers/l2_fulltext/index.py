@@ -230,6 +230,40 @@ class FullTextIndex:
             capped = n > cap
             return (cap if capped else n, capped)
 
+    def count_match_grouped(self, query: str, exts: list[str],
+                            cap: int = 5000) -> dict[str, int]:
+        """一次 FTS 查询同时给出总命中数与各扩展名分面计数(替代逐 ext 的 N 次扫描)。
+
+        exts: 形如 ['', '.py', '.md']; 返回 {ext: count}, '' 为总数。
+        总命中数超过 cap 时同批截断(口径与 count_match 一致)。
+        """
+        q = build_fts5_query(query)
+        suffixes = [e for e in exts if e]
+        sum_parts = ", ".join(
+            f"SUM(CASE WHEN LOWER(ext) = '{e}' THEN 1 ELSE 0 END) AS s{i}"
+            for i, e in enumerate(suffixes)
+        )
+        sql = (
+            "WITH m AS (SELECT f.ext AS ext FROM fts JOIN files f ON f.id = fts.rowid "
+            f"WHERE fts MATCH ? LIMIT ?) "
+            f"SELECT COUNT(*) AS total{', ' + sum_parts if sum_parts else ''} FROM m"
+        )
+        params: list = [q, cap + 1]
+        with self._lock:
+            row = self.conn.execute(sql, params).fetchone()
+        total = min(row["total"], cap)
+        out = {"": total}
+        for i in range(len(suffixes)):
+            out[suffixes[i]] = min(row[f"s{i}"] or 0, cap)
+        return out
+
+    def clear(self) -> None:
+        """清空全部文档(重建前调用)。走锁,禁止外部直接操作 conn。"""
+        with self._lock:
+            self.conn.execute("DELETE FROM files")
+            self.conn.execute("DELETE FROM fts")
+            self.conn.commit()
+
     def count(self) -> int:
         with self._lock:
             return self.conn.execute("SELECT COUNT(*) FROM files WHERE indexed=1").fetchone()[0]
