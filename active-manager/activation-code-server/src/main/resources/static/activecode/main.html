@@ -51,15 +51,14 @@
         .tab-btn:hover { color: var(--primary); }
 
         .tab-content { display: none; }
-        .tab-content.active { display: block; max-width: 1400px; margin: 0 auto; padding: 20px 28px 48px; }
+        .tab-content.active { display: block; padding: 20px 28px 48px; }
 
-        /* ===== 工具页：设置/表单卡片 ===== */
-        .section { margin: 0 0 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow); }
+        /* ===== 工具页：设置/表单卡片（窄栏居中，宽屏不散） ===== */
+        .section { max-width: 880px; margin: 0 auto 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow); }
         .section h3 { font-size: 15px; color: var(--text); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
         .section h3::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--primary); flex: none; }
         .section .sec-desc { font-size: 12.5px; color: var(--text-3); margin-bottom: 16px; }
-        /* 设置类表单限宽，避免大屏输入框拉满整行 */
-        .section .form-max { max-width: 760px; }
+
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; background: var(--surface); transition: border-color 0.15s, box-shadow 0.15s; }
@@ -90,48 +89,48 @@
 }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .table-scroll { overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0; max-height: calc(100vh - 340px); }
-        /* 记录表 15 列：显式列宽 + 最小宽度，避免长序列号/激活码被均分挤压成 5-6 行碎片段 */
-        #recordsTab table { min-width: 1690px; }
+        /* 记录表 15 列：百分比列宽随屏幕伸缩铺满，窄屏(即合计 min-width)以下横向滚动兜底 */
+        #recordsTab table { min-width: 1240px; }
         #recordsTab th:nth-child(1), #recordsTab td:nth-child(1) { width: 40px; }
-        #recordsTab th:nth-child(2), #recordsTab td:nth-child(2) { width: 55px; }
-        #recordsTab th:nth-child(3), #recordsTab td:nth-child(3) { width: 170px; }
-        #recordsTab th:nth-child(4), #recordsTab td:nth-child(4) { width: 150px; }
-        #recordsTab th:nth-child(5), #recordsTab td:nth-child(5) { width: 115px; }
-        #recordsTab th:nth-child(6), #recordsTab td:nth-child(6) { width: 110px; }
-        #recordsTab th:nth-child(7), #recordsTab td:nth-child(7) { width: 150px; }
-        #recordsTab th:nth-child(8), #recordsTab td:nth-child(8) { width: 150px; }
-        #recordsTab th:nth-child(9), #recordsTab td:nth-child(9) { width: 80px; }
-        #recordsTab th:nth-child(10), #recordsTab td:nth-child(10) { width: 150px; }
-        #recordsTab th:nth-child(11), #recordsTab td:nth-child(11) { width: 95px; }
-        #recordsTab th:nth-child(12), #recordsTab td:nth-child(12) { width: 62px; }
-        #recordsTab th:nth-child(13), #recordsTab td:nth-child(13) { width: 150px; }
-        #recordsTab th:nth-child(14), #recordsTab td:nth-child(14) { width: 150px; }
-        #recordsTab th:nth-child(15), #recordsTab td:nth-child(15) { width: 110px; }
+        #recordsTab th:nth-child(2), #recordsTab td:nth-child(2) { width: 3%; }
+        #recordsTab th:nth-child(3), #recordsTab td:nth-child(3) { width: 10%; }
+        #recordsTab th:nth-child(4), #recordsTab td:nth-child(4) { width: 9%; }
+        #recordsTab th:nth-child(5), #recordsTab td:nth-child(5) { width: 7%; }
+        #recordsTab th:nth-child(6), #recordsTab td:nth-child(6) { width: 6.5%; }
+        #recordsTab th:nth-child(7), #recordsTab td:nth-child(7) { width: 8.5%; }
+        #recordsTab th:nth-child(8), #recordsTab td:nth-child(8) { width: 9%; }
+        #recordsTab th:nth-child(9), #recordsTab td:nth-child(9) { width: 5%; }
+        #recordsTab th:nth-child(10), #recordsTab td:nth-child(10) { width: 9%; }
+        #recordsTab th:nth-child(11), #recordsTab td:nth-child(11) { width: 5%; }
+        #recordsTab th:nth-child(12), #recordsTab td:nth-child(12) { width: 4.5%; }
+        #recordsTab th:nth-child(13), #recordsTab td:nth-child(13) { width: 8.5%; }
+        #recordsTab th:nth-child(14), #recordsTab td:nth-child(14) { width: 9%; }
+        #recordsTab th:nth-child(15), #recordsTab td:nth-child(15) { width: 9%; }
         #recordsTab td { white-space: nowrap; }
-        .alias-cell { display: inline-block; max-width: 80px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+        .alias-cell { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
         .ellip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
-        /* 操作日志表 10 列 */
-        #logsTab table { min-width: 1280px; }
+        /* 操作日志表 10 列：百分比伸缩 */
+        #logsTab table { min-width: 1020px; }
         #logsTab th:nth-child(1), #logsTab td:nth-child(1) { width: 40px; }
-        #logsTab th:nth-child(2), #logsTab td:nth-child(2) { width: 60px; }
-        #logsTab th:nth-child(3), #logsTab td:nth-child(3) { width: 90px; }
-        #logsTab th:nth-child(4), #logsTab td:nth-child(4) { width: 200px; }
-        #logsTab th:nth-child(5), #logsTab td:nth-child(5) { width: 160px; }
-        #logsTab th:nth-child(6), #logsTab td:nth-child(6) { width: 100px; }
-        #logsTab th:nth-child(7), #logsTab td:nth-child(7) { width: 106px; }
-        #logsTab th:nth-child(8), #logsTab td:nth-child(8) { width: 280px; }
-        #logsTab th:nth-child(9), #logsTab td:nth-child(9) { width: 130px; }
-        #logsTab th:nth-child(10), #logsTab td:nth-child(10) { width: 150px; }
+        #logsTab th:nth-child(2), #logsTab td:nth-child(2) { width: 3.5%; }
+        #logsTab th:nth-child(3), #logsTab td:nth-child(3) { width: 5.5%; }
+        #logsTab th:nth-child(4), #logsTab td:nth-child(4) { width: 15%; }
+        #logsTab th:nth-child(5), #logsTab td:nth-child(5) { width: 12%; }
+        #logsTab th:nth-child(6), #logsTab td:nth-child(6) { width: 7%; }
+        #logsTab th:nth-child(7), #logsTab td:nth-child(7) { width: 8%; }
+        #logsTab th:nth-child(8), #logsTab td:nth-child(8) { width: 21%; }
+        #logsTab th:nth-child(9), #logsTab td:nth-child(9) { width: 10%; }
+        #logsTab th:nth-child(10), #logsTab td:nth-child(10) { width: 13%; }
         .table-scroll thead { position: sticky; top: 0; z-index: 2; }
         th { background: #f9fafb; padding: 9px 12px; text-align: left; font-size: 11.5px; color: var(--text-3); font-weight: 600; letter-spacing: 0.4px; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
-        td { padding: 10px 12px; font-size: 13px; color: var(--text); border-bottom: 1px solid #f3f4f6; }
+        td { padding: 10px 12px; font-size: 13px; color: var(--text); border-bottom: 1px solid #f3f4f6; overflow: hidden; }
         tbody tr:hover td { background: #f8faff; }
         .badge { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; }
         .badge-active, .badge-verify { background: var(--green-soft); color: var(--green); }
         .badge-expired, .badge-fail, .badge-mismatch, .badge-invalid { background: var(--red-soft); color: var(--red); }
         .badge-generate { background: var(--primary-soft); color: var(--primary); }
         .badge-expired-log, .badge-duplicate, .badge-version-rejected { background: var(--amber-soft); color: var(--amber); }
-        .btn-sm { padding: 4px 11px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; cursor: pointer; background: var(--surface); transition: all 0.12s; }
+        .btn-sm { padding: 4px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; cursor: pointer; background: var(--surface); transition: all 0.12s; white-space: nowrap; }
         .btn-sm:hover { background: var(--bg); }
         .btn-danger { color: var(--red); border-color: #fecaca; }
         .btn-danger:hover { background: var(--red-soft); border-color: #fca5a5; }
@@ -153,16 +152,16 @@
         .toolbar input[type="date"] { width: 145px; }
 
         /* 统计卡：白底浅色图标 + 彩色数字，替代整块渐变色带 */
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
-        .stat-card { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 10px; background: #fafbfc; border: 1px solid var(--border-light); }
+        .stats { display: grid; grid-template-columns: repeat(3, minmax(220px, 300px)); gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+        .stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 10px; background: #fafbfc; border: 1px solid var(--border-light); min-width: 0; }
         .stat-ico { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex: none; }
         .stat-card.total .stat-ico { background: var(--primary-soft); }
         .stat-card.active .stat-ico { background: var(--green-soft); }
         .stat-card.expired .stat-ico { background: var(--red-soft); }
-        .stat-card .num { font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .stat-card .num { font-size: 26px; font-weight: 700; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums; }
         .stat-card.active .num { color: var(--green); }
         .stat-card.expired .num { color: var(--red); }
-        .stat-card .label { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+        .stat-card .label { font-size: 12px; color: var(--text-3); margin-top: 3px; white-space: nowrap; }
 
         .batch-actions { padding: 10px 20px; border-top: 1px solid var(--border-light); align-items: center; gap: 10px; background: var(--amber-soft); }
         .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-top: 1px solid var(--border-light); flex-wrap: wrap; }
@@ -321,7 +320,7 @@
             <div class="form-group">
                 <label>当前默认有效期：<strong id="currentDefaultExpire" style="color:var(--primary)">加载中...</strong></label>
                 <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-                    <select id="defaultExpireSelect" style="padding:8px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;outline:none;min-width:130px;background:#fff;" onchange="onExpireSelectChange(this.value)">
+                    <select id="defaultExpireSelect" style="padding:8px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;outline:none;min-width:130px;max-width:220px;background:#fff;" onchange="onExpireSelectChange(this.value)">
                         <option value="43200">1个月</option>
                         <option value="129600">3个月</option>
                         <option value="525600">1年</option>
@@ -726,6 +725,14 @@ function setAdminExpire(minutes, btn) {
             return d + '天';
         }
 
+        // 表格用短时间格式（去秒，防时间列溢出）：兼容 epoch 毫秒
+        function fmtShort(v) {
+            if (!v) return '-';
+            const d = typeof v === 'number' ? new Date(v) : new Date(v);
+            if (isNaN(d)) return '-';
+            return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
         // 后端 LocalDateTime 字符串（2026-08-20T09:01:52）→ 本地化显示，epoch 毫秒也能处理
         function formatDateTime(v) {
             if (!v) return '-';
@@ -849,9 +856,9 @@ function setAdminExpire(minutes, btn) {
                 const remainText = formatDuration(remain);
                 const remainClass = isExpired ? 'remain-expired' : remain < 3600000 ? 'remain-warn' : 'remain-ok';
                 const statusHtml = isExpired ? '<span class="badge badge-expired">已过期</span>' : '<span class="badge badge-active">有效</span>';
-                const expireDate = new Date(r.expireTime).toLocaleString('zh-CN');
-                const createDate = r.createTime ? new Date(r.createTime).toLocaleString('zh-CN') : '-';
-                const activatedDate = r.activatedTime ? formatDateTime(r.activatedTime) : '<span style="color:#aaa">未激活</span>';
+                const expireDate = fmtShort(r.expireTime);
+                const createDate = r.createTime ? fmtShort(r.createTime) : '-';
+                const activatedDate = r.activatedTime ? fmtShort(r.activatedTime) : '<span style="color:var(--text-3)">未激活</span>';
                 const expireMin = r.expireMinutes ? formatExpireMinutes(r.expireMinutes) : '-';
                 const codePreview = r.activationCode
                     ? `<span class="mono ellip" title="${escapeHtml(r.activationCode)}">${escapeHtml(r.activationCode.length > 20 ? r.activationCode.substring(0, 20) + '...' : r.activationCode)}</span> <button class="btn-sm btn-info" onclick="copyActivationCode('${r.id}')">复制</button>`
@@ -967,7 +974,7 @@ function setAdminExpire(minutes, btn) {
                     'EXPIRED': '已过期', 'DEVICE_MISMATCH': '设备不匹配',
                     'SERIAL_INVALID': '序列号无效', 'VERSION_REJECTED': '版本拒绝'
                 }[l.eventType] || l.eventType;
-                const time = l.createTime ? new Date(l.createTime).toLocaleString('zh-CN') : '-';
+                const time = l.createTime ? fmtShort(l.createTime) : '-';
                 return `<tr>
                     <td style="text-align:center"><input type="checkbox" class="row-checkbox-logs" value="${l.id}"></td>
                     <td>${l.id}</td>
