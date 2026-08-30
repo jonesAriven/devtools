@@ -106,6 +106,10 @@
               <el-icon><Lock /></el-icon>
               复制密码
             </el-dropdown-item>
+            <el-dropdown-item command="view-credentials">
+              <el-icon><View /></el-icon>
+              查看账密
+            </el-dropdown-item>
             <el-dropdown-item command="quick-login" divided>
               <el-icon><Lightning /></el-icon>
               快速登录
@@ -129,9 +133,11 @@ import {
   Key,
   User,
   Lock,
-  Lightning
+  Lightning,
+  View
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { h } from 'vue'
 import type { SystemConfig, SystemStatus } from '@/config/systems'
 import StatusBadge from './StatusBadge.vue'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -232,6 +238,22 @@ async function handleCredentialsCommand(command: string) {
         ElMessage.error('复制失败，请手动复制')
       }
       break
+    case 'view-credentials': {
+      if (!creds.username && !creds.password) {
+        ElMessage.warning('该系统未配置账密')
+        break
+      }
+      ElMessageBox({
+        title: '查看账密 — ' + (props.config.name || ''),
+        message: h('div', null, [
+          h('p', { style: 'margin:6px 0' }, [h('b', null, '账号：'), h('span', null, creds.username || '（未配置）')]),
+          h('p', { style: 'margin:6px 0' }, [h('b', null, '密码：'), h('span', { style: 'font-family:monospace;user-select:all' }, creds.password || '（未配置）')])
+        ]),
+        confirmButtonText: '关闭',
+        showCancelButton: false
+      }).catch(() => {})
+      break
+    }
     case 'quick-login':
       if (creds.username && creds.password) {
         const text = `${creds.username}\t${creds.password}`
