@@ -211,13 +211,25 @@ async function handleCredentialsCommand(command: string) {
 
   switch (command) {
     case 'copy-username':
-      if (creds.username && copyToClipboard(creds.username)) {
+      if (!creds.username) {
+        ElMessage.warning('该系统未配置登录账号')
+        break
+      }
+      if (copyToClipboard(creds.username)) {
         ElMessage.success('账号已复制到剪贴板')
+      } else {
+        ElMessage.error('复制失败，请手动复制')
       }
       break
     case 'copy-password':
-      if (creds.password && copyToClipboard(creds.password)) {
+      if (!creds.password) {
+        ElMessage.warning('该系统未配置登录密码')
+        break
+      }
+      if (copyToClipboard(creds.password)) {
         ElMessage.success('密码已复制到剪贴板')
+      } else {
+        ElMessage.error('复制失败，请手动复制')
       }
       break
     case 'quick-login':

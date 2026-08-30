@@ -20,3 +20,8 @@ logging:
   level:
     com.kb.portal: info
     com.kb.common: info
+
+# 账密 AES 加密 key（未设置环境变量时沿用历史默认 key；更换 key 会使已存密文不可解，需重新录入账密）
+portal:
+  encryption:
+    key: ${PORTAL_ENCRYPTION_KEY:PortalSecretKey123!}

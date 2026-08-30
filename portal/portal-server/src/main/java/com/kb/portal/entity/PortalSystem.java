@@ -45,6 +45,8 @@ public class PortalSystem {
 
     private String loginUsername;
 
+    /** IGNORED：允许 updateById 将该字段置 null（清空密码），默认 NOT_NULL 策略会忽略 null 导致无法清空 */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String loginPassword;
 
     private Integer sortOrder;
