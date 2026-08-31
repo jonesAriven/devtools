@@ -5,10 +5,7 @@
       <div class="bar-actions">
         <el-input v-model="kw" placeholder="需求编号 / 需求名称 / 客户" style="width:240px"
                   clearable aria-label="搜索归档项目" @keyup.enter="reload" @clear="reload" />
-        <el-upload v-if="isAdmin()" :show-file-list="false" :auto-upload="false" accept=".xlsx"
-                   :on-change="onFile" style="display:inline-block">
-          <el-button type="primary">导入 xlsx</el-button>
-        </el-upload>
+        <el-button v-if="isAdmin()" type="primary" @click="openImport">导入 xlsx</el-button>
       </div>
     </div>
 
@@ -43,10 +40,11 @@
                      :disabled="loading" background />
     </div>
 
-    <el-dialog v-model="dlg" title="导入归档库" width="520px">
+    <el-dialog v-model="dlg" title="导入归档库" width="560px">
+      <el-link type="primary" href="/api/archive/import/template" target="_blank"
+               style="margin-bottom:10px; display:inline-block">下载导入模板（含逐列填写说明）</el-link>
       <el-alert type="info" :closable="false" style="margin-bottom:10px">
         <p style="margin:0">第5行起填数据；B/C/D=一二三级模块，E=功能用户，G=功能过程名（动词开头），K=数据属性（、分隔≥3字段）。增量按「模块+FP名」主键 upsert。</p>
-        <el-link type="primary" style="margin-top:4px" href="/api/archive/import/template">下载导入模板（含逐列填写说明）</el-link>
       </el-alert>
       <el-radio-group v-model="mode">
         <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标项目）</el-radio>
@@ -62,9 +60,16 @@
                    :label="`${p.requirement_id} ${p.requirement_name?.slice(0, 20)}`"
                    :value="p.id" />
       </el-select>
+      <div style="margin-top:12px">
+        <el-upload v-if="isAdmin()" :show-file-list="true" :auto-upload="false" accept=".xlsx"
+                   :on-change="onPick">
+          <el-button>选择 Excel 文件</el-button>
+        </el-upload>
+        <span v-if="file" style="margin-left:8px; color:#67c23a; font-size:12px">已选择：{{ file.name }}</span>
+      </div>
       <template #footer>
         <el-button @click="dlg = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="doImport">确认导入</el-button>
+        <el-button type="primary" :disabled="!file" :loading="uploading" @click="doImport">确认导入</el-button>
       </template>
     </el-dialog>
   </el-card>
@@ -95,11 +100,14 @@ const { list, total, page, pageSize, loading, error, reset } = usePaged(
 function reload() { reset() }
 function view(id) { router.push(`/archive/${id}`) }
 
-function onFile(f) {
-  file.value = f.raw
+function openImport() {
   mode.value = 'incremental'
+  file.value = null
   dlg.value = true
   loadAll()
+}
+function onPick(f) {
+  file.value = f.raw   // 仅暂存文件，不触发弹窗；选完模式后由「确认导入」提交
 }
 
 async function loadAll() {
