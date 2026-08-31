@@ -70,7 +70,10 @@ def _repair_xlsx_bytes(xlsx_bytes: bytes) -> bytes:
                     text = data.decode("utf-8", "ignore")
                     text = re.sub(
                         r"<fills\b.*?</fills>",
-                        '<fills count="2"><fill/><fill><patternFill patternType="gray125"/></fill></fills>',
+                        '<fills count="2">'
+                        '<fill><patternFill patternType="none"/></fill>'
+                        '<fill><patternFill patternType="gray125"/></fill>'
+                        '</fills>',
                         text, flags=re.S,
                     )
                     data = text.encode("utf-8")
