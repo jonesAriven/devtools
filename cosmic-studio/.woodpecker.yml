@@ -1,10 +1,19 @@
 # cosmic-studio 部署流水线
 # 触发：push 到 main 或手动（Woodpecker UI）
+#
+# ⚠️ 触发源是 GitHub，不是 Gitee！
+#    Woodpecker 的 forge 配的是 github.com/jonesAriven/cosmic-studio
+#    （clone 步骤日志可见 remote add origin https://github.com/...）。
+#    只 push gitee 不会触发流水线，必须同时 push github。
+#    （deploy.sh 用 gitee 的 origin 拉代码，所以两边都要推：github 触发、gitee 供拉取。）
+#
 # 前置（一次性）：
-#   1. Woodpecker 启用本仓库（forge 对应 GitHub/Gitee）
+#   1. Woodpecker 启用本仓库（forge 对应 GitHub）
 #   2. 仓库 Secrets 配置 ssh_key_mykng（mykng root 私钥）
 #   3. mykng /root/devtools/cosmic-studio 已转为 git clone（见 DEPLOY.md §发布）
-# 前端 dist 与 app/static 构建产物入库：mykng 无 Node，流水线直接用入库产物构建镜像
+#
+# 前端构建：dist 已不再入库（见 .gitignore），由 deploy.sh 在宿主机
+#   git reset 之后执行 npm ci + npm run build 生成，再 compose build 时 COPY 进镜像。
 when:
   event: [push, manual]
   branch: [main, dev]

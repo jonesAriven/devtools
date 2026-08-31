@@ -9,9 +9,16 @@ __pycache__/
 *.pyc
 .venv/
 
-# 前端依赖（构建产物 dist/ 与 app/static/ 入库：mykng 无 Node，
-# 流水线直接用入库产物 compose build，见 DEPLOY.md）
+# 前端依赖
 frontend/node_modules/
+
+# 前端构建产物：不再入库
+# 历史原因曾入库——当时 mykng 无 Node，流水线直接用入库的 dist 构建镜像。
+# 现 mykng 已具备 Node，deploy.sh 在 git reset 之后执行 npm ci + npm run build。
+# 若 dist 仍被 git 跟踪，git reset --hard 会还原仓库里那份「陈旧产物」，
+# 覆盖甚至回退刚构建好的结果（2026-08-31 现网回退事故）。
+# 故改为忽略：构建产物一律由部署时生成，杜绝陈旧产物被还原。
+frontend/dist/
 
 # 运行数据
 data/
