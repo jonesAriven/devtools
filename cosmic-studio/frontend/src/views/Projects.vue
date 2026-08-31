@@ -118,9 +118,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import api, { isAdmin } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
+import { usePersistentState } from '../composables/usePersistentState'
 
 const router = useRouter()
-const q = ref('')
+const q = usePersistentState('q', '')
 const dlg = ref(false)
 const saving = ref(false)
 const form = reactive({ requirement_id: '', requirement_name: '', project_code: 'ngcard', client_name: '中移动在线基地' })

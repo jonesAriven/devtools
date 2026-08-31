@@ -51,13 +51,14 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { useLocalPaged } from '../composables/usePaged'
+import { usePersistentState } from '../composables/usePersistentState'
 
 const projects = ref([])
-const pid = ref(null)
+const pid = usePersistentState('pid', null)
 const allVersions = ref([])
 const loading = ref(false)
 const snapDlg = ref(false)
@@ -72,13 +73,19 @@ onMounted(async () => {
   // /active/projects 已改成分页体 {list,total,...}，不能再用裸数组
   const { data } = await api.get('/active/projects', { params: { page: 1, page_size: 100 } })
   projects.value = data.list ?? []
+  // pid 是持久化的：切回本菜单要自动补回版本列表，并留在上次的页码
+  if (pid.value) load(false)
 })
-async function load() {
+// 选中项目后自动加载（无需再手动点刷新）；用户主动切换才回第 1 页
+watch(pid, () => load(true))
+// resetPage：主动切项目时回第 1 页；切走再切回来要留在原页码
+// （模板里 @click="load" 会传入 MouseEvent，非 false 即按 resetPage=true 处理）
+async function load(resetPage = true) {
   if (!pid.value) return
   loading.value = true
   try {
     allVersions.value = (await api.get(`/active/projects/${pid.value}/versions`)).data
-    page.value = 1
+    if (resetPage) page.value = 1
   } finally { loading.value = false }
 }
 async function snapshot() {

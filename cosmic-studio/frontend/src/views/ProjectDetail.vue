@@ -332,6 +332,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role } from '../api'
 import { useViewMode } from '../composables/useViewMode'
+import { usePersistentState } from '../composables/usePersistentState'
 
 const route = useRoute()
 const pid = route.params.id
@@ -341,15 +342,15 @@ const loading = ref(false)
 const error = ref('')
 
 // 模块级分页（归档库单项目可达 251 模块 / 3780 FP，必须分页）
-const modPage = ref(1)
-const modPageSize = ref(10)
+const modPage = usePersistentState('modPage', 1)
+const modPageSize = usePersistentState('modPageSize', 10)
 const modTotal = ref(0)
-const modKw = ref('')
+const modKw = usePersistentState('modKw', '')
 const viewMode = useViewMode() // 'tree' | 'flat'，跨路由/刷新保持
 
-// 全列筛选
-const filters = reactive({ fp: '', event: '', move: '', desc: '', group: '', attrs: '' })
-function clearFilters() { Object.assign(filters, { fp: '', event: '', move: '', desc: '', group: '', attrs: '' }) }
+// 全列筛选（持久化：切去别的菜单再回来，筛选条件还在）
+const filters = usePersistentState('filters', { fp: '', event: '', move: '', desc: '', group: '', attrs: '' })
+function clearFilters() { Object.assign(filters.value, { fp: '', event: '', move: '', desc: '', group: '', attrs: '' }) }
 
 const deriveIssues = ref([])
 const lintDlg = ref(false)
@@ -477,7 +478,7 @@ const flatRows = computed(() => {
 })
 
 const filteredFlatRows = computed(() => {
-  const f = filters
+  const f = filters.value
   const hasFilter = f.fp || f.event || f.move || f.desc || f.group || f.attrs
   if (!hasFilter) return flatRows.value
   const kw = (v) => (v || '').toLowerCase()

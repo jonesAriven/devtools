@@ -145,10 +145,11 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { isAdmin, batchDeleteByFilter, batchConfirmByFilter, batchRejectByFilter } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
+import { usePersistentState } from '../composables/usePersistentState'
 
-const q = ref('')
-const status = ref('confirmed')
-const categoryId = ref(null)
+const q = usePersistentState('q', '')
+const status = usePersistentState('status', 'confirmed')
+const categoryId = usePersistentState('categoryId', null)
 const categories = ref([])
 const stats = ref({})
 const sel = ref([])

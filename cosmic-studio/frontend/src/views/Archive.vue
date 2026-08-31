@@ -81,9 +81,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
+import { usePersistentState } from '../composables/usePersistentState'
 
 const router = useRouter()
-const kw = ref('')
+const kw = usePersistentState('kw', '')
 const dlg = ref(false)
 const mode = ref('incremental')
 const targetPid = ref(null)

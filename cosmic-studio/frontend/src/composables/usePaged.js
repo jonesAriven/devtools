@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue'
+import { usePersistentState } from './usePersistentState'
 
 /**
  * 服务端分页状态机。
@@ -16,18 +17,23 @@ import { computed, ref, watch } from 'vue'
  * @param {number} opts.pageSize 初始每页条数
  * @param {() => object} opts.extraParams 额外的筛选参数（keyword / status …）
  * @param {boolean} opts.immediate 是否挂载即加载
+ * @param {string} opts.key 同页多个分页器时的区分前缀
+ *
+ * 页码 / 每页条数走持久化：翻到第 5 页切去别的菜单，回来还在第 5 页。
  */
 export function usePaged(fetcher, opts = {}) {
   const {
     pageSize: initialSize = 20,
     extraParams = () => ({}),
     immediate = false,
+    key = '',
   } = opts
+  const prefix = key ? `${key}.` : ''
 
   const list = ref([])
   const total = ref(0)
-  const page = ref(1)
-  const pageSize = ref(initialSize)
+  const page = usePersistentState(`${prefix}page`, 1)
+  const pageSize = usePersistentState(`${prefix}pageSize`, initialSize)
   const loading = ref(false)
   const error = ref('')
   const loaded = ref(false)
@@ -84,10 +90,13 @@ export function usePaged(fetcher, opts = {}) {
  *
  * @param {import('vue').Ref<Array>} sourceRef 全量数据源
  * @param {number} initialSize
+ * @param {object} opts
+ * @param {string} opts.key 同页多个分页器时的区分前缀
  */
-export function useLocalPaged(sourceRef, initialSize = 20) {
-  const page = ref(1)
-  const pageSize = ref(initialSize)
+export function useLocalPaged(sourceRef, initialSize = 20, opts = {}) {
+  const prefix = opts.key ? `${opts.key}.` : ''
+  const page = usePersistentState(`${prefix}page`, 1)
+  const pageSize = usePersistentState(`${prefix}pageSize`, initialSize)
   const total = computed(() => (sourceRef.value || []).length)
   const list = computed(() => {
     const src = sourceRef.value || []

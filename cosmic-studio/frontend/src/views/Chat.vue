@@ -22,12 +22,16 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { useBreakpoint } from '../composables/useBreakpoint'
+import { usePersistentState } from '../composables/usePersistentState'
 
-const msgs = ref([{ role: 'assistant', content: '我是 cosmic-studio 助手，可以查项目、跑门禁、导出交付件、查词库、改规范。直接说需求即可。' }])
+// 对话历史持久化：切去别的菜单再回来，聊天记录不该清空
+const MAX_MSGS = 60 // 只保留最近若干条，避免撑爆 localStorage 配额
+const msgs = usePersistentState('msgs', [{ role: 'assistant', content: '我是 cosmic-studio 助手，可以查项目、跑门禁、导出交付件、查词库、改规范。直接说需求即可。' }])
+watch(msgs, v => { if (v.length > MAX_MSGS) msgs.value = v.slice(-MAX_MSGS) })
 const input = ref('')
 const loading = ref(false)
 const msgsEl = ref()

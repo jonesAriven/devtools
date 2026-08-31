@@ -48,9 +48,10 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
+import { usePersistentState } from '../composables/usePersistentState'
 
 const all = ref([])
-const category = ref('writing')
+const category = usePersistentState('category', 'writing')
 const loading = ref(false)
 const dlg = ref(false)
 const current = ref({})
@@ -58,12 +59,14 @@ const editText = ref('')
 
 const { list: pageList, total, page, pageSize } = useLocalPaged(all, 20)
 
-async function load() {
+// resetPage：切换分类时回第 1 页；但切走再切回来要留在原来的页码
+// （@change="load" 会把分类值当第一个实参传进来，非布尔值同样按 resetPage=true 处理）
+async function load(resetPage = true) {
   loading.value = true
   try {
     const { data } = await api.get('/studio/specs', { params: { category: category.value } })
     all.value = Object.values(data.specs).map((v, i) => ({ spec_key: Object.keys(data.specs)[i], ...v }))
-    page.value = 1
+    if (resetPage) page.value = 1
   } finally { loading.value = false }
 }
 function open(row) {
@@ -87,7 +90,7 @@ async function reset(row) {
   ElMessage.success('已还原默认')
   load()
 }
-onMounted(load)
+onMounted(() => load(false))
 </script>
 
 <!-- .bar / .bar h3 已迁入 theme.css -->
