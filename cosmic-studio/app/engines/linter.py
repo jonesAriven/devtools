@@ -38,6 +38,18 @@ def _split_fields(attrs: str) -> list:
     return [f.strip() for f in (attrs or "").split("、") if f.strip()]
 
 
+def _first_attrs(subs_attrs):
+    """从无子过程 FP 的 fp_attrs 安全取首个子过程的字段集合。
+
+    fp_attrs[fid] 可能为 None（FP 不在字典中）或 []（FP 无子过程），
+    直接 [0] 会 IndexError。统一返回去空字段集合。
+    """
+    if not subs_attrs:
+        return set()
+    first = subs_attrs[0] if isinstance(subs_attrs, (list, tuple)) else subs_attrs
+    return set(_split_fields(first if isinstance(first, str) else ""))
+
+
 def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool = True) -> dict:
     issues = []
     warnings = []
@@ -179,8 +191,8 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 a, b = mfps[i], mfps[j]
                 if a["fp_name"][:2] != b["fp_name"][:2]:
                     continue
-                sa = set((fp_attrs.get(a["id"], [""])[0] or "").split("、")) - {""}
-                sb = set((fp_attrs.get(b["id"], [""])[0] or "").split("、")) - {""}
+                sa = _first_attrs(fp_attrs.get(a["id"]))
+                sb = _first_attrs(fp_attrs.get(b["id"]))
                 if sa and sb:
                     jac = similarity.jaccard(sa, sb)
                     if jac >= jac_threshold:
