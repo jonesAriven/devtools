@@ -1,10 +1,12 @@
 """studio 路由：规则管理、规范中心（spec_rules）、词库、菜单下发。"""
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from .. import config, db
+from .. import config, db, paging
 from ..auth import require_role
-from ..engines import spec
+from ..engines import spec, vocab_miner
 
 # 路由级默认：登录（viewer 起）可见；变更端点在签名上升为 admin
 r = APIRouter(prefix="/api", tags=["studio"], dependencies=[Depends(require_role("viewer"))])
@@ -70,22 +72,40 @@ class PoolIn(BaseModel):
 
 
 @r.get("/studio/pools")
-def list_pools(q: str = ""):
-    like = f"%{q}%" if q else "%"
-    return db.query(config.DB_STUDIO,
-                    "SELECT id, data_group, fields, updated_at FROM attr_pools WHERE data_group LIKE %s ORDER BY data_group",
-                    (like,))
+def list_pools(q: str = "", page: int = 1, page_size: int = 20):
+    """分页字段池 → {list,total,page,page_size}。size = 该组去重字段数。"""
+    cond, params = ["1=1"], []
+    if q:
+        cond.append("data_group LIKE %s")
+        params.append(f"%{q.strip()}%")
+    where = " AND ".join(cond)
+    return paging.paginate(
+        config.DB_STUDIO,
+        f"SELECT id, data_group, fields, JSON_LENGTH(fields) AS size, updated_at "
+        f"FROM attr_pools WHERE {where}",
+        f"SELECT COUNT(*) AS total FROM attr_pools WHERE {where}",
+        tuple(params), "ORDER BY data_group", page, page_size)
 
 
 @r.put("/studio/pools")
 def upsert_pool(body: PoolIn, user: dict = Depends(require_role("admin"))):
-    if len(body.fields) < 25:
-        raise HTTPException(422, f"字段池至少25个字段，当前{len(body.fields)}个（池化差异化空间不足）")
+    """新增/覆盖字段池。
+
+    两处修正：
+      1. fields 是 JSON 列，必须 json.dumps —— 直接传 list 会被 pymysql 转义成
+         ('a','b') 导致写入失败或存成非法 JSON（迁移脚本一直是对的，这里漏了）。
+      2. 原来 <25 字段直接 422：现存量 16 个池里有 5 个本来就不足 25 字段，
+         硬校验等于把补录通道焊死。改为 <3 才拒（子过程最少 3 字段的规矩），
+         不足 25 只警告「差异化空间不足」。
+    """
+    if len(body.fields) < 3:
+        raise HTTPException(422, f"字段池至少3个字段，当前{len(body.fields)}个")
     db.execute(config.DB_STUDIO, """
         INSERT INTO attr_pools (data_group, fields, updated_at) VALUES (%s,%s,NOW())
         ON DUPLICATE KEY UPDATE fields=VALUES(fields), updated_at=NOW()
-    """, (body.data_group, body.fields))
-    return {"data_group": body.data_group, "size": len(body.fields)}
+    """, (body.data_group, json.dumps(body.fields, ensure_ascii=False)))
+    return {"data_group": body.data_group, "size": len(body.fields),
+            "warn": len(body.fields) < 25 and "字段不足25，差异化空间受限" or ""}
 
 
 # ── 规范中心：编写规范 + 截图规范（spec_rules，即改即生效）──
@@ -146,16 +166,109 @@ def menus(user: dict = Depends(require_role("viewer"))):
 
 
 # ── 词库 ──
+VOCAB_SORTABLE = {
+    "frequency": "frequency DESC, id ASC",
+    "term": "term ASC",
+    "created_at": "created_at DESC, id DESC",
+}
+
+
 @r.get("/studio/vocab")
-def vocab(q: str = "", status: str = "", limit: int = 50):
+def vocab(q: str = "", status: str = "", category_id: int = 0,
+          page: int = 1, page_size: int = 20, sort: str = "frequency"):
+    """分页词库 → {list,total,page,page_size}。"""
     cond, params = ["1=1"], []
     if q:
         cond.append("term LIKE %s")
-        params.append(f"%{q}%")
+        params.append(f"%{q.strip()}%")
     if status:
         cond.append("status=%s")
         params.append(status)
-    params.append(min(limit, 500))
-    return db.query(config.DB_STUDIO,
-                    f"SELECT id, term, category_id, frequency, source, status, notes FROM vocab_terms "
-                    f"WHERE {' AND '.join(cond)} ORDER BY frequency DESC, id LIMIT %s", tuple(params))
+    if category_id:
+        cond.append("category_id=%s")
+        params.append(category_id)
+    where = " AND ".join(cond)
+    order = VOCAB_SORTABLE.get(sort, VOCAB_SORTABLE["frequency"])
+    return paging.paginate(
+        config.DB_STUDIO,
+        f"SELECT v.id, v.term, v.category_id, v.frequency, v.source, v.status, v.notes, "
+        f"v.created_at, c.name AS category_name "
+        f"FROM vocab_terms v LEFT JOIN vocab_categories c ON c.id = v.category_id "
+        f"WHERE {where}",
+        f"SELECT COUNT(*) AS total FROM vocab_terms WHERE {where}",
+        tuple(params), f"ORDER BY {order}", page, page_size)
+
+
+@r.get("/studio/vocab/categories")
+def vocab_categories():
+    """分类字典 + 每类词条数，供前端筛选下拉与统计条使用。"""
+    return db.query(config.DB_STUDIO, """
+        SELECT c.id, c.name, c.description, COUNT(v.id) AS term_count
+        FROM vocab_categories c LEFT JOIN vocab_terms v ON v.category_id = c.id
+        GROUP BY c.id, c.name, c.description ORDER BY term_count DESC, c.id
+    """)
+
+
+@r.get("/studio/vocab/stats")
+def vocab_stats():
+    """词库体检指标：待审候选数、零频词数、来源分布、状态分布。"""
+    def _dist(col):
+        return {r[col]: r["n"] for r in db.query(
+            config.DB_STUDIO,
+            f"SELECT {col}, COUNT(*) AS n FROM vocab_terms GROUP BY {col} ORDER BY n DESC")}
+
+    return {
+        "total": db.query(config.DB_STUDIO, "SELECT COUNT(*) AS n FROM vocab_terms", one=True)["n"],
+        "by_status": _dist("status"),
+        "by_source": _dist("source"),
+        "zero_freq": db.query(config.DB_STUDIO,
+                              "SELECT COUNT(*) AS n FROM vocab_terms WHERE frequency<=0",
+                              one=True)["n"],
+        "last_mined_at": (db.query(
+            config.DB_STUDIO,
+            "SELECT MAX(created_at) AS t FROM vocab_terms WHERE source='mined'",
+            one=True) or {}).get("t"),
+    }
+
+
+@r.post("/studio/vocab/mine")
+def mine_vocab(sync_pools: bool = True, user: dict = Depends(require_role("admin"))):
+    """从编写库/归档库回采术语与词频（幂等，可重复执行）。
+
+    新词落 candidate 待人审；已有词只刷新 frequency，不动 status/source。
+    """
+    return vocab_miner.mine(sync_pools=sync_pools)
+
+
+class VocabIdsIn(BaseModel):
+    ids: list[int]
+
+
+def _bulk_set_status(ids: list[int], from_status: str, to_status: str) -> int:
+    if not ids:
+        return 0
+    ph = ",".join(["%s"] * len(ids))
+    return db.execute(
+        config.DB_STUDIO,
+        f"UPDATE vocab_terms SET status=%s WHERE status=%s AND id IN ({ph})",
+        (to_status, from_status, *ids))
+
+
+@r.post("/studio/vocab/confirm")
+def confirm_terms(body: VocabIdsIn, user: dict = Depends(require_role("admin"))):
+    """候选词 → 已确认（进入 LLM search_vocab 与页面正式词库）。"""
+    return {"confirmed": _bulk_set_status(body.ids, "candidate", "confirmed")}
+
+
+@r.post("/studio/vocab/reject")
+def reject_terms(body: VocabIdsIn, user: dict = Depends(require_role("admin"))):
+    """候选词 → 已驳回（保留记录但不再展示）。"""
+    return {"rejected": _bulk_set_status(body.ids, "candidate", "rejected")}
+
+
+@r.post("/studio/vocab/{vid}/status")
+def set_term_status(vid: int, status: str, user: dict = Depends(require_role("admin"))):
+    if status not in ("candidate", "confirmed", "rejected"):
+        raise HTTPException(422, "status 必须是 candidate/confirmed/rejected")
+    db.execute(config.DB_STUDIO, "UPDATE vocab_terms SET status=%s WHERE id=%s", (status, vid))
+    return {"id": vid, "status": status}

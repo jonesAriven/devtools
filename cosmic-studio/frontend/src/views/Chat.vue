@@ -22,15 +22,17 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
+import { useBreakpoint } from '../composables/useBreakpoint'
 
 const msgs = ref([{ role: 'assistant', content: '我是 cosmic-studio 助手，可以查项目、跑门禁、导出交付件、查词库、改规范。直接说需求即可。' }])
 const input = ref('')
 const loading = ref(false)
 const msgsEl = ref()
-const isMobile = ref(window.innerWidth < 768)
+// 断点收口到 useBreakpoint（原实现在 onMounted 里另挂了一个监听且从不清理）
+const { isMobile } = useBreakpoint()
 
 async function send() {
   const text = input.value.trim()
@@ -53,19 +55,19 @@ async function scroll() {
   await nextTick()
   if (msgsEl.value) msgsEl.value.scrollTop = msgsEl.value.scrollHeight
 }
-onMounted(() => window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 768 }))
 </script>
 
 <style scoped>
 .chat-page { display: flex; flex-direction: column; height: calc(100vh - 100px); }
-.msgs { flex: 1; overflow-y: auto; padding: 8px 4px; }
-.msg { display: flex; margin: 8px 0; }
+.msgs { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-1); }
+.msg { display: flex; margin: var(--sp-2) 0; }
 .msg.user { justify-content: flex-end; }
-.bubble { max-width: 78%; padding: 10px 14px; border-radius: 10px; background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08); white-space: pre-wrap; word-break: break-word; }
-.msg.user .bubble { background: #409eff; color: #fff; }
-.msg.assistant .bubble { background: #fff; color: #303133; }
-.tools { margin-bottom: 6px; }
-.input-bar { display: flex; gap: 8px; align-items: flex-end; }
+.bubble { max-width: 78%; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg);
+  background: var(--c-surface); box-shadow: var(--sh-1);
+  white-space: pre-wrap; word-break: break-word; }
+.msg.user .bubble { background: var(--c-primary); color: var(--c-text-inverse); }
+.msg.assistant .bubble { background: var(--c-surface); color: var(--c-text); }
+.tools { margin-bottom: var(--sp-2); }
+.input-bar { display: flex; gap: var(--sp-2); align-items: flex-end; }
 @media (max-width: 767px) { .chat-page { height: calc(100vh - 92px); } }
 </style>

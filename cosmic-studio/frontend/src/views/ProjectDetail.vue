@@ -8,7 +8,7 @@
         </el-breadcrumb>
         <h3>{{ proj?.requirement_id }} {{ proj?.requirement_name }}</h3>
       </div>
-      <div class="ops">
+      <div class="bar-actions">
         <el-upload v-if="canEdit" :show-file-list="false" :auto-upload="false" accept=".xlsx"
                    :on-change="onImportFile" style="display:inline-block">
           <el-button type="info" plain>导入</el-button>
@@ -33,8 +33,26 @@
       </div>
     </el-alert>
 
+    <!-- 模块级分页：归档库单个项目可达 251 个模块 / 3780 个 FP，
+         此前一次全量读入再把整棵三层树铺进 DOM，页面直接不可用 -->
+    <div class="bar" style="align-items:center">
+      <div class="bar-actions">
+        <el-input v-model="modKw" placeholder="按模块名筛选" style="width:220px" clearable
+                  aria-label="按模块名筛选" @keyup.enter="reloadTree" @clear="reloadTree" />
+        <span class="muted" v-if="tree?.stats">
+          全项目共 {{ tree.stats.module_count }} 模块 / {{ tree.stats.fp_count }} FP / {{ tree.stats.sub_count }} 子过程
+        </span>
+      </div>
+      <el-pagination v-model:current-page="modPage" v-model:page-size="modPageSize"
+                     :total="modTotal" :page-sizes="[5, 10, 20, 50]" :disabled="loading"
+                     layout="total, sizes, prev, pager, next" background />
+    </div>
+
     <el-table :data="tableRows" row-key="rowKey" border :tree-props="{ children: 'children' }"
               :default-expand-all="false">
+      <template #empty>
+        <el-empty :description="error || '该项目还没有模块'" />
+      </template>
       <el-table-column prop="module" label="三级模块" min-width="140" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
       <el-table-column prop="move" label="类型" width="55" />
@@ -229,18 +247,28 @@
       <el-alert v-if="lintReport.summary" :type="lintReport.summary.pass ? 'success' : 'error'"
                 :closable="false"
                 :title="`错误 ${lintReport.summary.error} / 警告 ${lintReport.summary.warn}`" />
-      <el-table :data="lintReport.errors" size="small" max-height="420" style="margin-top:10px">
+      <el-table :data="lintReport.list" size="small" max-height="420" style="margin-top:10px">
         <el-table-column prop="check" label="检查项" width="110" />
-        <el-table-column prop="level" label="级别" width="70" />
+        <el-table-column label="级别" width="70">
+          <template #default="s">
+            <el-tag size="small" effect="plain"
+                    :type="s.row.level === 'error' ? 'danger' : 'warning'">
+              {{ s.row.level === 'error' ? '错误' : '警告' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="ref" label="位置" min-width="150" show-overflow-tooltip />
         <el-table-column prop="message" label="问题" min-width="300" show-overflow-tooltip />
       </el-table>
+      <p class="hint" v-if="lintReport.total > lintReport.list?.length">
+        共 {{ lintReport.total }} 条，此处展示前 {{ lintReport.list?.length }} 条；完整列表见「质量门禁」页。
+      </p>
     </el-dialog>
   </el-card>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role } from '../api'
@@ -250,9 +278,17 @@ const pid = route.params.id
 const proj = ref(null)
 const tree = ref(null)
 const loading = ref(false)
+const error = ref('')
+
+// 模块级分页（归档库单项目可达 251 模块 / 3780 FP，必须分页）
+const modPage = ref(1)
+const modPageSize = ref(10)
+const modTotal = ref(0)
+const modKw = ref('')
+
 const deriveIssues = ref([])
 const lintDlg = ref(false)
-const lintReport = ref({ errors: [], warnings: [], summary: {} })
+const lintReport = ref({ list: [], summary: {}, counts: {} })
 const busy = ref('')
 const saving = ref(false)
 const canEdit = computed(() => ['admin', 'editor'].includes(role()))
@@ -289,7 +325,18 @@ const fpForm = reactive({ module_id: null, name: '' })
 const subDlg = ref(false)
 const subForm = reactive({ id: null, fpId: null, fpName: '', review_id: null, move_type: 'E', desc: '', group_name: '', attributes: '', allowedMoves: ['E', 'W', 'R', 'X'] })
 
-const modules = computed(() => tree.value?.modules?.map(m => ({ id: m.id, level3: m.level3 })) || [])
+// 「新建功能过程」要能选到任意模块，不能只给当前页 —— 单独拉一份全量模块清单
+const allModules = ref([])
+async function loadAllModules() {
+  try {
+    const { data } = await api.get(`/active/projects/${pid}/tree`,
+      { params: { module_page: 1, module_page_size: 100 } })
+    allModules.value = (data.modules || []).map(m => ({ id: m.id, level3: m.level3 }))
+  } catch { /* ignore */ }
+}
+const modules = computed(() => allModules.value.length
+  ? allModules.value
+  : (tree.value?.modules?.map(m => ({ id: m.id, level3: m.level3 })) || []))
 const attrCount = computed(() => subForm.attributes.split('、').filter(f => f.trim()).length)
 
 const tableRows = computed(() => {
@@ -434,16 +481,34 @@ async function saveFpEdit() {
 
 async function load() {
   loading.value = true
+  error.value = ''
   try {
-    const [t, ps] = await Promise.all([
-      api.get(`/active/projects/${pid}/tree`),
-      api.get('/active/projects'),
-      loadReviews()
+    const [t] = await Promise.all([
+      api.get(`/active/projects/${pid}/tree`, {
+        params: {
+          module_page: modPage.value,
+          module_page_size: modPageSize.value,
+          keyword: modKw.value || undefined,
+        },
+      }),
+      loadReviews(),
     ])
     tree.value = t.data
-    proj.value = (ps.data.find(p => p.id == pid)) || null
+    modTotal.value = t.data.total ?? 0
+    // 项目信息直接从树响应里取，不再单独拉全量项目列表（分页后可能不在第 1 页）
+    proj.value = t.data.project || null
+    await loadAllModules()
+  } catch (e) {
+    error.value = e?.response?.data?.detail || '加载失败'
+    tree.value = null
   } finally { loading.value = false }
 }
+function reloadTree() {
+  if (modPage.value === 1) load()
+  else modPage.value = 1
+}
+// 翻页 / 改页大小 / 改筛选都走同一条加载路径
+watch([modPage, modPageSize], load)
 
 // ── 模块 ──
 function openModDlg() {
@@ -574,7 +639,9 @@ async function derive(fix) {
 async function lint() {
   busy.value = 'lint'
   try {
-    const { data } = await api.get(`/active/projects/${pid}/lint`)
+    // 弹窗只做概览，取前 100 条即可；完整分页列表走「质量门禁」页
+    const { data } = await api.get(`/active/projects/${pid}/lint`,
+      { params: { page: 1, page_size: 100 } })
     lintReport.value = data
     lintDlg.value = true
   } catch (e) { errMsg(e, '检查失败') } finally { busy.value = '' }
@@ -593,13 +660,14 @@ onMounted(load)
 </script>
 
 <style scoped>
-.bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-.bar h3 { margin: 0; }
-.ops { display: flex; gap: 8px; flex-wrap: wrap; }
-.hint { color: #909399; font-size: 12px; margin: 4px 0 0; line-height: 1.6; }
-.review-item { border: 1px solid #e8eaee; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
-.rv-head { display: flex; align-items: center; gap: 6px; }
+/* .bar / .bar h3 / .hint 已迁入 theme.css，色值统一走设计令牌 */
+.review-item { border: 1px solid var(--c-border); border-radius: var(--r-md);
+  padding: var(--sp-3); margin-bottom: var(--sp-3); }
+.rv-head { display: flex; align-items: center; gap: var(--sp-2); }
 .rv-head .spacer { flex: 1; }
-.rv-label { color: #606266; font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rv-content { background: #f7f8fa; border-radius: 4px; padding: 8px; margin: 8px 0 4px; font-size: 13px; line-height: 1.6; }
+.rv-label { color: var(--c-text-2); font-size: var(--fs-base); flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-content { background: var(--c-surface-3); border-radius: var(--r-sm);
+  padding: var(--sp-2); margin: var(--sp-2) 0 var(--sp-1);
+  font-size: var(--fs-base); line-height: var(--lh); }
 </style>

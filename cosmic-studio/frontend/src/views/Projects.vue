@@ -2,11 +2,11 @@
   <el-card>
     <div class="bar">
       <h3>编写库项目</h3>
-      <div class="ops">
-        <el-input v-model="q" placeholder="搜索需求编号/名称/客户" style="width:260px; margin-right:8px"
-                  clearable @input="load" />
+      <div class="bar-actions">
+        <el-input v-model="q" placeholder="搜索需求编号/名称/客户" style="width:240px" clearable
+                  aria-label="搜索项目" @keyup.enter="reload" @clear="reload" />
         <el-upload v-if="canImport" :show-file-list="false" :auto-upload="false" accept=".xlsx"
-                   :on-change="onFile" style="display:inline-block; margin-right:8px">
+                   :on-change="onFile" style="display:inline-block">
           <el-button type="success" plain>导入 xlsx</el-button>
         </el-upload>
         <el-button v-if="isAdmin" type="primary" @click="openDlg">新建项目</el-button>
@@ -15,6 +15,9 @@
 
     <el-table :data="groupedRows" row-key="rowKey" border v-loading="loading"
               :tree-props="{ children: 'children' }" default-expand-all>
+      <template #empty>
+        <el-empty :description="error || '暂无项目'" />
+      </template>
       <el-table-column prop="reqLabel" label="需求 / 副本" min-width="300">
         <template #default="s">
           <template v-if="s.row.kind === 'group'">
@@ -78,8 +81,8 @@
         <el-radio value="overwrite_all" :disabled="!isAdmin">整库覆盖导入（清空编写库全部重灌，admin）</el-radio>
       </el-radio-group>
       <el-select v-if="impMode !== 'overwrite_all'" v-model="impPid" placeholder="选择目标项目"
-                 style="width:100%; margin-top:10px">
-        <el-option v-for="p in list" :key="p.id"
+                 style="width:100%; margin-top:10px" filterable aria-label="选择导入目标项目">
+        <el-option v-for="p in allProjects" :key="p.id"
                    :label="`副本${p.copy_no}：${p.requirement_id} ${p.requirement_name?.slice(0, 20)}`" :value="p.id" />
       </el-select>
       <template #footer>
@@ -100,6 +103,12 @@
         <el-button type="primary" :loading="saving" @click="create">创建</el-button>
       </template>
     </el-dialog>
+
+    <div class="pager">
+      <el-pagination v-model:current-page="page" v-model:page-size="pageSize"
+                     :total="total" :page-sizes="PAGER_SIZES" :layout="PAGER_LAYOUT"
+                     :disabled="loading" background />
+    </div>
   </el-card>
 </template>
 
@@ -108,11 +117,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import api, { isAdmin } from '../api'
+import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 
 const router = useRouter()
-const list = ref([])
 const q = ref('')
-const loading = ref(false)
 const dlg = ref(false)
 const saving = ref(false)
 const form = reactive({ requirement_id: '', requirement_name: '', project_code: 'ngcard', client_name: '中移动在线基地' })
@@ -126,11 +134,21 @@ const impPid = ref(null)
 const impFile = ref(null)
 const importing = ref(false)
 
+// 导入目标下拉需要全量项目，不能只给当前页
+const allProjects = ref([])
+async function loadAll() {
+  try {
+    const { data } = await api.get('/active/projects', { params: { page: 1, page_size: 100 } })
+    allProjects.value = data.list ?? []
+  } catch { /* ignore */ }
+}
+
 function onFile(f) {
   impFile.value = f.raw
   impMode.value = 'incremental'
   impPid.value = null
   impDlg.value = true
+  loadAll()
 }
 async function doImport() {
   if (!impFile.value) return
@@ -166,15 +184,10 @@ const diffRow = ref(null)
 const diffTarget = ref(null)
 const diffData = ref(null)
 
-const filtered = computed(() => {
-  const kw = q.value.trim().toLowerCase()
-  if (!kw) return list.value
-  return list.value.filter(p =>
-    [p.requirement_id, p.requirement_name, p.client_name].some(v => (v || '').toLowerCase().includes(kw)))
-})
+// 关键字筛选已下推到服务端（此前是拉全量再在内存里 filter）
 const groupedRows = computed(() => {
   const groups = {}
-  for (const p of filtered.value) {
+  for (const p of list.value) {
     const k = p.requirement_id || `__id${p.id}`
     ;(groups[k] ||= []).push(p)
   }
@@ -209,7 +222,7 @@ async function copyProject(row) {
 }
 async function diffDlgOpen(row) {
   diffRow.value = row
-  const main = filtered.value.find(p => p.requirement_id === row.requirement_id && p.is_primary) || row
+  const main = list.value.find(p => p.requirement_id === row.requirement_id && p.is_primary) || row
   diffTarget.value = main
   if (main.id === row.id) { ElMessage.info('该副本就是主副本，请先复制一个副本再对比'); return }
   const { data } = await api.get(`/active/projects/${row.id}/diff`, { params: { against: main.id } })
@@ -240,10 +253,14 @@ function openDlg() {
   dlg.value = true
 }
 
-async function load() {
-  loading.value = true
-  try { list.value = (await api.get('/active/projects')).data } finally { loading.value = false }
-}
+// 按「需求」分页：total = 需求数。分片在需求级别，同一个需求的副本不会被劈到两页
+const { list, total, page, pageSize, loading, error, reset, load } = usePaged(
+  p => api.get('/active/projects', {
+    params: { ...p, group_by_req: true, keyword: q.value || undefined },
+  }),
+  { pageSize: 20, immediate: true }
+)
+function reload() { reset() }
 async function create() {
   if (!form.requirement_id.trim() || !form.requirement_name.trim()) {
     ElMessage.warning('需求编号和需求名称为必填项')
@@ -259,15 +276,14 @@ async function create() {
     ElMessage.error(typeof d === 'string' ? d : '创建失败，请检查必填项')
   }
 }
-onMounted(load)
+onMounted(loadAll)
 </script>
 
 <style scoped>
-.bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.bar h3 { margin: 0; }
-.ops { display: flex; align-items: center; }
-.imp-modes { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.hint { color: #909399; font-size: 12px; margin: 6px 0; }
-.diff-list { max-height: 200px; overflow-y: auto; background: #f7f8fa; padding: 8px; border-radius: 4px;
-  font-size: 13px; line-height: 1.8; }
+/* .bar / .bar h3 已迁入 theme.css，此处不再重复定义 */
+.imp-modes { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.hint { color: var(--c-text-3); font-size: var(--fs-sm); margin: var(--sp-2) 0; }
+.diff-list { max-height: 200px; overflow-y: auto; background: var(--c-surface-3);
+  padding: var(--sp-2); border-radius: var(--r-sm);
+  font-size: var(--fs-base); line-height: 1.8; }
 </style>

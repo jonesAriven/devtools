@@ -2,8 +2,7 @@
   <el-container class="layout" :class="{ mobile: isMobile }">
     <el-aside v-if="!isMobile" width="210px" class="sidebar">
       <div class="logo">cosmic-studio</div>
-      <el-menu :default-active="active" router background-color="#1d2535" text-color="#aeb6c5"
-               active-text-color="#409eff">
+      <el-menu :default-active="active" router aria-label="主导航" v-bind="menuTheme">
         <el-menu-item v-for="m in menus" :key="m.key" :index="m.path">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.title }}</span>
@@ -13,8 +12,8 @@
 
     <el-drawer v-if="isMobile" v-model="drawer" direction="ltr" size="200px" :with-header="false">
       <div class="logo">cosmic-studio</div>
-      <el-menu :default-active="active" router @select="drawer = false"
-               background-color="#1d2535" text-color="#aeb6c5" active-text-color="#409eff">
+      <el-menu :default-active="active" router aria-label="主导航（移动端）"
+               @select="drawer = false" v-bind="menuTheme">
         <el-menu-item v-for="m in menus" :key="m.key" :index="m.path">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.title }}</span>
@@ -55,21 +54,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from './api'
+import { useBreakpoint } from './composables/useBreakpoint'
 
 const route = useRoute()
 const router = useRouter()
 const menus = ref([])
 const drawer = ref(false)
-const isMobile = ref(window.innerWidth < 768)
-const onResize = () => { isMobile.value = window.innerWidth < 768 }
-onMounted(() => {
-  window.addEventListener('resize', onResize)
-  loadMenus()
-})
-onUnmounted(() => window.removeEventListener('resize', onResize))
+// 断点逻辑收口到 useBreakpoint（此前 Layout / Chat 各写一份，且没清理监听）
+const { isMobile } = useBreakpoint()
+
+// 侧栏配色走 CSS 变量，不再把 #1d2535 之类硬编码进模板属性
+const menuTheme = {
+  backgroundColor: 'var(--c-sidebar-bg)',
+  textColor: 'var(--c-sidebar-text)',
+  activeTextColor: 'var(--c-sidebar-active)',
+}
+
+onMounted(loadMenus)
 
 async function loadMenus() {
   try {
@@ -133,24 +137,7 @@ function onCommand(cmd) {
 }
 </script>
 
-<style>
-html, body, #app { height: 100%; margin: 0; background: #f5f7fa; }
-.layout { height: 100%; }
-.sidebar { background: #1d2535; }
-.logo { color: #fff; font-weight: 700; font-size: 17px; padding: 18px 20px; letter-spacing: .5px; }
-.sidebar .el-menu { border-right: none; }
-.topbar { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e8eaee; background: #fff; }
-.topbar .title { font-weight: 600; }
-.topbar .spacer { flex: 1; }
-.topbar .uname { cursor: pointer; color: #409eff; }
-.main { background: #f5f7fa; padding: 16px; }
-.burger { font-size: 20px; cursor: pointer; }
-.tabbar { background: #fff; border-bottom: 1px solid #e8eaee; padding: 5px 12px 0; }
-.tabbar :deep(.el-tabs__header) { margin: 0; }
-.tabbar :deep(.el-tabs__nav) { border: none; }
-.tabbar :deep(.el-tabs__item) { height: 32px; line-height: 32px; font-size: 13px; }
-.tabbar :deep(.el-tabs__item.is-active) { background: #ecf5ff; border-bottom-color: #fff; }
-@media (max-width: 767px) {
-  .main { padding: 10px; }
-}
-</style>
+<!--
+  布局骨架样式（.layout / .sidebar / .topbar / .tabbar / .main …）已全部迁入
+  src/styles/theme.css，色值统一走设计令牌。此处不再重复定义，避免两处漂移。
+-->

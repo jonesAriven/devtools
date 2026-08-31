@@ -118,8 +118,11 @@ def t_update_spec(args, user):
       {"type": "object", "properties": {"q": {"type": "string"}, "limit": {"type": "integer"}}})
 def t_vocab(args, user):
     q = f"%{args.get('q', '')}%"
+    # 排除已驳回的（人工判废）；候选词保留可见 —— 它们是从真实度量数据挖出来的词，
+    # 只是还没走完审核，对命名一致性仍有参考价值
     return db.query(config.DB_STUDIO,
-                    "SELECT term, frequency, source, status FROM vocab_terms WHERE term LIKE %s "
+                    "SELECT term, frequency, source, status FROM vocab_terms "
+                    "WHERE term LIKE %s AND status <> 'rejected' "
                     "ORDER BY frequency DESC LIMIT %s", (q, min(args.get("limit", 20), 100)))
 
 

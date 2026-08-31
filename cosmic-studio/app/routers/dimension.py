@@ -9,10 +9,21 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, field_validator
 
-from .. import config, db
+from .. import config, db, paging
 from ..auth import ROLE_RANK, require_role
 from ..engines import derive, linter
-from ..services import json_io, versioning, xlsx_export, xlsx_import
+from ..services import json_io, tree as tree_svc, versioning, xlsx_export, xlsx_import
+
+# 项目列表可排序字段白名单（防止 SQL 注入）
+PROJECT_SORTABLE = {
+    "requirement_id": "t.requirement_id",
+    "requirement_name": "t.requirement_name",
+    "client_name": "t.client_name",
+    "fp_count": "t.fp_count",
+    "sub_count": "t.sub_count",
+    "created_at": "t.created_at",
+}
+PROJECT_ORDER_DEFAULT = "t.requirement_id ASC, t.copy_no ASC"
 
 
 class ProjectIn(BaseModel):
@@ -70,19 +81,81 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                   dependencies=[Depends(require_role("viewer"))])
 
     # ── 项目 ──
+    # 项目列表内层：copy_no 必须基于全量 projects 计算，筛选只能加在外层，
+    # 否则按关键词过滤后「副本1」会被误标成「副本1」（而不是它真实的副本序号）
+    # 列清单必须显式写：pt.* 会把 is_primary 带出来，和外层 p.is_primary 重名，
+    # MySQL 在派生表（本查询要包一层做 COUNT）里直接报 1060 Duplicate column name
+    _PROJECTS_INNER = """
+        SELECT pt.id, pt.project_code, pt.client_name, pt.requirement_id, pt.requirement_name,
+               pt.client_contract, pt.batch_no, pt.status, pt.source_sheet,
+               pt.created_at, pt.updated_at,
+               pt.copy_no, pt.module_count, pt.fp_count, pt.sub_count,
+               p.is_primary
+        FROM (
+          SELECT p.*,
+            ROW_NUMBER() OVER (PARTITION BY p.requirement_id ORDER BY p.created_at, p.id) AS copy_no,
+            (SELECT COUNT(*) FROM modules m WHERE m.project_id=p.id) AS module_count,
+            (SELECT COUNT(*) FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=p.id) AS fp_count,
+            (SELECT COUNT(*) FROM sub_processes sp JOIN fps f ON f.id=sp.fp_id JOIN modules m ON m.id=f.module_id WHERE m.project_id=p.id) AS sub_count
+          FROM projects p
+        ) pt JOIN projects p ON p.id = pt.id
+    """
+
     @r.get("/projects")
-    def list_projects():
-        return db.query(db_name, """
-            SELECT t.*, p.is_primary FROM (
-              SELECT p.*,
-                ROW_NUMBER() OVER (PARTITION BY p.requirement_id ORDER BY p.created_at, p.id) AS copy_no,
-                (SELECT COUNT(*) FROM modules m WHERE m.project_id=p.id) AS module_count,
-                (SELECT COUNT(*) FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=p.id) AS fp_count,
-                (SELECT COUNT(*) FROM sub_processes sp JOIN fps f ON f.id=sp.fp_id JOIN modules m ON m.id=f.module_id WHERE m.project_id=p.id) AS sub_count
-              FROM projects p
-            ) t JOIN projects p ON p.id = t.id
-            ORDER BY t.requirement_id, t.copy_no
-        """)
+    def list_projects(page: int = 1, page_size: int = 20, keyword: str = "",
+                      sort: str = "", order: str = "asc", group_by_req: bool = False):
+        """分页项目列表 → {list,total,page,page_size}。
+
+        keyword 命中：需求编号 / 需求名称 / 客户 / 项目编码。
+
+        group_by_req=true：按「需求」分页（total = 需求数）。
+        前端编写库是按需求分组的树表，若按副本数切页，同一个需求的副本会被
+        劈到两页上、分组显示就断了。这里先取一页需求编号，再取这些需求的全部副本。
+        """
+        cond, params = ["1=1"], []
+        kw = (keyword or "").strip()
+        if kw:
+            like = f"%{kw}%"
+            cond.append("(t.requirement_id LIKE %s OR t.requirement_name LIKE %s "
+                        "OR t.client_name LIKE %s OR t.project_code LIKE %s)")
+            params.extend([like, like, like, like])
+        where = " AND ".join(cond)
+
+        col = PROJECT_SORTABLE.get(sort or "")
+        order_sql = PROJECT_ORDER_DEFAULT
+        if col:
+            order_sql = f"{col} {'DESC' if order.lower() == 'desc' else 'ASC'}, t.id ASC"
+
+        page_n, size_n, offset = paging.normalize(page, page_size)
+        params = tuple(params)
+
+        if group_by_req:
+            total = db.query(db_name,
+                             f"SELECT COUNT(*) AS total FROM (SELECT requirement_id FROM projects p "
+                             f"WHERE {where.replace('t.', 'p.')} GROUP BY requirement_id) x",
+                             params, one=True)["total"]
+            reqs = db.query(db_name,
+                            f"SELECT requirement_id FROM projects p "
+                            f"WHERE {where.replace('t.', 'p.')} GROUP BY requirement_id "
+                            f"ORDER BY requirement_id LIMIT %s OFFSET %s",
+                            (*params, size_n, offset))
+            if not reqs:
+                return paging.wrap([], total, page_n, size_n)
+            ph = ",".join(["%s"] * len(reqs))
+            rows = db.query(db_name,
+                            f"SELECT * FROM ({_PROJECTS_INNER}) AS t "
+                            f"WHERE t.requirement_id IN ({ph}) ORDER BY {order_sql}",
+                            tuple(r["requirement_id"] for r in reqs))
+            return paging.wrap(rows, total, page_n, size_n)
+
+        total = db.query(db_name,
+                         f"SELECT COUNT(*) AS total FROM ({_PROJECTS_INNER}) AS t "
+                         f"WHERE {where}", params, one=True)["total"]
+        rows = db.query(db_name,
+                        f"SELECT * FROM ({_PROJECTS_INNER}) AS t WHERE {where} "
+                        f"ORDER BY {order_sql} LIMIT %s OFFSET %s",
+                        (*params, size_n, offset))
+        return paging.wrap(rows, total, page_n, size_n)
 
     @r.post("/projects/{pid}/copy", status_code=201)
     def copy_project(pid: int, user: dict = Depends(require_role("editor"))):
@@ -157,11 +230,17 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"id": pid}
 
     @r.get("/projects/{pid}/tree")
-    def project_tree(pid: int):
-        tree = xlsx_export.load_project_tree(db_name, pid)
-        if not tree:
+    def project_tree(pid: int, module_page: int = 1, module_page_size: int = 10,
+                     keyword: str = ""):
+        """分页项目树 → {project, modules, total, page, page_size, stats}。
+
+        分页粒度 = 顶层模块（FP / 子过程跟随），keyword 命中模块一/二/三级名。
+        原实现是 N+1 查询，改走 services/tree.py 的 3 查询 + LIMIT 下推版本。
+        """
+        data = tree_svc.load_paged(db_name, pid, module_page, module_page_size, keyword)
+        if not data:
             raise HTTPException(404, "项目不存在")
-        return tree
+        return data
 
     @r.delete("/projects/{pid}")
     def delete_project(pid: int, confirm: str = "", user: dict = Depends(require_role("admin"))):
@@ -344,9 +423,30 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         return {"issues": issues, "count": len(issues), "fixed": fix}
 
     @r.get("/projects/{pid}/lint")
-    def lint(pid: int, no_archive: bool = False):
+    def lint(pid: int, no_archive: bool = False, page: int = 1, page_size: int = 20,
+             severity: str = "", keyword: str = ""):
+        """质量门禁报告（分页）→ {summary, counts, list, total, page, page_size}。
+
+        ⚠️ 与 /projects 不同：lint 是**计算型报告**（Jaccard / 相似度两两比对），
+        LIMIT 无法下推到 SQL，只能对已算出的 issues 在 API 层切片。
+        分页解决的是「几千条 issue 一次性塞进 DOM 把浏览器打挂」，不减少服务端计算量。
+        """
         report = linter.lint_project(db_name, pid, include_archive_similarity=not no_archive)
-        return report
+        errors = list(report.get("errors") or [])
+        warns = list(report.get("warnings") or [])
+        merged = [dict(i, level="error") for i in errors] + [dict(i, level="warn") for i in warns]
+        if severity in ("error", "warn"):
+            merged = [i for i in merged if i["level"] == severity]
+        kw = (keyword or "").strip().lower()
+        if kw:
+            merged = [i for i in merged if any(
+                kw in str(i.get(f, "")).lower() for f in ("check", "ref", "message"))]
+        page_n, size_n, offset = paging.normalize(page, page_size)
+        return {
+            "summary": report.get("summary") or {},
+            "counts": {"error": len(errors), "warn": len(warns)},
+            **paging.wrap(merged[offset:offset + size_n], len(merged), page_n, size_n),
+        }
 
     # ── 导入导出 ──
     @r.get("/import/template")

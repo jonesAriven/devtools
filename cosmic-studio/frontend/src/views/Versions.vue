@@ -2,8 +2,9 @@
   <el-card>
     <div class="bar">
       <h3>版本管理</h3>
-      <div>
-        <el-select v-model="pid" placeholder="选择编写库项目" style="width:320px">
+      <div class="bar-actions">
+        <el-select v-model="pid" placeholder="选择编写库项目" style="width:300px" filterable
+                   aria-label="选择编写库项目">
           <el-option v-for="p in projects" :key="p.id" :label="`${p.requirement_id} ${p.requirement_name?.slice(0,24)}`" :value="p.id" />
         </el-select>
         <el-button :disabled="!pid" @click="load">刷新</el-button>
@@ -11,7 +12,8 @@
                    :loading="snapping" @click="snapDlg = true">创建版本快照</el-button>
       </div>
     </div>
-    <el-table :data="list" v-loading="loading">
+    <el-table :data="pageList" v-loading="loading">
+      <template #empty><el-empty :description="pid ? '该项目还没有版本快照' : '请先选择项目'" /></template>
       <el-table-column prop="seq" label="版本" width="80">
         <template #default="s">v{{ s.row.seq }}</template>
       </el-table-column>
@@ -28,6 +30,12 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="pager">
+      <el-pagination v-model:current-page="page" v-model:page-size="pageSize"
+                     :total="total" :page-sizes="[10, 20, 50]" background
+                     layout="total, sizes, prev, pager, next" />
+    </div>
 
     <el-dialog v-model="snapDlg" title="创建版本快照" width="440px">
       <el-form label-width="80px">
@@ -46,21 +54,32 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
+import { useLocalPaged } from '../composables/usePaged'
 
 const projects = ref([])
 const pid = ref(null)
-const list = ref([])
+const allVersions = ref([])
 const loading = ref(false)
 const snapDlg = ref(false)
 const snap = reactive({ label: '', changelog: '' })
 const snapping = ref(false)
 const roleName = ref(JSON.parse(localStorage.getItem('user') || '{}').role)
 
-onMounted(async () => { projects.value = (await api.get('/active/projects')).data })
+// 版本量级有限，客户端切片
+const { list: pageList, total, page, pageSize } = useLocalPaged(allVersions, 20)
+
+onMounted(async () => {
+  // /active/projects 已改成分页体 {list,total,...}，不能再用裸数组
+  const { data } = await api.get('/active/projects', { params: { page: 1, page_size: 100 } })
+  projects.value = data.list ?? []
+})
 async function load() {
   if (!pid.value) return
   loading.value = true
-  try { list.value = (await api.get(`/active/projects/${pid.value}/versions`)).data } finally { loading.value = false }
+  try {
+    allVersions.value = (await api.get(`/active/projects/${pid.value}/versions`)).data
+    page.value = 1
+  } finally { loading.value = false }
 }
 async function snapshot() {
   snapping.value = true
@@ -76,7 +95,4 @@ async function snapshot() {
 function download(id) { window.open(`/api/active/versions/${id}/download`, '_blank') }
 </script>
 
-<style scoped>
-.bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-.bar h3 { margin: 0; }
-</style>
+<!-- .bar / .bar h3 已迁入 theme.css -->

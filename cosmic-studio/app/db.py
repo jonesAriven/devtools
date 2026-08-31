@@ -1,8 +1,36 @@
 """PyMySQL 薄封装：dict 游标 + 事务提交，SQL 与 Hermes SQLite 版本保持近似以便移植对照。"""
+import json
+
 import pymysql
 from pymysql.cursors import DictCursor
 
 from . import config
+
+
+def json_list(v) -> list:
+    """JSON 列取值的统一反序列化入口。
+
+    ⚠️ PyMySQL **不会**自动解码 JSON 列，取回来是 JSON 文本的 str。
+    踩过的坑：直接拿这个 str 当 list 用（list(str) / rng.sample(str, 4) / for x in str）
+    会把它拆成单个字符，写进业务列的就是 `[`、`"`、`、` 这种垃圾。
+    凡是从 JSON 列读出来的值，一律先过这一层。
+    """
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple)):
+        return list(v)
+    if isinstance(v, (bytes, bytearray)):
+        v = v.decode("utf-8", "replace")
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+        try:
+            parsed = json.loads(s)
+        except ValueError:
+            return []
+        return parsed if isinstance(parsed, list) else [parsed]
+    return []
 
 
 def connect(db: str) -> pymysql.connections.Connection:

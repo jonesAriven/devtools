@@ -7,7 +7,8 @@
         <el-radio-button value="screenshot">截图规范</el-radio-button>
       </el-radio-group>
     </div>
-    <el-table :data="list" v-loading="loading">
+    <el-table :data="pageList" v-loading="loading">
+      <template #empty><el-empty description="该分类下暂无规范" /></template>
       <el-table-column prop="spec_key" label="规范键" min-width="200" />
       <el-table-column prop="description" label="说明" min-width="260" show-overflow-tooltip />
       <el-table-column label="来源" width="80">
@@ -24,8 +25,14 @@
       </el-table-column>
     </el-table>
 
+    <div class="pager">
+      <el-pagination v-model:current-page="page" v-model:page-size="pageSize"
+                     :total="total" :page-sizes="[10, 20, 50]" background
+                     layout="total, sizes, prev, pager, next" />
+    </div>
+
     <el-dialog v-model="dlg" :title="current.spec_key" width="640px" top="6vh">
-      <p style="color:#909399; margin-top:0">{{ current.description }}</p>
+      <p class="muted" style="margin-top:0">{{ current.description }}</p>
       <el-input v-model="editText" type="textarea" :rows="14" spellcheck="false"
                 style="font-family: monospace" />
       <template #footer>
@@ -40,19 +47,23 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
+import { useLocalPaged } from '../composables/usePaged'
 
-const list = ref([])
+const all = ref([])
 const category = ref('writing')
 const loading = ref(false)
 const dlg = ref(false)
 const current = ref({})
 const editText = ref('')
 
+const { list: pageList, total, page, pageSize } = useLocalPaged(all, 20)
+
 async function load() {
   loading.value = true
   try {
     const { data } = await api.get('/studio/specs', { params: { category: category.value } })
-    list.value = Object.values(data.specs).map((v, i) => ({ spec_key: Object.keys(data.specs)[i], ...v }))
+    all.value = Object.values(data.specs).map((v, i) => ({ spec_key: Object.keys(data.specs)[i], ...v }))
+    page.value = 1
   } finally { loading.value = false }
 }
 function open(row) {
@@ -79,7 +90,4 @@ async function reset(row) {
 onMounted(load)
 </script>
 
-<style scoped>
-.bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.bar h3 { margin: 0; }
-</style>
+<!-- .bar / .bar h3 已迁入 theme.css -->

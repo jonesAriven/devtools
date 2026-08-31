@@ -101,9 +101,16 @@ def pool_for(name: str, pools: dict):
 
 
 def load_pools() -> dict:
+    """{data_group: [fields]}
+
+    ⚠️ 历史 bug：PyMySQL 把 JSON 列原样返回成 JSON 文本的 str，原实现直接当 list 用，
+    于是 diversify_fp_attributes 里的 rng.sample(pool, 4) 变成「从 JSON 文本里随机抽 4 个字符」，
+    点一次「属性差异化」就会把 `[`、`"`、`、` 这种垃圾写进数据属性列。
+    必须走 db.json_list 反序列化。
+    """
     rows = db.query(config.DB_STUDIO,
                     "SELECT data_group, fields FROM attr_pools")
-    return {r["data_group"]: r["fields"] for r in rows}
+    return {r["data_group"]: db.json_list(r["fields"]) for r in rows}
 
 
 def diversify_fp_attributes(pool: list, rng: random.Random):
@@ -145,6 +152,10 @@ def auto_diversify_fp(dim_db: str, fp_id: int) -> bool:
     pools = load_pools()
     pool = pool_for(fp["fp_name"], pools)
     if not pool or len(pool) < 4:
+        return False
+    # 兜底：池里只要混进非字符串或短到像噪声的元素，宁可不动手 ——
+    # 数据属性列一旦被写进垃圾，人工很难逐条挑出来
+    if not all(isinstance(f, str) and 2 <= len(f.strip()) <= 24 for f in pool):
         return False
     rng = pool_rng_for(fp_id)
     fp_fields = diversify_fp_attributes(pool, rng)
