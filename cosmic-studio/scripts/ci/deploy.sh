@@ -1,6 +1,9 @@
 #!/bin/bash
 # deploy.sh — cosmic-studio 流水线部署脚本（在 mykng 上由 Woodpecker drone-ssh 执行）
-# 流程：git pull → docker compose build → up → health check
+# 流程：git 同步 → 前端构建(dist) → docker compose build → up → health check
+# ⚠️ 关键：frontend/Dockerfile.web 只 COPY frontend/dist，不构建。
+#    必须先在宿主机 npm run build 生成新 dist，否则 web 容器每次都只搬运旧产物，
+#    前端改动永远不生效（2026-08-31 踩坑：连续多次"部署"前端无变化）。
 set -e
 APP_DIR="/root/devtools/cosmic-studio"
 HEALTH_URL="http://127.0.0.1:8310/api/health"
@@ -12,6 +15,12 @@ echo "==> git 同步到 origin/main（$(date '+%F %T')）"
 git fetch origin main || { echo "❌ git fetch 失败"; exit 1; }
 git reset --hard origin/main || { echo "❌ git reset 失败"; exit 1; }
 echo "==> commit: $(git log -1 --oneline)"
+
+echo "==> 前端构建（重新生成 frontend/dist）"
+cd "$APP_DIR/frontend"
+[ -f package-lock.json ] && npm ci || npm install
+npm run build
+cd "$APP_DIR"
 
 echo "==> docker compose build + up"
 docker compose up -d --build --remove-orphans

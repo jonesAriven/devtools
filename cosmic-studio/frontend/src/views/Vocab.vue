@@ -40,6 +40,35 @@
       <el-tab-pane label="已驳回" name="rejected" />
     </el-tabs>
 
+    <!-- 选择 / 批量操作工具栏：置于结果集上方 -->
+    <div class="bar" style="margin:var(--sp-3) 0">
+      <span class="muted">本页已选 {{ sel.length }} 条</span>
+      <div class="bar-actions">
+        <el-button size="small" @click="selectPageAll">
+          <el-icon style="margin-right:4px"><Check /></el-icon>全选本页
+        </el-button>
+        <el-button size="small" @click="invertPage">
+          <el-icon style="margin-right:4px"><RefreshLeft /></el-icon>反选
+        </el-button>
+        <el-button size="small" @click="clearSel">
+          <el-icon style="margin-right:4px"><Close /></el-icon>取消选择
+        </el-button>
+        <el-button size="small" type="warning" :loading="deletingAll" @click="deleteAllMatches">
+          <el-icon style="margin-right:4px"><Delete /></el-icon>全选所有匹配 ({{ total }}) 并删除
+        </el-button>
+        <template v-if="sel.length">
+          <el-divider direction="vertical" />
+          <template v-if="status === 'candidate'">
+            <el-button size="small" type="success" :loading="acting"
+                       @click="act(sel.map(r => r.id), 'confirm')">批量确认</el-button>
+            <el-button size="small" type="danger" :loading="acting"
+                       @click="act(sel.map(r => r.id), 'reject')">批量驳回</el-button>
+          </template>
+          <el-button size="small" type="danger" :loading="deleting" @click="doDelete">批量删除</el-button>
+        </template>
+      </div>
+    </div>
+
     <el-table ref="tableRef" :data="list" v-loading="loading" size="small" row-key="id"
               @selection-change="sel = $event">
       <el-table-column type="selection" width="46" />
@@ -70,37 +99,6 @@
           : '没有匹配的术语')" />
       </template>
     </el-table>
-
-    <div class="bar" style="margin-top:var(--sp-3)">
-      <span class="muted">本页已选 {{ sel.length }} 条</span>
-      <div class="bar-actions">
-        <el-button size="small" @click="selectPageAll">
-          <el-icon style="margin-right:4px"><Check /></el-icon>全选本页
-        </el-button>
-        <el-button size="small" @click="invertPage">
-          <el-icon style="margin-right:4px"><RefreshLeft /></el-icon>反选
-        </el-button>
-        <el-button size="small" @click="clearSel">
-          <el-icon style="margin-right:4px"><Close /></el-icon>取消选择
-        </el-button>
-        <el-button size="small" type="warning" :loading="deletingAll" @click="deleteAllMatches">
-          <el-icon style="margin-right:4px"><Delete /></el-icon>全选所有匹配 ({{ total }}) 并删除
-        </el-button>
-      </div>
-    </div>
-
-    <div class="bar" style="margin-top:var(--sp-2)" v-if="sel.length">
-      <span class="muted">对选中 {{ sel.length }} 条执行：</span>
-      <div class="bar-actions">
-        <template v-if="status === 'candidate'">
-          <el-button size="small" type="success" :loading="acting"
-                     @click="act(sel.map(r => r.id), 'confirm')">批量确认</el-button>
-          <el-button size="small" type="danger" :loading="acting"
-                     @click="act(sel.map(r => r.id), 'reject')">批量驳回</el-button>
-        </template>
-        <el-button size="small" type="danger" :loading="deleting" @click="doDelete">批量删除</el-button>
-      </div>
-    </div>
 
     <div class="pager">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize"
