@@ -1,32 +1,41 @@
-"""词库自动挖掘引擎。
+"""词库自动挖掘引擎（v2：四维度 + jieba 原子切分）。
 
 背景（2026-08-30 实测）：
-    vocab_terms 此前只有**一处**写入 —— scripts/migrate_from_hermes.py 的一次性迁移。
-    此后既无录入 API、无前端入口、也无定时任务，frequency 永久冻结：
-    6379 条里 4807 条（75.4%）frequency<=0，真实有词频的仅约 100 条。
+    vocab_terms 此前只有一处写入 —— scripts/migrate_from_hermes.py 的一次性迁移，
+    此后 frequency 永久冻结。v1 引擎从 cosmic_active / cosmic_archive 回采术语与词频，
+    但把 **整条 FP 名 / 数据组名 / 模块名** 当成了「业务词」入库，
+    导致「已订购业务展示时段配置新增请求数据」这类复合串混进词库（2026-08-31 良哥指出）。
 
-本引擎从 cosmic_active / cosmic_archive 的真实度量数据回采术语与词频：
+v2 改造（2026-08-31）：
+    把词库拆成**四个清晰维度**，整句复合串不再进「业务词库」：
 
-    fps.fp_name                    → FP名参考          （原样）
-                                   → 业务名词          （_pool_key 去动词/后缀后按词频分档）
-    modules.level3                 → 三级模块名
-    sub_processes.data_group_name  → 数据组名          （_pool_key 归一化）
-    sub_processes.data_attributes  → 数据属性字段      （按中文顿号切分）
-    fps.functional_user            → 用户角色          （解析「发起者：X」）
-    fps.trigger_event              → 触发器模式        （仅收短句）
+      ┌ 原子业务词元  ← 真正的词库主体
+      │     · 来源1：sub_processes.data_attributes（顿号切分，本就是原子字段）
+      │     · 来源2：用 jieba 把「业务对象 / 数据组名」复合串切成原子名词
+      │               （以 data_attributes + 领域词典播种用户词典，保证切分尊重已知原子）
+      ├ 业务对象      ← FP 名去动词后的中层对象（"已订购业务套餐"），参考级、非原子
+      ├ 结构参考      ← 整条 FP 名 / 数据组名 / 三级模块名，纯导航/结构，非词库
+      └ 功能维度      ← 用户角色 / 触发器模式
+
+    维度(category_id) 无外键约束，可安全 UPDATE 重新归类；迁移脚本负责把旧分类术语
+    重映射到新维度（保留 status/source/frequency，仅移 category_id）。
 
 写入策略（幂等）：
   - 新词：status='candidate', source='mined' —— 一律待人审，不自动确认
-  - 已存在词（uk_term）：**只刷 frequency，不动 status/source** ——
-    既修好了 4807 条零频词，又不会覆盖人工已确认的结果
+  - 已存在词（uk_term）：只刷 frequency + category_id，不动 status/source
   - 重复执行结果一致，可放心挂定时任务
-
-同时回灌 attr_pools：按归一化后的数据组聚合去重字段并集，修复字段数不足的池。
 """
 
 import json
 import re
 from collections import Counter, defaultdict
+
+try:
+    import jieba
+    jieba.setLogLevel(60)  # 安静：关掉 Building prefix dict 等日志
+    _HAS_JIEBA = True
+except Exception:                                          # pragma: no cover
+    _HAS_JIEBA = False
 
 from .. import config, db
 from . import derive
@@ -39,15 +48,33 @@ NOUN_MIN_LEN, NOUN_MAX_LEN = 2, 40
 ATTR_MIN_LEN, ATTR_MAX_LEN = 2, 24
 POOL_MIN_FIELDS = 3
 
-# 业务名词按词频归档：[(阈值, 分类名)]，从高到低匹配，兜底低频。
-# 阈值按当前语料规模标定（active 79 FP / 183 子过程，archive 3780 FP）：
-# 实测名词词频集中在 1~8，用 100/20 会让全部落进低频、分档失去意义。
-# 语料规模上一个数量级后应上调这里。
-NOUN_BANDS = ((8, "高频核心名词"), (3, "中频业务名词"))
-NOUN_BAND_DEFAULT = "低频业务名词"
+# ── v2 四维度分类名（须与 vocab_categories 表 + 迁移脚本一致）──
+CAT_ATOM = "原子业务词元"          # 真正的业务词库主体
+CAT_OBJECT = "业务对象"            # FP 名去动词后的中层对象（参考）
+CAT_STRUCT = "结构参考"            # 整条 FP 名 / 数据组名 / 三级模块名
+CAT_FUNC = "功能维度"              # 用户角色 / 触发器模式
 
-# 占位键：业务名词要先统计完词频才能定档
-_NOUN_PENDING = "__noun__"
+# 领域原子词表：播种给 jieba 的用户词典，让复合串切分时优先保留这些已知原子。
+# （运行时还会动态并入 data_attributes 的全部字段，故此处只补 data_attributes 里没有的复合原子）
+CURATED_ATOMS = {
+    "已订购业务", "套餐", "归属地", "增值服务", "资费标签", "短信内容",
+    "展示时段", "展示位置", "排序权重", "适用业务", "包含业务", "业务名称",
+    "卡片类型", "标签颜色", "标签优先级", "规则状态", "规则名称", "分组名称",
+    "审核状态", "签名标识", "排序字段", "用户号码", "业务编码", "配置记录编号",
+    "生效时间", "失效时间", "更新时间", "创建时间", "创建人", "备注说明",
+    "到期提醒", "订购产品包", "多月份展示", "业务短信内容", "业务排序规则",
+    "套餐生效规则", "分组设置", "卡片业务", "用户订购", "产品包",
+}
+
+# 通用词素/结构后缀：单独出现不算业务词，切分时剔除。
+# 这些大多是「信息/数据/设置/配置/请求/结果」类包装词，或 CRUD 动词。
+STOP_MORPHEMES = {
+    "信息", "数据", "设置", "配置", "请求", "结果", "响应",
+    "记录", "列表", "详情", "效果", "缓存", "导入", "日志", "明细",
+    "新增", "修改", "删除", "查询", "预览",
+    "名称", "编号", "编码", "状态", "时间",
+    "业务", "展示",            # 仅作词素出现时过泛，单独成词无业务词库价值
+}
 
 # 数据属性分隔符：中文顿号（导入接口已强制校验「,」非法）
 _ATTR_SEP = re.compile(r"[、,，;；]+")
@@ -57,8 +84,7 @@ _WS = re.compile(r"\s+")
 # 零宽 / 不可见字符：实际数据里混进了 ZWNJ(U+200C) 之类（多半来自从网页/Excel 复制）。
 # 坑：MySQL utf8mb4_unicode_ci 把这些字符的权重当作 0，
 # 于是「自助视频春节卡片‍线上业务介绍配置信息」与「自助视频春节卡片线上业务介绍配置信息」
-# 在 Python 侧是两个不同字符串、在 uk_term 唯一索引上却撞车报 1062。
-# 必须在入库前剥干净。
+# 在 Python 侧是两个不同字符串、在 uk_term 唯一索引上却撞车报 1062。必须在入库前剥干净。
 _INVISIBLE = re.compile(
     "[%s]" % "".join(re.escape(chr(c)) for c in (
         0x00AD,                                    # soft hyphen
@@ -122,18 +148,59 @@ def _group_key(name: str) -> str:
     return s
 
 
-def _noun_band(freq: int) -> str:
-    for threshold, name in NOUN_BANDS:
-        if freq >= threshold:
-            return name
-    return NOUN_BAND_DEFAULT
+def _collect_atomic_terms(dimensions: tuple) -> set:
+    """跨维度收集 sub_processes.data_attributes（顿号切分后的原子字段），
+    作为 jieba 用户词典的播种集 + 原子词元来源。"""
+    atoms: set = set(CURATED_ATOMS)
+    for dim in dimensions:
+        for row in db.query(dim, "SELECT data_attributes FROM sub_processes"):
+            for f in _split_attrs(row["data_attributes"]):
+                atoms.add(f)
+    return atoms
+
+
+def _seed_jieba(atoms: set):
+    """把已知原子词播种进 jieba 用户词典，使复合串切分时优先保留这些原子。"""
+    if not _HAS_JIEBA:
+        return
+    for w in atoms:
+        if 1 < len(w) <= 16:
+            # freq 给很高，压过 jieba 默认词频，确保「已订购业务套餐」切成 已订购业务+套餐 而非 已订购/业务/套餐
+            jieba.add_word(w, freq=100000)
+
+
+def _segment_atoms(text: str) -> set:
+    """用 jieba 把复合业务串切成原子名词集合（供「原子业务词元」）。
+
+    过滤规则：
+      · 无 jieba 时退化为「整串若不在停用词素里就整体保留」（不丢信息，但粒度偏粗）
+      · 长度 2~16
+      · 剔除通用词素 STOP_MORPHEMES（信息/数据/设置/配置/请求/结果…）
+      · 剔除纯 CRUD 动词/后缀
+    播种了领域词典后，jieba 多产出已知原子，质量远好于朴素切分。
+    """
+    text = _clean(text, ATTR_MIN_LEN, ATTR_MAX_LEN + 20)
+    if not text:
+        return set()
+    if not _HAS_JIEBA:
+        return {text} if text not in STOP_MORPHEMES else set()
+    out = set()
+    for piece in jieba.lcut(text):
+        piece = piece.strip()
+        if len(piece) < ATTR_MIN_LEN or len(piece) > 16:
+            continue
+        if piece in STOP_MORPHEMES:
+            continue
+        if _NOISE.match(piece):
+            continue
+        out.add(piece)
+    return out
 
 
 def detect_layout(dim_db: str) -> dict:
     """探测该功能过程表的列语义是否错位。
 
     实测（2026-08-30）：归档库 cosmic_archive 导入时列整体错位 ——
-
         fp_name        装的是「输入…新增请求」      实为子过程描述/数据组
         functional_user 装的是「操作员…时触发」     实为触发器事件
         trigger_event  装的是「新增视频流量…信息」  实为真正的 FP 名
@@ -164,52 +231,53 @@ def detect_layout(dim_db: str) -> dict:
 def scan(dim_db: str) -> tuple[dict, dict]:
     """扫描一个维度库，返回 ({分类名: Counter(term -> freq)}, layout)。
 
-    业务名词统一落在 _NOUN_PENDING 占位键下，由 _finalize 按词频分档后摊平。
+    v2 四维度：原子业务词元 / 业务对象 / 结构参考 / 功能维度。
+    调用方须先 _seed_jieba（在 mine() 里统一播种，跨维度共享词典）。
     """
     layout = detect_layout(dim_db)
     out = defaultdict(Counter)
 
     fp_col = layout["fp_col"]
-    for row in db.query(dim_db, f"SELECT {fp_col} AS name FROM fps"):
-        name = _clean(row["name"], NOUN_MIN_LEN, NOUN_MAX_LEN + 20)
-        if not name:
-            continue
-        out["FP名参考"][name] += 1
-        obj = _clean(_pool_key(name), NOUN_MIN_LEN, NOUN_MAX_LEN)
-        if obj and obj != name:
-            out[_NOUN_PENDING][obj] += 1
 
+    # 1) FP：整条名 → 结构参考；去动词后的对象 → 业务对象 + 原子切分 → 原子业务词元
+    for row in db.query(dim_db, f"SELECT {fp_col} AS name FROM fps"):
+        raw = _clean(row["name"], NOUN_MIN_LEN, NOUN_MAX_LEN + 20)
+        if not raw:
+            continue
+        out[CAT_STRUCT][raw] += 1
+        obj = _clean(_pool_key(raw), NOUN_MIN_LEN, NOUN_MAX_LEN)
+        if obj and obj != raw:
+            out[CAT_OBJECT][obj] += 1
+            for atom in _segment_atoms(obj):
+                out[CAT_ATOM][atom] += 1
+
+    # 2) 数据属性字段 → 原子业务词元（本就是原子，直接收，不再二次切分以免破坏）
+    #    数据组名 → 结构参考 + 原子切分 → 原子业务词元
+    for row in db.query(dim_db,
+                        "SELECT data_group_name, data_attributes FROM sub_processes"):
+        for f in _split_attrs(row["data_attributes"]):
+            out[CAT_ATOM][f] += 1
+        group = _clean(_group_key(row["data_group_name"]), NOUN_MIN_LEN, NOUN_MAX_LEN)
+        if group:
+            out[CAT_STRUCT][group] += 1
+            for atom in _segment_atoms(group):
+                out[CAT_ATOM][atom] += 1
+
+    # 3) 错位库时 functional_user / trigger_event / level3 是脏的，跳过
     if layout["aux_ok"]:
         for row in db.query(dim_db, "SELECT functional_user, trigger_event FROM fps"):
             for role in _parse_roles(row["functional_user"]):
-                out["用户角色"][role] += 1
+                out[CAT_FUNC][role] += 1
             ev = _clean(row["trigger_event"], 4, 24)
             if ev:
-                out["触发器模式"][ev] += 1
+                out[CAT_FUNC][ev] += 1
         for row in db.query(dim_db,
                             "SELECT level3 FROM modules WHERE level3 IS NOT NULL AND level3<>''"):
             lv3 = _clean(row["level3"], NOUN_MIN_LEN, NOUN_MAX_LEN)
             if lv3:
-                out["三级模块名"][lv3] += 1
+                out[CAT_STRUCT][lv3] += 1
 
-    for row in db.query(dim_db,
-                        "SELECT data_group_name, data_attributes FROM sub_processes"):
-        group = _clean(_group_key(row["data_group_name"]), NOUN_MIN_LEN, NOUN_MAX_LEN)
-        if group:
-            out["数据组名"][group] += 1
-        for f in _split_attrs(row["data_attributes"]):
-            out["数据属性字段"][f] += 1
-
-    return _finalize(out), layout
-
-
-def _finalize(scanned: dict) -> dict:
-    """把 _NOUN_PENDING 按词频分档摊平到 高频/中频/低频业务名词。"""
-    pending = scanned.pop(_NOUN_PENDING, None)
-    if pending:
-        for term, freq in pending.items():
-            scanned[_noun_band(freq)][term] += freq
-    return dict(scanned)
+    return dict(out), layout
 
 
 def _cat_ids() -> dict:
@@ -226,7 +294,12 @@ def _chunked(seq: list, fn) -> int:
 
 
 def mine(dimensions=("cosmic_active", "cosmic_archive"), sync_pools: bool = True) -> dict:
-    """执行一次全量挖掘，返回统计报告。可重复执行（幂等）。"""
+    """执行一次全量挖掘，返回统计报告。可重复执行（幂等）。
+
+    v2：先跨维度收集原子词播种 jieba，再逐维度 scan 出四维度词表。
+    """
+    _seed_jieba(_collect_atomic_terms(dimensions))
+
     cats = _cat_ids()
     merged: dict[str, tuple] = {}       # term -> (category_id, freq, notes)
     per_cat: Counter = Counter()
@@ -249,9 +322,11 @@ def mine(dimensions=("cosmic_active", "cosmic_archive"), sync_pools: bool = True
         return {"scanned": 0, "new": 0, "updated": 0, "by_category": {},
                 "pools": 0, "layouts": layouts}
 
-    known = {r["term"] for r in db.query(config.DB_STUDIO, "SELECT term FROM vocab_terms")}
+    known = {r["term"]: r["category_id"]
+             for r in db.query(config.DB_STUDIO, "SELECT term, category_id FROM vocab_terms")}
     new_rows = [(t, c, f, n) for t, (c, f, n) in merged.items() if t not in known]
-    upd_rows = [(f, t) for t, (c, f, n) in merged.items() if t in known]
+    # 已存在术语：刷新 frequency + 重归类 category_id 到新维度（v2 四维度迁移靠这一步落地）
+    upd_rows = [(f, c, t) for t, (c, f, n) in merged.items() if t in known]
 
     # INSERT IGNORE 兜底：即便清洗后仍有在 utf8mb4_unicode_ci 下同权的奇异构词，
     # 也只是跳过该条，不会让整批挖掘因 1062 中断
@@ -260,7 +335,7 @@ def mine(dimensions=("cosmic_active", "cosmic_archive"), sync_pools: bool = True
         VALUES (%s,%s,%s,'mined','candidate',%s)
     """, batch))
     updated = _chunked(upd_rows, lambda batch: db.executemany(config.DB_STUDIO, """
-        UPDATE vocab_terms SET frequency=%s WHERE term=%s
+        UPDATE vocab_terms SET frequency=%s, category_id=%s WHERE term=%s
     """, batch))
 
     pools = 0
@@ -275,9 +350,9 @@ def mine(dimensions=("cosmic_active", "cosmic_archive"), sync_pools: bool = True
 
     return {
         "scanned": len(merged),
-        "new": inserted,                      # 实际落库条数（IGNORE 掉的未计入）
-        "skipped": len(new_rows) - inserted,  # 被 IGNORE 的（唯一键同权冲突）
-        "updated": updated,                   # 刷新了词频的存量词条
+        "new": inserted,
+        "skipped": len(new_rows) - inserted,
+        "updated": updated,
         "by_category": dict(per_cat),
         "pools": pools,
         "pending_review": candidates,
