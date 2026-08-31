@@ -48,8 +48,10 @@ function read(storageKey, defaultValue) {
     if (!raw) return defaultValue
     const { v, t } = JSON.parse(raw)
     if (!t || Date.now() - t > TTL_MS) return defaultValue
-    // 类型变了说明是升级前的旧值，直接丢弃而不是拿脏数据渲染
-    if (typeof v !== typeof defaultValue) return defaultValue
+    // 类型校验：防止升级后旧格式的脏数据导致渲染异常。
+    // 特例：defaultValue 为 null 时（表示"未选中/未设置"），允许任意类型的存储值通过，
+    // 因为 null 本身就是"无值"占位符，不应拿它做类型锚点。
+    if (defaultValue !== null && typeof v !== typeof defaultValue) return defaultValue
     if (Array.isArray(v) !== Array.isArray(defaultValue)) return defaultValue
     return v
   } catch {
