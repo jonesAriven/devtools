@@ -33,12 +33,15 @@
       </div>
     </el-alert>
 
-    <!-- 模块级分页：归档库单个项目可达 251 个模块 / 3780 个 FP，
-         此前一次全量读入再把整棵三层树铺进 DOM，页面直接不可用 -->
+    <!-- 模块级分页 + 视图切换 -->
     <div class="bar" style="align-items:center">
       <div class="bar-actions">
-        <el-input v-model="modKw" placeholder="按模块名筛选" style="width:220px" clearable
+        <el-input v-model="modKw" placeholder="按模块名筛选" style="width:200px" clearable
                   aria-label="按模块名筛选" @keyup.enter="reloadTree" @clear="reloadTree" />
+        <el-button-group>
+          <el-button :type="viewMode === 'tree' ? 'primary' : ''" size="small" @click="viewMode = 'tree'">树形</el-button>
+          <el-button :type="viewMode === 'flat' ? 'primary' : ''" size="small" @click="viewMode = 'flat'">扁平</el-button>
+        </el-button-group>
         <span class="muted" v-if="tree?.stats">
           全项目共 {{ tree.stats.module_count }} 模块 / {{ tree.stats.fp_count }} FP / {{ tree.stats.sub_count }} 子过程
         </span>
@@ -48,7 +51,27 @@
                      layout="total, sizes, prev, pager, next" background />
     </div>
 
-    <el-table :data="tableRows" row-key="rowKey" border :tree-props="{ children: 'children' }"
+    <!-- 全列筛选 -->
+    <div v-show="viewMode === 'flat'" class="bar" style="align-items:center">
+      <div class="bar-actions" style="flex-wrap:wrap; gap:6px">
+        <el-input v-model="filters.fp" placeholder="功能过程" style="width:140px" size="small" clearable />
+        <el-input v-model="filters.event" placeholder="触发事件" style="width:140px" size="small" clearable />
+        <el-select v-model="filters.move" placeholder="数据移动类型" style="width:130px" size="small" clearable>
+          <el-option label="E 输入" value="E" /><el-option label="W 写入" value="W" />
+          <el-option label="R 读取" value="R" /><el-option label="X 排除" value="X" />
+        </el-select>
+        <el-input v-model="filters.desc" placeholder="子过程描述" style="width:150px" size="small" clearable />
+        <el-input v-model="filters.group" placeholder="数据组" style="width:140px" size="small" clearable />
+        <el-input v-model="filters.attrs" placeholder="数据属性" style="width:150px" size="small" clearable />
+        <el-button size="small" @click="clearFilters">清空筛选</el-button>
+        <span class="muted" v-if="filteredFlatRows.length !== flatRows.length">
+          筛选后 {{ filteredFlatRows.length }} / {{ flatRows.length }} 条
+        </span>
+      </div>
+    </div>
+
+    <!-- 树形视图 -->
+    <el-table v-if="viewMode === 'tree'" :data="tableRows" row-key="rowKey" border :tree-props="{ children: 'children' }"
               :default-expand-all="false">
       <template #empty>
         <el-empty :description="error || '该项目还没有模块'" />
@@ -59,6 +82,7 @@
       <el-table-column prop="move" label="数据移动类型" width="90" />
       <el-table-column prop="desc" label="子过程描述" min-width="180" show-overflow-tooltip />
       <el-table-column prop="group" label="数据组" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="attrs" label="数据属性" min-width="180" show-overflow-tooltip />
       <el-table-column label="评审意见" width="120">
         <template #default="s">
           <template v-if="s.row.reviews && s.row.reviews.length">
@@ -79,7 +103,6 @@
           <span v-else style="color:#cdd0d6">—</span>
         </template>
       </el-table-column>
-      <el-table-column prop="attrs" label="数据属性" min-width="180" show-overflow-tooltip />
       <el-table-column v-if="canEdit" label="操作" width="190" fixed="right">
         <template #default="s">
           <template v-if="s.row.kind === 'fp'">
@@ -96,6 +119,41 @@
           <template v-else-if="s.row.kind === 'module'">
             <el-button size="small" text type="danger" @click="delModule(s.row)">删模块</el-button>
           </template>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 扁平视图：全部子过程铺平，父列合并单元格 -->
+    <el-table v-else :data="filteredFlatRows" row-key="rowKey" border
+              :span-method="flatSpanMethod" height="600" style="width:100%">
+      <template #empty>
+        <el-empty :description="error || '该项目还没有模块'" />
+      </template>
+      <el-table-column prop="module" label="三级模块" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="event" label="触发事件" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="move" label="数据移动类型" width="80" />
+      <el-table-column prop="desc" label="子过程描述" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="group" label="数据组" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="attrs" label="数据属性" min-width="200" show-overflow-tooltip />
+      <el-table-column label="评审意见" width="100">
+        <template #default="s">
+          <template v-if="s.row.reviews && s.row.reviews.length">
+            <el-tooltip placement="top" effect="light">
+              <template #content>
+                <div v-for="r in s.row.reviews" :key="r.id" style="max-width:320px; margin-bottom:4px">
+                  <b>{{ { pending: '[待处理]', manual_done: '[已手动修订]', auto_done: '[已AI修订]', needs_manual: '[需人工]', wont_fix: '[不修改]' }[r.disposition] }}</b>
+                  {{ r.content }}
+                </div>
+              </template>
+              <el-tag size="small" style="cursor:pointer"
+                      :type="s.row.reviewPending ? 'danger' : 'success'"
+                      @click="reviewDrawer = true">
+                📝 {{ s.row.reviews.length }} 条{{ s.row.reviewPending ? '待处理' : '' }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+          <span v-else style="color:#cdd0d6">—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -286,6 +344,11 @@ const modPage = ref(1)
 const modPageSize = ref(10)
 const modTotal = ref(0)
 const modKw = ref('')
+const viewMode = ref('tree') // 'tree' | 'flat'
+
+// 全列筛选
+const filters = reactive({ fp: '', event: '', move: '', desc: '', group: '', attrs: '' })
+function clearFilters() { Object.assign(filters, { fp: '', event: '', move: '', desc: '', group: '', attrs: '' }) }
 
 const deriveIssues = ref([])
 const lintDlg = ref(false)
@@ -378,6 +441,67 @@ const tableRows = computed(() => {
   })
   return rows
 })
+
+// ── 扁平视图：全部子过程铺平 + 合并单元格 ──
+const flatRows = computed(() => {
+  if (!tree.value) return []
+  const byTarget = {}
+  for (const r of reviews.value) {
+    if (r.target_type === 'project') continue
+    const key = `${r.target_type}-${r.target_id}`
+    ;(byTarget[key] ||= []).push(r)
+  }
+  const attach = (kind, id) => {
+    const list = byTarget[`${kind}-${id}`] || []
+    return { reviews: list, reviewPending: list.some(r => r.disposition === 'pending') }
+  }
+  const out = []
+  for (const m of (tree.value.modules || [])) {
+    for (const f of (m.fps || [])) {
+      const subs = f.subs || []
+      if (!subs.length) continue
+      for (const s of subs) {
+        out.push({
+          rowKey: `flat-s${s.id}`, kind: 'sub', id: s.id,
+          _moduleId: m.id, _fpId: f.id,
+          module: m.level3, fp: f.fp_name, event: f.trigger_event,
+          move: s.data_move_type, desc: s.description,
+          group: s.data_group_name, attrs: s.data_attributes,
+          ...attach('sub', s.id)
+        })
+      }
+    }
+  }
+  return out
+})
+
+const filteredFlatRows = computed(() => {
+  const f = filters
+  const hasFilter = f.fp || f.event || f.move || f.desc || f.group || f.attrs
+  if (!hasFilter) return flatRows.value
+  const kw = (v) => (v || '').toLowerCase()
+  return flatRows.value.filter(r =>
+    (!f.fp || kw(r.fp).includes(kw(f.fp))) &&
+    (!f.event || kw(r.event).includes(kw(f.event))) &&
+    (!f.move || r.move === f.move) &&
+    (!f.desc || kw(r.desc).includes(kw(f.desc))) &&
+    (!f.group || kw(r.group).includes(kw(f.group))) &&
+    (!f.attrs || kw(r.attrs).includes(kw(f.attrs)))
+  )
+})
+
+function flatSpanMethod({ row, column, rowIndex, columnIndex }) {
+  if (columnIndex > 2) return { rowspan: 1, colspan: 1 }
+  const data = filteredFlatRows.value
+  const colKey = ['module', 'fp', 'event'][columnIndex]
+  const val = row[colKey]
+  let first = rowIndex
+  while (first > 0 && data[first - 1][colKey] === val) first--
+  let span = 1
+  while (first + span < data.length && data[first + span][colKey] === val) span++
+  if (rowIndex === first) return { rowspan: span, colspan: 1 }
+  return { rowspan: 0, colspan: 1 }
+}
 
 // ── 评审 ──
 const reviews = ref([])
