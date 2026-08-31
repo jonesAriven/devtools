@@ -13,6 +13,9 @@
         <el-button v-if="isAdmin()" type="primary" :loading="mining" @click="runMine">
           <el-icon style="margin-right:4px"><MagicStick /></el-icon>立即挖掘
         </el-button>
+        <el-button v-if="isAdmin()" @click="showImport = true">
+          <el-icon style="margin-right:4px"><Upload /></el-icon>批量导入
+        </el-button>
       </div>
     </div>
 
@@ -36,7 +39,7 @@
 
     <el-table :data="list" v-loading="loading" size="small" row-key="id"
               @selection-change="sel = $event">
-      <el-table-column v-if="status === 'candidate'" type="selection" width="46" />
+      <el-table-column type="selection" width="46" />
       <el-table-column prop="term" label="术语" min-width="220" show-overflow-tooltip />
       <el-table-column prop="frequency" label="频次" width="90" sortable align="right" />
       <el-table-column prop="category_name" label="分类" width="150" show-overflow-tooltip />
@@ -65,13 +68,16 @@
       </template>
     </el-table>
 
-    <div class="bar" style="margin-top:var(--sp-3)" v-if="status === 'candidate' && sel.length">
+    <div class="bar" style="margin-top:var(--sp-3)" v-if="sel.length">
       <span class="muted">已选 {{ sel.length }} 条</span>
       <div class="bar-actions">
-        <el-button size="small" type="success" :loading="acting"
-                   @click="act(sel.map(r => r.id), 'confirm')">批量确认</el-button>
-        <el-button size="small" type="danger" :loading="acting"
-                   @click="act(sel.map(r => r.id), 'reject')">批量驳回</el-button>
+        <template v-if="status === 'candidate'">
+          <el-button size="small" type="success" :loading="acting"
+                     @click="act(sel.map(r => r.id), 'confirm')">批量确认</el-button>
+          <el-button size="small" type="danger" :loading="acting"
+                     @click="act(sel.map(r => r.id), 'reject')">批量驳回</el-button>
+        </template>
+        <el-button size="small" type="danger" :loading="deleting" @click="doDelete">批量删除</el-button>
       </div>
     </div>
 
@@ -80,12 +86,41 @@
                      :total="total" :page-sizes="PAGER_SIZES" :layout="PAGER_LAYOUT"
                      :disabled="loading" background />
     </div>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog v-model="showImport" title="批量导入术语" width="560px" @closed="importReport = null">
+      <el-form label-width="80px">
+        <el-form-item label="目标分类">
+          <el-select v-model="importCat" placeholder="默认 原子业务词元" clearable style="width:100%">
+            <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+          <div class="muted" style="font-size:12px;margin-top:4px">
+            每行一词；可选「词,分类名」或「词,分类ID」指定分类，留空用上方默认。
+          </div>
+        </el-form-item>
+        <el-form-item label="术语列表">
+          <el-input v-model="importText" type="textarea" :rows="8"
+                    placeholder="已订购业务套餐&#10;展示时段,结构参考&#10;资费标签" />
+        </el-form-item>
+        <el-form-item label="CSV 文件">
+          <el-button @click="fileInput?.click()">选择文件</el-button>
+          <input ref="fileInput" type="file" accept=".csv,.txt" style="display:none" @change="onCsvFile" />
+          <span class="muted" style="font-size:12px;margin-left:8px">上传会把内容填入上方文本框，可编辑后导入</span>
+        </el-form-item>
+      </el-form>
+      <el-alert v-if="importReport" type="success" :closable="false"
+                :title="`导入 ${importReport.imported} 条，跳过重复 ${importReport.skipped} 条，共处理 ${importReport.total} 条`" />
+      <template #footer>
+        <el-button @click="showImport = false">关闭</el-button>
+        <el-button type="primary" :loading="importing" @click="doImport">导入</el-button>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 
@@ -97,7 +132,16 @@ const stats = ref({})
 const sel = ref([])
 const mining = ref(false)
 const acting = ref(false)
+const deleting = ref(false)
 const mineReport = ref(null)
+
+// 批量导入态
+const showImport = ref(false)
+const importText = ref('')
+const importCat = ref(null)
+const importing = ref(false)
+const importReport = ref(null)
+const fileInput = ref(null)
 
 // 服务端分页。此前这里是 limit:100 硬编码，后端只有 LIMIT 没有 offset，
 // 6379 条词永远只能看到第一页。
@@ -159,6 +203,66 @@ async function restore(id) {
     ElMessage.success('已恢复为候选')
     reload()
   } catch (e) { ElMessage.error(e.response?.data?.detail || '操作失败') }
+}
+
+async function doDelete() {
+  if (!sel.value.length) return
+  try {
+    await ElMessageBox.confirm(
+      `确定永久删除选中的 ${sel.value.length} 条术语？此操作不可恢复。`,
+      '批量删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
+  } catch { return }
+  deleting.value = true
+  try {
+    const { data } = await api.post('/studio/vocab/batch-delete', { ids: sel.value.map(r => r.id) })
+    ElMessage.success(`已删除 ${data.deleted} 条`)
+    sel.value = []
+    reload()
+  } catch (e) { ElMessage.error(e.response?.data?.detail || '删除失败') }
+  finally { deleting.value = false }
+}
+
+function parseTerms() {
+  const lines = (importText.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+  const terms = []
+  for (const line of lines) {
+    const parts = line.split(',')
+    const term = parts[0].trim()
+    if (!term) continue
+    let cat = importCat.value || null
+    if (parts.length > 1 && parts[1].trim()) {
+      const c = parts[1].trim()
+      const byId = categories.value.find(x => String(x.id) === c)
+      const byName = categories.value.find(x => x.name === c)
+      cat = byId ? byId.id : (byName ? byName.id : cat)
+    }
+    terms.push({ term, category_id: cat || undefined })
+  }
+  return terms
+}
+
+async function doImport() {
+  const terms = parseTerms()
+  if (!terms.length) { ElMessage.warning('没有可导入的词'); return }
+  importing.value = true
+  try {
+    const { data } = await api.post('/studio/vocab/batch-import',
+      { terms, default_category_id: importCat.value || undefined })
+    importReport.value = data
+    ElMessage.success(`导入 ${data.imported} 条，跳过重复 ${data.skipped} 条`)
+    reload()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '导入失败')
+  } finally { importing.value = false }
+}
+
+function onCsvFile(e) {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  f.text()
+    .then(t => { importText.value = t; ElMessage.info('CSV 已载入文本框，可编辑后导入') })
+    .catch(() => ElMessage.error('读取文件失败'))
+  e.target.value = ''  // 允许重复选同一文件
 }
 
 onMounted(loadStats)

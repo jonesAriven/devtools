@@ -244,6 +244,18 @@ class VocabIdsIn(BaseModel):
     ids: list[int]
 
 
+class VocabTermIn(BaseModel):
+    term: str
+    category_id: int | None = None
+    frequency: int | None = None
+    notes: str | None = None
+
+
+class VocabImportIn(BaseModel):
+    terms: list[VocabTermIn]
+    default_category_id: int | None = None
+
+
 def _bulk_set_status(ids: list[int], from_status: str, to_status: str) -> int:
     if not ids:
         return 0
@@ -272,3 +284,58 @@ def set_term_status(vid: int, status: str, user: dict = Depends(require_role("ad
         raise HTTPException(422, "status 必须是 candidate/confirmed/rejected")
     db.execute(config.DB_STUDIO, "UPDATE vocab_terms SET status=%s WHERE id=%s", (status, vid))
     return {"id": vid, "status": status}
+
+
+@r.post("/studio/vocab/batch-import")
+def batch_import(body: VocabImportIn, user: dict = Depends(require_role("admin"))):
+    """批量导入术语（粘贴 / CSV 经前端解析为 JSON 后调用）。
+
+    - 每词先用 vocab_miner._clean 归一化（去不可见字符 / 空白 / 长度校验），
+      utf8mb4_unicode_ci 下的 ZWNJ 变体一并归并 → 入库自动去重（#3）。
+    - term 唯一索引 + INSERT IGNORE 双保险；已存在（库内或批内）的词 skip，返回 skipped。
+    """
+    default_cat = body.default_category_id
+    if default_cat is None:
+        atom = db.query(config.DB_STUDIO, "SELECT id FROM vocab_categories WHERE name=%s",
+                        (vocab_miner.CAT_ATOM,), one=True)
+        default_cat = atom["id"] if atom else 5
+    valid_cats = {r["id"] for r in db.query(config.DB_STUDIO, "SELECT id FROM vocab_categories")}
+    if default_cat not in valid_cats:
+        raise HTTPException(422, f"默认分类不存在: {default_cat}")
+
+    existing = {r["term"] for r in db.query(config.DB_STUDIO, "SELECT term FROM vocab_terms")}
+    rows, skipped, errors, seen = [], 0, [], set()
+    for item in body.terms:
+        cleaned = vocab_miner._clean(item.term or "", vocab_miner.NOUN_MIN_LEN, vocab_miner.NOUN_MAX_LEN)
+        if not cleaned:
+            errors.append({"term": item.term, "reason": "empty_or_invalid_len"})
+            continue
+        if cleaned in existing or cleaned in seen:
+            skipped += 1
+            continue
+        seen.add(cleaned)
+        cat = item.category_id if (item.category_id in valid_cats) else default_cat
+        freq = item.frequency if (item.frequency and item.frequency > 0) else 1
+        rows.append((cleaned, cat, freq, item.notes or ""))
+
+    inserted = 0
+    if rows:
+        inserted = db.executemany(
+            config.DB_STUDIO,
+            "INSERT IGNORE INTO vocab_terms (term, category_id, frequency, source, status, notes) "
+            "VALUES (%s,%s,%s,'imported','confirmed',%s)",
+            rows)
+    return {"imported": inserted, "skipped": skipped, "errors": errors, "total": len(body.terms)}
+
+
+@r.post("/studio/vocab/batch-delete")
+def batch_delete(body: VocabIdsIn, user: dict = Depends(require_role("admin"))):
+    """批量硬删除术语（永久移除，不可恢复）。vocab_terms 无外键引用，安全。"""
+    if not body.ids:
+        return {"deleted": 0}
+    ph = ",".join(["%s"] * len(body.ids))
+    deleted = 0
+    with db.tx(config.DB_STUDIO) as cur:
+        cur.execute(f"DELETE FROM vocab_terms WHERE id IN ({ph})", tuple(body.ids))
+        deleted = cur.rowcount
+    return {"deleted": deleted}

@@ -24,4 +24,7 @@ export const user = () => JSON.parse(localStorage.getItem('user') || 'null')
 export const role = () => (user() || {}).role || 'viewer'
 export const isAdmin = () => role() === 'admin'
 
+export const batchImport = (payload) => api.post('/studio/vocab/batch-import', payload)
+export const batchDelete = (ids) => api.post('/studio/vocab/batch-delete', { ids })
+
 export default api
