@@ -5,6 +5,9 @@
       <div class="bar-actions">
         <el-input v-model="q" placeholder="搜索术语" style="width:200px" clearable
                   aria-label="搜索术语" @keyup.enter="reload" @clear="reload" />
+        <el-button @click="reload" aria-label="查询">
+          <el-icon style="margin-right:4px"><Search /></el-icon>查询
+        </el-button>
         <el-select v-model="categoryId" placeholder="全部分类" style="width:170px" clearable
                    aria-label="按分类筛选" @change="reload">
           <el-option v-for="c in categories" :key="c.id" :label="`${c.name} (${c.term_count})`"
@@ -37,7 +40,7 @@
       <el-tab-pane label="已驳回" name="rejected" />
     </el-tabs>
 
-    <el-table :data="list" v-loading="loading" size="small" row-key="id"
+    <el-table ref="tableRef" :data="list" v-loading="loading" size="small" row-key="id"
               @selection-change="sel = $event">
       <el-table-column type="selection" width="46" />
       <el-table-column prop="term" label="术语" min-width="220" show-overflow-tooltip />
@@ -68,8 +71,26 @@
       </template>
     </el-table>
 
-    <div class="bar" style="margin-top:var(--sp-3)" v-if="sel.length">
-      <span class="muted">已选 {{ sel.length }} 条</span>
+    <div class="bar" style="margin-top:var(--sp-3)">
+      <span class="muted">本页已选 {{ sel.length }} 条</span>
+      <div class="bar-actions">
+        <el-button size="small" @click="selectPageAll">
+          <el-icon style="margin-right:4px"><Check /></el-icon>全选本页
+        </el-button>
+        <el-button size="small" @click="invertPage">
+          <el-icon style="margin-right:4px"><RefreshLeft /></el-icon>反选
+        </el-button>
+        <el-button size="small" @click="clearSel">
+          <el-icon style="margin-right:4px"><Close /></el-icon>取消选择
+        </el-button>
+        <el-button size="small" type="warning" :loading="deletingAll" @click="deleteAllMatches">
+          <el-icon style="margin-right:4px"><Delete /></el-icon>全选所有匹配 ({{ total }}) 并删除
+        </el-button>
+      </div>
+    </div>
+
+    <div class="bar" style="margin-top:var(--sp-2)" v-if="sel.length">
+      <span class="muted">对选中 {{ sel.length }} 条执行：</span>
       <div class="bar-actions">
         <template v-if="status === 'candidate'">
           <el-button size="small" type="success" :loading="acting"
@@ -121,7 +142,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api, { isAdmin } from '../api'
+import api, { isAdmin, batchDeleteByFilter } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 
 const q = ref('')
@@ -142,6 +163,10 @@ const importCat = ref(null)
 const importing = ref(false)
 const importReport = ref(null)
 const fileInput = ref(null)
+
+// 跨页/整页选择控制
+const tableRef = ref(null)
+const deletingAll = ref(false)
 
 // 服务端分页。此前这里是 limit:100 硬编码，后端只有 LIMIT 没有 offset，
 // 6379 条词永远只能看到第一页。
@@ -220,6 +245,54 @@ async function doDelete() {
     reload()
   } catch (e) { ElMessage.error(e.response?.data?.detail || '删除失败') }
   finally { deleting.value = false }
+}
+
+function selectPageAll() {
+  const t = tableRef.value
+  if (!t) return
+  t.clearSelection()
+  list.value.forEach(r => t.toggleRowSelection(r, true))
+}
+
+function clearSel() { tableRef.value?.clearSelection() }
+
+function invertPage() {
+  const t = tableRef.value
+  if (!t) return
+  const selIds = new Set(sel.value.map(r => r.id))
+  const toSelect = list.value.filter(r => !selIds.has(r.id))
+  t.clearSelection()
+  toSelect.forEach(r => t.toggleRowSelection(r, true))
+}
+
+async function deleteAllMatches() {
+  if (!total.value) { ElMessage.warning('当前筛选无匹配项，无可删除'); return }
+  const parts = []
+  if (q.value) parts.push(`搜索「${q.value}」`)
+  if (status.value) parts.push(`状态=${status.value}`)
+  if (categoryId.value) {
+    const c = categories.value.find(x => x.id === categoryId.value)
+    parts.push(`分类=${c ? c.name : categoryId.value}`)
+  }
+  const scope = parts.length ? parts.join('，') : '全部'
+  try {
+    await ElMessageBox.confirm(
+      `将永久删除当前筛选（${scope}）下的全部 ${total.value} 条匹配术语？此操作不可恢复。`,
+      '全选所有匹配并删除', { type: 'warning', confirmButtonText: '删除全部', cancelButtonText: '取消' })
+  } catch { return }
+  deletingAll.value = true
+  try {
+    const { data } = await batchDeleteByFilter({
+      q: q.value || undefined,
+      status: status.value || undefined,
+      category_id: categoryId.value || undefined,
+    })
+    ElMessage.success(`已删除 ${data.deleted} 条`)
+    sel.value = []
+    reload()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '删除失败')
+  } finally { deletingAll.value = false }
 }
 
 function parseTerms() {

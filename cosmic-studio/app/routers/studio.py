@@ -244,6 +244,12 @@ class VocabIdsIn(BaseModel):
     ids: list[int]
 
 
+class VocabFilterIn(BaseModel):
+    q: str | None = None
+    status: str | None = None
+    category_id: int | None = None
+
+
 class VocabTermIn(BaseModel):
     term: str
     category_id: int | None = None
@@ -337,5 +343,32 @@ def batch_delete(body: VocabIdsIn, user: dict = Depends(require_role("admin"))):
     deleted = 0
     with db.tx(config.DB_STUDIO) as cur:
         cur.execute(f"DELETE FROM vocab_terms WHERE id IN ({ph})", tuple(body.ids))
+        deleted = cur.rowcount
+    return {"deleted": deleted}
+
+
+@r.post("/studio/vocab/batch-delete-by-filter")
+def batch_delete_by_filter(body: VocabFilterIn, user: dict = Depends(require_role("admin"))):
+    """按当前筛选条件批量删除全部匹配术语（跨分页，一次完成）。
+
+    与 GET /studio/vocab 的筛选语义保持一致（q→LIKE %q%、status / category_id 精确匹配）。
+    必须至少带一个筛选条件，避免无差别全表清空。
+    """
+    conds, params = [], []
+    if body.q:
+        conds.append("term LIKE %s")
+        params.append(f"%{body.q.strip()}%")
+    if body.status:
+        conds.append("status=%s")
+        params.append(body.status)
+    if body.category_id:
+        conds.append("category_id=%s")
+        params.append(body.category_id)
+    if not conds:
+        raise HTTPException(422, "请至少设置一个筛选条件（搜索词 / 状态 / 分类）")
+    where = " AND ".join(conds)
+    deleted = 0
+    with db.tx(config.DB_STUDIO) as cur:
+        cur.execute(f"DELETE FROM vocab_terms WHERE {where}", tuple(params))
         deleted = cur.rowcount
     return {"deleted": deleted}
