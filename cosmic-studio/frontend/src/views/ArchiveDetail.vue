@@ -41,9 +41,8 @@
       </template>
       <el-table-column prop="module" label="三级模块" min-width="140" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="fu" label="功能用户" min-width="120" show-overflow-tooltip />
       <el-table-column prop="event" label="触发事件" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="move" label="类型" width="55" />
+      <el-table-column prop="move" label="数据移动类型" width="90" />
       <el-table-column prop="desc" label="子过程描述" min-width="180" show-overflow-tooltip />
       <el-table-column prop="group" label="数据组" min-width="150" show-overflow-tooltip />
       <el-table-column prop="attrs" label="数据属性" min-width="180" show-overflow-tooltip />
@@ -110,7 +109,7 @@ const rows = computed(() => {
           children: subs.length
             ? subs.map(s => ({
                 rowKey: `${fkey}-s${s.id}`, kind: 'sub', id: s.id,
-                module: m.level3, fp: f.fp_name, move: s.data_move_type,
+                module: m.level3, fp: f.fp_name, event: f.trigger_event, move: s.data_move_type,
                 desc: s.description, group: s.data_group_name, attrs: s.data_attributes
               }))
             : undefined
