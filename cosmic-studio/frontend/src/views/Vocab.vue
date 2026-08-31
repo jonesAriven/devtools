@@ -167,8 +167,8 @@ const fileInput = ref(null)
 
 // 跨页/整页选择控制
 const tableRef = ref(null)
-const deleting = ref(false)
 const selectAllMatched = ref(false)  // 跨页全选标记（纯选择，不执行操作）
+// 注意：deleting ref 已在上方声明（用于本页批量删除），跨页操作复用同一个
 
 // 服务端分页。此前这里是 limit:100 硬编码，后端只有 LIMIT 没有 offset，
 // 6379 条词永远只能看到第一页。
@@ -230,23 +230,6 @@ async function restore(id) {
     ElMessage.success('已恢复为候选')
     reload()
   } catch (e) { ElMessage.error(e.response?.data?.detail || '操作失败') }
-}
-
-async function doDelete() {
-  if (!sel.value.length) return
-  try {
-    await ElMessageBox.confirm(
-      `确定永久删除选中的 ${sel.value.length} 条术语？此操作不可恢复。`,
-      '批量删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
-  } catch { return }
-  deleting.value = true
-  try {
-    const { data } = await api.post('/studio/vocab/batch-delete', { ids: sel.value.map(r => r.id) })
-    ElMessage.success(`已删除 ${data.deleted} 条`)
-    sel.value = []
-    reload()
-  } catch (e) { ElMessage.error(e.response?.data?.detail || '删除失败') }
-  finally { deleting.value = false }
 }
 
 function selectPageAll() {
