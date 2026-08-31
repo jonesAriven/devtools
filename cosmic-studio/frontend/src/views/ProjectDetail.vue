@@ -331,6 +331,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role } from '../api'
+import { useViewMode } from '../composables/useViewMode'
 
 const route = useRoute()
 const pid = route.params.id
@@ -344,7 +345,7 @@ const modPage = ref(1)
 const modPageSize = ref(10)
 const modTotal = ref(0)
 const modKw = ref('')
-const viewMode = ref('tree') // 'tree' | 'flat'
+const viewMode = useViewMode() // 'tree' | 'flat'，跨路由/刷新保持
 
 // 全列筛选
 const filters = reactive({ fp: '', event: '', move: '', desc: '', group: '', attrs: '' })
