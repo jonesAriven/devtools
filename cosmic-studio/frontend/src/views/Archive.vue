@@ -51,7 +51,11 @@
       <el-radio-group v-model="mode">
         <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标项目）</el-radio>
         <el-radio value="overwrite">全量覆盖导入（清空归档库重灌，admin）</el-radio>
+        <el-radio value="bulk">批量覆盖导入（多 sheet 工作簿自动识别，admin）</el-radio>
       </el-radio-group>
+      <p v-if="mode === 'bulk'" style="margin:8px 0 0; color:#909399; font-size:12px">
+        按工作簿内第3行表头（功能过程/子过程描述/数据移动类型）自动识别数据 sheet，逐项目匹配存量归档项目或追加新项目。超大文件（&gt;50MB）建议改用后端 <code>scripts/bulk_import_archive.py</code> 执行。
+      </p>
       <el-select v-if="mode === 'incremental'" v-model="targetPid" placeholder="选择归档项目"
                  style="width:100%; margin-top:10px" filterable aria-label="选择归档项目">
         <el-option v-for="p in allProjects" :key="p.id"
@@ -116,10 +120,15 @@ async function doImport() {
     if (!confirm(`确认全量覆盖归档库？现有 ${total.value} 个项目将被清空重灌`)) return
     q.set('confirm', 'archive')
   }
+  if (mode.value === 'bulk') {
+    if (!confirm('确认批量覆盖导入？将按工作簿内的多个数据 sheet 自动匹配/追加归档项目，整库先自动备份')) return
+    q.set('confirm', 'archive')
+  }
+  const ep = mode.value === 'bulk' ? '/archive/import/workbook' : '/archive/import/xlsx'
   uploading.value = true
   try {
-    const { data } = await api.post(`/archive/import/xlsx?${q}`, fd)
-    ElMessage.success(`导入完成：模块${data.modules} FP${data.fps} 子过程${data.subs}`)
+    const { data } = await api.post(`${ep}?${q}`, fd)
+    ElMessage.success(`导入完成：项目${data.projects ?? ''} 模块${data.modules} FP${data.fps} 子过程${data.subs}`)
     dlg.value = false
     reset()
   } catch (e) {

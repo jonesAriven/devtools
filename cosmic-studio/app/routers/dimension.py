@@ -481,6 +481,22 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         report["job_id"] = job
         return report
 
+    @r.post("/import/workbook")
+    async def import_workbook_ep(file: UploadFile = File(...),
+                                 confirm: str = "",
+                                 user: dict = Depends(require_role("editor"))):
+        """批量覆盖导入：一个多 sheet 工作簿自动识别数据 sheet，逐项目匹配/追加归档库。
+        admin 权限 + confirm=<dimension> 二次确认。"""
+        if ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
+            raise HTTPException(403, "批量覆盖导入需要 admin 权限")
+        if confirm != dim:
+            raise HTTPException(428, "批量覆盖导入需 confirm=<dimension> 二次确认")
+        report = xlsx_import.bulk_import_workbook_bytes(db_name, await file.read(),
+                                                        backup_tag="pre_bulk_workbook")
+        job = _record_job(dim, "bulk_overwrite", file.filename, report)
+        report["job_id"] = job
+        return report
+
     @r.post("/import/json")
     async def import_json_ep(payload: dict,
                              mode: str = Query("incremental", pattern="^(incremental|overwrite)$"),
