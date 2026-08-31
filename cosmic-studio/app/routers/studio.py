@@ -372,3 +372,53 @@ def batch_delete_by_filter(body: VocabFilterIn, user: dict = Depends(require_rol
         cur.execute(f"DELETE FROM vocab_terms WHERE {where}", tuple(params))
         deleted = cur.rowcount
     return {"deleted": deleted}
+
+
+@r.post("/studio/vocab/batch-confirm-by-filter")
+def batch_confirm_by_filter(body: VocabFilterIn, user: dict = Depends(require_role("admin"))):
+    """按当前筛选条件批量确认全部匹配术语（跨分页，一次完成）。"""
+    conds, params = [], []
+    if body.q:
+        conds.append("term LIKE %s")
+        params.append(f"%{body.q}%")
+    if body.status:
+        conds.append("status = %s")
+        params.append(body.status)
+    if body.category_id:
+        conds.append("category_id = %s")
+        params.append(body.category_id)
+    if not conds:
+        raise HTTPException(422, "至少需要一个筛选条件，避免无差别全表操作")
+    where = " AND ".join(conds)
+    confirmed = 0
+    with db.tx(config.DB_STUDIO) as cur:
+        cur.execute(
+            f"UPDATE vocab_terms SET status='confirmed' WHERE {where} AND status != 'confirmed'",
+            tuple(params))
+        confirmed = cur.rowcount
+    return {"confirmed": confirmed}
+
+
+@r.post("/studio/vocab/batch-reject-by-filter")
+def batch_reject_by_filter(body: VocabFilterIn, user: dict = Depends(require_role("admin"))):
+    """按当前筛选条件批量驳回全部匹配术语（跨分页，一次完成）。"""
+    conds, params = [], []
+    if body.q:
+        conds.append("term LIKE %s")
+        params.append(f"%{body.q}%")
+    if body.status:
+        conds.append("status = %s")
+        params.append(body.status)
+    if body.category_id:
+        conds.append("category_id = %s")
+        params.append(body.category_id)
+    if not conds:
+        raise HTTPException(422, "至少需要一个筛选条件，避免无差别全表操作")
+    where = " AND ".join(conds)
+    rejected = 0
+    with db.tx(config.DB_STUDIO) as cur:
+        cur.execute(
+            f"UPDATE vocab_terms SET status='rejected' WHERE {where} AND status != 'rejected'",
+            tuple(params))
+        rejected = cur.rowcount
+    return {"rejected": rejected}

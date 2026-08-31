@@ -27,5 +27,7 @@ export const isAdmin = () => role() === 'admin'
 export const batchImport = (payload) => api.post('/studio/vocab/batch-import', payload)
 export const batchDelete = (ids) => api.post('/studio/vocab/batch-delete', { ids })
 export const batchDeleteByFilter = (payload) => api.post('/studio/vocab/batch-delete-by-filter', payload)
+export const batchConfirmByFilter = (payload) => api.post('/studio/vocab/batch-confirm-by-filter', payload)
+export const batchRejectByFilter = (payload) => api.post('/studio/vocab/batch-reject-by-filter', payload)
 
 export default api

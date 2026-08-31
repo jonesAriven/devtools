@@ -40,9 +40,9 @@
       <el-tab-pane label="已驳回" name="rejected" />
     </el-tabs>
 
-    <!-- 选择 / 批量操作工具栏：置于结果集上方 -->
+    <!-- 选择工具栏：纯选择，不执行操作 -->
     <div class="bar" style="margin:var(--sp-3) 0">
-      <span class="muted">本页已选 {{ sel.length }} 条</span>
+      <span class="muted">{{ selectAllMatched ? '已全选' : '本页已选' }} {{ selectAllMatched ? total : sel.length }} 条</span>
       <div class="bar-actions">
         <el-button size="small" @click="selectPageAll">
           <el-icon style="margin-right:4px"><Check /></el-icon>全选本页
@@ -53,16 +53,19 @@
         <el-button size="small" @click="clearSel">
           <el-icon style="margin-right:4px"><Close /></el-icon>取消选择
         </el-button>
-        <el-button size="small" type="warning" :loading="deletingAll" @click="deleteAllMatches">
-          <el-icon style="margin-right:4px"><Delete /></el-icon>全选所有匹配 ({{ total }}) 并删除
+        <el-button size="small" :type="selectAllMatched ? 'primary' : 'info'"
+                   :plain="!selectAllMatched" @click="toggleSelectAllMatched">
+          <el-icon style="margin-right:4px"><Grid /></el-icon>{{ selectAllMatched ? '取消全选匹配' : '全选所有匹配' }} ({{ total }})
         </el-button>
-        <template v-if="sel.length">
+
+        <!-- 操作区：仅在有选中项（本页勾选 或 跨页全选）时显示，与选择功能独立 -->
+        <template v-if="sel.length || selectAllMatched">
           <el-divider direction="vertical" />
           <template v-if="status === 'candidate'">
             <el-button size="small" type="success" :loading="acting"
-                       @click="act(sel.map(r => r.id), 'confirm')">批量确认</el-button>
+                       @click="doAct('confirm')">批量确认</el-button>
             <el-button size="small" type="danger" :loading="acting"
-                       @click="act(sel.map(r => r.id), 'reject')">批量驳回</el-button>
+                       @click="doAct('reject')">批量驳回</el-button>
           </template>
           <el-button size="small" type="danger" :loading="deleting" @click="doDelete">批量删除</el-button>
         </template>
@@ -140,7 +143,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api, { isAdmin, batchDeleteByFilter } from '../api'
+import api, { isAdmin, batchDeleteByFilter, batchConfirmByFilter, batchRejectByFilter } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 
 const q = ref('')
@@ -164,7 +167,8 @@ const fileInput = ref(null)
 
 // 跨页/整页选择控制
 const tableRef = ref(null)
-const deletingAll = ref(false)
+const deleting = ref(false)
+const selectAllMatched = ref(false)  // 跨页全选标记（纯选择，不执行操作）
 
 // 服务端分页。此前这里是 limit:100 硬编码，后端只有 LIMIT 没有 offset，
 // 6379 条词永远只能看到第一页。
@@ -246,15 +250,20 @@ async function doDelete() {
 }
 
 function selectPageAll() {
+  selectAllMatched.value = false
   const t = tableRef.value
   if (!t) return
   t.clearSelection()
   list.value.forEach(r => t.toggleRowSelection(r, true))
 }
 
-function clearSel() { tableRef.value?.clearSelection() }
+function clearSel() {
+  selectAllMatched.value = false
+  tableRef.value?.clearSelection()
+}
 
 function invertPage() {
+  selectAllMatched.value = false
   const t = tableRef.value
   if (!t) return
   const selIds = new Set(sel.value.map(r => r.id))
@@ -263,8 +272,20 @@ function invertPage() {
   toSelect.forEach(r => t.toggleRowSelection(r, true))
 }
 
-async function deleteAllMatches() {
-  if (!total.value) { ElMessage.warning('当前筛选无匹配项，无可删除'); return }
+function toggleSelectAllMatched() {
+  if (selectAllMatched.value) {
+    // 取消跨页全选 → 回到本页选择模式
+    selectAllMatched.value = false
+    tableRef.value?.clearSelection()
+  } else {
+    // 跨页全选：清空本页勾选，设标记，操作时走筛选条件
+    tableRef.value?.clearSelection()
+    selectAllMatched.value = true
+  }
+}
+
+/** 构建当前筛选条件的描述（用于确认弹窗） */
+function filterScopeDesc() {
   const parts = []
   if (q.value) parts.push(`搜索「${q.value}」`)
   if (status.value) parts.push(`状态=${status.value}`)
@@ -272,25 +293,79 @@ async function deleteAllMatches() {
     const c = categories.value.find(x => x.id === categoryId.value)
     parts.push(`分类=${c ? c.name : categoryId.value}`)
   }
-  const scope = parts.length ? parts.join('，') : '全部'
-  try {
-    await ElMessageBox.confirm(
-      `将永久删除当前筛选（${scope}）下的全部 ${total.value} 条匹配术语？此操作不可恢复。`,
-      '全选所有匹配并删除', { type: 'warning', confirmButtonText: '删除全部', cancelButtonText: '取消' })
-  } catch { return }
-  deletingAll.value = true
-  try {
-    const { data } = await batchDeleteByFilter({
-      q: q.value || undefined,
-      status: status.value || undefined,
-      category_id: categoryId.value || undefined,
-    })
-    ElMessage.success(`已删除 ${data.deleted} 条`)
-    sel.value = []
-    reload()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '删除失败')
-  } finally { deletingAll.value = false }
+  return parts.length ? parts.join('，') : '全部'
+}
+
+/** 统一操作入口：根据 selectAllMatched 决定走 ID 列表还是筛选条件 */
+async function doAct(kind) {
+  // kind: 'confirm' | 'reject'
+  if (selectAllMatched.value && !sel.value.length) {
+    const scope = filterScopeDesc()
+    try {
+      await ElMessageBox.confirm(
+        `将${kind === 'confirm' ? '确认' : '驳回'}当前筛选（${scope}）下的全部 ${total.value} 条术语？`,
+        `批量${kind === 'confirm' ? '确认' : '驳回'}（全选匹配）`, { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+    } catch { return }
+    acting.value = true
+    try {
+      const fn = kind === 'confirm' ? batchConfirmByFilter : batchRejectByFilter
+      const { data } = await fn({
+        q: q.value || undefined,
+        status: status.value || undefined,
+        category_id: categoryId.value || undefined,
+      })
+      ElMessage.success(`${kind === 'confirm' ? '已确认' : '已驳回'} ${data[kind === 'confirm' ? 'confirmed' : 'rejected']} 条`)
+      selectAllMatched.value = false
+      reload()
+    } catch (e) {
+      ElMessage.error(e.response?.data?.detail || '操作失败')
+    } finally { acting.value = false }
+  } else {
+    // 本页选中项操作（原有逻辑）
+    const ids = sel.value.map(r => r.id)
+    if (!ids.length) return
+    await act(ids, kind)
+  }
+}
+
+async function doDelete() {
+  if (selectAllMatched.value && !sel.value.length) {
+    const scope = filterScopeDesc()
+    try {
+      await ElMessageBox.confirm(
+        `将永久删除当前筛选（${scope}）下的全部 ${total.value} 条匹配术语？此操作不可恢复。`,
+        '批量删除（全选匹配）', { type: 'warning', confirmButtonText: '删除全部', cancelButtonText: '取消' })
+    } catch { return }
+    deleting.value = true
+    try {
+      const { data } = await batchDeleteByFilter({
+        q: q.value || undefined,
+        status: status.value || undefined,
+        category_id: categoryId.value || undefined,
+      })
+      ElMessage.success(`已删除 ${data.deleted} 条`)
+      selectAllMatched.value = false
+      reload()
+    } catch (e) {
+      ElMessage.error(e.response?.data?.detail || '删除失败')
+    } finally { deleting.value = false }
+  } else {
+    // 本页选中项删除（原有逻辑）
+    if (!sel.value.length) return
+    try {
+      await ElMessageBox.confirm(
+        `确定永久删除选中的 ${sel.value.length} 条术语？此操作不可恢复。`,
+        '批量删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
+    } catch { return }
+    deleting.value = true
+    try {
+      const { data } = await api.post('/studio/vocab/batch-delete', { ids: sel.value.map(r => r.id) })
+      ElMessage.success(`已删除 ${data.deleted} 条`)
+      sel.value = []
+      reload()
+    } catch (e) { ElMessage.error(e.response?.data?.detail || '删除失败') }
+    finally { deleting.value = false }
+  }
 }
 
 function parseTerms() {
