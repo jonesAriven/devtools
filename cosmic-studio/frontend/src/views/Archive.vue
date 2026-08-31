@@ -16,9 +16,18 @@
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="requirement_id" label="需求编号" width="140" sortable />
       <el-table-column prop="requirement_name" label="需求名称" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="archived_at" label="归档时间" width="170" />
-      <el-table-column label="操作" width="160">
+      <el-table-column prop="archived_at" label="归档时间" width="160" />
+      <!-- 统计列：一眼看出归档数据的完整度（子过程为 0 = 归档时未带子过程） -->
+      <el-table-column prop="module_count" label="模块数" width="90" align="right" />
+      <el-table-column prop="fp_count" label="FP数" width="90" align="right" />
+      <el-table-column label="子过程数" width="100" align="right">
         <template #default="s">
+          <span :style="s.row.sub_count ? '' : 'color:#e6a23c'">{{ s.row.sub_count ?? 0 }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="230">
+        <template #default="s">
+          <el-button size="small" type="primary" plain @click="view(s.row.id)">查看</el-button>
           <el-button size="small" @click="exportJson(s.row.id)">JSON</el-button>
           <el-button size="small" type="success" plain @click="exportXlsx(s.row.id)">xlsx</el-button>
         </template>
@@ -59,10 +68,12 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 
+const router = useRouter()
 const kw = ref('')
 const dlg = ref(false)
 const mode = ref('incremental')
@@ -78,6 +89,7 @@ const { list, total, page, pageSize, loading, error, reset } = usePaged(
 )
 
 function reload() { reset() }
+function view(id) { router.push(`/archive/${id}`) }
 
 function onFile(f) {
   file.value = f.raw
