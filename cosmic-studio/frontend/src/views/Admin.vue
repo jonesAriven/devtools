@@ -108,7 +108,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onActivated, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { user as currentUser } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
@@ -138,6 +138,8 @@ onMounted(async () => {
   llm.key_masked = data.api_key || ''
   loadUsers()
 })
+// keep-alive：切回时刷一次用户列表（新创建/删除的用户可见）
+onActivated(() => loadUsers())
 async function loadUsers() {
   userLoading.value = true
   try { allUsers.value = (await api.get('/auth/users')).data }

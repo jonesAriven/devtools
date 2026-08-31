@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import api, { isAdmin } from '../api'
@@ -278,6 +278,8 @@ async function create() {
   }
 }
 onMounted(loadAll)
+// keep-alive：切去别的菜单再回来刷一次数据（全量项目列表 + 当前页结果）
+onActivated(() => { loadAll(); reload() })
 </script>
 
 <style scoped>

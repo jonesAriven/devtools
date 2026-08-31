@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
@@ -155,4 +155,6 @@ async function exportJson(id) {
   a.click()
 }
 onMounted(loadAll)
+// keep-alive：切去别的菜单再回来刷一次数据（导入目标下拉 + 当前页结果）
+onActivated(() => { loadAll(); reload() })
 </script>

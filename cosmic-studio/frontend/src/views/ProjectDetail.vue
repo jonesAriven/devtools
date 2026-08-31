@@ -327,7 +327,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role } from '../api'
@@ -784,6 +784,13 @@ function errMsg(e, fallback) {
 }
 
 onMounted(load)
+// 详情页走 keep-alive：切到别的菜单再回来不会重挂载，但 /projects/1 → /projects/2
+// 仍是同一组件实例，pid 变了数据不会自动刷新——监听路由 id 手动重拉
+watch(() => route.params.id, (v, old) => {
+  if (v && v !== old) load()
+})
+// keep-alive 激活时（如从归档库切回编写库）刷一次数据，避免列表里新增的内容看不到
+onActivated(load)
 </script>
 
 <style scoped>

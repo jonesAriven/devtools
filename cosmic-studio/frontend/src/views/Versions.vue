@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { useLocalPaged } from '../composables/usePaged'
@@ -78,6 +78,12 @@ onMounted(async () => {
 })
 // 选中项目后自动加载（无需再手动点刷新）；用户主动切换才回第 1 页
 watch(pid, () => load(true))
+// keep-alive：从别的菜单切回时刷一次项目列表与版本（保持原页码）
+onActivated(async () => {
+  const { data } = await api.get('/active/projects', { params: { page: 1, page_size: 100 } })
+  projects.value = data.list ?? []
+  if (pid.value) load(false)
+})
 // resetPage：主动切项目时回第 1 页；切走再切回来要留在原页码
 // （模板里 @click="load" 会传入 MouseEvent，非 false 即按 resetPage=true 处理）
 async function load(resetPage = true) {

@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api from '../api'
@@ -236,4 +236,8 @@ async function exportJson() {
 
 watch([page, pageSize], reload)
 onMounted(reload)
+// keep-alive：切换不同归档项目时主动重拉
+watch(() => route.params.id, (v, old) => { if (v && v !== old) reload() })
+// keep-alive 激活时刷数据
+onActivated(reload)
 </script>

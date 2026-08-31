@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onActivated, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
@@ -91,6 +91,8 @@ async function reset(row) {
   load()
 }
 onMounted(() => load(false))
+// keep-alive：切回时重拉（保留原页码）
+onActivated(() => load(false))
 </script>
 
 <!-- .bar / .bar h3 已迁入 theme.css -->

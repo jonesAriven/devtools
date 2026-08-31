@@ -44,8 +44,17 @@
       </div>
       <el-main class="main">
         <router-view v-slot="{ Component }">
-          <keep-alive :include="cachedViews">
-            <component :is="Component" :key="route.fullPath" />
+          <!--
+            keep-alive 让所有访问过的页面常驻内存，组件内的 ref（搜索词/展开行/选中项/表单草稿/
+            滚动位置…）全部自动保持，无需逐个加 localStorage。
+            关键：不要给 <component> 加 :key="route.fullPath"——key 一变 Vue 就当作新组件，
+            keep-alive 会销毁旧实例、新建一个，所有 ref 归零。
+            详情页切换不同 id（如 /projects/1 → /projects/2）需要在页面内 watch route.params.id 重拉数据。
+            不加 :include：component name 在 script setup 下推断不稳定，全缓存更可靠。
+            cosmic-studio 10 个视图级别，缓存全部完全可承受。
+          -->
+          <keep-alive>
+            <component :is="Component" />
           </keep-alive>
         </router-view>
       </el-main>
@@ -97,12 +106,7 @@ function titleOf(path) {
   if (path === '/') return '对话'
   return menus.value.find(m => m.path === path)?.title || path.slice(1)
 }
-// 页签组件名清单（script-setup 按文件名推断）；ProjectDetail 等详情页不缓存
-const COMP_BY_PATH = {
-  '/': 'Chat', '/projects': 'Projects', '/archive': 'Archive', '/lint': 'Lint',
-  '/versions': 'Versions', '/specs': 'Specs', '/vocab': 'Vocab', '/admin': 'Admin'
-}
-const cachedViews = computed(() => [...new Set(tabs.value.map(t => COMP_BY_PATH[t.path]).filter(Boolean))])
+// 详情页也走 keep-alive（不再用 :include 显式列出）—— 切回时筛选/视图模式/展开节点全保留
 const isMenuPath = path => path === '/' || menus.value.some(m => m.path === path)
 
 watch(() => route.path, path => {

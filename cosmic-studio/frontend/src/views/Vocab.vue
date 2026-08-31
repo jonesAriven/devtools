@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { isAdmin, batchDeleteByFilter, batchConfirmByFilter, batchRejectByFilter } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
@@ -396,4 +396,6 @@ function onCsvFile(e) {
 }
 
 onMounted(loadStats)
+// keep-alive：切去别的菜单再回来刷一次统计 + 当前页结果（可能有新挖掘出的词）
+onActivated(() => { loadStats(); reload() })
 </script>

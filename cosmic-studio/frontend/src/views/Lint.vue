@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
@@ -112,6 +112,14 @@ onMounted(async () => {
     projects.value = data.list ?? []
     // pid / severity / kw 都是持久化的：切回本菜单自动补回检查报告，
     // 否则状态恢复了但 report 为空，结果区整块不渲染
+    if (pid.value) await fetchReport(false)
+  } catch { /* 401 由拦截器处理 */ }
+})
+// keep-alive：从别的菜单切回时重新拉项目列表与检查报告（保持原页码/筛选）
+onActivated(async () => {
+  try {
+    const { data } = await api.get('/active/projects', { params: { page: 1, page_size: 100 } })
+    projects.value = data.list ?? []
     if (pid.value) await fetchReport(false)
   } catch { /* 401 由拦截器处理 */ }
 })
