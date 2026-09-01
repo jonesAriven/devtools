@@ -56,20 +56,25 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     add = lambda *a: issues.append(_issue(*a))  # noqa: E731
     warn = lambda *a: warnings.append(_issue(*a))  # noqa: E731
 
-    # ── 一次性载入规范 ──
-    ewx_rules = spec.load_spec("ewx_rules")
-    e_prefix = spec.load_spec("e_desc_prefix")
-    x_prefix = spec.load_spec("x_desc_prefix")
-    min_err = spec.load_spec("min_fields_error")
-    min_warn = spec.load_spec("min_fields_warn")
-    jac_threshold = spec.load_spec("jaccard_same_module")
-    sim_same = spec.load_spec("sim_same_req")
-    sim_cross = spec.load_spec("sim_cross_archive")
-    e_exempt = spec.load_spec("e_class_exempt")
-    crud_exempt = spec.load_spec("crud_sibling_exempt")
-    cross_check = spec.load_spec("cross_archive_check") and include_archive_similarity \
+    # ── 一次性载入规范（本 lint 内缓存，避免重复 DB 往返与重算）──
+    spec_cache: dict = {}
+    def S(key):
+        if key not in spec_cache:
+            spec_cache[key] = spec.load_spec(key)
+        return spec_cache[key]
+    ewx_rules = S("ewx_rules")
+    e_prefix = S("e_desc_prefix")
+    x_prefix = S("x_desc_prefix")
+    min_err = S("min_fields_error")
+    min_warn = S("min_fields_warn")
+    jac_threshold = S("jaccard_same_module")
+    sim_same = S("sim_same_req")
+    sim_cross = S("sim_cross_archive")
+    e_exempt = S("e_class_exempt")
+    crud_exempt = S("crud_sibling_exempt")
+    cross_check = S("cross_archive_check") and include_archive_similarity \
         and dim_db == config.DB_ACTIVE
-    pool_check = spec.load_spec("pool_coverage_check")
+    pool_check = S("pool_coverage_check")
 
     proj = db.query(dim_db, "SELECT * FROM projects WHERE id=%s", (project_id,), one=True)
     if not proj:
@@ -81,6 +86,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 "warnings": [], "summary": {"error": 1, "warn": 0, "pass": False}}
     subs_by_fp = {fp["id"]: derive.fp_subs(dim_db, fp["id"]) for fp in fps}
     all_subs = [sp for sps in subs_by_fp.values() for sp in sps]
+    fp_names = {f["id"]: f["fp_name"] for f in fps}  # 预建 dict，替代循环内线性扫描
     ban = forbidden_words()
     pseudo = pseudo_fields()
 
@@ -135,10 +141,10 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     for sp in all_subs:
         dgn = sp["data_group_name"] or ""
         dmt = sp["data_move_type"]
-        fp_name = next((f["fp_name"] for f in fps if f["id"] == sp["fp_id"]), "")
+        fp_name = fp_names.get(sp["fp_id"], "")
         verb = fp_name[:2]
         ref = f"子过程#{sp['id']} {dgn}"
-        groups = spec.load_spec("data_group_templates")
+        groups = S("data_group_templates")
         # 期望后缀 = 模板去掉 {obj}{verb} 后的固定部分
         gkey = f"{dmt}_预览" if verb == "预览" and f"{dmt}_预览" in groups else dmt
         suffix = groups.get(gkey, "").format(obj="", verb="").replace("{obj}", "").replace("{verb}", "")
@@ -148,7 +154,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 6/7. 数据属性：分隔符 + 字段数
     for sp in all_subs:
         attrs = sp["data_attributes"] or ""
-        ref = f"子过程#{sp['id']} {fp_name_of(fps, sp['fp_id'])}"
+        ref = f"子过程#{sp['id']} {fp_names.get(sp['fp_id'], '')}"
         if "," in attrs:
             add("数据属性", "error", ref, "含逗号分隔符，必须用、")
         n = len(_split_fields(attrs))
@@ -172,7 +178,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 10. 属性池化差异化
     fp_attrs = {fid: [sp["data_attributes"] for sp in sps] for fid, sps in subs_by_fp.items()}
     for fid, sps in subs_by_fp.items():
-        fp_name = fp_name_of(fps, fid)
+        fp_name = fp_names.get(fid, "")
         attr_sets = [tuple(sorted(_split_fields(sp["data_attributes"]))) for sp in sps]
         if len(set(attr_sets)) < len(attr_sets):
             verb = fp_name[:2]

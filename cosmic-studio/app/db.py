@@ -1,5 +1,7 @@
 """PyMySQL 薄封装：dict 游标 + 事务提交，SQL 与 Hermes SQLite 版本保持近似以便移植对照。"""
 import json
+import queue
+import threading
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -43,20 +45,68 @@ def connect(db: str) -> pymysql.connections.Connection:
     )
 
 
+# ── 轻量连接池：按库名分池，避免每请求新建 TCP+认证握手 ──
+# queue.Queue 做空闲连接池；取出时 ping 保活，失效则重建。无新增第三方依赖。
+# FastAPI 同步端点在线程池执行，单连接同一时刻只被一个线程持有，线程安全。
+_POOLS: dict = {}
+_POOLS_LOCK = threading.Lock()
+_MAX_IDLE = 10  # 每库最多保留的空闲连接数
+
+
+def _pool(db: str) -> "queue.Queue":
+    with _POOLS_LOCK:
+        p = _POOLS.get(db)
+        if p is None:
+            p = queue.Queue()
+            _POOLS[db] = p
+        return p
+
+
+def _acquire(db: str) -> pymysql.connections.Connection:
+    p = _pool(db)
+    try:
+        conn = p.get_nowait()
+    except queue.Empty:
+        return connect(db)
+    try:
+        conn.ping(reconnect=False)  # 存活校验；掉线则抛异常并重建
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return connect(db)
+    return conn
+
+
+def _release(db: str, conn: pymysql.connections.Connection) -> None:
+    p = _pool(db)
+    try:
+        if p.qsize() < _MAX_IDLE:
+            p.put_nowait(conn)
+        else:
+            conn.close()
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def query(db: str, sql: str, params=(), one: bool = False):
-    conn = connect(db)
+    conn = _acquire(db)
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
             rows = cur.fetchall()
         return (rows[0] if rows else None) if one else rows
     finally:
-        conn.close()
+        _release(db, conn)
 
 
 def execute(db: str, sql: str, params=()) -> int:
     """单条写操作，返回 lastrowid；自动提交。"""
-    conn = connect(db)
+    conn = _acquire(db)
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -64,18 +114,18 @@ def execute(db: str, sql: str, params=()) -> int:
         conn.commit()
         return rid
     finally:
-        conn.close()
+        _release(db, conn)
 
 
 def executemany(db: str, sql: str, seq) -> int:
-    conn = connect(db)
+    conn = _acquire(db)
     try:
         with conn.cursor() as cur:
             n = cur.executemany(sql, seq)
         conn.commit()
         return n
     finally:
-        conn.close()
+        _release(db, conn)
 
 
 class tx:
@@ -85,7 +135,7 @@ class tx:
         self.db = db
 
     def __enter__(self):
-        self.conn = connect(self.db)
+        self.conn = _acquire(self.db)
         self.cur = self.conn.cursor()
         return self.cur
 
@@ -96,7 +146,7 @@ class tx:
             else:
                 self.conn.rollback()
         finally:
-            self.conn.close()
+            _release(self.db, self.conn)
         return False
 
 

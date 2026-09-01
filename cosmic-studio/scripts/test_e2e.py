@@ -264,7 +264,7 @@ try:
 except urllib.error.HTTPError as e:
     st = e.code
 check("E38", "坏xlsx导入500内被拒", st in (400, 422, 500), st)
-st, d = call("PUT", f"/api/active/fps/{FID}", ed_tok, {"name": "新增Robert'); DROP TABLE fps;--"})
+st, d = call("PUT", f"/api/active/fps/{FID_live}", ed_tok, {"name": "新增Robert'); DROP TABLE fps;--"})
 check("E39", "SQL注入样例被禁词/动词规则处理（不崩）", st in (200, 422), (st, str(d)[:60]))
 tree_after = call("GET", f"/api/active/projects/{PID}/tree", ed_tok)[1]
 check("E40", "注入样例后数据完整", sum(len(m["fps"]) for m in tree_after["modules"]) >= 2, "")
