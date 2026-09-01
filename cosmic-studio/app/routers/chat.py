@@ -6,7 +6,6 @@ LLM 未配置时返回明确提示，不崩。
 """
 import json
 import logging
-import urllib.request
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -15,6 +14,7 @@ from .. import config, db
 from ..auth import require_role
 from ..engines import derive, linter, spec
 from ..services import versioning
+from ..services.llm import chat_completion
 
 r = APIRouter(prefix="/api", tags=["chat"])
 
@@ -251,22 +251,8 @@ SYSTEM_PROMPT = """你是 cosmic-studio 系统的助手，帮良哥操作 COSMIC
 
 
 def _llm_call(cfg: dict, messages: list, tools_schema_list: list) -> dict:
-    import urllib.error
-    import urllib.request
-    url = cfg["base_url"].rstrip("/") + "/chat/completions"
-    payload = {"model": cfg["model"], "messages": messages, "temperature": 0.3}
-    if tools_schema_list:
-        payload["tools"] = tools_schema_list
-    req = urllib.request.Request(
-        url, data=json.dumps(payload, ensure_ascii=False).encode(),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {cfg['api_key']}"})
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            return json.loads(resp.read().decode())
-    except urllib.error.HTTPError as e:
-        raise HTTPException(502, f"LLM 返回错误 {e.code}: {e.read()[:200]}")
-    except urllib.error.URLError as e:
-        raise HTTPException(502, f"LLM 端点不可达（{e.reason}），请检查 系统管理→LLM配置 的 Base URL")
+    """委托到 app/services/llm.chat_completion（含 Accept 头与友好错误透出）。"""
+    return chat_completion(cfg, messages, tools=tools_schema_list or None, temperature=0.3)
 
 
 def _log(message, reply, tools_used, user):
