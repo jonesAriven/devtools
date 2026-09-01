@@ -70,15 +70,30 @@ function write(storageKey, value) {
 export function usePersistentState(key, defaultValue) {
   sweep()
 
-  let path = ''
-  try {
-    path = useRoute().path
-  } catch {
-    /* setup 外调用时无路由上下文，退化为全局键 */
+  const route = useRoute()
+  // ⚠️ 关键修正：storageKey 必须随 route.path 实时解析，不能 setup 时冻结成字符串。
+  // keep-alive 下 /projects/:id、/archive/:id 这类动态路由由「同名组件单个实例」服务，
+  // 若 path 冻结，/projects/1 与 /projects/2 会共用首个 path 的命名空间 → 跨项目 UI 状态串台
+  // （页码 / 每页大小 / 搜索词 / 筛选 / 视图模式互相污染）。改为响应式解析后各 :id 命名空间独立。
+  const resolveKey = () => {
+    let p = ''
+    try {
+      p = route.path
+    } catch {
+      /* setup 外调用时无路由上下文，退化为全局键 */
+    }
+    return `${NS}${p}:${key}`
   }
-  const storageKey = `${NS}${path}:${key}`
 
-  const state = ref(read(storageKey, defaultValue))
-  watch(state, v => write(storageKey, v), { deep: true })
+  const state = ref(read(resolveKey(), defaultValue))
+  // 状态变更：写入「当前 path」对应的键
+  watch(state, v => write(resolveKey(), v), { deep: true })
+  // 路由 path 变化（如 /projects/1 → /projects/2，或详情 ↔ 列表）：
+  // 先把当前 state 落盘到「旧 path 键」，再从「新 path 键」载入，保证各路由命名空间独立且切换即恢复
+  watch(() => route.path, (np, op) => {
+    if (np === op) return
+    try { write(`${NS}${op}:${key}`, state.value) } catch { /* 忽略 */ }
+    state.value = read(resolveKey(), defaultValue)
+  })
   return state
 }
