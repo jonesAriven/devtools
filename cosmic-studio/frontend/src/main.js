@@ -8,6 +8,10 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as Icons from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
+import { logBoot } from './utils/navLog'
+
+// 构建指纹打在 Console 第一行：确认浏览器里跑的是哪一次构建的产物
+logBoot()
 
 // ── 主题：默认跟随系统，用户可手动覆盖并存 localStorage ──
 const THEME_KEY = 'cosmic-theme'

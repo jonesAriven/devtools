@@ -334,6 +334,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role, humanize, downloadBlob } from '../api'
 import { useViewMode } from '../composables/useViewMode'
 import { usePersistentState } from '../composables/usePersistentState'
+import { navLog } from '../utils/navLog'
 
 const route = useRoute()
 const router = useRouter()
@@ -790,8 +791,17 @@ function errMsg(e, fallback) {
   ElMessage.error(d ? humanize(d) : fallback)
 }
 
-function backToList() { router.push('/projects') }
-onMounted(load)
+function backToList() {
+  navLog('detail-back', { pid, instance: DETAIL_INSTANCE })
+  router.push('/projects')
+}
+// 实例标识：keep-alive 命中（切走再切回不重挂载）时该值不变；
+// 日志里 instances 相同 = 复用了缓存实例（状态保留），不同 = 被销毁重建（状态丢失）。
+const DETAIL_INSTANCE = 'pd-' + Math.random().toString(36).slice(2, 8)
+onMounted(() => {
+  navLog('detail-mounted', { pid, instance: DETAIL_INSTANCE })
+  load()
+})
 // 详情页走 keep-alive：切到别的菜单再回来不会重挂载，但 /projects/1 → /projects/2
 // 仍是同一组件实例，pid 变了数据不会自动刷新——监听路由 id 手动重拉
 watch(() => route.params.id, (v, old) => {
@@ -802,7 +812,10 @@ function downloadTemplate() {
     .catch(e => errMsg(e, '模板下载失败'))
 }
 // keep-alive 激活时（如从归档库切回编写库）刷一次数据，避免列表里新增的内容看不到
-onActivated(load)
+onActivated(() => {
+  navLog('detail-activated', { pid, instance: DETAIL_INSTANCE })
+  load()
+})
 </script>
 
 <style scoped>

@@ -66,8 +66,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from './api'
-import { lastSubRoute } from './composables/useMenuState'
+import { getSubRoute, memorySnapshot, rememberSubRoute } from './composables/useMenuState'
 import { useBreakpoint } from './composables/useBreakpoint'
+import { navLog } from './utils/navLog'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,11 +91,13 @@ async function loadMenus() {
     menus.value = (await api.get('/studio/menus')).data
     // 菜单异步加载完再补一次页签同步：首屏直链 /projects 时，watch 的 immediate
     // 在 menus 空时跑过、漏加了页签，这里补上，否则 tab 栏只显示「对话」
+    // 菜单异步加载完再补一次页签同步：watch 的 immediate 跑在 menus 为空时，
+    // 此时 isMenuPath 恒 false，会漏掉首屏直链（/projects 或 /projects/1）的页签，
+    // 表现为顶部 tab 栏只剩「对话」。这里按当前路由补一次。
     const p = route.path
-    if (isMenuPath(p)) {
-      if (!tabs.value.some(t => t.path === p)) tabs.value.push({ path: p })
-      activeTab.value = p
-    }
+    activeTab.value = isMenuPath(p) ? p : active.value
+    ensureTab(isMenuPath(p) ? p : active.value)
+    navLog('menus-loaded', { path: p, activeTab: activeTab.value, tabs: tabs.value.map(t => t.path) })
   } catch (e) { /* 401 由拦截器跳登录 */ }
 }
 const active = computed(() => '/' + (route.path.split('/')[1] || ''))
@@ -117,32 +120,61 @@ function titleOf(path) {
 // 详情页也走 keep-alive（不再用 :include 显式列出）—— 切回时筛选/视图模式/展开节点全保留
 const isMenuPath = path => path === '/' || menus.value.some(m => m.path === path)
 
+// 确保某个菜单页签存在（不存在则追加）。菜单是异步加载的，首屏直链详情页时
+// 所属菜单页签可能漏生成，导致顶部根本没这个页签可点。
+function ensureTab(path) {
+  if (!path || path === '/login') return
+  if (tabs.value.some(t => t.path === path)) return
+  tabs.value.push({ path })
+  navLog('tab-add', { path, tabs: tabs.value.map(t => t.path) })
+}
+
 watch(() => route.path, path => {
   if (route.path.startsWith('/login')) return
   // 记住每个菜单上次停留的子路由（详情页也算），切回该菜单时直接回到这里
-  lastSubRoute[active.value] = path
-  if (isMenuPath(path)) {
-    if (!tabs.value.some(t => t.path === path)) tabs.value.push({ path })
+  rememberSubRoute(active.value, path)
+  const isMenu = isMenuPath(path)
+  if (isMenu) {
+    ensureTab(path)
     activeTab.value = path
   } else {
-    // 详情页等子路由：高亮所属菜单页签，不新开页签
+    // 详情页等子路由：高亮所属菜单页签，不新开页签；但页签本身要保证存在
+    ensureTab(active.value)
     activeTab.value = active.value
   }
+  navLog('route-change', {
+    path,
+    menu: active.value,
+    kind: isMenu ? 'menu-root' : 'sub-route',
+    activeTab: activeTab.value,
+    tabs: tabs.value.map(t => t.path),
+    memory: memorySnapshot(),
+  })
 }, { immediate: true })
 
+// 点顶部页签：与点侧栏菜单走同一套「回到该菜单上次停留的子路由」逻辑。
+// ⚠️ 此前这里直接 push 页签自身的路径（菜单根），于是从详情页切走再点页签回来
+// 会掉回列表页，用户得重新点「进入」——#56 的第二处根因。
 function onTabClick(pane) {
-  if (pane.paneName !== route.path) router.push(pane.paneName)
-}
-// 点菜单：回到该菜单上次停留的子路由（如编写库上次打开的项目详情），而非永远回列表根
-function onMenuSelect(index) {
-  drawer.value = false
-  const target = lastSubRoute[index] || index
+  const target = getSubRoute(pane.paneName)
+  navLog('tab-click', { pane: pane.paneName, target, from: route.path, memory: memorySnapshot() })
   if (target !== route.path) router.push(target)
 }
+
+// 点侧栏/抽屉菜单：回到该菜单上次停留的子路由（如编写库上次打开的项目详情），
+// 而非永远回列表根
+function onMenuSelect(index) {
+  drawer.value = false
+  const target = getSubRoute(index)
+  navLog('menu-click', { index, target, from: route.path, memory: memorySnapshot() })
+  if (target !== route.path) router.push(target)
+}
+
 function onTabRemove(path) {
   const idx = tabs.value.findIndex(t => t.path === path)
   if (idx < 0) return
   tabs.value.splice(idx, 1)
+  navLog('tab-remove', { path, tabs: tabs.value.map(t => t.path) })
   if (activeTab.value !== path) return
   const next = tabs.value[idx - 1] || tabs.value[idx] || HOME
   if (next.path !== route.path) router.push(next.path)
