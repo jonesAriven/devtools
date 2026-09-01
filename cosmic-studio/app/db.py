@@ -82,6 +82,13 @@ def _acquire(db: str) -> pymysql.connections.Connection:
 def _release(db: str, conn: pymysql.connections.Connection) -> None:
     p = _pool(db)
     try:
+        # 关键：关闭本次操作遗留的隐式事务，避免连接归还池后被复用看到陈旧快照。
+        # 对 tx 已 commit 的连接，rollback 是空操作；对只读 query 的连接，rollback
+        # 丢弃隐式事务 → 下次 _acquire 拿到干净快照，能读到已提交数据。
+        conn.rollback()
+    except Exception:
+        pass
+    try:
         if p.qsize() < _MAX_IDLE:
             p.put_nowait(conn)
         else:
