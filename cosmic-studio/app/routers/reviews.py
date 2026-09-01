@@ -1,8 +1,9 @@
-"""评审修订域（编写库专属）：意见录入（行级）→ 手动修订 / 批次 AI 自动优化 → 每次修订自动出新版本。
+"""评审修订域（编写库专属）：意见录入（行级）→ 手动修订 / 批次 AI 自动优化 → 每次修订自动出新版本 + 新开可编辑副本。
 
 铁律落点：
-  - 每次（手动/AI）修订落地自动打版本快照，版本不可覆盖
-  - 批次自动优化一轮=一个版本，changelog 记录意见→改动映射
+  - 每次（手动/AI）修订落地自动打版本快照（xlsx 只读存档，版本管理页可查看/下载/回看）
+  - 每次（手动/AI）修订同时深拷贝出一份「可编辑项目副本」（新 pid，活数据），像在线文档「每次变更都有副本」可继续改
+  - 批次自动优化一轮=一个版本+一个副本，changelog 记录意见→改动映射
   - 结构调整型意见 AI 无权直接改（标 needs_manual，出方案待人工）
   - AI 批次修订后跑门禁：新增 error 整批回滚
   - 使用时才调 LLM：未配置返回明确提示，功能建设与 key 解耦
@@ -15,7 +16,7 @@ from pydantic import BaseModel
 from .. import config, db
 from ..auth import require_role
 from ..engines import linter
-from ..services import versioning
+from ..services import project_copy, versioning
 from ..services.llm import chat_completion
 
 r = APIRouter(prefix="/api/active", tags=["reviews"])
@@ -97,17 +98,19 @@ class ManualDoneIn(BaseModel):
 
 @r.post("/reviews/{rid}/manual-done", status_code=201)
 def manual_done(rid: int, body: ManualDoneIn, user: dict = Depends(require_role("editor"))):
-    """手动修订完成：对当前项目数据打新版本快照，意见标记 manual_done。"""
+    """手动修订完成：对当前项目数据打新版本快照 + 深拷贝出可编辑项目副本，意见标记 manual_done。"""
     item = db.query(config.DB_ACTIVE, "SELECT * FROM review_items WHERE id=%s", (rid,), one=True)
     if not item:
         raise HTTPException(404, "评审意见不存在")
     snap = versioning.snapshot(config.DB_ACTIVE, item["project_id"],
                                label="", changelog=f"评审意见#{rid} 手动修订：{(body.revision_note or item['content'])[:80]}",
                                author=user["username"])
+    # 每次修订都新开一份可编辑副本（像在线文档「每次变更都有副本」），活数据可继续改
+    copy = project_copy.copy_project(config.DB_ACTIVE, item["project_id"])
     db.execute(config.DB_ACTIVE,
                "UPDATE review_items SET disposition=%s, revision_note=%s, version_id=%s WHERE id=%s",
                ("manual_done", (body.revision_note or "手动修订")[:500], snap["id"], rid))
-    return {"version": snap, "disposition": "manual_done"}
+    return {"version": snap, "copy": copy, "disposition": "manual_done"}
 
 
 # ─────────────── 批次 AI 自动优化（一轮=一个版本） ───────────────
@@ -242,12 +245,13 @@ def auto_fix(pid: int, body: AutoFixIn, user: dict = Depends(require_role("edito
             "llm_wanted": applied,
         })
 
-    # 一轮一个版本
+    # 一轮一个版本 + 一个可编辑副本（仅在有实际改动时，避免结构调整型-only 也派生副本）
     if applied:
         ids = "、#".join(str(a["review_id"]) for a in applied)
         snap = versioning.snapshot(config.DB_ACTIVE, pid, label="",
                                    changelog=f"评审批次自动修订（意见#{ids}），共 {len(applied)} 处",
                                    author=user["username"])
+        copy = project_copy.copy_project(config.DB_ACTIVE, pid)
         with db.tx(config.DB_ACTIVE) as cur:
             for a in applied:
                 note = (a.get("reason") or "")[:200] + " | " + json.dumps(a["applied"], ensure_ascii=False)[:200]
@@ -256,7 +260,8 @@ def auto_fix(pid: int, body: AutoFixIn, user: dict = Depends(require_role("edito
         version = snap
     else:
         version = None
+        copy = None
 
-    return {"version": version, "applied": applied,
+    return {"version": version, "copy": copy, "applied": applied,
             "skipped": skipped, "needs_manual": [{"review_id": s["review_id"]} for s in skipped if s["reason"].startswith("结构调整")],
             "lint": {"before": before_lint["summary"], "after": after_lint["summary"]}}

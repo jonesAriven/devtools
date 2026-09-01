@@ -584,7 +584,7 @@ async function autoFix() {
     const { data } = await api.post(`/active/projects/${pid}/reviews/auto-fix`, {})
     const applied = data.applied?.length || 0
     const skipped = data.skipped?.length || 0
-    ElMessage.success(`自动优化完成：修订 ${applied} 处，跳过 ${skipped} 处${data.version ? `，新版本 ${data.version.label}` : ''}（版本管理页可查看/下载）`)
+    ElMessage.success(`自动优化完成：修订 ${applied} 处，跳过 ${skipped} 处${data.version ? `，新版本 ${data.version.label}` : ''}${data.copy ? `，并新开可编辑副本「${data.copy.name}」` : ''}（版本管理页可查看版本/下载，编写库可继续改副本）`)
     loadReviews()
   } catch (e) {
     const d = e.response?.data
@@ -602,7 +602,7 @@ async function saveFpEdit() {
     if (fpEditForm.review_id) {
       const { data } = await api.post(`/active/reviews/${fpEditForm.review_id}/manual-done`,
         { revision_note: '手动修订 FP 行' })
-      ElMessage.success(`已保存并生成新版本 ${data.version.label}，评审意见已关闭`)
+      ElMessage.success(`已保存并生成新版本 ${data.version.label}，并新开可编辑副本「${data.copy.name}」（编写库可继续改），评审意见已关闭`)
     } else {
       ElMessage.success('已保存')
     }
@@ -728,7 +728,7 @@ async function saveSub() {
       if (subForm.review_id) {
         const { data } = await api.post(`/active/reviews/${subForm.review_id}/manual-done`,
           { revision_note: '手动修订子过程行' })
-        ElMessage.success(`已保存并生成新版本 ${data.version.label}，评审意见已关闭`)
+        ElMessage.success(`已保存并生成新版本 ${data.version.label}，并新开可编辑副本「${data.copy.name}」（编写库可继续改），评审意见已关闭`)
       } else {
         ElMessage.success('已保存')
       }

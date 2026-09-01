@@ -53,7 +53,7 @@
 <script setup>
 import { onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import api from '../api'
+import api, { downloadBlob } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
 
@@ -105,7 +105,14 @@ async function snapshot() {
   } catch (e) { ElMessage.error(e.response?.data?.detail || '失败') }
   finally { snapping.value = false }
 }
-function download(id) { window.open(`/api/active/versions/${id}/download`, '_blank') }
+// 必须带 Bearer 下载：window.open 裸 GET 会被 require_role 拦截返 401 未登录
+async function download(id) {
+  try {
+    await downloadBlob(`/api/active/versions/${id}/download`, `version_${id}.xlsx`)
+  } catch (e) {
+    ElMessage.error(e.message || '下载失败')
+  }
+}
 </script>
 
 <!-- .bar / .bar h3 已迁入 theme.css -->
