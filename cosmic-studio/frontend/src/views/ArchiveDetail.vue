@@ -98,7 +98,7 @@ import { useViewMode } from '../composables/useViewMode'
 import { usePersistentState } from '../composables/usePersistentState'
 
 const route = useRoute()
-const pid = route.params.id
+let pid = route.params.id
 
 const tree = ref(null)
 const loading = ref(false)
@@ -237,7 +237,7 @@ async function exportJson() {
 watch([page, pageSize], reload)
 onMounted(reload)
 // keep-alive：切换不同归档项目时主动重拉
-watch(() => route.params.id, (v, old) => { if (v && v !== old) reload() })
+watch(() => route.params.id, (v, old) => { if (v && v !== old) { pid = v; reload() } })
 // keep-alive 激活时刷数据
 onActivated(reload)
 </script>
