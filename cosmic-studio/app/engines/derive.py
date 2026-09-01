@@ -95,7 +95,8 @@ def pool_for(name: str, pools: dict):
     if cleaned in pools:
         return pools[cleaned]
     for key, pool in pools.items():
-        if key and key in cleaned:
+        # 边界匹配（前缀/后缀），避免子串误命中（如「用户」匹配大量含「用户」的数据组名）
+        if key and (cleaned.startswith(key) or cleaned.endswith(key)):
             return pools[key]
     return None
 

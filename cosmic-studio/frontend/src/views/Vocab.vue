@@ -16,7 +16,7 @@
         <el-button v-if="isAdmin()" type="primary" :loading="mining" @click="runMine">
           <el-icon style="margin-right:4px"><MagicStick /></el-icon>立即挖掘
         </el-button>
-        <el-button v-if="isAdmin()" @click="showImport = true">
+        <el-button v-if="canEdit()" @click="showImport = true">
           <el-icon style="margin-right:4px"><Upload /></el-icon>批量导入
         </el-button>
       </div>
@@ -132,6 +132,12 @@
       </el-form>
       <el-alert v-if="importReport" type="success" :closable="false"
                 :title="`导入 ${importReport.imported} 条，跳过重复 ${importReport.skipped} 条，共处理 ${importReport.total} 条`" />
+      <el-alert v-if="importReport && importReport.errors && importReport.errors.length" type="warning"
+                :closable="false" style="margin-top:8px"
+                :title="`${importReport.errors.length} 条解析/入库失败（未计入导入数）`">
+        <div v-for="(er, i) in importReport.errors.slice(0, 20)" :key="i" style="font-size:12px; line-height:1.6">{{ er }}</div>
+        <div v-if="importReport.errors.length > 20" class="muted">…其余 {{ importReport.errors.length - 20 }} 条已省略</div>
+      </el-alert>
       <template #footer>
         <el-button @click="showImport = false">关闭</el-button>
         <el-button type="primary" :loading="importing" @click="doImport">导入</el-button>
@@ -143,7 +149,7 @@
 <script setup>
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api, { isAdmin, batchDeleteByFilter, batchConfirmByFilter, batchRejectByFilter } from '../api'
+import api, { isAdmin, role, batchDeleteByFilter, batchConfirmByFilter, batchRejectByFilter } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
 
@@ -157,6 +163,7 @@ const mining = ref(false)
 const acting = ref(false)
 const deleting = ref(false)
 const mineReport = ref(null)
+const canEdit = () => ['admin', 'editor'].includes(role())
 
 // 批量导入态
 const showImport = ref(false)

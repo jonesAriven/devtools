@@ -7,20 +7,35 @@ cosmic_studio（词库/规范/版本/用户/LLM配置）。
 import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from .routers import auth, chat, dimension, reviews, studio
+from . import config
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
+# 启动期配置校验（缺失变量报警，不阻断）
+config.validate_config()
 
 app = FastAPI(
     title="cosmic-studio",
     description="COSMIC 度量表生产系统：编写/归档两库 + 导入导出矩阵 + 质量门禁 + 规范中心 + 对话式操作",
     version="0.2.0",
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception(request: Request, exc: Exception):
+    """兜底：未捕获异常统一回结构化 {detail}，前端才有内容可显示（fix P0-3）。
+
+    HTTPException / RequestValidationError 由 Starlette 专用 handler 处理，不会进入此处。
+    """
+    logging.error("unhandled exception on %s %s: %s", request.method, request.url.path, exc,
+                  exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": str(exc) or "Internal Server Error"})
 
 app.include_router(studio.pub)
 app.include_router(auth.r)

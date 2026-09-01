@@ -227,7 +227,7 @@
     <el-dialog v-model="impDlg" title="导入到本项目" width="520px">
       <el-alert type="info" :closable="false" style="margin-bottom:10px">
         <p style="margin:0">数据将合并到当前项目。增量按「模块+FP名」主键 upsert（命中更新，未命中新建）；覆盖会清空本项目全部数据后重灌（admin，自动备份）。</p>
-        <el-link type="primary" style="margin-top:4px" href="/api/active/import/template">下载导入模板（含逐列填写说明）</el-link>
+        <el-link type="primary" style="margin-top:4px" @click="downloadTemplate">下载导入模板（含逐列填写说明）</el-link>
       </el-alert>
       <el-radio-group v-model="impMode" class="imp-modes">
         <el-radio value="incremental">增量合并到本项目（推荐）</el-radio>
@@ -330,12 +330,12 @@
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api, { role } from '../api'
+import api, { role, humanize, downloadBlob } from '../api'
 import { useViewMode } from '../composables/useViewMode'
 import { usePersistentState } from '../composables/usePersistentState'
 
 const route = useRoute()
-const pid = route.params.id
+let pid = route.params.id
 const proj = ref(null)
 const tree = ref(null)
 const loading = ref(false)
@@ -516,7 +516,9 @@ const fpEditForm = reactive({ id: null, name: '', user: '', event: '', review_id
 const pendingReviewCount = computed(() => reviews.value.filter(r => r.disposition === 'pending').length)
 
 async function loadReviews() {
-  reviews.value = (await api.get(`/active/projects/${pid}/reviews`)).data
+  try {
+    reviews.value = (await api.get(`/active/projects/${pid}/reviews`)).data
+  } catch (e) { errMsg(e, '评审意见加载失败') }
 }
 function openReview(row) {
   Object.assign(reviewForm, {
@@ -775,20 +777,27 @@ async function lint() {
 }
 async function exportXlsx() {
   busy.value = 'export'
-  window.open(`/api/active/projects/${pid}/export/xlsx`, '_blank')
-  setTimeout(() => { busy.value = '' }, 1500)
+  try {
+    await downloadBlob(`/api/active/projects/${pid}/export/xlsx`,
+      `${proj.value?.requirement_id || 'project'}-${pid}.xlsx`)
+    ElMessage.success('已导出')
+  } catch (e) { errMsg(e, '导出失败') } finally { busy.value = '' }
 }
 function errMsg(e, fallback) {
   const d = e.response?.data?.detail
-  ElMessage.error(typeof d === 'string' ? d : fallback)
+  ElMessage.error(d ? humanize(d) : fallback)
 }
 
 onMounted(load)
 // 详情页走 keep-alive：切到别的菜单再回来不会重挂载，但 /projects/1 → /projects/2
 // 仍是同一组件实例，pid 变了数据不会自动刷新——监听路由 id 手动重拉
 watch(() => route.params.id, (v, old) => {
-  if (v && v !== old) load()
+  if (v && v !== old) { pid = v; load() }
 })
+function downloadTemplate() {
+  downloadBlob('/api/active/import/template', 'cosmic-import-template.xlsx')
+    .catch(e => errMsg(e, '模板下载失败'))
+}
 // keep-alive 激活时（如从归档库切回编写库）刷一次数据，避免列表里新增的内容看不到
 onActivated(load)
 </script>

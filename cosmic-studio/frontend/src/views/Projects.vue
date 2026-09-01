@@ -9,7 +9,7 @@
                    :on-change="onFile" style="display:inline-block">
           <el-button type="success" plain>导入 xlsx</el-button>
         </el-upload>
-        <el-button v-if="isAdmin" type="primary" @click="openDlg">新建项目</el-button>
+        <el-button v-if="canEdit" type="primary" @click="openDlg">新建项目</el-button>
       </div>
     </div>
 
@@ -73,7 +73,7 @@
     <el-dialog v-model="impDlg" title="导入编写库" width="520px">
       <el-alert type="info" :closable="false" style="margin-bottom:10px">
         <p style="margin:0">第5行起填数据；B/C/D=一二三级模块，E=功能用户（发起者/接收者两行），G=功能过程名（动词开头），K=数据属性（、分隔≥3字段）。增量按「模块+FP名」主键 upsert。</p>
-        <el-link type="primary" style="margin-top:4px" href="/api/active/import/template">下载导入模板（含逐列填写说明）</el-link>
+        <el-link type="primary" style="margin-top:4px" @click="downloadTemplate">下载导入模板（含逐列填写说明）</el-link>
       </el-alert>
       <el-radio-group v-model="impMode" class="imp-modes">
         <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标项目）</el-radio>
@@ -116,7 +116,7 @@
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
-import api, { isAdmin } from '../api'
+import api, { isAdmin, role, downloadBlob } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
 
@@ -129,6 +129,7 @@ const emptyForm = () => ({ requirement_id: '', requirement_name: '', project_cod
 
 // ── 导入向导 ──
 const canImport = computed(() => ['admin', 'editor'].includes((JSON.parse(localStorage.getItem('user') || '{}').role) || ''))
+const canEdit = computed(() => ['admin', 'editor'].includes(role()))
 const impDlg = ref(false)
 const impMode = ref('incremental')
 const impPid = ref(null)
@@ -144,6 +145,10 @@ async function loadAll() {
   } catch { /* ignore */ }
 }
 
+function downloadTemplate() {
+  downloadBlob('/api/active/import/template', 'cosmic-import-template.xlsx')
+    .catch(e => ElMessage.error(e.message || '模板下载失败'))
+}
 function onFile(f) {
   impFile.value = f.raw
   impMode.value = 'incremental'
@@ -160,7 +165,9 @@ async function doImport() {
   } else {
     q.set('mode', 'overwrite'); q.set('project_id', impPid.value || '')
     if (impMode.value === 'overwrite_all') {
-      if (!confirm('确认整库覆盖？编写库现有全部项目将被清空重灌（覆盖前自动备份）')) return
+      try {
+        await ElMessageBox.confirm('确认整库覆盖？编写库现有全部项目将被清空重灌（覆盖前自动备份）', '整库覆盖确认', { type: 'warning' })
+      } catch { return }
       q.set('confirm', 'active')
     }
   }

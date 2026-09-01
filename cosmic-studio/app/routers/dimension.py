@@ -165,6 +165,30 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         src = db.query(db_name, "SELECT * FROM projects WHERE id=%s", (pid,), one=True)
         if not src:
             raise HTTPException(404, "项目不存在")
+        # 一次性预载源树（IN 查询，复用单一连接），再在单个 tx 内写入，
+        # 避免 with tx 内用 db.query 逐层裸读开 N+1 连接（fix P1/P3）
+        modules = db.query(db_name, "SELECT * FROM modules WHERE project_id=%s ORDER BY sort_order", (pid,))
+        mod_ids = [m["id"] for m in modules]
+        fps = (db.query(db_name,
+                        f"SELECT * FROM fps WHERE module_id IN ({','.join(['%s'] * len(mod_ids)) or '0'}) "
+                        f"ORDER BY sort_order", tuple(mod_ids))
+               if mod_ids else [])
+        fp_ids = [f["id"] for f in fps]
+        subs = (db.query(db_name,
+                        f"SELECT * FROM sub_processes WHERE fp_id IN ({','.join(['%s'] * len(fp_ids)) or '0'}) "
+                        f"ORDER BY sort_order", tuple(fp_ids))
+               if fp_ids else [])
+        shots = (db.query(db_name,
+                         f"SELECT * FROM screenshots WHERE fp_id IN ({','.join(['%s'] * len(fp_ids)) or '0'}) "
+                         f"ORDER BY sort_order", tuple(fp_ids))
+                if fp_ids else [])
+        fps_by_mod, subs_by_fp, shots_by_fp = {}, {}, {}
+        for f in fps:
+            fps_by_mod.setdefault(f["module_id"], []).append(f)
+        for s in subs:
+            subs_by_fp.setdefault(s["fp_id"], []).append(s)
+        for sc in shots:
+            shots_by_fp.setdefault(sc["fp_id"], []).append(sc)
         copies = db.query(db_name, "SELECT COUNT(*) AS n FROM projects WHERE requirement_id=%s",
                           (src["requirement_id"],), one=True)["n"]
         with db.tx(db_name) as cur:
@@ -175,22 +199,22 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                          f"{src['requirement_name']}-副本{copies + 1}",
                          src["client_contract"], src["batch_no"], src["source_sheet"]))
             new_pid = cur.lastrowid
-            for m in db.query(db_name, "SELECT * FROM modules WHERE project_id=%s ORDER BY sort_order", (pid,)):
+            for m in modules:
                 cur.execute("""INSERT INTO modules (project_id, level1, level2, level3, sort_order)
                                VALUES (%s,%s,%s,%s,%s)""",
                             (new_pid, m["level1"], m["level2"], m["level3"], m["sort_order"]))
                 new_mid = cur.lastrowid
-                for f in db.query(db_name, "SELECT * FROM fps WHERE module_id=%s ORDER BY sort_order", (m["id"],)):
+                for f in fps_by_mod.get(m["id"], []):
                     cur.execute("""INSERT INTO fps (module_id, sort_order, functional_user, trigger_event, fp_name)
                                    VALUES (%s,%s,%s,%s,%s)""",
                                 (new_mid, f["sort_order"], f["functional_user"], f["trigger_event"], f["fp_name"]))
                     new_fid = cur.lastrowid
-                    for s in db.query(db_name, "SELECT * FROM sub_processes WHERE fp_id=%s ORDER BY sort_order", (f["id"],)):
+                    for s in subs_by_fp.get(f["id"], []):
                         cur.execute("""INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type,
                                        data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,%s)""",
                                     (new_fid, s["sort_order"], s["description"], s["data_move_type"],
                                      s["data_group_name"], s["data_attributes"]))
-                    for sc in db.query(db_name, "SELECT * FROM screenshots WHERE fp_id=%s ORDER BY sort_order", (f["id"],)):
+                    for sc in shots_by_fp.get(f["id"], []):
                         cur.execute("""INSERT INTO screenshots (fp_id, sort_order, image_data, image_width, image_height)
                                        VALUES (%s,%s,%s,%s,%s)""",
                                     (new_fid, sc["sort_order"], sc["image_data"], sc["image_width"], sc["image_height"]))
@@ -307,31 +331,45 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                        (body.module_id, body.name), one=True)
         if dup:
             raise HTTPException(409, f"该模块下已存在同名功能过程「{body.name}」（id={dup['id']}），请改名或直接编辑")
-        user, event = body.user, body.event
-        if user is None or event is None:
-            fu = derive.derive_functional_user(mod["level3"])
-            initiator = derive.initiator_of(fu)
-            user = user or fu
-            event = event or derive.derive_trigger_event(body.name, initiator)
+        fu, evt = body.user, body.event
+        if fu is None or evt is None:
+            _fu = derive.derive_functional_user(mod["level3"])
+            initiator = derive.initiator_of(_fu)
+            fu = fu or _fu
+            evt = evt or derive.derive_trigger_event(body.name, initiator)
         n = db.query(db_name, "SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM fps WHERE module_id=%s",
                      (body.module_id,), one=True)["n"]
         with db.tx(db_name) as cur:
             cur.execute("INSERT INTO fps (module_id, sort_order, functional_user, trigger_event, fp_name) VALUES (%s,%s,%s,%s,%s)",
-                        (body.module_id, n, user, event, body.name))
+                        (body.module_id, n, fu, evt, body.name))
             fid = cur.lastrowid
             # 标准子过程自动展开（EW/ERX），属性留空待填
             for i, (mt, desc, group) in enumerate(
-                    derive.standard_subs_for(body.name, derive.initiator_of(user)), 1):
+                    derive.standard_subs_for(body.name, derive.initiator_of(fu)), 1):
                 cur.execute("INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,'')",
                             (fid, i, desc, mt, group))
-        return {"id": fid, "user": user, "event": event}
+        return {"id": fid, "user": fu, "event": evt}
 
     @r.put("/fps/{fid}")
     def update_fp(fid: int, body: FPUpdate, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
-        if body.name is not None and len(body.name) > 200:
-            raise HTTPException(422, f"FP名过长（{len(body.name)}字），上限200字")
+        fp = db.query(db_name, "SELECT id, module_id FROM fps WHERE id=%s", (fid,), one=True)
+        if not fp:
+            raise HTTPException(404, "功能过程不存在")
+        if body.name is not None:
+            name = body.name
+            if len(name) > 200:
+                raise HTTPException(422, f"FP名过长（{len(name)}字），上限200字")
+            for w in linter.forbidden_words():
+                if w in name:
+                    raise HTTPException(422, f"FP名含禁词'{w}': {name}")
+            if not any(name.startswith(v) for v in derive.allowed_verbs()):
+                raise HTTPException(422, f"FP名应以动词开头: {derive.allowed_verbs()}")
+            dup = db.query(db_name, "SELECT id FROM fps WHERE module_id=%s AND fp_name=%s AND id!=%s",
+                           (fp["module_id"], name, fid), one=True)
+            if dup:
+                raise HTTPException(409, f"该模块下已存在同名功能过程「{name}」（id={dup['id']}），请改名或直接编辑")
         sets, params = [], []
         for col, v in (("fp_name", body.name), ("functional_user", body.user), ("trigger_event", body.event)):
             if v is not None:
@@ -347,6 +385,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     def delete_fp(fid: int, cascade: bool = False, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
+        fp = db.query(db_name, "SELECT id FROM fps WHERE id=%s", (fid,), one=True)
+        if not fp:
+            raise HTTPException(404, "功能过程不存在")
         subs = db.query(db_name, "SELECT COUNT(*) AS n FROM sub_processes WHERE fp_id=%s", (fid,), one=True)
         if subs["n"] and not cascade:
             raise HTTPException(409, f"FP下有 {subs['n']} 个子过程，需 cascade=true")
@@ -426,6 +467,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     def delete_sub(sid: int, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
+        sub = db.query(db_name, "SELECT id FROM sub_processes WHERE id=%s", (sid,), one=True)
+        if not sub:
+            raise HTTPException(404, "子过程不存在")
         db.execute(db_name, "DELETE FROM sub_processes WHERE id=%s", (sid,))
         return {"deleted": True}
 
@@ -490,8 +534,11 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         meta = {k: v for k, v in dict(project_code=project_code, client_name=client_name,
                                       requirement_id=requirement_id,
                                       requirement_name=requirement_name).items() if v}
-        report = xlsx_import.import_xlsx(db_name, await file.read(), mode=mode,
-                                         project_id=project_id, project_meta=meta)
+        try:
+            report = xlsx_import.import_xlsx(db_name, await file.read(), mode=mode,
+                                             project_id=project_id, project_meta=meta)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
         job = _record_job(dim, mode, file.filename, report)
         report["job_id"] = job
         return report
@@ -506,8 +553,11 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
             raise HTTPException(403, "批量覆盖导入需要 admin 权限")
         if confirm != dim:
             raise HTTPException(428, "批量覆盖导入需 confirm=<dimension> 二次确认")
-        report = xlsx_import.bulk_import_workbook_bytes(db_name, await file.read(),
-                                                        backup_tag="pre_bulk_workbook")
+        try:
+            report = xlsx_import.bulk_import_workbook_bytes(db_name, await file.read(),
+                                                            backup_tag="pre_bulk_workbook")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
         job = _record_job(dim, "bulk_overwrite", file.filename, report)
         report["job_id"] = job
         return report
@@ -524,7 +574,10 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
                 raise HTTPException(428, "整库覆盖导入需 confirm=<dimension> 二次确认")
         if mode == "overwrite" and project_id and ROLE_RANK.get(user["role"], 0) < ROLE_RANK["admin"]:
             raise HTTPException(403, "覆盖导入需要 admin 权限")
-        report = json_io.import_json(db_name, payload, mode=mode, project_id=project_id)
+        try:
+            report = json_io.import_json(db_name, payload, mode=mode, project_id=project_id)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
         job = _record_job(dim, mode, "payload.json", report)
         report["job_id"] = job
         return report
@@ -552,6 +605,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
 
     @r.get("/import/jobs")
     def import_jobs(limit: int = 20):
+        limit = max(1, min(int(limit), 100))
         return db.query(config.DB_STUDIO,
                         "SELECT * FROM import_jobs WHERE dimension=%s ORDER BY id DESC LIMIT %s",
                         (dim, limit))
@@ -570,7 +624,13 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
             return versioning.list_versions(db_name, pid)
 
         @r.get("/versions/{vid}/download")
-        def download_version(vid: int):
+        def download_version(vid: int, user: dict = Depends(require_role("viewer"))):
+            # 越权枚举防护：版本存于 cosmic_studio，按 dimension 列归属当前库；
+            # 跨维度 / 不存在的 vid 一律 404（fix architect P2）
+            row = db.query(config.DB_STUDIO,
+                           "SELECT id, dimension FROM versions WHERE id=%s", (vid,), one=True)
+            if not row or row["dimension"] != db_name:
+                raise HTTPException(404, "版本文件不存在")
             path = versioning.get_version_file(vid)
             if not path:
                 raise HTTPException(404, "版本文件不存在")

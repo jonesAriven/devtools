@@ -41,7 +41,7 @@
     </div>
 
     <el-dialog v-model="dlg" title="导入归档库" width="560px">
-      <el-link type="primary" href="/api/archive/import/template" target="_blank"
+      <el-link type="primary" @click="downloadTemplate"
                style="margin-bottom:10px; display:inline-block">下载导入模板（含逐列填写说明）</el-link>
       <el-alert type="info" :closable="false" style="margin-bottom:10px">
         <p style="margin:0">第5行起填数据；B/C/D=一二三级模块，E=功能用户，G=功能过程名（动词开头），K=数据属性（、分隔≥3字段）。增量按「模块+FP名」主键 upsert。</p>
@@ -78,8 +78,8 @@
 <script setup>
 import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import api, { isAdmin } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import api, { isAdmin, downloadBlob } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
 
@@ -126,11 +126,15 @@ async function doImport() {
   const q = new URLSearchParams({ mode: mode.value })
   if (mode.value === 'incremental') q.set('project_id', targetPid.value)
   if (mode.value === 'overwrite') {
-    if (!confirm(`确认全量覆盖归档库？现有 ${total.value} 个项目将被清空重灌`)) return
+    try {
+      await ElMessageBox.confirm(`确认全量覆盖归档库？现有 ${total.value} 个项目将被清空重灌`, '全量覆盖确认', { type: 'warning' })
+    } catch { return }
     q.set('confirm', 'archive')
   }
   if (mode.value === 'bulk') {
-    if (!confirm('确认批量覆盖导入？将按工作簿内的多个数据 sheet 自动匹配/追加归档项目，整库先自动备份')) return
+    try {
+      await ElMessageBox.confirm('确认批量覆盖导入？将按工作簿内的多个数据 sheet 自动匹配/追加归档项目，整库先自动备份', '批量覆盖确认', { type: 'warning' })
+    } catch { return }
     q.set('confirm', 'archive')
   }
   const ep = mode.value === 'bulk' ? '/archive/import/workbook' : '/archive/import/xlsx'
@@ -145,7 +149,14 @@ async function doImport() {
   } finally { uploading.value = false }
 }
 
-function exportXlsx(id) { window.open(`/api/archive/projects/${id}/export/xlsx`, '_blank') }
+function exportXlsx(id) {
+  downloadBlob(`/api/archive/projects/${id}/export/xlsx`, `archive_p${id}.xlsx`)
+    .catch(e => ElMessage.error(e.message || '导出失败'))
+}
+function downloadTemplate() {
+  downloadBlob('/api/archive/import/template', 'cosmic-archive-import-template.xlsx')
+    .catch(e => ElMessage.error(e.message || '模板下载失败'))
+}
 async function exportJson(id) {
   const { data } = await api.get(`/archive/projects/${id}/export/json`)
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })

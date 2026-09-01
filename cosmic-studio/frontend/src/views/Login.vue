@@ -28,7 +28,7 @@ const form = reactive({ username: '', password: '' })
 const loading = ref(false)
 
 async function doLogin() {
-  if (!form.username || !form.password) return
+  if (!form.username || !form.password) { ElMessage.warning('请输入用户名和密码'); return }
   loading.value = true
   try {
     const { data } = await api.post('/auth/login', form)

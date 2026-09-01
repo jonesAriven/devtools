@@ -50,9 +50,12 @@ def parse_worksheet(ws) -> dict:
 
 def parse_xlsx_rows(xlsx_bytes: bytes, sheet=None) -> dict:
     """→ {requirement_label, rows:[...]}。sheet=None 时取活动表（兼容旧调用 / 单项目导入）。"""
-    wb = load_workbook(io.BytesIO(xlsx_bytes), data_only=True)
-    ws = wb[sheet] if sheet else wb.active
-    return parse_worksheet(ws)
+    wb = load_workbook_patched(xlsx_bytes)
+    try:
+        ws = wb[sheet] if sheet else wb.active
+        return parse_worksheet(ws)
+    finally:
+        wb.close()
 
 
 # ---------- 多 sheet 批量覆盖导入（一个工作簿 = 多个项目） ----------

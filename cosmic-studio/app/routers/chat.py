@@ -5,6 +5,7 @@
 LLM 未配置时返回明确提示，不崩。
 """
 import json
+import logging
 import urllib.request
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -273,5 +274,5 @@ def _log(message, reply, tools_used, user):
         db.execute(config.DB_STUDIO,
                    "INSERT INTO chat_logs (user_id, message, reply, tools_used) VALUES (%s,%s,%s,%s)",
                    (user["id"], message, reply, json.dumps(tools_used, ensure_ascii=False)))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("chat log insert failed: %s", e)
