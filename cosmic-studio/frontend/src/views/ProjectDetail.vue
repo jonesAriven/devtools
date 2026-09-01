@@ -9,6 +9,7 @@
         <h3>{{ proj?.requirement_id }} {{ proj?.requirement_name }}</h3>
       </div>
       <div class="bar-actions">
+        <el-button @click="backToList">返回列表</el-button>
         <el-upload v-if="canEdit" :show-file-list="false" :auto-upload="false" accept=".xlsx"
                    :on-change="onImportFile" style="display:inline-block">
           <el-button type="info" plain>导入</el-button>
@@ -328,13 +329,14 @@
 
 <script setup>
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { role, humanize, downloadBlob } from '../api'
 import { useViewMode } from '../composables/useViewMode'
 import { usePersistentState } from '../composables/usePersistentState'
 
 const route = useRoute()
+const router = useRouter()
 let pid = route.params.id
 const proj = ref(null)
 const tree = ref(null)
@@ -788,6 +790,7 @@ function errMsg(e, fallback) {
   ElMessage.error(d ? humanize(d) : fallback)
 }
 
+function backToList() { router.push('/projects') }
 onMounted(load)
 // 详情页走 keep-alive：切到别的菜单再回来不会重挂载，但 /projects/1 → /projects/2
 // 仍是同一组件实例，pid 变了数据不会自动刷新——监听路由 id 手动重拉

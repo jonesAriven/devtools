@@ -2,7 +2,7 @@
   <el-container class="layout" :class="{ mobile: isMobile }">
     <el-aside v-if="!isMobile" width="210px" class="sidebar">
       <div class="logo">cosmic-studio</div>
-      <el-menu :default-active="active" router aria-label="主导航" v-bind="menuTheme">
+      <el-menu :default-active="active" aria-label="主导航" v-bind="menuTheme" @select="onMenuSelect">
         <el-menu-item v-for="m in menus" :key="m.key" :index="m.path">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.title }}</span>
@@ -12,8 +12,8 @@
 
     <el-drawer v-if="isMobile" v-model="drawer" direction="ltr" size="200px" :with-header="false">
       <div class="logo">cosmic-studio</div>
-      <el-menu :default-active="active" router aria-label="主导航（移动端）"
-               @select="drawer = false" v-bind="menuTheme">
+      <el-menu :default-active="active" aria-label="主导航（移动端）"
+               @select="onMenuSelect" v-bind="menuTheme">
         <el-menu-item v-for="m in menus" :key="m.key" :index="m.path">
           <el-icon><component :is="m.icon" /></el-icon>
           <span>{{ m.title }}</span>
@@ -66,6 +66,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from './api'
+import { lastSubRoute } from './composables/useMenuState'
 import { useBreakpoint } from './composables/useBreakpoint'
 
 const route = useRoute()
@@ -87,6 +88,13 @@ onMounted(loadMenus)
 async function loadMenus() {
   try {
     menus.value = (await api.get('/studio/menus')).data
+    // 菜单异步加载完再补一次页签同步：首屏直链 /projects 时，watch 的 immediate
+    // 在 menus 空时跑过、漏加了页签，这里补上，否则 tab 栏只显示「对话」
+    const p = route.path
+    if (isMenuPath(p)) {
+      if (!tabs.value.some(t => t.path === p)) tabs.value.push({ path: p })
+      activeTab.value = p
+    }
   } catch (e) { /* 401 由拦截器跳登录 */ }
 }
 const active = computed(() => '/' + (route.path.split('/')[1] || ''))
@@ -111,6 +119,8 @@ const isMenuPath = path => path === '/' || menus.value.some(m => m.path === path
 
 watch(() => route.path, path => {
   if (route.path.startsWith('/login')) return
+  // 记住每个菜单上次停留的子路由（详情页也算），切回该菜单时直接回到这里
+  lastSubRoute[active.value] = path
   if (isMenuPath(path)) {
     if (!tabs.value.some(t => t.path === path)) tabs.value.push({ path })
     activeTab.value = path
@@ -122,6 +132,12 @@ watch(() => route.path, path => {
 
 function onTabClick(pane) {
   if (pane.paneName !== route.path) router.push(pane.paneName)
+}
+// 点菜单：回到该菜单上次停留的子路由（如编写库上次打开的项目详情），而非永远回列表根
+function onMenuSelect(index) {
+  drawer.value = false
+  const target = lastSubRoute[index] || index
+  if (target !== route.path) router.push(target)
 }
 function onTabRemove(path) {
   const idx = tabs.value.findIndex(t => t.path === path)
