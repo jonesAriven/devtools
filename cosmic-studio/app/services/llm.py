@@ -15,15 +15,41 @@ from fastapi import HTTPException
 DEFAULT_TIMEOUT = 120
 
 
+def _resolve_chat_url(base_url: str) -> str:
+    """把用户填的 base_url 解析为完整的 /chat/completions 端点。
+
+    方舟 / 各类 OpenAI 兼容网关的 base_url 写法不统一，必须兼容以下填法：
+
+    1. ``https://ark.cn-beijing.volces.com/api/v3``
+       → 补拼 → ``…/api/v3/chat/completions``（方舟在线推理标准地址）
+    2. ``https://ark.cn-beijing.volces.com/api/plan/v3``
+       → 补拼 → ``…/api/plan/v3/chat/completions``（方舟 agent-plan 标准地址）
+    3. ``https://ark.cn-beijing.volces.com/api/v3/chat/completions``
+       （用户直接填了完整路径，含 /chat/completions 结尾）
+       → 原样使用，不再重复拼，避免变成 ``…/chat/completions/chat/completions``
+
+    历史包袱：早期代码总是死拼 ``base_url + "/chat/completions"``，第 2/3 种填法
+    会拼出不存在的路径（404）。这里用「结尾是否已含 /chat/completions」判定，
+    让用户无论怎么填都能命中正确端点。
+    """
+    u = (base_url or "").rstrip("/")
+    if u.endswith("/chat/completions"):
+        return u
+    return u + "/chat/completions"
+
+
 def chat_completion(cfg: dict, messages: list, *, tools: list | None = None,
                     timeout: int = DEFAULT_TIMEOUT, temperature: float = 0.2) -> dict:
     """OpenAI 兼容 /chat/completions 调用。返回已 parse 的 JSON 响应。
+
+    base_url 兼容方舟 /api/v3、/api/plan/v3、以及直接以 /chat/completions 结尾的填法，
+    由 ``_resolve_chat_url`` 统一处理。
 
     Raises:
         HTTPException(502, "...") 包装所有上游错误（含 4xx / 5xx / 网络 / 超时）。
         HTTPException(502, "LLM 端点不可达…") 包装 DNS / 连接 / 超时。
     """
-    url = cfg["base_url"].rstrip("/") + "/chat/completions"
+    url = _resolve_chat_url(cfg["base_url"])
     payload = {"model": cfg["model"], "messages": messages, "temperature": temperature}
     if tools:
         payload["tools"] = tools
@@ -44,8 +70,9 @@ def chat_completion(cfg: dict, messages: list, *, tools: list | None = None,
             raise HTTPException(502, f"LLM 鉴权失败（{e.code}）：请检查 系统管理→LLM配置 的 API Key")
         if e.code == 404:
             raise HTTPException(502, f"LLM 端点路径不存在（404）：当前 URL = {url}。"
-                                       f"OpenAI 兼容路径通常是 <base_url>/v1/chat/completions，"
-                                       f"请核对 系统管理→LLM配置 的 Base URL（是否多/少了 /v1 或 /plan）")
+                                       f"Base URL 应填到网关前缀（如 https://ark.cn-beijing.volces.com/api/v3 "
+                                       f"或 …/api/plan/v3），代码会自动补 /chat/completions；"
+                                       f"若已填完整路径请确保以 /chat/completions 结尾。")
         if e.code == 400:
             raise HTTPException(502, f"LLM 拒绝请求（400，可能是模型名/请求体不合法）：{_extract_error_msg(e, url)}")
         if e.code in (406, 415):
