@@ -1,10 +1,14 @@
 """版本管理：编写库导出快照 + sha256 指纹 + 版本链，禁覆盖上一版。"""
 import hashlib
 import os
+import re
 from datetime import datetime
 
 from .. import config, db
 from .xlsx_export import export_xlsx
+
+# 版本 label 进文件名：仅允许安全字符，杜绝 ../ 之类的路径穿越写文件
+_SAFE_LABEL = re.compile(r"[^\w\-]")
 
 
 def _next_seq(project_id: int) -> int:
@@ -20,6 +24,7 @@ def snapshot(dim_db: str, project_id: int, label: str = "", changelog: str = "",
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     if not label:
         label = f"v{seq}"
+    label = _SAFE_LABEL.sub("-", (label or "")[:40])  # 防穿越 + 限长
     os.makedirs(config.VERSIONS_DIR, exist_ok=True)
     fname = f"{dim_db}_p{project_id}_{label}_{ts}.xlsx"
     path = os.path.join(config.VERSIONS_DIR, fname)

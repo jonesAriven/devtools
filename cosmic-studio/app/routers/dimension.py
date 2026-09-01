@@ -261,6 +261,9 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     def create_module(pid: int, body: ModuleIn, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
+        proj = db.query(db_name, "SELECT id FROM projects WHERE id=%s", (pid,), one=True)
+        if not proj:
+            raise HTTPException(404, f"项目不存在: {pid}")
         n = db.query(db_name, "SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM modules WHERE project_id=%s",
                      (pid,), one=True)["n"]
         mid = db.execute(db_name,
@@ -399,8 +402,20 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     def update_sub(sid: int, body: dict, user: dict = Depends(require_role("editor"))):
         if not writable:
             raise HTTPException(403, "归档库只读")
+        sub = db.query(db_name, "SELECT id FROM sub_processes WHERE id=%s", (sid,), one=True)
+        if not sub:
+            raise HTTPException(404, f"子过程不存在: {sid}")
         allowed = {k: v for k, v in body.items()
                    if k in ("description", "data_move_type", "data_group_name", "data_attributes")}
+        # 复用 create_sub 的字段校验，避免裸 dict 绕过规则写入脏数据
+        if "data_move_type" in allowed and allowed["data_move_type"] not in derive.allowed_sub_moves():
+            raise HTTPException(422, f"move_type 必须是 {derive.allowed_sub_moves()}")
+        if "data_attributes" in allowed:
+            if "," in allowed["data_attributes"]:
+                raise HTTPException(422, "数据属性分隔符必须用、")
+            fields = [f.strip() for f in allowed["data_attributes"].split("、") if f.strip()]
+            if len(fields) < 3:
+                raise HTTPException(422, f"数据属性至少3个字段，当前{len(fields)}个")
         if not allowed:
             raise HTTPException(422, "无有效更新字段")
         sets = ", ".join(f"{k}=%s" for k in allowed)

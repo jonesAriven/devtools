@@ -31,13 +31,19 @@ app.include_router(dimension.make_dimension_router("active", "cosmic_active", wr
 app.include_router(dimension.make_dimension_router("archive", "cosmic_archive", writable=False))
 
 # 前端静态资源（Vue3 构建产物），API 路由优先
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "static"))
+STATIC_ABSPATH = STATIC_DIR + os.sep  # 用于 realpath 前缀校验
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        target = os.path.join(STATIC_DIR, full_path)
-        if full_path and os.path.isfile(target):
+        # 拼错的 /api/xxx 走 404 JSON，不返回 index.html 误导前端
+        if full_path.startswith("api/"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not Found")
+        target = os.path.abspath(os.path.join(STATIC_DIR, full_path))
+        # 防路径穿越：只服务 STATIC_DIR 内的真实文件，否则回退 index.html
+        if (target == STATIC_DIR or target.startswith(STATIC_ABSPATH)) and os.path.isfile(target):
             return FileResponse(target)
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))

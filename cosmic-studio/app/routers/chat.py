@@ -111,7 +111,13 @@ def t_get_spec(args, user):
           "spec_key": {"type": "string"}, "value": {}}, "required": ["spec_key", "value"]},
       min_role="admin")
 def t_update_spec(args, user):
-    return spec.upsert_spec(args["spec_key"], args["value"])
+    key = args["spec_key"]
+    if key not in spec.SEED_SPECS:
+        return {"error": f"未知规范键: {key}"}
+    err = spec.validate_value(key, args["value"])
+    if err:
+        return {"error": err}
+    return spec.upsert_spec(key, args["value"])
 
 
 @tool("search_vocab", "按关键词搜业务词库（含频次），写 FP 名/属性时先查词库保证命名一致",

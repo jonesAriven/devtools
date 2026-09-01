@@ -187,7 +187,12 @@ const minedAt = computed(() => {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : ''
 })
 
-function reload() { sel.value = []; reset(); loadStats() }
+function reload() {
+  sel.value = []
+  selectAllMatched.value = false  // 切 tab/查询时清掉跨页全选标记，避免误作用到新筛选条件
+  reset()
+  loadStats()
+}
 
 async function loadStats() {
   try {

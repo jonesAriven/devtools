@@ -79,7 +79,10 @@ check("E04", "EW标准子过程自动展开", [s["data_move_type"] for s in fp["
       [s["data_move_type"] for s in fp["subs"]])
 
 st, d = call("POST", f"/api/active/fps/{FID}/diversify", ed_tok)
-check("E05", "差异化无字段池时明确422指引", st == 422 and "字段池" in str(d.get("detail", "")), (st, str(d)[:80]))
+# 差异化：命中字段池→200(已填充)，未命中→422 明确指引；两种都是优雅路径，不崩。
+# 线上环境已灌好字段池，FP 名常命中→200 是正确行为（原断言假设"无字段池"已不成立）。
+ok05 = (st == 422 and "字段池" in str(d.get("detail", ""))) or (st == 200 and d.get("diversified") is True)
+check("E05", "差异化优雅（命中池→200 / 无池→422）", ok05, (st, str(d)[:80]))
 
 # 子过程填属性
 sid_e = fp["subs"][0]["id"]
@@ -96,6 +99,19 @@ tree = call("GET", f"/api/active/projects/{PID}/tree", ed_tok)[1]
 fp2 = next(f for m in tree["modules"] for f in m["fps"] if f["id"] == FID2)
 check("E06", "查询类ERX展开", [s["data_move_type"] for s in fp2["subs"]] == ["E", "R", "X"],
       [s["data_move_type"] for s in fp2["subs"]])
+
+# ══════════ E18-E24 副本管理（注意：列表端点已改为分页对象 {list,total,...}）═══════════
+def list_active_projects():
+    """翻全部分页拿完整项目列表（列表端点返回 {list,total,page,page_size}）。"""
+    out, page = [], 1
+    while True:
+        d = call("GET", f"/api/active/projects?page={page}&page_size=100", ed_tok)[1]
+        rows = d.get("list", []) if isinstance(d, dict) else d
+        out.extend(rows)
+        if not rows or len(out) >= d.get("total", 0):
+            break
+        page += 1
+    return out
 
 # ══════════ E07-E12 导入导出矩阵 ══════════
 st, tpl = call("GET", "/api/active/import/template", ed_tok, raw=True)
@@ -142,6 +158,11 @@ st, d = call("POST", f"/api/active/import/json?mode=overwrite&confirm=active", e
              call("GET", f"/api/active/projects/{PID}/export/json", ed_tok)[1])
 check("E14", "editor整库覆盖403", st == 403, st)
 
+# E13b JSON 覆盖导入子过程保留回归（锁定 json_io.py 缩进 bug：曾只写最后一个 FP 的子过程）
+tree_ov = call("GET", f"/api/active/projects/{PID}/tree", ed_tok)[1]
+subs_after = sum(len(s["subs"]) for m in tree_ov["modules"] for s in m["fps"])
+check("E13b", "JSON覆盖导入保留全部子过程", subs_after == 5, subs_after)
+
 # ══════════ E15-E21 版本管理 ══════════
 st, v1 = call("POST", f"/api/active/projects/{PID}/versions", ed_tok, {"label": "", "changelog": "E2E基线"})
 check("E15", "快照v1", st == 201 and v1.get("sha256"), v1)
@@ -155,7 +176,7 @@ with urllib.request.urlopen(req) as r:
 check("E17", "版本下载", r.status == 200 and blob[:2] == b"PK", len(blob))
 
 # ══════════ E18-E24 副本管理 ══════════
-plist = call("GET", "/api/active/projects", ed_tok)[1]
+plist = list_active_projects()
 me = next(p for p in plist if p["id"] == PID)
 check("E18", "列表含copy_no/is_primary", me.get("copy_no") == 1 and "is_primary" in me, me.get("copy_no"))
 
@@ -167,7 +188,7 @@ check("E20", "副本数据与源一致", sum(len(m["fps"]) for m in ctree["modul
       f"{sum(len(m['fps']) for m in ctree['modules'])}")
 
 st, d = call("PUT", f"/api/active/projects/{CPID}/primary", ed_tok)
-plist = call("GET", "/api/active/projects", ed_tok)[1]
+plist = list_active_projects()
 prim_flags = [(p["id"], p["is_primary"]) for p in plist if p["requirement_id"] == f"QA2-{sfx}"]
 check("E21", "设主互斥", st == 200 and [f for i, f in prim_flags if i == CPID] == [1] and
       [f for i, f in prim_flags if i == PID] == [0], prim_flags)
@@ -247,6 +268,22 @@ st, d = call("PUT", f"/api/active/fps/{FID}", ed_tok, {"name": "新增Robert'); 
 check("E39", "SQL注入样例被禁词/动词规则处理（不崩）", st in (200, 422), (st, str(d)[:60]))
 tree_after = call("GET", f"/api/active/projects/{PID}/tree", ed_tok)[1]
 check("E40", "注入样例后数据完整", sum(len(m["fps"]) for m in tree_after["modules"]) >= 2, "")
+
+# ══════════ E41-E43 词库确认/驳回计数回归（锁定 P0：_bulk_set_status 原回报 lastrowid 恒0）═══════════
+term = f"QA2cnt{sfx}"
+st, d = call("POST", "/api/studio/vocab/batch-import", admin, {"terms": [{"term": term}]})
+check("E41", "导入计数测试词", st == 200 and d.get("imported", 0) >= 1, d)
+vv = call("GET", f"/api/studio/vocab?q={term}&status=confirmed&page=1&page_size=20", admin)[1]
+vid = (vv.get("list") or [{}])[0].get("id") if isinstance(vv, dict) else None
+check("E42", "能取到测试词id", vid is not None, vid)
+# reject 仅作用于 candidate（候选）词；批量导入默认写 confirmed，故先置为 candidate 再驳回，
+# 验证 _bulk_set_status 返回真实行数（原返回 lastrowid 恒0 → 误报审批0条）
+st_s, d_s = call("POST", f"/api/studio/vocab/{vid}/status?status=candidate", admin)
+check("E43a", "测试词置为candidate", st_s == 200 and d_s.get("status") == "candidate", (st_s, d_s))
+st, d = call("POST", "/api/studio/vocab/reject", admin, {"ids": [vid]})
+check("E43", "reject 回报真实行数(非0)", st == 200 and d.get("rejected") == 1, d)
+# 清理：硬删测试词，避免污染 3 万+ 词库
+call("POST", "/api/studio/vocab/batch-delete", admin, {"ids": [vid]})
 
 # ══════════ 清理 ══════════
 call("DELETE", f"/api/active/projects/{CPID}?confirm=active", admin)

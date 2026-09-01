@@ -110,11 +110,13 @@ def import_json(dim_db: str, payload: dict, mode: str = "incremental",
                                  fp.get("trigger_event", ""), fp["fp_name"]))
                     fid = cur.lastrowid
                     report["created"]["fps"] += 1
-            for idx, sub in enumerate(fp.get("subs", []), 1):
-                cur.execute("INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,%s)",
-                            (fid, idx, sub.get("description", ""), sub.get("data_move_type", ""),
-                             sub.get("data_group_name", ""), sub.get("data_attributes", "")))
-                report["created"]["subs"] += 1
+                # 子过程循环必须嵌套在 FP 循环体内：每个 FP 的 subs 都写入它自己的 fid，
+                # 否则只会写最后一个 FP 的子过程，其余 FP 子过程静默丢失（且 fid 跨模块泄漏）。
+                for idx, sub in enumerate(fp.get("subs", []), 1):
+                    cur.execute("INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,%s)",
+                                (fid, idx, sub.get("description", ""), sub.get("data_move_type", ""),
+                                 sub.get("data_group_name", ""), sub.get("data_attributes", "")))
+                    report["created"]["subs"] += 1
         report["project_id"] = target_pid
     return report
 

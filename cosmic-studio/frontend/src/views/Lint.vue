@@ -81,7 +81,9 @@ const {
 )
 const totalAll = computed(() => (report.value.counts?.error ?? 0) + (report.value.counts?.warn ?? 0))
 
-function reload() { if (pid.value) reset() }
+// 切严重度/关键词时：不只刷新表格（reset 走 usePaged），还要重算 report 横幅与计数，
+// 否则顶部「通过/错误 N/警告 M」会停在上次全量检查的状态，与过滤后的表格不一致，误判门禁结论
+function reload() { if (pid.value) fetchReport(false) }
 
 // resetPage：点「执行全量检查」回到第 1 页；切走再切回来要留在原页码
 async function fetchReport(resetPage = true) {

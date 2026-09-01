@@ -5,6 +5,7 @@
 保证引擎永远有完整规范可用。评审反哺 = PUT /api/studio/specs/{key}。
 """
 import json
+import logging
 
 from .. import config, db
 
@@ -139,15 +140,23 @@ SEED_SPECS = {
 
 
 def load_spec(spec_key: str):
-    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后，含类型矫正）。"""
+    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后，含类型矫正）。
+
+    注意：仅「键不存在 / 值解析失败」才回落种子；连接类异常（DB 故障/超时）必须上抛，
+    否则 lint/derive 会把异常静默吞掉、误报「门禁通过」。
+    """
     try:
         row = db.query(config.DB_STUDIO, "SELECT value FROM spec_rules WHERE spec_key=%s",
                        (spec_key,), one=True)
-        if row:
+    except Exception as e:  # 连接/超时等基础设施异常：上抛，不让门禁假通过
+        logging.error("load_spec 查库失败 spec_key=%s: %s", spec_key, e)
+        raise
+    if row:
+        try:
             v = row["value"] if not isinstance(row["value"], str) else json.loads(row["value"])
             return _coerce(spec_key, v)
-    except Exception:
-        pass
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return SEED_SPECS[spec_key]["value"]
     return SEED_SPECS[spec_key]["value"]
 
 

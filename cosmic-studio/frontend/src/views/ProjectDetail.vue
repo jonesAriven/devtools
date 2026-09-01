@@ -543,7 +543,7 @@ function gotoFix(rv) {
   } else if (rv.target_type === 'fp') {
     const row = findFpRow(rv.target_id)
     if (!row) { ElMessage.error('未找到该功能过程（可能已删除）'); return }
-    Object.assign(fpEditForm, { id: row.id, name: row.fp, user: row.fu || '', event: row.desc || '', review_id: rv.id })
+    Object.assign(fpEditForm, { id: row.id, name: row.fp, user: row.fu || '', event: row.event || '', review_id: rv.id })
     fpEditDlg.value = true
     reviewDrawer.value = false
   } else {

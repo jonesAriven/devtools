@@ -76,6 +76,9 @@ def update_user(uid: int, body: UserIn, user: dict = Depends(require_role("admin
             raise HTTPException(422, "不能降级自己")
         sets.append("role=%s")
         params.append(body.role)
+    # 禁止管理员把自己禁用：self 一旦 enabled=False，下一次请求 current_user 即 401 且无吊销通道
+    if uid == user["id"] and body.enabled is False:
+        raise HTTPException(422, "不能禁用当前登录的账号（想交权请改用角色切换）")
     sets.append("enabled=%s")
     params.append(body.enabled)
     params.append(uid)

@@ -39,6 +39,7 @@ def connect(db: str) -> pymysql.connections.Connection:
         user=config.DB_USER, password=config.DB_PASSWORD,
         database=db, charset="utf8mb4",
         cursorclass=DictCursor, autocommit=False,
+        connect_timeout=5, read_timeout=60, write_timeout=60,
     )
 
 

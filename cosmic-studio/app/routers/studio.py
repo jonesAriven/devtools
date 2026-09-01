@@ -263,13 +263,19 @@ class VocabImportIn(BaseModel):
 
 
 def _bulk_set_status(ids: list[int], from_status: str, to_status: str) -> int:
+    """返回真实受影响行数（cur.rowcount）。
+
+    注意：不能复用 db.execute —— 它对 UPDATE 返回 cur.lastrowid（恒为 0），
+    会导致 confirm/reject 永远回报 0，前端误以为「审批 0 条」、总数不刷新。
+    """
     if not ids:
         return 0
     ph = ",".join(["%s"] * len(ids))
-    return db.execute(
-        config.DB_STUDIO,
-        f"UPDATE vocab_terms SET status=%s WHERE status=%s AND id IN ({ph})",
-        (to_status, from_status, *ids))
+    with db.tx(config.DB_STUDIO) as cur:
+        cur.execute(
+            f"UPDATE vocab_terms SET status=%s WHERE status=%s AND id IN ({ph})",
+            (to_status, from_status, *ids))
+        return cur.rowcount
 
 
 @r.post("/studio/vocab/confirm")

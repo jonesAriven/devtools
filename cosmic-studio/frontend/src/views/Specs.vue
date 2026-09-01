@@ -77,7 +77,7 @@ function open(row) {
 async function save() {
   try {
     const value = JSON.parse(editText.value)
-    await api.put(`/studio/specs/${current.value.spec_key}`, { value, category: current.value.category })
+    await api.put(`/studio/specs/${current.value.spec_key}`, { value, category: category.value })
     ElMessage.success('已保存并立即生效')
     dlg.value = false
     load()
