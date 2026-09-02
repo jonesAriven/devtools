@@ -115,6 +115,21 @@ class SpecIn(BaseModel):
     description: str = ""
 
 
+class SpecCreateIn(BaseModel):
+    spec_key: str
+    value: object
+    category: str = ""
+    description: str = ""
+
+
+class SpecBulkIn(BaseModel):
+    keys: list[str]
+
+
+class SpecImportIn(BaseModel):
+    specs: dict
+
+
 @r.get("/studio/specs")
 def list_specs(category: str = ""):
     data = spec.load_all(category or None)
@@ -138,11 +153,71 @@ def put_spec(spec_key: str, body: SpecIn, user: dict = Depends(require_role("adm
 
 @r.delete("/studio/specs/{spec_key}")
 def reset_spec(spec_key: str, user: dict = Depends(require_role("admin"))):
-    """删除自定义值，回落种子规范。"""
-    if spec_key not in spec.SEED_SPECS:
-        raise HTTPException(404, f"未知规范键: {spec_key}")
+    """种子键：删除自定义值回落种子；自定义键：彻底删除。"""
     db.execute(config.DB_STUDIO, "DELETE FROM spec_rules WHERE spec_key=%s", (spec_key,))
-    return {"reset": spec_key, "value": spec.SEED_SPECS[spec_key]["value"]}
+    if spec_key in spec.SEED_SPECS:
+        return {"reset": spec_key, "value": spec.SEED_SPECS[spec_key]["value"]}
+    return {"reset": spec_key, "removed": True}
+
+
+@r.post("/studio/specs", status_code=201)
+def create_spec(body: SpecCreateIn, user: dict = Depends(require_role("admin"))):
+    """新增自定义规范键（category=custom）。
+
+    种子键由引擎代码定义、不允许从这里再造（改值走 PUT）；新增仅用于团队
+    自定义规范条目（引擎不消费，作为规范数据沉淀与导入导出载体）。
+    """
+    key = body.spec_key.strip()
+    if not key:
+        raise HTTPException(422, "spec_key 不能为空")
+    if key in spec.SEED_SPECS:
+        raise HTTPException(409, f"{key} 是引擎内置规范键，请用「查看/编辑」修改其值")
+    if db.query(config.DB_STUDIO, "SELECT 1 FROM spec_rules WHERE spec_key=%s", (key,), one=True):
+        raise HTTPException(409, f"规范键已存在: {key}")
+    return spec.upsert_spec(key, body.value, body.category or "custom",
+                            body.description or "自定义规范")
+
+
+@r.post("/studio/specs/bulk-delete")
+def bulk_delete_specs(body: SpecBulkIn, user: dict = Depends(require_role("admin"))):
+    """批量删除/还原规范：种子键删自定义值=回落种子；自定义键=彻底删除。"""
+    reverted, removed = [], []
+    for key in body.keys:
+        db.execute(config.DB_STUDIO, "DELETE FROM spec_rules WHERE spec_key=%s", (key,))
+        (reverted if key in spec.SEED_SPECS else removed).append(key)
+    return {"reverted": reverted, "removed": removed,
+            "count": len(reverted) + len(removed)}
+
+
+@r.get("/studio/specs/export")
+def export_specs(user: dict = Depends(require_role("viewer"))):
+    """导出全量规范（种子回落值 + 自定义值 + 自定义键）。规范即数据，可备份可迁移。"""
+    import datetime
+    return {"exported_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "specs": spec.load_all(None)}
+
+
+@r.post("/studio/specs/import")
+def import_specs(body: SpecImportIn, user: dict = Depends(require_role("admin"))):
+    """导入规范 JSON（merge 语义：逐键覆盖，未提及的键不动）。
+
+    种子键先过 validate_value，非法键整条拒绝并报告；自定义键直接入库。
+    """
+    applied, errors = [], []
+    for key, item in body.specs.items():
+        value = item.get("value") if isinstance(item, dict) else item
+        err = spec.validate_value(key, value)
+        if err:
+            errors.append({"spec_key": key, "reason": err})
+            continue
+        if isinstance(item, dict):
+            spec.upsert_spec(key, value, item.get("category", ""),
+                             item.get("description", ""))
+        else:
+            spec.upsert_spec(key, value)
+        applied.append(key)
+    return {"applied": applied, "errors": errors,
+            "applied_count": len(applied), "error_count": len(errors)}
 
 
 # ── 菜单下发（按角色过滤；扩展点：新页面在此注册一行）──
@@ -160,9 +235,24 @@ MENU_REGISTRY = [
 
 @r.get("/studio/menus")
 def menus(user: dict = Depends(require_role("viewer"))):
+    """按 角色下限 + 用户级菜单权限 双重过滤下发。
+
+    user.menu_perms 为 NULL = 未配置，跟随角色默认；数组 = 白名单。
+    这里仍先卡角色下限，菜单权限只能做减法、不能越权。
+    """
     from ..auth import ROLE_RANK
     allow = ROLE_RANK.get(user["role"], 0)
-    return [m for m in MENU_REGISTRY if allow >= ROLE_RANK[m["min_role"]]]
+    perms = user.get("menu_perms")
+    if isinstance(perms, str):
+        perms = db.json_list(perms)
+    return [m for m in MENU_REGISTRY
+            if allow >= ROLE_RANK[m["min_role"]] and (perms is None or m["key"] in perms)]
+
+
+@r.get("/studio/menu-registry")
+def menu_registry(user: dict = Depends(require_role("admin"))):
+    """全量菜单注册表：系统管理「菜单权限」配置 UI 的数据源。"""
+    return MENU_REGISTRY
 
 
 # ── 词库 ──

@@ -216,6 +216,13 @@ def load_all(category: str | None = None) -> dict:
         if category and seed["category"] != category:
             continue
         out[key] = from_db.get(key) or {**seed, "_source": "seed"}
+    # 自定义键（表里有、种子没有）：一并下发，否则新增后永远不可见
+    for key, item in from_db.items():
+        if key in SEED_SPECS:
+            continue
+        if category and item["category"] != category:
+            continue
+        out[key] = item
     return out
 
 

@@ -4,16 +4,21 @@
       <h3>归档库（只读，人工导入维护）</h3>
       <div class="bar-actions">
         <el-input v-model="kw" placeholder="需求编号 / 需求名称 / 客户" style="width:240px"
-                  clearable aria-label="搜索归档项目" @keyup.enter="reload" @clear="reload" />
+                  clearable aria-label="搜索归档需求" @keyup.enter="reload" @clear="reload" />
+        <el-button @click="reload" aria-label="查询">查询</el-button>
+        <el-button v-if="isAdmin() && selIds.length" type="danger" plain
+                   @click="bulkDel">批量删除（{{ selIds.length }}）</el-button>
         <el-button v-if="isAdmin()" type="primary" @click="openImport">导入 xlsx</el-button>
       </div>
     </div>
 
-    <el-table :data="list" v-loading="loading" size="small">
+    <el-table :data="list" v-loading="loading" size="small"
+              @selection-change="v => (selIds = v.map(r => r.id))">
+      <el-table-column type="selection" width="42" fixed="left" />
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="requirement_id" label="需求编号" width="140" sortable />
       <el-table-column prop="requirement_name" label="需求名称" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="archived_at" label="归档时间" width="160" />
+      <el-table-column prop="archived_at" label="归档时间" width="160" :formatter="formatDateTime" />
       <!-- 统计列：一眼看出归档数据的完整度（子过程为 0 = 归档时未带子过程） -->
       <el-table-column prop="module_count" label="模块数" width="90" align="right" />
       <el-table-column prop="fp_count" label="FP数" width="90" align="right" />
@@ -30,7 +35,7 @@
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty :description="error || '暂无归档项目'" />
+        <el-empty :description="error || '暂无归档需求'" />
       </template>
     </el-table>
 
@@ -81,6 +86,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { isAdmin, downloadBlob } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
+import { formatDateTime } from '../utils/format'
 import { usePersistentState } from '../composables/usePersistentState'
 
 const router = useRouter()
@@ -100,6 +106,27 @@ const { list, total, page, pageSize, loading, error, reset } = usePaged(
 
 function reload() { reset() }
 function view(id) { router.push(`/archive/${id}`) }
+
+// ── 批量删除归档需求（admin）：归档库只读约束约束的是内容编写，删除属库级数据管理 ──
+const selIds = ref([])
+async function bulkDel() {
+  const ids = selIds.value
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${ids.length} 个归档需求？其全部模块/FP/子过程数据将一并清除，不可恢复。`, '批量删除确认', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+  } catch { return }
+  try {
+    const { data } = await api.post('/archive/projects/bulk-delete', { ids, confirm: 'archive' })
+    if (data.failed_count) {
+      ElMessage.warning(`已删除 ${data.deleted_count} 个，${data.failed_count} 个失败：${data.failed.map(f => `#${f.id} ${f.reason}`).join('；')}`)
+    } else {
+      ElMessage.success(`已删除 ${data.deleted_count} 个归档需求`)
+    }
+    selIds.value = []
+    reload()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '批量删除失败')
+  }
+}
 
 function openImport() {
   mode.value = 'incremental'

@@ -573,6 +573,7 @@ async function wontFix(rv) {
 async function delReview(rv) {
   await ElMessageBox.confirm('删除该评审意见？', '确认', { type: 'warning' })
   await api.delete(`/active/reviews/${rv.id}`)
+  ElMessage.success('评审意见已删除')
   loadReviews()
 }
 async function autoFix() {

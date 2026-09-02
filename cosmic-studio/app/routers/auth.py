@@ -1,4 +1,6 @@
 """认证/用户管理路由。"""
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -19,6 +21,15 @@ class UserIn(BaseModel):
     display_name: str = ""
     role: str = "viewer"
     enabled: bool = True
+    # 菜单级权限：None=跟随角色默认；数组=仅放行的菜单 key（空数组=全部隐藏）
+    menu_perms: list[str] | None = None
+
+
+def _perms_out(v) -> list[str] | None:
+    """JSON 列 → 数组；NULL 保留 None（语义=跟随角色默认，与空数组区分）。"""
+    if v is None:
+        return None
+    return db.json_list(v)
 
 
 class BulkIdsIn(BaseModel):
@@ -32,7 +43,8 @@ def login(body: LoginIn):
         raise HTTPException(401, "用户名或密码错误")
     token = make_token(user)
     return {"token": token, "user": {"id": user["id"], "username": user["username"],
-                                     "role": user["role"], "display_name": user["display_name"]}}
+                                     "role": user["role"], "display_name": user["display_name"],
+                                     "menu_perms": _perms_out(user.get("menu_perms"))}}
 
 
 @r.get("/me")
@@ -42,8 +54,12 @@ def me(user: dict = Depends(require_role("viewer"))):
 
 @r.get("/users")
 def list_users(user: dict = Depends(require_role("admin"))):
-    return db.query(config.DB_STUDIO,
-                    "SELECT id, username, display_name, role, enabled, created_at FROM users ORDER BY id")
+    rows = db.query(config.DB_STUDIO,
+                    "SELECT id, username, display_name, role, enabled, menu_perms, created_at "
+                    "FROM users ORDER BY id")
+    for r_ in rows:
+        r_["menu_perms"] = _perms_out(r_["menu_perms"])
+    return rows
 
 
 @r.post("/users", status_code=201)
@@ -54,9 +70,12 @@ def create_user(body: UserIn, user: dict = Depends(require_role("admin"))):
         raise HTTPException(422, "初始密码不能为空")
     if db.query(config.DB_STUDIO, "SELECT id FROM users WHERE username=%s", (body.username,), one=True):
         raise HTTPException(409, "用户名已存在")
+    perms_json = None if body.menu_perms is None else json.dumps(body.menu_perms, ensure_ascii=False)
     uid = db.execute(config.DB_STUDIO,
-                     "INSERT INTO users (username, password_hash, display_name, role, enabled) VALUES (%s,%s,%s,%s,%s)",
-                     (body.username, hash_password(body.password), body.display_name, body.role, body.enabled))
+                     "INSERT INTO users (username, password_hash, display_name, role, enabled, menu_perms) "
+                     "VALUES (%s,%s,%s,%s,%s,%s)",
+                     (body.username, hash_password(body.password), body.display_name,
+                      body.role, body.enabled, perms_json))
     return {"id": uid}
 
 
@@ -76,6 +95,13 @@ def update_user(uid: int, body: UserIn, user: dict = Depends(require_role("admin
             raise HTTPException(422, "不能降级自己")
         sets.append("role=%s")
         params.append(body.role)
+    # 菜单权限：显式传入才更新（None=恢复跟随角色默认）；不能把自己改成没有任何可用菜单
+    if "menu_perms" in body.model_fields_set:
+        perms = body.menu_perms
+        if uid == user["id"] and perms is not None and not perms:
+            raise HTTPException(422, "不能移除自己的全部菜单权限（会把自己锁在系统外）")
+        sets.append("menu_perms=%s")
+        params.append(None if perms is None else json.dumps(perms, ensure_ascii=False))
     # 禁止管理员把自己禁用：self 一旦 enabled=False，下一次请求 current_user 即 401 且无吊销通道
     if uid == user["id"] and body.enabled is False:
         raise HTTPException(422, "不能禁用当前登录的账号（想交权请改用角色切换）")

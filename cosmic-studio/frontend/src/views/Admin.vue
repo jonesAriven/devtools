@@ -47,6 +47,15 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="菜单权限" min-width="130">
+          <template #default="s">
+            <el-tag v-if="s.row.menu_perms == null" size="small" type="info">跟随角色</el-tag>
+            <el-tag v-else-if="s.row.menu_perms.length" size="small" type="primary" effect="plain">
+              自定 {{ s.row.menu_perms.length }} 项
+            </el-tag>
+            <el-tag v-else size="small" type="danger" effect="plain">已全部隐藏</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="enabled" label="启用" width="80">
           <template #default="s">
             <el-switch :model-value="!!s.row.enabled" @change="v => toggle(s.row, v)" />
@@ -97,6 +106,24 @@
               <el-option label="管理员 admin" value="admin" />
             </el-select>
           </el-form-item>
+          <el-form-item label="菜单权限">
+            <div style="width:100%">
+              <el-switch v-model="permsCustom" active-text="自定义" inactive-text="跟随角色"
+                         style="margin-bottom:6px" @change="onPermsModeChange" />
+              <div v-if="permsCustom" style="display:flex; flex-direction:column; gap:4px">
+                <el-checkbox v-for="m in menuRegistry" :key="m.key" v-model="permsPick[m.key]">
+                  {{ m.title }}
+                </el-checkbox>
+                <div style="display:flex; gap:8px">
+                  <el-button size="small" @click="pickAll(true)">全选</el-button>
+                  <el-button size="small" @click="pickAll(false)">全不选</el-button>
+                </div>
+                <p class="muted" style="margin:4px 0 0">
+                  权限只能做减法：角色本身不可见的菜单（如 viewer 看不到系统管理）勾了也不生效。</p>
+              </div>
+              <p v-else class="muted" style="margin:0">未开启时按角色默认可见菜单展示。</p>
+            </div>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="userDlg = false">取消</el-button>
@@ -131,7 +158,44 @@ const userDlg = ref(false)
 const editingId = ref(null)
 const uform = reactive({ username: '', password: '', display_name: '', role: 'viewer' })
 
+// ── 菜单级权限 ──
+// permsCustom=false ⇒ uform.menu_perms=null（跟随角色默认，后端按未配置处理）
+// permsCustom=true  ⇒ uform.menu_perms=勾选数组（空数组=全部隐藏，合法但会提示）
+const menuRegistry = ref([])
+const permsCustom = ref(false)
+const permsPick = reactive({})
+const MENU_FALLBACK = [
+  { key: 'chat', title: '工作台' }, { key: 'projects', title: '编写库' },
+  { key: 'archive', title: '归档库' }, { key: 'lint', title: '质量门禁' },
+  { key: 'versions', title: '版本管理' }, { key: 'specs', title: '规范中心' },
+  { key: 'vocab', title: '业务词库' }, { key: 'admin', title: '系统管理' },
+]
+async function loadRegistry() {
+  if (menuRegistry.value.length) return
+  try { menuRegistry.value = (await api.get('/studio/menu-registry')).data }
+  catch { menuRegistry.value = MENU_FALLBACK }
+}
+function onPermsModeChange(on) {
+  if (on) {
+    // 开启自定义：从「跟随角色」切过来时默认全选，避免一上来就隐藏全部
+    for (const m of menuRegistry.value) permsPick[m.key] = true
+  }
+}
+function pickAll(v) {
+  for (const m of menuRegistry.value) permsPick[m.key] = v
+}
+function syncPermsFromRow(row) {
+  permsCustom.value = row.menu_perms != null
+  for (const m of menuRegistry.value) {
+    // 无自定义时勾选态=角色默认可见（仅展示用）；有自定义时=真实白名单
+    permsPick[m.key] = row.menu_perms != null
+      ? row.menu_perms.includes(m.key)
+      : !['admin'].includes(m.key) || row.role === 'admin'
+  }
+}
+
 onMounted(async () => {
+  loadRegistry()
   const { data } = await api.get('/studio/llm-config')
   llm.enabled = !!data.enabled
   llm.base_url = data.base_url || ''
@@ -160,12 +224,22 @@ function editUser(row) {
   uform.display_name = row.display_name
   uform.role = row.role
   uform.password = ''
+  loadRegistry().then(() => syncPermsFromRow(row))
   userDlg.value = true
 }
 async function saveUser() {
+  // 组装菜单权限：关闭自定义=显式传 null（后端恢复跟随角色）；开启=勾选数组
+  const perms = permsCustom.value
+    ? menuRegistry.value.filter(m => permsPick[m.key]).map(m => m.key)
+    : null
+  if (permsCustom.value && !perms.length) {
+    ElMessage.warning('自定义模式下至少勾选一个菜单，否则该用户将看不到任何页面')
+    return
+  }
+  const payload = { ...uform, menu_perms: perms }
   try {
-    if (editingId.value) await api.put(`/auth/users/${editingId.value}`, uform)
-    else await api.post('/auth/users', uform)
+    if (editingId.value) await api.put(`/auth/users/${editingId.value}`, payload)
+    else await api.post('/auth/users', payload)
     ElMessage.success('已保存')
     userDlg.value = false
     editingId.value = null
@@ -174,6 +248,7 @@ async function saveUser() {
 }
 async function toggle(row, v) {
   await api.put(`/auth/users/${row.id}`, { username: row.username, role: row.role, enabled: v })
+  ElMessage.success(`已${v ? '启用' : '停用'} ${row.username}`)
   loadUsers()
 }
 

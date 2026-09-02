@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from .routers import auth, chat, dimension, reviews, studio
-from . import config
+from . import config, db
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -36,6 +36,21 @@ async def unhandled_exception(request: Request, exc: Exception):
     logging.error("unhandled exception on %s %s: %s", request.method, request.url.path, exc,
                   exc_info=True)
     return JSONResponse(status_code=500, content={"detail": str(exc) or "Internal Server Error"})
+
+def _ensure_schema():
+    """启动期轻量迁移（幂等）。部署流水线只做 git reset + compose up，不跑 init_db，
+    新增列在这里自动补齐，避免每次发版手工 ALTER。"""
+    col = db.query(config.DB_STUDIO,
+                   "SELECT COUNT(*) AS n FROM information_schema.columns "
+                   "WHERE table_schema=%s AND table_name='users' AND column_name='menu_perms'",
+                   (config.DB_STUDIO,), one=True)["n"]
+    if not col:
+        db.execute(config.DB_STUDIO,
+                   "ALTER TABLE users ADD COLUMN menu_perms JSON NULL AFTER role")
+        logging.info("schema migrated: users.menu_perms added")
+
+
+_ensure_schema()
 
 app.include_router(studio.pub)
 app.include_router(auth.r)

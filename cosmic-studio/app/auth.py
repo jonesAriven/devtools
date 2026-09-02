@@ -70,7 +70,7 @@ def current_user(request: Request) -> dict:
         raise HTTPException(401, "未登录")
     payload = parse_token(auth[7:])
     row = db.query(config.DB_STUDIO,
-                   "SELECT id, username, role, display_name, enabled FROM users WHERE id=%s",
+                   "SELECT id, username, role, display_name, enabled, menu_perms FROM users WHERE id=%s",
                    (payload["uid"],), one=True)
     if not row or not row["enabled"]:
         raise HTTPException(401, "用户不存在或已禁用")

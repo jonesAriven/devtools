@@ -216,18 +216,52 @@ def project_tree(db_name, dim, writable, pid: int, module_page: int = 1, module_
     return data
 
 
+def _purge_project(cur, pid: int, with_reviews: bool):
+    """按外键依赖序清空一个项目的全部数据（单删/批量删除共用）。
+
+    with_reviews：review_items 只存在于 active 库（归档库无此表），删编写库
+    项目时连带清评审项，避免悬挂；归档库项目跳过。
+    """
+    if with_reviews:
+        cur.execute("DELETE FROM review_items WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
+    cur.execute("DELETE FROM screenshots WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
+    cur.execute("DELETE FROM sub_processes WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
+    cur.execute("DELETE FROM fps WHERE module_id IN (SELECT id FROM modules WHERE project_id=%s)", (pid,))
+    cur.execute("DELETE FROM modules WHERE project_id=%s", (pid,))
+    cur.execute("DELETE FROM projects WHERE id=%s", (pid,))
+
+
 def delete_project(db_name, dim, writable, pid: int, confirm: str = "", user: dict = Depends(require_role("admin"))):
-    if not writable:
-        raise HTTPException(403, "归档库只读")
+    # 归档库也允许删除：只读约束约束的是"内容编写"，删除是库级数据管理动作（admin 职权）
     if confirm != dim:
-        raise HTTPException(428, f"删除项目需 confirm={dim} 二次确认")
+        raise HTTPException(428, f"删除需求需 confirm={dim} 二次确认")
     with db.tx(db_name) as cur:
-        cur.execute("DELETE FROM screenshots WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
-        cur.execute("DELETE FROM sub_processes WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
-        cur.execute("DELETE FROM fps WHERE module_id IN (SELECT id FROM modules WHERE project_id=%s)", (pid,))
-        cur.execute("DELETE FROM modules WHERE project_id=%s", (pid,))
-        cur.execute("DELETE FROM projects WHERE id=%s", (pid,))
+        _purge_project(cur, pid, with_reviews=writable)
     return {"deleted": pid}
+
+
+class BulkIdsIn(BaseModel):
+    ids: list[int]
+    confirm: str = ""
+
+
+def bulk_delete_projects(db_name, dim, writable, body: BulkIdsIn, user: dict = Depends(require_role("admin"))):
+    """批量删除需求（每个独立事务：单条失败不中断其余，失败原因逐条回报）。"""
+    if body.confirm != dim:
+        raise HTTPException(428, f"批量删除需 confirm={dim} 二次确认")
+    deleted, failed = [], []
+    for pid in body.ids:
+        try:
+            with db.tx(db_name) as cur:
+                cur.execute("SELECT id FROM projects WHERE id=%s", (pid,))
+                if not cur.fetchone():
+                    raise HTTPException(404, f"需求不存在: id={pid}")
+                _purge_project(cur, pid, with_reviews=writable)
+            deleted.append(pid)
+        except HTTPException as e:
+            failed.append({"id": pid, "reason": e.detail})
+    return {"deleted": deleted, "failed": failed,
+            "deleted_count": len(deleted), "failed_count": len(failed)}
 
 
 # ───────────────────────────── 模块 ─────────────────────────────
@@ -610,6 +644,7 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
     r.post("/projects", status_code=201)(bind(create_project))
     r.get("/projects/{pid}/tree")(bind(project_tree))
     r.delete("/projects/{pid}")(bind(delete_project))
+    r.post("/projects/bulk-delete")(bind(bulk_delete_projects))
 
     # ── 模块 ──
     r.post("/projects/{pid}/modules", status_code=201)(bind(create_module))

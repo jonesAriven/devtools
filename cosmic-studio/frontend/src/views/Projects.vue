@@ -5,16 +5,22 @@
       <div class="bar-actions">
         <el-input v-model="q" placeholder="搜索需求编号/名称/客户" style="width:240px" clearable
                   aria-label="搜索需求" @keyup.enter="reload" @clear="reload" />
+        <el-button @click="reload" aria-label="查询">查询</el-button>
         <el-upload v-if="canImport" :show-file-list="false" :auto-upload="false" accept=".xlsx"
                    :on-change="onFile" style="display:inline-block">
-          <el-button type="success" plain>导入 xlsx</el-button>
+          <el-button>导入 xlsx</el-button>
         </el-upload>
+        <el-button v-if="isAdmin() && selCopyIds.length" type="danger" plain
+                   @click="bulkDel">批量删除（{{ selCopyIds.length }}）</el-button>
         <el-button v-if="canEdit" type="primary" @click="openDlg">新建需求</el-button>
       </div>
     </div>
 
     <el-table :data="groupedRows" row-key="rowKey" border v-loading="loading"
-              :tree-props="{ children: 'children' }" default-expand-all>
+              :tree-props="{ children: 'children' }" default-expand-all
+              @selection-change="v => (selCopyIds = v.map(r => r.id))">
+      <el-table-column type="selection" width="42" fixed="left"
+                       :selectable="r => r.kind === 'copy'" />
       <template #empty>
         <el-empty :description="error || '暂无需求'" />
       </template>
@@ -44,10 +50,10 @@
             <el-button v-if="!s.row.is_primary" size="small" text type="warning" @click="setPrimary(s.row)">设主</el-button>
             <el-button size="small" text @click="copyProject(s.row)">复制</el-button>
             <el-button size="small" text @click="diffDlgOpen(s.row)">对比</el-button>
-            <el-button v-if="isAdmin" size="small" text type="danger" @click="delProject(s.row)">删除</el-button>
+            <el-button v-if="isAdmin()" size="small" text type="danger" @click="delProject(s.row)">删除</el-button>
           </template>
           <template v-else-if="s.row.kind === 'group'">
-            <el-button v-if="isAdmin" size="small" text type="danger" @click="delGroup(s.row)">删除全部副本</el-button>
+            <el-button v-if="isAdmin()" size="small" text type="danger" @click="delGroup(s.row)">删除全部副本</el-button>
           </template>
         </template>
       </el-table-column>
@@ -77,8 +83,8 @@
       </el-alert>
       <el-radio-group v-model="impMode" class="imp-modes">
         <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标需求）</el-radio>
-        <el-radio value="overwrite_proj" :disabled="!isAdmin">覆盖导入该需求（清空所选需求重灌，admin）</el-radio>
-        <el-radio value="overwrite_all" :disabled="!isAdmin">整库覆盖导入（清空编写库全部重灌，admin）</el-radio>
+        <el-radio value="overwrite_proj" :disabled="!isAdmin()">覆盖导入该需求（清空所选需求重灌，admin）</el-radio>
+        <el-radio value="overwrite_all" :disabled="!isAdmin()">整库覆盖导入（清空编写库全部重灌，admin）</el-radio>
       </el-radio-group>
       <el-select v-if="impMode !== 'overwrite_all'" v-model="impPid" placeholder="选择目标需求"
                  style="width:100%; margin-top:10px" filterable aria-label="选择导入目标需求">
@@ -123,6 +129,7 @@ import { formatDateTime } from '../utils/format'
 
 const router = useRouter()
 const q = usePersistentState('q', '')
+const selCopyIds = ref([])
 const dlg = ref(false)
 const saving = ref(false)
 const form = reactive({ requirement_id: '', requirement_name: '', project_code: 'ngcard', client_name: '中移动在线基地' })
@@ -255,6 +262,26 @@ async function delGroup(row) {
   }
   ElMessage.success('已删除全部副本')
   load()
+}
+
+// 批量删除选中的副本（admin）：逐条独立删除，失败不中断，结果分栏回报
+async function bulkDel() {
+  const ids = selCopyIds.value
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${ids.length} 个副本？其全部模块/FP/子过程/评审记录将一并清除，不可恢复。`, '批量删除确认', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+  } catch { return }
+  try {
+    const { data } = await api.post('/active/projects/bulk-delete', { ids, confirm: 'active' })
+    if (data.failed_count) {
+      ElMessage.warning(`已删除 ${data.deleted_count} 个，${data.failed_count} 个失败：${data.failed.map(f => `#${f.id} ${f.reason}`).join('；')}`)
+    } else {
+      ElMessage.success(`已删除 ${data.deleted_count} 个副本`)
+    }
+    selCopyIds.value = []
+    reload()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '批量删除失败')
+  }
 }
 
 function openDlg() {

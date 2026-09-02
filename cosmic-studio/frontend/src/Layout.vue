@@ -39,7 +39,7 @@
       <div class="tabbar">
         <el-tabs type="card" v-model="activeTab" @tab-click="onTabClick" @tab-remove="onTabRemove">
           <el-tab-pane v-for="t in tabs" :key="t.path" :name="t.path"
-                       :label="titleOf(t.path)" :closable="t.path !== '/'" />
+                       :label="titleOf(t.path)" closable />
         </el-tabs>
       </div>
       <el-main class="main">
@@ -94,6 +94,14 @@ async function loadMenus() {
     // 菜单异步加载完再补一次页签同步：watch 的 immediate 跑在 menus 为空时，
     // 此时 isMenuPath 恒 false，会漏掉首屏直链（/projects 或 /projects/1）的页签，
     // 表现为顶部 tab 栏只剩「对话」。这里按当前路由补一次。
+    // 对话页签权限化：菜单未下发 chat 时移除固定「对话」页签（closable 已全放开）
+    if (!menus.value.some(m => m.path === '/')) {
+      tabs.value = tabs.value.filter(t => t.path !== '/')
+      if (route.path === '/') {
+        const first = menus.value[0]?.path
+        if (first) router.replace(first)
+      }
+    }
     const p = route.path
     activeTab.value = isMenuPath(p) ? p : active.value
     ensureTab(isMenuPath(p) ? p : active.value)
@@ -131,6 +139,19 @@ function ensureTab(path) {
 
 watch(() => route.path, path => {
   if (route.path.startsWith('/login')) return
+  // 菜单权限守卫：直输 URL 访问未授权菜单时前端先跳走（后端 API 仍会兜底 403）
+  // 按一级前缀判断（子路由 /projects/1 归属 /projects），'/' 特判 chat 是否下发
+  if (menus.value.length) {
+    const root = path === '/' ? '/' : '/' + path.split('/')[1]
+    const allowed = root === '/'
+      ? menus.value.some(m => m.path === '/')
+      : menus.value.some(m => m.path === root)
+    const first = menus.value[0]?.path
+    if (!allowed && first && first !== path) {
+      router.replace(first)
+      return
+    }
+  }
   // 记住每个菜单上次停留的子路由（详情页也算），切回该菜单时直接回到这里
   rememberSubRoute(active.value, path)
   const isMenu = isMenuPath(path)
@@ -176,8 +197,8 @@ function onTabRemove(path) {
   tabs.value.splice(idx, 1)
   navLog('tab-remove', { path, tabs: tabs.value.map(t => t.path) })
   if (activeTab.value !== path) return
-  const next = tabs.value[idx - 1] || tabs.value[idx] || HOME
-  if (next.path !== route.path) router.push(next.path)
+  const fallback = tabs.value[idx - 1] || tabs.value[idx] || menus.value[0]?.path && { path: menus.value[0].path } || HOME
+  if (fallback && fallback.path !== route.path) router.push(fallback.path)
 }
 
 function onCommand(cmd) {
