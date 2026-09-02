@@ -17,7 +17,7 @@ from pydantic import BaseModel, field_validator
 from .. import config, db, paging
 from ..auth import ROLE_RANK, require_role
 from ..engines import derive, linter
-from ..services import json_io, project_copy, tree as tree_svc, versioning, xlsx_export, xlsx_import
+from ..services import audit, json_io, project_copy, tree as tree_svc, versioning, xlsx_export, xlsx_import
 
 # 项目列表可排序字段白名单（防止 SQL 注入）
 PROJECT_SORTABLE = {
@@ -167,7 +167,11 @@ def copy_project(db_name, dim, writable, pid: int, user: dict = Depends(require_
     """
     if not writable:
         raise HTTPException(403, "归档库只读")
-    return project_copy.copy_project(db_name, pid)
+    new_id = project_copy.copy_project(db_name, pid)
+    with db.tx(db_name) as cur:
+        audit.log(cur, new_id, "project", new_id, "copy",
+                  new={"copied_from": pid}, by=user["username"])
+    return new_id
 
 
 def set_primary(db_name, dim, writable, pid: int, user: dict = Depends(require_role("editor"))):
@@ -178,7 +182,10 @@ def set_primary(db_name, dim, writable, pid: int, user: dict = Depends(require_r
         raise HTTPException(404, "项目不存在")
     with db.tx(db_name) as cur:
         cur.execute("UPDATE projects SET is_primary=0 WHERE requirement_id=%s", (src["requirement_id"],))
-        cur.execute("UPDATE projects SET is_primary=1 WHERE id=%s", (pid,))
+        cur.execute("UPDATE projects SET is_primary=1, last_modified_by=%s, last_modified_at=NOW() WHERE id=%s",
+                    (user["username"], pid))
+        audit.log(cur, pid, "project", pid, "set_primary", field="is_primary",
+                  old=0, new=1, by=user["username"])
     return {"primary": pid}
 
 
@@ -200,6 +207,10 @@ def create_project(db_name, dim, writable, body: ProjectIn, user: dict = Depends
         VALUES (%s,%s,%s,%s,%s,%s,'draft')
     """, (body.project_code, body.client_name, body.requirement_id,
           body.requirement_name, body.client_contract, body.batch_no))
+    with db.tx(db_name) as cur:
+        audit.log(cur, pid, "project", pid, "create",
+                  new={"requirement_id": body.requirement_id, "requirement_name": body.requirement_name},
+                  by=user["username"])
     return {"id": pid}
 
 
@@ -235,8 +246,14 @@ def delete_project(db_name, dim, writable, pid: int, confirm: str = "", user: di
     # 归档库也允许删除：只读约束约束的是"内容编写"，删除是库级数据管理动作（admin 职权）
     if confirm != dim:
         raise HTTPException(428, f"删除需求需 confirm={dim} 二次确认")
+    proj = db.query(db_name, "SELECT requirement_id, requirement_name FROM projects WHERE id=%s", (pid,), one=True)
+    if not proj:
+        raise HTTPException(404, f"需求不存在: id={pid}")
     with db.tx(db_name) as cur:
         _purge_project(cur, pid, with_reviews=writable)
+        audit.log(cur, pid, "project", pid, "delete",
+                  old={"requirement_id": proj["requirement_id"], "requirement_name": proj["requirement_name"]},
+                  by=user["username"])
     return {"deleted": pid}
 
 
@@ -257,6 +274,7 @@ def bulk_delete_projects(db_name, dim, writable, body: BulkIdsIn, user: dict = D
                 if not cur.fetchone():
                     raise HTTPException(404, f"需求不存在: id={pid}")
                 _purge_project(cur, pid, with_reviews=writable)
+                audit.log(cur, pid, "project", pid, "delete", old={"bulk": True}, by=user["username"])
             deleted.append(pid)
         except HTTPException as e:
             failed.append({"id": pid, "reason": e.detail})
@@ -277,6 +295,10 @@ def create_module(db_name, dim, writable, pid: int, body: ModuleIn, user: dict =
     mid = db.execute(db_name,
                      "INSERT INTO modules (project_id, level1, level2, level3, sort_order) VALUES (%s,%s,%s,%s,%s)",
                      (pid, body.level1, body.level2, body.level3, n))
+    with db.tx(db_name) as cur:
+        audit.log(cur, pid, "module", mid, "create",
+                  new={"level1": body.level1, "level2": body.level2, "level3": body.level3},
+                  by=user["username"])
     return {"id": mid}
 
 
@@ -286,12 +308,16 @@ def delete_module(db_name, dim, writable, mid: int, cascade: bool = False, user:
     fps = db.query(db_name, "SELECT id FROM fps WHERE module_id=%s", (mid,))
     if fps and not cascade:
         raise HTTPException(409, f"模块下有 {len(fps)} 个FP，需 cascade=true")
+    mrow = db.query(db_name, "SELECT project_id FROM modules WHERE id=%s", (mid,), one=True)
+    pid_of_module = mrow["project_id"] if mrow else 0
     with db.tx(db_name) as cur:
         for f in fps:
             cur.execute("DELETE FROM screenshots WHERE fp_id=%s", (f["id"],))
             cur.execute("DELETE FROM sub_processes WHERE fp_id=%s", (f["id"],))
         cur.execute("DELETE FROM fps WHERE module_id=%s", (mid,))
         cur.execute("DELETE FROM modules WHERE id=%s", (mid,))
+        audit.log(cur, pid_of_module, "module", mid, "delete",
+                  old={"fps": len(fps), "cascade": cascade}, by=user["username"])
     return {"deleted": True}
 
 
@@ -333,6 +359,9 @@ def create_fp(db_name, dim, writable, pid: int, body: FPIn, user: dict = Depends
                 derive.standard_subs_for(body.name, derive.initiator_of(fu)), 1):
             cur.execute("INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,'')",
                         (fid, i, desc, mt, group))
+        audit.log(cur, audit.project_of_fp(cur, fid), "fp", fid, "create",
+                  new={"fp_name": body.name, "functional_user": fu, "trigger_event": evt},
+                  by=user["username"])
     return {"id": fid, "user": fu, "event": evt}
 
 
@@ -355,22 +384,25 @@ def update_fp(db_name, dim, writable, fid: int, body: FPUpdate, user: dict = Dep
                        (fp["module_id"], name, fid), one=True)
         if dup:
             raise HTTPException(409, f"该模块下已存在同名功能过程「{name}」（id={dup['id']}），请改名或直接编辑")
-    sets, params = [], []
+    before = db.query(db_name, "SELECT * FROM fps WHERE id=%s", (fid,), one=True)
+    changes = {}
     for col, v in (("fp_name", body.name), ("functional_user", body.user), ("trigger_event", body.event)):
         if v is not None:
-            sets.append(f"{col}=%s")
-            params.append(v)
-    if not sets:
+            changes[col] = v
+    if not changes:
         raise HTTPException(422, "无更新字段")
-    params.append(fid)
-    db.execute(db_name, f"UPDATE fps SET {', '.join(sets)} WHERE id=%s", tuple(params))
+    with db.tx(db_name) as cur:
+        pid = audit.project_of_fp(cur, fid)
+        audit.diff_log(cur, pid, "fp", fid, before, changes, by=user["username"])
+        sets = ", ".join(f"{k}=%s" for k in changes)
+        cur.execute(f"UPDATE fps SET {sets} WHERE id=%s", (*changes.values(), fid))
     return {"updated": True}
 
 
 def delete_fp(db_name, dim, writable, fid: int, cascade: bool = False, user: dict = Depends(require_role("editor"))):
     if not writable:
         raise HTTPException(403, "归档库只读")
-    fp = db.query(db_name, "SELECT id FROM fps WHERE id=%s", (fid,), one=True)
+    fp = db.query(db_name, "SELECT id, fp_name FROM fps WHERE id=%s", (fid,), one=True)
     if not fp:
         raise HTTPException(404, "功能过程不存在")
     subs = db.query(db_name, "SELECT COUNT(*) AS n FROM sub_processes WHERE fp_id=%s", (fid,), one=True)
@@ -380,6 +412,9 @@ def delete_fp(db_name, dim, writable, fid: int, cascade: bool = False, user: dic
         cur.execute("DELETE FROM screenshots WHERE fp_id=%s", (fid,))
         cur.execute("DELETE FROM sub_processes WHERE fp_id=%s", (fid,))
         cur.execute("DELETE FROM fps WHERE id=%s", (fid,))
+        audit.log(cur, audit.project_of_fp(cur, fid), "fp", fid, "delete",
+                  old={"fp_name": fp.get("fp_name", ""), "subs": subs["n"], "cascade": cascade},
+                  by=user["username"])
     return {"deleted": True}
 
 
@@ -412,8 +447,13 @@ def create_sub(db_name, dim, writable, fid: int, body: SubIn, user: dict = Depen
         group = group or d_group
     n = db.query(db_name, "SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM sub_processes WHERE fp_id=%s",
                  (fid,), one=True)["n"]
-    sid = db.execute(db_name, "INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,%s)",
-                     (fid, n, desc, body.move_type, group, body.attributes))
+    with db.tx(db_name) as cur:
+        cur.execute("INSERT INTO sub_processes (fp_id, sort_order, description, data_move_type, data_group_name, data_attributes) VALUES (%s,%s,%s,%s,%s,%s)",
+                    (fid, n, desc, body.move_type, group, body.attributes))
+        sid = cur.lastrowid
+        audit.log(cur, audit.project_of_sub(cur, sid), "sub", sid, "create",
+                  new={"fp_id": fid, "description": desc, "move_type": body.move_type},
+                  by=user["username"])
     return {"id": sid, "description": desc, "group_name": group}
 
 
@@ -423,13 +463,16 @@ def diversify_fp_attrs(db_name, dim, writable, fid: int, user: dict = Depends(re
         raise HTTPException(403, "归档库只读")
     if not derive.auto_diversify_fp(db_name, fid):
         raise HTTPException(422, "字段池未收录该数据组（请到规范中心/词库侧补充字段池）")
+    with db.tx(db_name) as cur:
+        audit.log(cur, audit.project_of_fp(cur, fid), "fp", fid, "diversify",
+                  new={"note": "按字段池差异化全部子过程数据属性"}, by=user["username"])
     return {"diversified": True}
 
 
 def update_sub(db_name, dim, writable, sid: int, body: dict, user: dict = Depends(require_role("editor"))):
     if not writable:
         raise HTTPException(403, "归档库只读")
-    sub = db.query(db_name, "SELECT id FROM sub_processes WHERE id=%s", (sid,), one=True)
+    sub = db.query(db_name, "SELECT * FROM sub_processes WHERE id=%s", (sid,), one=True)
     if not sub:
         raise HTTPException(404, f"子过程不存在: {sid}")
     allowed = {k: v for k, v in body.items()
@@ -445,18 +488,25 @@ def update_sub(db_name, dim, writable, sid: int, body: dict, user: dict = Depend
             raise HTTPException(422, f"数据属性至少3个字段，当前{len(fields)}个")
     if not allowed:
         raise HTTPException(422, "无有效更新字段")
-    sets = ", ".join(f"{k}=%s" for k in allowed)
-    db.execute(db_name, f"UPDATE sub_processes SET {sets} WHERE id=%s", (*allowed.values(), sid))
+    with db.tx(db_name) as cur:
+        pid = audit.project_of_sub(cur, sid)
+        audit.diff_log(cur, pid, "sub", sid, sub, allowed, by=user["username"])
+        sets = ", ".join(f"{k}=%s" for k in allowed)
+        cur.execute(f"UPDATE sub_processes SET {sets} WHERE id=%s", (*allowed.values(), sid))
     return {"updated": True}
 
 
 def delete_sub(db_name, dim, writable, sid: int, user: dict = Depends(require_role("editor"))):
     if not writable:
         raise HTTPException(403, "归档库只读")
-    sub = db.query(db_name, "SELECT id FROM sub_processes WHERE id=%s", (sid,), one=True)
+    sub = db.query(db_name, "SELECT * FROM sub_processes WHERE id=%s", (sid,), one=True)
     if not sub:
         raise HTTPException(404, "子过程不存在")
-    db.execute(db_name, "DELETE FROM sub_processes WHERE id=%s", (sid,))
+    with db.tx(db_name) as cur:
+        cur.execute("DELETE FROM sub_processes WHERE id=%s", (sid,))
+        audit.log(cur, audit.project_of_sub(cur, sid), "sub", sid, "delete",
+                  old={"description": sub.get("description"), "move_type": sub.get("data_move_type")},
+                  by=user["username"])
     return {"deleted": True}
 
 
@@ -528,6 +578,11 @@ async def import_xlsx_ep(db_name, dim, writable, file: UploadFile = File(...),
     except ValueError as e:
         raise HTTPException(422, str(e))
     job = _record_job(dim, mode, file.filename, report)
+    with db.tx(db_name) as cur:
+        audit.log(cur, project_id or 0, "project", project_id or 0, "import",
+                  new={"mode": mode, "file": file.filename,
+                       "projects": report.get("projects"), "fps": report.get("fps")},
+                  by=user["username"])
     report["job_id"] = job
     return report
 
@@ -601,11 +656,58 @@ def import_jobs(db_name, dim, writable, limit: int = 20):
 
 # ───────────────────────────── 版本（active 专属；归档库版本无意义）─────────────────────────────
 
+def list_changes(db_name, dim, writable, pid: int, target_type: str = "", target_id: int = 0,
+                 page: int = 1, page_size: int = 30, user: dict = Depends(require_role("viewer"))):
+    """需求变更流水（change_log）分页 → 谁在何时对哪行做了什么。"""
+    if dim != "active":
+        raise HTTPException(404, "变更流水仅编写库提供")
+    cond, params = ["project_id=%s"], [pid]
+    if target_type:
+        cond.append("target_type=%s")
+        params.append(target_type)
+    if target_id:
+        cond.append("target_id=%s")
+        params.append(target_id)
+    where = " AND ".join(cond)
+    return paging.paginate(
+        config.DB_ACTIVE,
+        f"SELECT id, target_type, target_id, action, field_name, old_value, new_value, "
+        f"changed_by, changed_at FROM change_log WHERE {where}",
+        f"SELECT COUNT(*) AS total FROM change_log WHERE {where}",
+        tuple(params), "ORDER BY id DESC", page, page_size)
+
+
+def version_diff(db_name, dim, writable, vid_a: int, vid_b: int,
+                 user: dict = Depends(require_role("viewer"))):
+    """两个版本快照的结构化 diff（a=旧，b=新）。
+
+    依赖 versions.json_snapshot（2026-09 起的快照才有）；任一侧缺失时报 409。
+    """
+    if dim != "active":
+        raise HTTPException(404, "版本对比仅编写库提供")
+    ja, jb = versioning.load_version_json(vid_a), versioning.load_version_json(vid_b)
+    if ja is None or jb is None:
+        missing = vid_a if ja is None else vid_b
+        raise HTTPException(409, f"版本 #{missing} 没有结构化快照（早于 JSON 快照功能的旧版本），无法对比")
+    meta = {r["id"]: r for r in db.query(
+        config.DB_STUDIO,
+        "SELECT id, seq, label, created_at FROM versions WHERE id IN (%s,%s)", (vid_a, vid_b))}
+    return {
+        "a": meta.get(vid_a), "b": meta.get(vid_b),
+        **versioning.diff_versions(ja, jb),
+    }
+
+
 def snapshot_version(db_name, dim, writable, pid: int, body: VersionIn, user: dict = Depends(require_role("editor"))):
     try:
-        return versioning.snapshot(db_name, pid, body.label, body.changelog, body.author)
+        snap = versioning.snapshot(db_name, pid, body.label, body.changelog, body.author)
     except ValueError as e:
         raise HTTPException(404, str(e))
+    with db.tx(db_name) as cur:
+        audit.log(cur, pid, "project", pid, "version",
+                  new={"version_id": snap["id"], "seq": snap["seq"], "label": snap["label"]},
+                  by=user["username"])
+    return snap
 
 
 def list_versions_ep(db_name, dim, writable, pid: int):
@@ -679,6 +781,8 @@ def make_dimension_router(dim: str, db_name: str, writable: bool) -> APIRouter:
         r.post("/projects/{pid}/versions", status_code=201)(bind(snapshot_version))
         r.get("/projects/{pid}/versions")(bind(list_versions_ep))
         r.get("/versions/{vid}/download")(bind(download_version))
+        r.get("/projects/{pid}/changes")(bind(list_changes))
+        r.get("/versions/{vid_a}/diff/{vid_b}")(bind(version_diff))
 
     return r
 

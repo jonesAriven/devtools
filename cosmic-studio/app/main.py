@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from .routers import auth, chat, dimension, reviews, studio
 from . import config, db
+from .services import audit
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -48,9 +49,19 @@ def _ensure_schema():
         db.execute(config.DB_STUDIO,
                    "ALTER TABLE users ADD COLUMN menu_perms JSON NULL AFTER role")
         logging.info("schema migrated: users.menu_perms added")
+    # 版本结构化快照列（版本 diff 载体），旧版本为 NULL
+    vcol = db.query(config.DB_STUDIO,
+                    "SELECT COUNT(*) AS n FROM information_schema.columns "
+                    "WHERE table_schema=%s AND table_name='versions' AND column_name='json_snapshot'",
+                    (config.DB_STUDIO,), one=True)["n"]
+    if not vcol:
+        db.execute(config.DB_STUDIO,
+                   "ALTER TABLE versions ADD COLUMN json_snapshot LONGTEXT NULL")
+        logging.info("schema migrated: versions.json_snapshot added")
 
 
 _ensure_schema()
+audit.ensure_schema()
 
 app.include_router(studio.pub)
 app.include_router(auth.r)

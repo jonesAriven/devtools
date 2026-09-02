@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from .. import config, db
 from ..auth import require_role
 from ..engines import linter
-from ..services import project_copy, versioning
+from ..services import audit, project_copy, versioning
 from ..services.llm import chat_completion
 
 r = APIRouter(prefix="/api/active", tags=["reviews"])
@@ -225,6 +225,10 @@ def auto_fix(pid: int, body: AutoFixIn, user: dict = Depends(require_role("edito
                 backups.append((table, tid, k, row[k]))
             sets = ", ".join(f"{k}=%s" for k in fields)
             cur.execute(f"UPDATE {table} SET {sets} WHERE id=%s", (*fields.values(), tid))
+            for k, v in fields.items():
+                audit.log(cur, pid, "fp" if tt == "fp" else "sub", tid, "update",
+                          field=k, old=row[k], new=v,
+                          by=f"{user['username']}(AI修订#{it['id']})")
             applied.append({"review_id": it["id"], "applied": fields, "reason": ch.get("reason", "")})
         for it in struct:
             cur.execute("""UPDATE review_items SET disposition='needs_manual',

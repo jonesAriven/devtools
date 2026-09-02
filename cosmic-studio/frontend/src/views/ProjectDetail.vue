@@ -23,6 +23,7 @@
         <el-button :loading="busy === 'export'" @click="exportXlsx">导出 xlsx</el-button>
         <el-badge :value="pendingReviewCount" :hidden="!pendingReviewCount">
           <el-button @click="reviewDrawer = true">评审（{{ reviews.length }}）</el-button>
+        <el-button @click="openChanges">变更记录</el-button>
         </el-badge>
       </div>
     </div>
@@ -325,6 +326,52 @@
       </p>
     </el-dialog>
   </el-card>
+  <!-- 变更记录抽屉：谁在何时对哪行做了什么（change_log 流水） -->
+  <el-drawer v-model="changesDrawer" title="变更记录" size="640px">
+    <div class="bar">
+      <el-select v-model="changesFilter" placeholder="全部对象" size="small" clearable
+                 style="width:150px" @change="() => loadChanges(1)">
+        <el-option label="需求" value="project" />
+        <el-option label="模块" value="module" />
+        <el-option label="功能过程" value="fp" />
+        <el-option label="子过程" value="sub" />
+      </el-select>
+      <el-button size="small" @click="() => loadChanges(1)">刷新</el-button>
+    </div>
+    <el-table :data="changesList" v-loading="changesLoading" size="small">
+      <template #empty><el-empty description="暂无变更记录" /></template>
+      <el-table-column label="时间" width="110">
+        <template #default="s">{{ (s.row.changed_at || '').replace('T', ' ').slice(5, 16) }}</template>
+      </el-table-column>
+      <el-table-column prop="changed_by" label="操作人" width="110" show-overflow-tooltip />
+      <el-table-column label="动作" width="70">
+        <template #default="s">
+          <el-tag size="small" :type="{ create: 'success', delete: 'danger', update: 'warning' }[s.row.action] || 'info'">
+            {{ { create: '新增', delete: '删除', update: '修改', copy: '复制', import: '导入', version: '快照', diversify: '差异化', set_primary: '设主' }[s.row.action] || s.row.action }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="对象" width="90">
+        <template #default="s">
+          {{ { project: '需求', module: '模块', fp: 'FP', sub: '子过程' }[s.row.target_type] || s.row.target_type }}#{{ s.row.target_id }}
+        </template>
+      </el-table-column>
+      <el-table-column label="内容" min-width="240">
+        <template #default="s">
+          <template v-if="s.row.action === 'update' && s.row.field_name">
+            <b>{{ s.row.field_name }}</b>："<span class="old-val">{{ short(s.row.old_value) }}</span>" →
+            "<span class="new-val">{{ short(s.row.new_value) }}</span>"
+          </template>
+          <template v-else>{{ short(s.row.new_value || s.row.old_value) }}</template>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="pager">
+      <el-pagination v-model:current-page="changesPage" :page-size="30" :total="changesTotal"
+                     layout="total, prev, pager, next" background
+                     @current-change="p => loadChanges(p)" />
+    </div>
+  </el-drawer>
 </template>
 
 <script setup>
@@ -511,6 +558,35 @@ function flatSpanMethod({ row, column, rowIndex, columnIndex }) {
 // ── 评审 ──
 const reviews = ref([])
 const reviewDrawer = ref(false)
+
+// ── 变更记录抽屉（change_log 流水）──
+const changesDrawer = ref(false)
+const changesList = ref([])
+const changesTotal = ref(0)
+const changesPage = ref(1)
+const changesFilter = ref('')
+const changesLoading = ref(false)
+function openChanges() {
+  changesDrawer.value = true
+  loadChanges(1)
+}
+async function loadChanges(p = 1) {
+  changesLoading.value = true
+  try {
+    const { data } = await api.get(`/active/projects/${route.params.id}/changes`, {
+      params: { page: p, page_size: 30, target_type: changesFilter.value || undefined },
+    })
+    changesList.value = data.list
+    changesTotal.value = data.total
+    changesPage.value = data.page
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '变更记录加载失败')
+  } finally { changesLoading.value = false }
+}
+function short(v) {
+  const t = String(v ?? '')
+  return t.length > 80 ? t.slice(0, 80) + '…' : t
+}
 const reviewDlg = ref(false)
 const reviewForm = reactive({ target_type: 'project', target_id: null, target_label: '', content: '', classify: 'text_replace', review_id: null })
 const autoFixing = ref(false)
