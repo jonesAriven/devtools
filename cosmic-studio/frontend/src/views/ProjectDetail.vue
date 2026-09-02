@@ -4,7 +4,7 @@
       <div>
         <el-breadcrumb style="margin-bottom:6px">
           <el-breadcrumb-item :to="{ path: '/projects' }">编写库</el-breadcrumb-item>
-          <el-breadcrumb-item>项目详情</el-breadcrumb-item>
+          <el-breadcrumb-item>需求详情</el-breadcrumb-item>
         </el-breadcrumb>
         <h3>{{ proj?.requirement_id }} {{ proj?.requirement_name }}</h3>
       </div>
@@ -44,7 +44,7 @@
           <el-button :type="viewMode === 'flat' ? 'primary' : ''" size="small" @click="viewMode = 'flat'">扁平</el-button>
         </el-button-group>
         <span class="muted" v-if="tree?.stats">
-          全项目共 {{ tree.stats.module_count }} 模块 / {{ tree.stats.fp_count }} FP / {{ tree.stats.sub_count }} 子过程
+          全需求共 {{ tree.stats.module_count }} 模块 / {{ tree.stats.fp_count }} FP / {{ tree.stats.sub_count }} 子过程
         </span>
       </div>
       <el-pagination v-model:current-page="modPage" v-model:page-size="modPageSize"
@@ -75,7 +75,7 @@
     <el-table v-if="viewMode === 'tree'" :data="tableRows" row-key="rowKey" border :tree-props="{ children: 'children' }"
               :default-expand-all="false">
       <template #empty>
-        <el-empty :description="error || '该项目还没有模块'" />
+        <el-empty :description="error || '该需求还没有模块'" />
       </template>
       <el-table-column prop="module" label="三级模块" min-width="140" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
@@ -128,7 +128,7 @@
     <el-table v-else :data="filteredFlatRows" row-key="rowKey" border
               :span-method="flatSpanMethod" height="600" style="width:100%">
       <template #empty>
-        <el-empty :description="error || '该项目还没有模块'" />
+        <el-empty :description="error || '该需求还没有模块'" />
       </template>
       <el-table-column prop="module" label="三级模块" min-width="120" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
@@ -225,14 +225,14 @@
     </el-dialog>
 
     <!-- 导入到本项目 -->
-    <el-dialog v-model="impDlg" title="导入到本项目" width="520px">
+    <el-dialog v-model="impDlg" title="导入到本需求" width="520px">
       <el-alert type="info" :closable="false" style="margin-bottom:10px">
-        <p style="margin:0">数据将合并到当前项目。增量按「模块+FP名」主键 upsert（命中更新，未命中新建）；覆盖会清空本项目全部数据后重灌（admin，自动备份）。</p>
+        <p style="margin:0">数据将合并到当前需求。增量按「模块+FP名」主键 upsert（命中更新，未命中新建）；覆盖会清空本需求全部数据后重灌（admin，自动备份）。</p>
         <el-link type="primary" style="margin-top:4px" @click="downloadTemplate">下载导入模板（含逐列填写说明）</el-link>
       </el-alert>
       <el-radio-group v-model="impMode" class="imp-modes">
-        <el-radio value="incremental">增量合并到本项目（推荐）</el-radio>
-        <el-radio value="overwrite" :disabled="!isAdmin">覆盖本项目（清空重灌，admin）</el-radio>
+        <el-radio value="incremental">增量合并到本需求（推荐）</el-radio>
+        <el-radio value="overwrite" :disabled="!isAdmin">覆盖本需求（清空重灌，admin）</el-radio>
       </el-radio-group>
       <template #footer>
         <el-button @click="impDlg = false">取消</el-button>

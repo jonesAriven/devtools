@@ -4,7 +4,7 @@
       <div>
         <el-breadcrumb style="margin-bottom:6px">
           <el-breadcrumb-item :to="{ path: '/archive' }">归档库</el-breadcrumb-item>
-          <el-breadcrumb-item>项目详情</el-breadcrumb-item>
+          <el-breadcrumb-item>需求详情</el-breadcrumb-item>
         </el-breadcrumb>
         <h3>{{ proj?.requirement_id }} {{ proj?.requirement_name }}</h3>
       </div>
@@ -15,7 +15,7 @@
     </div>
 
     <el-alert v-if="loaded && !subCount" type="warning" :closable="false" style="margin-bottom:10px">
-      该项目归档时<b>未包含子过程</b>（数据移动 / 数据组 / 数据属性）。
+      该需求归档时<b>未包含子过程</b>（数据移动 / 数据组 / 数据属性）。
       根因：Hermes 归档建表只建了 projects / modules / fps 三张表，漏建
       <code>cosmic_sub_processes</code>，子过程从未写入归档库。建表缺陷已修复，历史数据需重新归档补录。
     </el-alert>
@@ -30,7 +30,7 @@
           <el-button :type="viewMode === 'flat' ? 'primary' : ''" size="small" @click="viewMode = 'flat'">扁平</el-button>
         </el-button-group>
         <span class="muted" v-if="stats">
-          全项目共 {{ stats.module_count }} 模块 / {{ stats.fp_count }} FP / {{ stats.sub_count }} 子过程
+          全需求共 {{ stats.module_count }} 模块 / {{ stats.fp_count }} FP / {{ stats.sub_count }} 子过程
         </span>
       </div>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize"
@@ -61,7 +61,7 @@
     <el-table v-if="viewMode === 'tree'" :data="rows" row-key="rowKey" border :tree-props="{ children: 'children' }"
               :default-expand-all="false">
       <template #empty>
-        <el-empty :description="error || '该项目还没有模块'" />
+        <el-empty :description="error || '该需求还没有模块'" />
       </template>
       <el-table-column prop="module" label="三级模块" min-width="140" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />
@@ -76,7 +76,7 @@
     <el-table v-else :data="filteredFlatRows" row-key="rowKey" border
               :span-method="flatSpanMethod" height="600" style="width:100%">
       <template #empty>
-        <el-empty :description="error || '该项目还没有模块'" />
+        <el-empty :description="error || '该需求还没有模块'" />
       </template>
       <el-table-column prop="module" label="三级模块" min-width="120" show-overflow-tooltip />
       <el-table-column prop="fp" label="功能过程" min-width="150" show-overflow-tooltip />

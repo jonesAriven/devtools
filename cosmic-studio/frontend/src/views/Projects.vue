@@ -1,22 +1,22 @@
 <template>
   <el-card>
     <div class="bar">
-      <h3>编写库项目</h3>
+      <h3>编写库需求</h3>
       <div class="bar-actions">
         <el-input v-model="q" placeholder="搜索需求编号/名称/客户" style="width:240px" clearable
-                  aria-label="搜索项目" @keyup.enter="reload" @clear="reload" />
+                  aria-label="搜索需求" @keyup.enter="reload" @clear="reload" />
         <el-upload v-if="canImport" :show-file-list="false" :auto-upload="false" accept=".xlsx"
                    :on-change="onFile" style="display:inline-block">
           <el-button type="success" plain>导入 xlsx</el-button>
         </el-upload>
-        <el-button v-if="canEdit" type="primary" @click="openDlg">新建项目</el-button>
+        <el-button v-if="canEdit" type="primary" @click="openDlg">新建需求</el-button>
       </div>
     </div>
 
     <el-table :data="groupedRows" row-key="rowKey" border v-loading="loading"
               :tree-props="{ children: 'children' }" default-expand-all>
       <template #empty>
-        <el-empty :description="error || '暂无项目'" />
+        <el-empty :description="error || '暂无需求'" />
       </template>
       <el-table-column prop="reqLabel" label="需求 / 副本" min-width="300">
         <template #default="s">
@@ -37,7 +37,7 @@
       <el-table-column prop="fp_count" label="FP" width="70" />
       <el-table-column prop="sub_count" label="子过程" width="80" />
       <el-table-column prop="created_at" label="创建时间" width="160" :formatter="formatDateTime" />
-      <el-table-column label="操作" width="300" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="s">
           <template v-if="s.row.kind === 'copy'">
             <el-button size="small" type="primary" text @click="$router.push(`/projects/${s.row.id}`)">进入</el-button>
@@ -76,12 +76,12 @@
         <el-link type="primary" style="margin-top:4px" @click="downloadTemplate">下载导入模板（含逐列填写说明）</el-link>
       </el-alert>
       <el-radio-group v-model="impMode" class="imp-modes">
-        <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标项目）</el-radio>
-        <el-radio value="overwrite_proj" :disabled="!isAdmin">覆盖导入该项目（清空所选项目重灌，admin）</el-radio>
+        <el-radio value="incremental">增量导入（按业务主键 upsert，需选目标需求）</el-radio>
+        <el-radio value="overwrite_proj" :disabled="!isAdmin">覆盖导入该需求（清空所选需求重灌，admin）</el-radio>
         <el-radio value="overwrite_all" :disabled="!isAdmin">整库覆盖导入（清空编写库全部重灌，admin）</el-radio>
       </el-radio-group>
-      <el-select v-if="impMode !== 'overwrite_all'" v-model="impPid" placeholder="选择目标项目"
-                 style="width:100%; margin-top:10px" filterable aria-label="选择导入目标项目">
+      <el-select v-if="impMode !== 'overwrite_all'" v-model="impPid" placeholder="选择目标需求"
+                 style="width:100%; margin-top:10px" filterable aria-label="选择导入目标需求">
         <el-option v-for="p in allProjects" :key="p.id"
                    :label="`副本${p.copy_no}：${p.requirement_id} ${p.requirement_name?.slice(0, 20)}`" :value="p.id" />
       </el-select>
@@ -91,11 +91,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="dlg" title="新建项目" width="480px">
+    <el-dialog v-model="dlg" title="新建需求" width="480px">
       <el-form label-width="90px">
         <el-form-item label="需求编号"><el-input v-model="form.requirement_id" /></el-form-item>
         <el-form-item label="需求名称"><el-input v-model="form.requirement_name" /></el-form-item>
-        <el-form-item label="项目编码"><el-input v-model="form.project_code" placeholder="如 ngcard" /></el-form-item>
+        <el-form-item label="系统编码"><el-input v-model="form.project_code" placeholder="如 ngcard" /></el-form-item>
         <el-form-item label="客户名称"><el-input v-model="form.client_name" /></el-form-item>
       </el-form>
       <template #footer>

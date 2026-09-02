@@ -3,8 +3,8 @@
     <div class="bar">
       <h3>质量门禁</h3>
       <div class="bar-actions">
-        <el-select v-model="pid" placeholder="选择编写库项目" style="width:300px" filterable
-                   aria-label="选择编写库项目">
+        <el-select v-model="pid" placeholder="选择编写库需求" style="width:300px" filterable
+                   aria-label="选择编写库需求">
           <el-option v-for="p in projects" :key="p.id"
                      :label="`${p.requirement_id} ${p.requirement_name?.slice(0, 24)}`"
                      :value="p.id" />
@@ -43,7 +43,7 @@
         <el-table-column prop="ref" label="位置" min-width="180" show-overflow-tooltip />
         <el-table-column prop="message" label="问题" min-width="340" show-overflow-tooltip />
         <template #empty>
-          <el-empty :description="error || '该项目没有问题项'" />
+          <el-empty :description="error || '该需求没有问题项'" />
         </template>
       </el-table>
 

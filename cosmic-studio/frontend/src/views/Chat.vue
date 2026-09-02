@@ -14,7 +14,7 @@
     </div>
     <div class="input-bar">
       <el-input v-model="input" type="textarea" :rows="isMobile ? 1 : 2" resize="none"
-                placeholder="对话式操作：如「看看编写库有哪些项目」「跑一下项目1的门禁」「查一下'资费'相关的词库术语」"
+                placeholder="对话式操作：如「看看编写库有哪些需求」「跑一下需求1的门禁」「查一下'资费'相关的词库术语」"
                 @keydown.enter.exact.prevent="send" />
       <el-button type="primary" :loading="loading" @click="send">发送</el-button>
     </div>
@@ -30,7 +30,7 @@ import { usePersistentState } from '../composables/usePersistentState'
 
 // 对话历史持久化：切去别的菜单再回来，聊天记录不该清空
 const MAX_MSGS = 60 // 只保留最近若干条，避免撑爆 localStorage 配额
-const msgs = usePersistentState('msgs', [{ role: 'assistant', content: '我是 cosmic-studio 助手，可以查项目、跑门禁、导出交付件、查词库、改规范。直接说需求即可。' }])
+const msgs = usePersistentState('msgs', [{ role: 'assistant', content: '我是 cosmic-studio 助手，可以查需求、跑门禁、导出交付件、查词库、改规范。直接说需求即可。' }])
 watch(msgs, v => { if (v.length > MAX_MSGS) msgs.value = v.slice(-MAX_MSGS) })
 const input = ref('')
 const loading = ref(false)

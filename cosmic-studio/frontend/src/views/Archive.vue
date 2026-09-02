@@ -141,7 +141,7 @@ async function doImport() {
   uploading.value = true
   try {
     const { data } = await api.post(`${ep}?${q}`, fd)
-    ElMessage.success(`导入完成：项目${data.projects ?? ''} 模块${data.modules} FP${data.fps} 子过程${data.subs}`)
+    ElMessage.success(`导入完成：需求${data.projects ?? ''} 模块${data.modules} FP${data.fps} 子过程${data.subs}`)
     dlg.value = false
     reset()
   } catch (e) {

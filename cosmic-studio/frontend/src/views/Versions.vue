@@ -3,8 +3,8 @@
     <div class="bar">
       <h3>版本管理</h3>
       <div class="bar-actions">
-        <el-select v-model="pid" placeholder="选择编写库项目" style="width:300px" filterable
-                   aria-label="选择编写库项目">
+        <el-select v-model="pid" placeholder="选择编写库需求" style="width:300px" filterable
+                   aria-label="选择编写库需求">
           <el-option v-for="p in projects" :key="p.id" :label="`${p.requirement_id} ${p.requirement_name?.slice(0,24)}`" :value="p.id" />
         </el-select>
         <el-button :disabled="!pid" @click="load">刷新</el-button>
@@ -13,7 +13,7 @@
       </div>
     </div>
     <el-table :data="pageList" v-loading="loading">
-      <template #empty><el-empty :description="pid ? '该项目还没有版本快照' : '请先选择项目'" /></template>
+      <template #empty><el-empty :description="pid ? '该需求还没有版本快照' : '请先选择需求'" /></template>
       <el-table-column prop="seq" label="版本" width="80">
         <template #default="s">v{{ s.row.seq }}</template>
       </el-table-column>
