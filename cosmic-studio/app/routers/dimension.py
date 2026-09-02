@@ -223,7 +223,7 @@ def _purge_project(cur, pid: int, with_reviews: bool):
     项目时连带清评审项，避免悬挂；归档库项目跳过。
     """
     if with_reviews:
-        cur.execute("DELETE FROM review_items WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
+        cur.execute("DELETE FROM review_items WHERE project_id=%s", (pid,))
     cur.execute("DELETE FROM screenshots WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
     cur.execute("DELETE FROM sub_processes WHERE fp_id IN (SELECT f.id FROM fps f JOIN modules m ON m.id=f.module_id WHERE m.project_id=%s)", (pid,))
     cur.execute("DELETE FROM fps WHERE module_id IN (SELECT id FROM modules WHERE project_id=%s)", (pid,))
