@@ -94,6 +94,19 @@ async function loadMenus() {
     // 菜单异步加载完再补一次页签同步：watch 的 immediate 跑在 menus 为空时，
     // 此时 isMenuPath 恒 false，会漏掉首屏直链（/projects 或 /projects/1）的页签，
     // 表现为顶部 tab 栏只剩「对话」。这里按当前路由补一次。
+    // 权限守卫二次执行：直输 URL 整页刷新时 watch 跑在 menus 加载前（空数组不拦），
+    // 路由此后不再变化，守卫会永久失效——菜单加载完在这里补判一次
+    if (menus.value.length) {
+      const p0 = route.path
+      const root0 = p0 === '/' ? '/' : '/' + p0.split('/')[1]
+      const allowed0 = root0 === '/'
+        ? menus.value.some(m => m.path === '/')
+        : menus.value.some(m => m.path === root0)
+      if (!allowed0) {
+        const first0 = menus.value[0]?.path
+        if (first0 && first0 !== p0) { router.replace(first0); return }
+      }
+    }
     // 对话页签权限化：菜单未下发 chat 时移除固定「对话」页签（closable 已全放开）
     if (!menus.value.some(m => m.path === '/')) {
       tabs.value = tabs.value.filter(t => t.path !== '/')

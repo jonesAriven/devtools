@@ -6,6 +6,7 @@
         <el-radio-group v-model="category" @change="load">
           <el-radio-button value="writing">编写规范</el-radio-button>
           <el-radio-button value="screenshot">截图规范</el-radio-button>
+          <el-radio-button value="custom">自定义</el-radio-button>
         </el-radio-group>
         <template v-if="isAdmin()">
           <el-button @click="openCreate">新增规范</el-button>
