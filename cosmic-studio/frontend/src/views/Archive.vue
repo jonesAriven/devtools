@@ -26,7 +26,7 @@
         <template #default="s">
           <el-button size="small" type="primary" plain @click="view(s.row.id)">查看</el-button>
           <el-button size="small" @click="exportJson(s.row.id)">JSON</el-button>
-          <el-button size="small" type="success" plain @click="exportXlsx(s.row.id)">xlsx</el-button>
+          <el-button size="small" @click="exportXlsx(s.row.id)">xlsx</el-button>
         </template>
       </el-table-column>
       <template #empty>

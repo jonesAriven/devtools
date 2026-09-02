@@ -36,7 +36,7 @@
       <el-table-column prop="module_count" label="模块" width="70" />
       <el-table-column prop="fp_count" label="FP" width="70" />
       <el-table-column prop="sub_count" label="子过程" width="80" />
-      <el-table-column prop="created_at" label="创建时间" width="160" />
+      <el-table-column prop="created_at" label="创建时间" width="160" :formatter="formatDateTime" />
       <el-table-column label="操作" width="300" fixed="right">
         <template #default="s">
           <template v-if="s.row.kind === 'copy'">
@@ -44,7 +44,7 @@
             <el-button v-if="!s.row.is_primary" size="small" text type="warning" @click="setPrimary(s.row)">设主</el-button>
             <el-button size="small" text @click="copyProject(s.row)">复制</el-button>
             <el-button size="small" text @click="diffDlgOpen(s.row)">对比</el-button>
-            <el-button v-if="isAdmin" size="small" text type="danger" @click="delProject(s.row)">删</el-button>
+            <el-button v-if="isAdmin" size="small" text type="danger" @click="delProject(s.row)">删除</el-button>
           </template>
           <template v-else-if="s.row.kind === 'group'">
             <el-button v-if="isAdmin" size="small" text type="danger" @click="delGroup(s.row)">删除全部副本</el-button>
@@ -57,7 +57,7 @@
     <el-dialog v-model="diffDlg" :title="`副本对比：${diffRow?.requirement_name}`" width="640px">
       <p class="hint">对比目标：{{ diffTarget?.requirement_name }}（{{ diffTarget?.is_primary ? '主副本' : '副本' + diffTarget?.copy_no }}）</p>
       <div v-if="diffData">
-        <p>✅ 共有 FP：<b>{{ diffData.common }}</b> 个 ｜ 本副本独有 <b style="color:#e6a23c">{{ diffData.only_in_this.length }}</b> 个 ｜ 对方独有 <b style="color:#909399">{{ diffData.only_in_main.length }}</b> 个</p>
+        <p>✅ 共有 FP：<b>{{ diffData.common }}</b> 个 ｜ 本副本独有 <b style="color:var(--c-warning)">{{ diffData.only_in_this.length }}</b> 个 ｜ 对方独有 <b style="color:var(--c-info)">{{ diffData.only_in_main.length }}</b> 个</p>
         <template v-if="diffData.only_in_this.length">
           <p class="hint">本副本独有：</p>
           <div class="diff-list"><div v-for="f in diffData.only_in_this" :key="f">· {{ f }}</div></div>
@@ -119,6 +119,7 @@ import { useRouter } from 'vue-router'
 import api, { isAdmin, role, downloadBlob } from '../api'
 import { PAGER_LAYOUT, PAGER_SIZES, usePaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
+import { formatDateTime } from '../utils/format'
 
 const router = useRouter()
 const q = usePersistentState('q', '')

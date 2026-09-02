@@ -48,5 +48,5 @@ async function doLogin() {
   background: linear-gradient(135deg, #1d2535, #2c3e5d); }
 .login-card { width: 360px; text-align: center; padding: 10px 8px; }
 .login-card h2 { margin: 8px 0 0; }
-.sub { color: #909399; margin: 6px 0 22px; }
+.sub { color: var(--c-text-3); margin: 6px 0 22px; }
 </style>

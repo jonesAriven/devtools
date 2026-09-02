@@ -62,7 +62,7 @@ async function scroll() {
 </script>
 
 <style scoped>
-.chat-page { display: flex; flex-direction: column; height: calc(100vh - 100px); }
+.chat-page { display: flex; flex-direction: column; height: 100%; }
 .msgs { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-1); }
 .msg { display: flex; margin: var(--sp-2) 0; }
 .msg.user { justify-content: flex-end; }
@@ -73,5 +73,5 @@ async function scroll() {
 .msg.assistant .bubble { background: var(--c-surface); color: var(--c-text); }
 .tools { margin-bottom: var(--sp-2); }
 .input-bar { display: flex; gap: var(--sp-2); align-items: flex-end; }
-@media (max-width: 767px) { .chat-page { height: calc(100vh - 92px); } }
+
 </style>

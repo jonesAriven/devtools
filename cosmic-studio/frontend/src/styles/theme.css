@@ -24,18 +24,29 @@
   --c-text-inverse: #ffffff;
 
   /* ── 色彩：语义 ── */
-  --c-primary: #409eff;
-  --c-primary-weak: #ecf5ff;
-  --c-primary-strong: #2f7fdc;
+  /* 主色：靛蓝。Element Plus 组件读的是 --el-color-primary 系列，
+     自用变量与 EP 变量必须同步维护，改这里就连 EP 桥接段一起改 */
+  --c-primary: #3d5af1;
+  --c-primary-weak: #eceefe;
+  --c-primary-strong: #2c46cf;
   --c-success: #67c23a;
   --c-warning: #e6a23c;
   --c-danger: #f56c6c;
   --c-info: #909399;
 
+  /* Element Plus 主色桥接：light-N = 主色混白 N/10，dark-2 = 混黑 20% */
+  --el-color-primary: #3d5af1;
+  --el-color-primary-light-3: #778cf5;
+  --el-color-primary-light-5: #9eacf8;
+  --el-color-primary-light-7: #c5cdfb;
+  --el-color-primary-light-8: #d8defc;
+  --el-color-primary-light-9: #eceefe;
+  --el-color-primary-dark-2: #3148c1;
+
   /* ── 色彩：侧栏（深色，明暗模式下都保持深色以维持品牌感）── */
   --c-sidebar-bg: #1d2535;
   --c-sidebar-text: #aeb6c5;
-  --c-sidebar-active: #409eff;
+  --c-sidebar-active: #7c8cff;
   --c-sidebar-hover: #232e42;
 
   /* ── 间距：8pt 栅格 ── */
@@ -84,9 +95,17 @@ html.dark {
   --c-text-3: #6f7a8a;
   --c-text-inverse: #14171d;
 
-  --c-primary: #5aa9ff;
-  --c-primary-weak: #1e3350;
-  --c-primary-strong: #7dbbff;
+  --c-primary: #7c8cff;
+  --c-primary-weak: #232946;
+  --c-primary-strong: #929bff;
+
+  --el-color-primary: #7c8cff;
+  --el-color-primary-light-3: #929bff;
+  --el-color-primary-light-5: #a9b0ff;
+  --el-color-primary-light-7: #c1c6ff;
+  --el-color-primary-light-8: #d0d4ff;
+  --el-color-primary-light-9: #232946;
+  --el-color-primary-dark-2: #5a68e6;
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, .4);
   --sh-2: 0 4px 12px rgba(0, 0, 0, .45);

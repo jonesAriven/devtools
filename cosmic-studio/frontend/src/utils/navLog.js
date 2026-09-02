@@ -11,7 +11,7 @@
 
 const RING_SIZE = 200
 const PREFIX = '%c[COSMIC-NAV]'
-const STYLE = 'color:#409eff;font-weight:bold'
+const STYLE = 'color:#3d5af1;font-weight:bold'
 
 // 构建信息由 vite define 注入（见 vite.config.js）。
 // 一眼判断浏览器里跑的到底是哪一次构建的产物 —— 这是排查「改了没生效」的第一道闸。

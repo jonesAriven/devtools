@@ -12,17 +12,17 @@
         <el-button @click="backToList">返回列表</el-button>
         <el-upload v-if="canEdit" :show-file-list="false" :auto-upload="false" accept=".xlsx"
                    :on-change="onImportFile" style="display:inline-block">
-          <el-button type="info" plain>导入</el-button>
+          <el-button>导入</el-button>
         </el-upload>
-        <el-button v-if="canEdit" @click="openModDlg">新建模块</el-button>
-        <el-button v-if="canEdit" type="primary" plain @click="openFpDlg()">新建功能过程</el-button>
+        <el-button v-if="canEdit" type="primary" plain @click="openModDlg">新建模块</el-button>
+        <el-button v-if="canEdit" type="primary" @click="openFpDlg()">新建功能过程</el-button>
         <el-button :loading="busy === 'derive'" @click="derive(false)">推导检查</el-button>
         <el-button v-if="canEdit" type="warning" plain :loading="busy === 'fix'"
                    @click="derive(true)">一键修复推导列</el-button>
-        <el-button type="primary" plain :loading="busy === 'lint'" @click="lint()">质量门禁</el-button>
-        <el-button type="success" plain :loading="busy === 'export'" @click="exportXlsx">导出 xlsx</el-button>
+        <el-button :loading="busy === 'lint'" @click="lint()">质量门禁</el-button>
+        <el-button :loading="busy === 'export'" @click="exportXlsx">导出 xlsx</el-button>
         <el-badge :value="pendingReviewCount" :hidden="!pendingReviewCount">
-          <el-button type="danger" plain @click="reviewDrawer = true">评审（{{ reviews.length }}）</el-button>
+          <el-button @click="reviewDrawer = true">评审（{{ reviews.length }}）</el-button>
         </el-badge>
       </div>
     </div>
@@ -101,7 +101,7 @@
               </el-tag>
             </el-tooltip>
           </template>
-          <span v-else style="color:#cdd0d6">—</span>
+          <span v-else class="muted">—</span>
         </template>
       </el-table-column>
       <el-table-column v-if="canEdit" label="操作" width="190" fixed="right">
@@ -110,12 +110,12 @@
             <el-button size="small" text type="primary" @click="openSubDlg(s.row)">加子过程</el-button>
             <el-button size="small" text type="success" @click="diversify(s.row)">差异化</el-button>
             <el-button size="small" text type="info" @click="openReview(s.row)">评审</el-button>
-            <el-button size="small" text type="danger" @click="delFp(s.row)">删</el-button>
+            <el-button size="small" text type="danger" @click="delFp(s.row)">删除</el-button>
           </template>
           <template v-else-if="s.row.kind === 'sub'">
             <el-button size="small" text type="primary" @click="openSubDlg(s.row)">编辑</el-button>
             <el-button size="small" text type="info" @click="openReview(s.row)">评审</el-button>
-            <el-button size="small" text type="danger" @click="delSub(s.row)">删</el-button>
+            <el-button size="small" text type="danger" @click="delSub(s.row)">删除</el-button>
           </template>
           <template v-else-if="s.row.kind === 'module'">
             <el-button size="small" text type="danger" @click="delModule(s.row)">删模块</el-button>
@@ -154,7 +154,7 @@
               </el-tag>
             </el-tooltip>
           </template>
-          <span v-else style="color:#cdd0d6">—</span>
+          <span v-else class="muted">—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -213,7 +213,7 @@
         <el-form-item label="数据属性">
           <el-input v-model="subForm.attributes" type="textarea" :rows="3"
                     placeholder="用、分隔，至少3个字段，如：策略编号、归属省份、生效时间" />
-          <div class="hint" :style="attrCount >= 3 ? 'color:#67c23a' : 'color:#e6a23c'">
+          <div class="hint" :style="attrCount >= 3 ? 'color:var(--c-success)' : 'color:var(--c-warning)'">
             当前 {{ attrCount }} 个字段（{{ attrCount >= 3 ? '✓ 满足最低要求' : '至少 3 个' }}，建议 ≥4 并打乱顺序）
           </div>
         </el-form-item>

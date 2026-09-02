@@ -23,7 +23,7 @@
         <template #default="s">{{ (s.row.file_size / 1024).toFixed(1) }} KB</template>
       </el-table-column>
       <el-table-column prop="changelog" label="变更说明" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="created_at" label="时间" width="170" />
+      <el-table-column prop="created_at" label="时间" width="170" :formatter="formatDateTime" />
       <el-table-column label="操作" width="100">
         <template #default="s">
           <el-button size="small" @click="download(s.row.id)">下载</el-button>
@@ -56,6 +56,7 @@ import { ElMessage } from 'element-plus'
 import api, { downloadBlob } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
 import { usePersistentState } from '../composables/usePersistentState'
+import { formatDateTime } from '../utils/format'
 
 const projects = ref([])
 const pid = usePersistentState('pid', null)

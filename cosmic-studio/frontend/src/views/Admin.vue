@@ -52,7 +52,7 @@
             <el-switch :model-value="!!s.row.enabled" @change="v => toggle(s.row, v)" />
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="170" />
+        <el-table-column prop="created_at" label="创建时间" width="170" :formatter="formatDateTime" />
         <el-table-column label="操作" width="170">
           <template #default="s">
             <el-button size="small" @click="editUser(s.row)">编辑</el-button>
@@ -112,6 +112,7 @@ import { onActivated, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api, { user as currentUser } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
+import { formatDateTime } from '../utils/format'
 
 const llm = reactive({ enabled: false, base_url: '', model: '', api_key: '', key_masked: '' })
 const allUsers = ref([])
