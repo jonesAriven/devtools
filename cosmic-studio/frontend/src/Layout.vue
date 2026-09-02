@@ -103,6 +103,8 @@ async function loadMenus() {
         ? menus.value.some(m => m.path === '/')
         : menus.value.some(m => m.path === root0)
       if (!allowed0) {
+        // 未授权页签此时可能已被 ensureTab 造出（watch 先于 menus 加载跑过），一并清掉
+        tabs.value = tabs.value.filter(t => menus.value.some(m => m.path === t.path))
         const first0 = menus.value[0]?.path
         if (first0 && first0 !== p0) { router.replace(first0); return }
       }
@@ -161,6 +163,7 @@ watch(() => route.path, path => {
       : menus.value.some(m => m.path === root)
     const first = menus.value[0]?.path
     if (!allowed && first && first !== path) {
+      tabs.value = tabs.value.filter(t => menus.value.some(m => m.path === t.path))
       router.replace(first)
       return
     }
@@ -210,8 +213,13 @@ function onTabRemove(path) {
   tabs.value.splice(idx, 1)
   navLog('tab-remove', { path, tabs: tabs.value.map(t => t.path) })
   if (activeTab.value !== path) return
-  const fallback = tabs.value[idx - 1] || tabs.value[idx] || menus.value[0]?.path && { path: menus.value[0].path } || HOME
-  if (fallback && fallback.path !== route.path) router.push(fallback.path)
+  // 剩余页签优先；全部关完则跳"其他已授权菜单"（不能跳回被关页签自身，否则页签栏空而页面还渲染旧内容）
+  const fallback = tabs.value[idx - 1] || tabs.value[idx]
+    || (() => {
+      const next = menus.value.find(m => m.path !== path)
+      return next ? { path: next.path } : HOME
+    })()
+  if (fallback && fallback.path && fallback.path !== route.path) router.push(fallback.path)
 }
 
 function onCommand(cmd) {
