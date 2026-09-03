@@ -57,8 +57,9 @@
     <el-dialog v-model="createDlg" title="新增自定义规范" width="560px">
       <el-form label-width="90px">
         <el-form-item label="规范键">
-          <el-select v-model="createForm.spec_key" filterable allow-create default-first-option
-                     placeholder="选建议键，或直接输入新键名" style="width:100%">
+          <el-select v-model="createForm.spec_key" filterable
+                     placeholder="从目录选择规范类型" style="width:100%"
+                     @change="onKeyPicked">
             <el-option v-for="k in keySuggestions" :key="k.value" :value="k.value"
                        :label="k.label" :disabled="k.exists">
               <span>{{ k.label }}</span>
@@ -72,7 +73,10 @@
                     style="font-family: monospace" />
         </el-form-item>
       </el-form>
-      <p class="muted" style="margin:0">自定义规范引擎不消费，仅作为团队规范数据沉淀（可随导出/导入迁移）。</p>
+      <el-alert v-if="pickedMeta" type="info" :closable="false" style="margin-top:8px">
+        <p style="margin:0"><b>用途：</b>{{ pickedMeta.usage }}</p>
+      </el-alert>
+      <p class="muted" style="margin:6px 0 0">选中键后自动预填说明与值模板，改成你们团队的实际内容即可；后续可随导出/导入迁移，对话助手可随时查询。</p>
       <template #footer>
         <el-button @click="createDlg = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="createSpec">创建</el-button>
@@ -139,15 +143,58 @@ async function loadSeedKeys() {
   } catch { /* 非阻塞：仅影响按钮文案 */ }
 }
 
-// 新增对话框的规范键建议：预置常用键 + 已有自定义键（标已存在禁选）；种子键不放（不允许再造）
+// 新增对话框的规范键目录：每键带用途说明与值模板——回答「该造什么、造了怎么用」。
+// 消费场景：quality_checklist / review_guidelines 会显示在需求详情的评审抽屉顶部，
+// 供评审人对照；全部自定义规范可被对话助手 get_spec 查询、随导出/导入迁移。
 const KEY_CATALOG = [
-  { value: 'naming_conventions', label: 'naming_conventions（命名规范）' },
-  { value: 'quality_checklist', label: 'quality_checklist（质量检查清单）' },
-  { value: 'review_guidelines', label: 'review_guidelines（评审指引）' },
-  { value: 'delivery_requirements', label: 'delivery_requirements（交付要求）' },
-  { value: 'measurement_guides', label: 'measurement_guides（度量指引）' },
-  { value: 'team_conventions', label: 'team_conventions（团队约定）' },
+  {
+    value: 'quality_checklist', label: 'quality_checklist（质量检查清单）',
+    description: '人工评审逐项对照的检查清单', usage: '显示在需求详情「评审」抽屉顶部，评审时逐项对照',
+    valueTemplate: JSON.stringify([
+      'FP 名动词开头且无禁词', '每个 FP 的 EWX 子过程齐全', '数据属性 ≥3 且来自字段池',
+      '触发事件格式：{发起者}{FP名}时触发',
+    ], null, 2),
+  },
+  {
+    value: 'review_guidelines', label: 'review_guidelines（评审指引）',
+    description: '评审流程与判定标准说明', usage: '显示在需求详情「评审」抽屉顶部，新评审人入门对照',
+    valueTemplate: JSON.stringify({
+      流程: '先看门禁报告 → 逐 FP 对照检查清单 → 意见写在对应行',
+      判定: '禁词/格式类必须改；相似度 65%-75% 酌情；口径类找业务确认',
+    }, null, 2),
+  },
+  {
+    value: 'naming_conventions', label: 'naming_conventions（命名规范）',
+    description: 'FP 名/数据属性命名约定', usage: '编写与评审时对照；对话助手可查询',
+    valueTemplate: JSON.stringify({
+      fp_name: '动词开头（新增/修改/删除/查询/预览），业务对象用词库术语',
+      attributes: '名词短语、顿号分隔、来自字段池',
+    }, null, 2),
+  },
+  {
+    value: 'delivery_requirements', label: 'delivery_requirements（交付要求）',
+    description: '交付物格式/版本命名/验收标准', usage: '打版本快照与交付时对照；对话助手可查询',
+    valueTemplate: JSON.stringify({ 版本标签: 'v{序号}-{里程碑名}', 验收: '门禁 error=0 方可交付' }, null, 2),
+  },
+  {
+    value: 'measurement_guides', label: 'measurement_guides（度量指引）',
+    description: 'COSMIC 度量口径答疑与案例', usage: '编写争议时对照；对话助手可查询',
+    valueTemplate: JSON.stringify({ 口径: '数据移动按 E/W/R/X 判定；引用码表算 R', 案例: '……' }, null, 2),
+  },
+  {
+    value: 'team_conventions', label: 'team_conventions（团队约定）',
+    description: '以上之外的其他团队约定', usage: '团队内部共识沉淀；对话助手可查询',
+    valueTemplate: JSON.stringify({ 约定: '……' }, null, 2),
+  },
 ]
+const pickedMeta = computed(() => KEY_CATALOG.find(k => k.value === createForm.value.spec_key))
+function onKeyPicked(key) {
+  const meta = KEY_CATALOG.find(k => k.value === key)
+  if (!meta) return
+  // 模板只做预填：若用户已改过内容则不覆盖（仅在说明/值为空或等于其他模板时覆盖，简化为：总是覆盖值模板、说明留用户输入）
+  if (!createForm.value.description) createForm.value.description = meta.description
+  createForm.value.valueText = meta.valueTemplate
+}
 const keySuggestions = computed(() => {
   const items = KEY_CATALOG.map(k => ({ ...k, exists: customKeys.value.includes(k.value) }))
   for (const k of customKeys.value) {

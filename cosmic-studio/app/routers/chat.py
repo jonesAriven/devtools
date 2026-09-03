@@ -107,6 +107,14 @@ def t_get_spec(args, user):
     return {"spec_key": args["spec_key"], "value": spec.load_spec(args["spec_key"])}
 
 
+@tool("list_specs", "列出全部规范（内置编写/截图规范 + 团队自定义规范：评审指引/质量检查清单等），先列后查",
+      {"type": "object", "properties": {"category": {"type": "string", "enum": ["writing", "screenshot", "custom"]}}})
+def t_list_specs(args, user):
+    data = spec.load_all(args.get("category") or None)
+    return [{"spec_key": k, "category": v.get("category"), "description": v.get("description")}
+            for k, v in data.items()]
+
+
 @tool("update_spec", "修改规范（评审反哺落点），改完立即生效。慎用，改前先 get_spec 看当前值",
       {"type": "object", "properties": {
           "spec_key": {"type": "string"}, "value": {}}, "required": ["spec_key", "value"]},

@@ -242,7 +242,16 @@
     </el-dialog>
 
     <!-- 评审抽屉 -->
-    <el-drawer v-model="reviewDrawer" title="评审意见" size="55%">
+    <el-drawer v-model="reviewDrawer" title="评审意见" size="55%" @open="loadReviewRefs">
+      <!-- 评审参照：规范中心的自定义规范（评审指引/质量检查清单），评审时对照 -->
+      <div v-if="reviewRefs.length" style="margin-bottom:12px">
+        <el-collapse>
+          <el-collapse-item v-for="rf in reviewRefs" :key="rf.key"
+                            :title="`📋 ${rf.title}（规范中心·评审对照）`">
+            <pre class="review-ref">{{ rf.text }}</pre>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
       <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center">
         <el-button type="danger" :disabled="!pendingReviewCount" :loading="autoFixing"
                    @click="autoFix">自动优化（{{ pendingReviewCount }} 条待处理）</el-button>
@@ -558,6 +567,29 @@ function flatSpanMethod({ row, column, rowIndex, columnIndex }) {
 // ── 评审 ──
 const reviews = ref([])
 const reviewDrawer = ref(false)
+
+// ── 评审参照：规范中心的自定义规范（review_guidelines / quality_checklist 等）──
+const reviewRefs = ref([])
+async function loadReviewRefs() {
+  try {
+    const { data } = await api.get('/studio/specs', { params: { category: 'custom' } })
+    const pick = ['review_guidelines', 'quality_checklist', 'naming_conventions']
+    reviewRefs.value = Object.entries(data.specs || {})
+      .filter(([k]) => pick.includes(k))
+      .map(([k, v]) => ({ key: k, title: v.description || k, text: flattenSpec(v.value) }))
+  } catch { /* 参照属增强信息，失败不打扰评审 */ }
+}
+// 把任意 JSON 展平成可读文本（数组→逐行、对象→键: 值、标量→原样）
+function flattenSpec(v, indent = '') {
+  if (v === null || v === undefined) return ''
+  if (Array.isArray(v)) return v.map(x => flattenSpec(x, indent)).join('\n')
+  if (typeof v === 'object') {
+    return Object.entries(v).map(([k, val]) =>
+      `${indent}${k}: ${typeof val === 'object' ? '\n' + flattenSpec(val, indent + '  ') : flattenSpec(val)}`,
+    ).join('\n')
+  }
+  return String(v)
+}
 
 // ── 变更记录抽屉（change_log 流水）──
 const changesDrawer = ref(false)
@@ -896,6 +928,7 @@ onActivated(() => {
 </script>
 
 <style scoped>
+.review-ref { margin: 0; font-family: inherit; white-space: pre-wrap; word-break: break-word; color: var(--c-text-2); }
 /* .bar / .bar h3 / .hint 已迁入 theme.css，色值统一走设计令牌 */
 .review-item { border: 1px solid var(--c-border); border-radius: var(--r-md);
   padding: var(--sp-3); margin-bottom: var(--sp-3); }
