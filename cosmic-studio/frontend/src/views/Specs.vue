@@ -173,6 +173,12 @@ async function save() {
 }
 async function reset(row) {
   const isSeed = row.spec_key in seedKeys.value
+  try {
+    await ElMessageBox.confirm(
+      isSeed ? `确认把「${row.spec_key}」还原为内置默认值？（当前自定义修改将丢弃）`
+             : `确认删除自定义规范「${row.spec_key}」？此操作不可恢复。`,
+      isSeed ? '还原确认' : '删除确认', { type: 'warning' })
+  } catch { return }
   await api.delete(`/studio/specs/${row.spec_key}`)
   ElMessage.success(isSeed ? '已还原默认' : '已删除')
   load()
