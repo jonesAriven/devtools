@@ -12,7 +12,8 @@
       </div>
     </div>
 
-    <el-table :data="list" v-loading="loading" size="small"
+    <div class="tfill">
+    <el-table :data="list" v-loading="loading" size="small" height="100%"
               @selection-change="v => (selIds = v.map(r => r.id))">
       <el-table-column type="selection" width="42" fixed="left" />
       <el-table-column prop="id" label="ID" width="60" />
@@ -38,6 +39,7 @@
         <el-empty :description="error || '暂无归档需求'" />
       </template>
     </el-table>
+    </div>
 
     <div class="pager">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize"

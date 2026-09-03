@@ -73,7 +73,8 @@
     </div>
 
     <!-- 树形视图 -->
-    <el-table v-if="viewMode === 'tree'" :data="tableRows" row-key="rowKey" border :tree-props="{ children: 'children' }"
+    <div v-if="viewMode === 'tree'" class="tfill">
+    <el-table :data="tableRows" row-key="rowKey" border height="100%" :tree-props="{ children: 'children' }"
               :default-expand-all="false">
       <template #empty>
         <el-empty :description="error || '该需求还没有模块'" />
@@ -124,10 +125,12 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <!-- 扁平视图：全部子过程铺平，父列合并单元格 -->
-    <el-table v-else :data="filteredFlatRows" row-key="rowKey" border
-              :span-method="flatSpanMethod" height="600" style="width:100%">
+    <div v-else class="tfill">
+    <el-table :data="filteredFlatRows" row-key="rowKey" border height="100%"
+              :span-method="flatSpanMethod" style="width:100%">
       <template #empty>
         <el-empty :description="error || '该需求还没有模块'" />
       </template>
@@ -159,6 +162,7 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <!-- 新建模块 -->
     <el-dialog v-model="modDlg" title="新建模块" width="440px">

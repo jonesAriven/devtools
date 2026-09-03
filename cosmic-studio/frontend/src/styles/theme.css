@@ -176,6 +176,16 @@ html, body, #app {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* 缺了这两行 .tfill 的 flex:1 没有生效环境（父容器非 flex），表格退回自然高度 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 表格拉伸容器：吃掉卡片体内剩余高度，el-table height="100%" 由此获得确定高度，
+   行多时表头固定表格内滚、行少时贴满（分页器天然贴卡片底） */
+.tfill {
+  flex: 1;
+  min-height: 0;
 }
 
 .burger { font-size: var(--fs-xl); cursor: pointer; }

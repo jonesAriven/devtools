@@ -16,7 +16,8 @@
       </div>
     </div>
 
-    <el-table :data="groupedRows" row-key="rowKey" border v-loading="loading"
+    <div class="tfill">
+    <el-table :data="groupedRows" row-key="rowKey" border height="100%" v-loading="loading"
               :tree-props="{ children: 'children' }" default-expand-all
               @selection-change="v => (selCopyIds = v.map(r => r.id))">
       <el-table-column type="selection" width="42" fixed="left"
@@ -58,6 +59,7 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <!-- 副本对比 -->
     <el-dialog v-model="diffDlg" :title="`副本对比：${diffRow?.requirement_name}`" width="640px">
