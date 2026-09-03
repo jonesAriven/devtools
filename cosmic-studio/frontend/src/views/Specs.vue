@@ -56,7 +56,16 @@
     <!-- 新增自定义规范键：种子键由引擎定义不可新增，这里只放团队自定义条目 -->
     <el-dialog v-model="createDlg" title="新增自定义规范" width="560px">
       <el-form label-width="90px">
-        <el-form-item label="规范键"><el-input v-model="createForm.spec_key" placeholder="如 team_conventions" /></el-form-item>
+        <el-form-item label="规范键">
+          <el-select v-model="createForm.spec_key" filterable allow-create default-first-option
+                     placeholder="选建议键，或直接输入新键名" style="width:100%">
+            <el-option v-for="k in keySuggestions" :key="k.value" :value="k.value"
+                       :label="k.label" :disabled="k.exists">
+              <span>{{ k.label }}</span>
+              <span v-if="k.exists" class="muted">（已存在）</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="说明"><el-input v-model="createForm.description" /></el-form-item>
         <el-form-item label="值(JSON)">
           <el-input v-model="createForm.valueText" type="textarea" :rows="6" spellcheck="false"
@@ -85,7 +94,7 @@
 </template>
 
 <script setup>
-import { onActivated, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import api, { isAdmin } from '../api'
 import { useLocalPaged } from '../composables/usePaged'
@@ -100,6 +109,7 @@ const current = ref({})
 const editText = ref('')
 const selKeys = ref([])
 const seedKeys = ref([])
+const customKeys = ref([])
 const createDlg = ref(false)
 const saving = ref(false)
 const createForm = ref({ spec_key: '', description: '', valueText: '{}' })
@@ -123,9 +133,28 @@ async function load(resetPage = true) {
 async function loadSeedKeys() {
   try {
     const { data } = await api.get('/studio/specs/export')
-    seedKeys.value = Object.keys(data.specs || {}).filter(k => data.specs[k]._source === 'seed')
+    const all = data.specs || {}
+    seedKeys.value = Object.keys(all).filter(k => all[k]._source === 'seed')
+    customKeys.value = Object.keys(all).filter(k => all[k]._source !== 'seed')
   } catch { /* 非阻塞：仅影响按钮文案 */ }
 }
+
+// 新增对话框的规范键建议：预置常用键 + 已有自定义键（标已存在禁选）；种子键不放（不允许再造）
+const KEY_CATALOG = [
+  { value: 'naming_conventions', label: 'naming_conventions（命名规范）' },
+  { value: 'quality_checklist', label: 'quality_checklist（质量检查清单）' },
+  { value: 'review_guidelines', label: 'review_guidelines（评审指引）' },
+  { value: 'delivery_requirements', label: 'delivery_requirements（交付要求）' },
+  { value: 'measurement_guides', label: 'measurement_guides（度量指引）' },
+  { value: 'team_conventions', label: 'team_conventions（团队约定）' },
+]
+const keySuggestions = computed(() => {
+  const items = KEY_CATALOG.map(k => ({ ...k, exists: customKeys.value.includes(k.value) }))
+  for (const k of customKeys.value) {
+    if (!items.some(i => i.value === k)) items.push({ value: k, label: k, exists: true })
+  }
+  return items
+})
 function open(row) {
   current.value = row
   editText.value = JSON.stringify(row.value, null, 2)
@@ -151,6 +180,7 @@ async function reset(row) {
 
 function openCreate() {
   createForm.value = { spec_key: '', description: '', valueText: '{}' }
+  loadSeedKeys()
   createDlg.value = true
 }
 async function createSpec() {
