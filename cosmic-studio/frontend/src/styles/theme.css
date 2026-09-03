@@ -161,6 +161,21 @@ html, body, #app {
   background: var(--c-bg);
   padding: var(--sp-4);
   transition: background-color var(--dur) var(--ease);
+  /* 高度自适应：页面卡片铺满视口剩余高度，消除表格下方的灰色空白带；
+     内容超出时滚动收进卡片体内部（卡片框架始终撑满） */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main > * { flex: 1; min-height: 0; }
+.main > .el-card {
+  display: flex;
+  flex-direction: column;
+}
+.main > .el-card > .el-card__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .burger { font-size: var(--fs-xl); cursor: pointer; }
