@@ -138,9 +138,10 @@ def list_specs(category: str = ""):
 
 @r.get("/studio/specs/{spec_key}")
 def get_spec(spec_key: str):
-    if spec_key not in spec.SEED_SPECS:
+    data = spec.load_all()
+    if spec_key not in data:
         raise HTTPException(404, f"未知规范键: {spec_key}")
-    return {"spec_key": spec_key, **spec.load_all()[spec_key]}
+    return {"spec_key": spec_key, **data[spec_key]}
 
 
 @r.put("/studio/specs/{spec_key}")

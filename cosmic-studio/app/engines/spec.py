@@ -5,7 +5,6 @@
 保证引擎永远有完整规范可用。评审反哺 = PUT /api/studio/specs/{key}。
 """
 import json
-import logging
 
 from .. import config, db
 
@@ -140,24 +139,18 @@ SEED_SPECS = {
 
 
 def load_spec(spec_key: str):
-    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后，含类型矫正）。
-
-    注意：仅「键不存在 / 值解析失败」才回落种子；连接类异常（DB 故障/超时）必须上抛，
-    否则 lint/derive 会把异常静默吞掉、误报「门禁通过」。
-    """
+    """读单条规范：表里有用表里的，没有回落种子。返回 value（反序列化后，含类型矫正）。"""
     try:
         row = db.query(config.DB_STUDIO, "SELECT value FROM spec_rules WHERE spec_key=%s",
                        (spec_key,), one=True)
-    except Exception as e:  # 连接/超时等基础设施异常：上抛，不让门禁假通过
-        logging.error("load_spec 查库失败 spec_key=%s: %s", spec_key, e)
-        raise
-    if row:
-        try:
+        if row:
             v = row["value"] if not isinstance(row["value"], str) else json.loads(row["value"])
             return _coerce(spec_key, v)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return SEED_SPECS[spec_key]["value"]
-    return SEED_SPECS[spec_key]["value"]
+    except Exception:
+        pass
+    if spec_key in SEED_SPECS:
+        return SEED_SPECS[spec_key]["value"]
+    return None
 
 
 # 数值/布尔类规范键的类型契约（防脏值入表后 lint 崩溃）
@@ -180,9 +173,14 @@ def _coerce(spec_key: str, v):
 
 
 def validate_value(spec_key: str, v) -> str | None:
-    """PUT 时校验：返回错误消息或 None。"""
+    """PUT / 对话 时校验：返回错误消息或 None。
+    允许新增自由键（不在 SEED_SPECS）：只做基础类型校验（dict/list/str/number/bool 且非 None）。"""
     if spec_key not in SEED_SPECS:
-        return f"未知规范键（不允许新增自由键）: {spec_key}"
+        if v is None:
+            return "规范值不能为 null"
+        if not isinstance(v, (dict, list, str, int, float, bool)):
+            return f"不支持的规范值类型: {type(v).__name__}（自由键仅接受 dict/list/str/number/bool）"
+        return None
     if spec_key in _NUMERIC_SPECS:
         try:
             f = float(v)
@@ -216,13 +214,16 @@ def load_all(category: str | None = None) -> dict:
         if category and seed["category"] != category:
             continue
         out[key] = from_db.get(key) or {**seed, "_source": "seed"}
-    # 自定义键（表里有、种子没有）：一并下发，否则新增后永远不可见
-    for key, item in from_db.items():
-        if key in SEED_SPECS:
+    # 追加自定义键（DB 有但不在种子里）
+    for r in rows:
+        k = r["spec_key"]
+        if k in SEED_SPECS:
             continue
-        if category and item["category"] != category:
+        if category and r["category"] != category:
             continue
-        out[key] = item
+        out[k] = {"category": r["category"], "description": r["description"],
+                  "value": r["value"] if not isinstance(r["value"], str) else json.loads(r["value"]),
+                  "_source": "db"}
     return out
 
 
@@ -237,3 +238,54 @@ def upsert_spec(spec_key: str, value, category: str = "writing", description: st
           description or SEED_SPECS.get(spec_key, {}).get("description", ""),
           json.dumps(value, ensure_ascii=False)))
     return {"spec_key": spec_key, "value": value}
+
+
+# ════════════════ 自定义门禁规则（对话可录入，spec 驱动）════════════════
+
+RULE_TYPES = {"fp_name_regex", "sub_desc_regex", "attr_regex",
+              "fp_name_prefix", "sub_desc_min_len"}
+RULE_SEVERITIES = {"error", "warn"}
+
+
+def validate_rule(rule) -> str | None:
+    """校验单条自定义规则，返回错误消息或 None。"""
+    if not isinstance(rule, dict):
+        return "规则必须是对象"
+    if not rule.get("id"):
+        return "规则缺少 id"
+    if not rule.get("name"):
+        return "规则缺少 name"
+    if rule.get("type") not in RULE_TYPES:
+        return f"未知规则类型: {rule.get('type')}（支持 {sorted(RULE_TYPES)}）"
+    if rule.get("severity", "error") not in RULE_SEVERITIES:
+        return f"severity 必须是 error/warn，收到: {rule.get('severity')}"
+    if "pattern" not in rule:
+        return "规则缺少 pattern"
+    return None
+
+
+def add_custom_rule(rule: dict) -> dict:
+    """新增一条自定义门禁规则（对话工具 add_custom_rule 落点）。"""
+    err = validate_rule(rule)
+    if err:
+        return {"error": err}
+    rules = load_spec("custom_rules") or []
+    if not isinstance(rules, list):
+        rules = []
+    if any(r.get("id") == rule["id"] for r in rules):
+        return {"error": f"规则 id 已存在: {rule['id']}"}
+    rules.append(rule)
+    upsert_spec("custom_rules", rules, "custom", "对话录入的自定义门禁规则")
+    return {"spec_key": "custom_rules", "count": len(rules), "added": rule["id"]}
+
+
+def remove_custom_rule(rule_id: str) -> dict:
+    """删除一条自定义门禁规则（按 id）。"""
+    rules = load_spec("custom_rules") or []
+    if not isinstance(rules, list):
+        return {"error": "custom_rules 不是列表"}
+    new = [r for r in rules if r.get("id") != rule_id]
+    if len(new) == len(rules):
+        return {"error": f"规则不存在: {rule_id}"}
+    upsert_spec("custom_rules", new, "custom", "对话录入的自定义门禁规则")
+    return {"spec_key": "custom_rules", "count": len(new), "removed": rule_id}

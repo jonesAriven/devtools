@@ -5,7 +5,7 @@
 LLM 未配置时返回明确提示，不崩。
 """
 import json
-import logging
+import urllib.request
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,7 +14,6 @@ from .. import config, db
 from ..auth import require_role
 from ..engines import derive, linter, spec
 from ..services import versioning
-from ..services.llm import chat_completion
 
 r = APIRouter(prefix="/api", tags=["chat"])
 
@@ -107,38 +106,48 @@ def t_get_spec(args, user):
     return {"spec_key": args["spec_key"], "value": spec.load_spec(args["spec_key"])}
 
 
-@tool("list_specs", "列出全部规范（内置编写/截图规范 + 团队自定义规范：评审指引/质量检查清单等），先列后查",
-      {"type": "object", "properties": {"category": {"type": "string", "enum": ["writing", "screenshot", "custom"]}}})
-def t_list_specs(args, user):
-    data = spec.load_all(args.get("category") or None)
-    return [{"spec_key": k, "category": v.get("category"), "description": v.get("description")}
-            for k, v in data.items()]
-
-
-@tool("update_spec", "修改规范（评审反哺落点），改完立即生效。慎用，改前先 get_spec 看当前值",
+@tool("update_spec", "修改/新增规范（评审反哺落点），改完立即生效。慎用，改前先 get_spec 看当前值",
       {"type": "object", "properties": {
-          "spec_key": {"type": "string"}, "value": {}}, "required": ["spec_key", "value"]},
-      min_role="admin")
+          "spec_key": {"type": "string"}, "value": {},
+          "category": {"type": "string", "description": "新增自由键时的分类(writing/screenshot/custom)"},
+          "description": {"type": "string", "description": "新增自由键时的说明"}},
+       "required": ["spec_key", "value"]}, min_role="admin")
 def t_update_spec(args, user):
-    key = args["spec_key"]
-    if key not in spec.SEED_SPECS:
-        return {"error": f"未知规范键: {key}"}
-    err = spec.validate_value(key, args["value"])
+    err = spec.validate_value(args["spec_key"], args["value"])
     if err:
         return {"error": err}
-    return spec.upsert_spec(key, args["value"])
+    return spec.upsert_spec(args["spec_key"], args["value"], args.get("category", ""), args.get("description", ""))
 
 
 @tool("search_vocab", "按关键词搜业务词库（含频次），写 FP 名/属性时先查词库保证命名一致",
       {"type": "object", "properties": {"q": {"type": "string"}, "limit": {"type": "integer"}}})
 def t_vocab(args, user):
     q = f"%{args.get('q', '')}%"
-    # 排除已驳回的（人工判废）；候选词保留可见 —— 它们是从真实度量数据挖出来的词，
-    # 只是还没走完审核，对命名一致性仍有参考价值
     return db.query(config.DB_STUDIO,
-                    "SELECT term, frequency, source, status FROM vocab_terms "
-                    "WHERE term LIKE %s AND status <> 'rejected' "
+                    "SELECT term, frequency, source, status FROM vocab_terms WHERE term LIKE %s "
                     "ORDER BY frequency DESC LIMIT %s", (q, min(args.get("limit", 20), 100)))
+
+
+@tool("list_custom_rules", "列出当前所有对话录入的自定义门禁规则", {})
+def t_list_rules(args, user):
+    rules = spec.load_spec("custom_rules") or []
+    return {"count": len(rules) if isinstance(rules, list) else 0,
+            "rules": rules if isinstance(rules, list) else []}
+
+
+@tool("add_custom_rule", "新增一条自定义门禁规则（fp_name_regex/sub_desc_regex/attr_regex/fp_name_prefix/sub_desc_min_len），改完立即生效",
+      {"type": "object", "properties": {
+          "rule": {"type": "object", "description": "{id,name,type,pattern,severity(error|warn)}"}},
+       "required": ["rule"]}, min_role="editor")
+def t_add_rule(args, user):
+    return spec.add_custom_rule(args["rule"])
+
+
+@tool("remove_custom_rule", "删除一条自定义门禁规则（按 id）",
+      {"type": "object", "properties": {"rule_id": {"type": "string"}}, "required": ["rule_id"]},
+      min_role="editor")
+def t_remove_rule(args, user):
+    return spec.remove_custom_rule(args["rule_id"])
 
 
 def _dim(d: str) -> str:
@@ -240,7 +249,9 @@ def chat(body: ChatIn, user: dict = Depends(require_role("viewer"))):
             elif isinstance(result, list):
                 summary = {"rows": len(result)}
             elif isinstance(result, dict):
-                summary = {k: result[k] for k in ("summary", "issue_count", "download", "label", "spec_key") if k in result}
+                summary = {k: result[k] for k in
+                       ("summary", "issue_count", "download", "label", "spec_key",
+                        "count", "added", "removed", "error", "rules") if k in result}
             else:
                 summary = {"ok": True}
             tools_used.append({"tool": fn, "args": args, "result": summary})
@@ -259,8 +270,22 @@ SYSTEM_PROMPT = """你是 cosmic-studio 系统的助手，帮良哥操作 COSMIC
 
 
 def _llm_call(cfg: dict, messages: list, tools_schema_list: list) -> dict:
-    """委托到 app/services/llm.chat_completion（含 Accept 头与友好错误透出）。"""
-    return chat_completion(cfg, messages, tools=tools_schema_list or None, temperature=0.3)
+    import urllib.error
+    import urllib.request
+    url = cfg["base_url"].rstrip("/") + "/chat/completions"
+    payload = {"model": cfg["model"], "messages": messages, "temperature": 0.3}
+    if tools_schema_list:
+        payload["tools"] = tools_schema_list
+    req = urllib.request.Request(
+        url, data=json.dumps(payload, ensure_ascii=False).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {cfg['api_key']}"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        raise HTTPException(502, f"LLM 返回错误 {e.code}: {e.read()[:200]}")
+    except urllib.error.URLError as e:
+        raise HTTPException(502, f"LLM 端点不可达（{e.reason}），请检查 系统管理→LLM配置 的 Base URL")
 
 
 def _log(message, reply, tools_used, user):
@@ -268,5 +293,5 @@ def _log(message, reply, tools_used, user):
         db.execute(config.DB_STUDIO,
                    "INSERT INTO chat_logs (user_id, message, reply, tools_used) VALUES (%s,%s,%s,%s)",
                    (user["id"], message, reply, json.dumps(tools_used, ensure_ascii=False)))
-    except Exception as e:
-        logging.warning("chat log insert failed: %s", e)
+    except Exception:
+        pass

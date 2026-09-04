@@ -7,6 +7,7 @@
 检查输出统一结构：{check, level, ref, message}，errors 非空 = 门禁不通过。
 """
 from collections import defaultdict
+import re
 
 from . import derive, similarity, spec
 from .. import config, db
@@ -38,43 +39,26 @@ def _split_fields(attrs: str) -> list:
     return [f.strip() for f in (attrs or "").split("、") if f.strip()]
 
 
-def _first_attrs(subs_attrs):
-    """从无子过程 FP 的 fp_attrs 安全取首个子过程的字段集合。
-
-    fp_attrs[fid] 可能为 None（FP 不在字典中）或 []（FP 无子过程），
-    直接 [0] 会 IndexError。统一返回去空字段集合。
-    """
-    if not subs_attrs:
-        return set()
-    first = subs_attrs[0] if isinstance(subs_attrs, (list, tuple)) else subs_attrs
-    return set(_split_fields(first if isinstance(first, str) else ""))
-
-
 def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool = True) -> dict:
     issues = []
     warnings = []
     add = lambda *a: issues.append(_issue(*a))  # noqa: E731
     warn = lambda *a: warnings.append(_issue(*a))  # noqa: E731
 
-    # ── 一次性载入规范（本 lint 内缓存，避免重复 DB 往返与重算）──
-    spec_cache: dict = {}
-    def S(key):
-        if key not in spec_cache:
-            spec_cache[key] = spec.load_spec(key)
-        return spec_cache[key]
-    ewx_rules = S("ewx_rules")
-    e_prefix = S("e_desc_prefix")
-    x_prefix = S("x_desc_prefix")
-    min_err = S("min_fields_error")
-    min_warn = S("min_fields_warn")
-    jac_threshold = S("jaccard_same_module")
-    sim_same = S("sim_same_req")
-    sim_cross = S("sim_cross_archive")
-    e_exempt = S("e_class_exempt")
-    crud_exempt = S("crud_sibling_exempt")
-    cross_check = S("cross_archive_check") and include_archive_similarity \
+    # ── 一次性载入规范 ──
+    ewx_rules = spec.load_spec("ewx_rules")
+    e_prefix = spec.load_spec("e_desc_prefix")
+    x_prefix = spec.load_spec("x_desc_prefix")
+    min_err = spec.load_spec("min_fields_error")
+    min_warn = spec.load_spec("min_fields_warn")
+    jac_threshold = spec.load_spec("jaccard_same_module")
+    sim_same = spec.load_spec("sim_same_req")
+    sim_cross = spec.load_spec("sim_cross_archive")
+    e_exempt = spec.load_spec("e_class_exempt")
+    crud_exempt = spec.load_spec("crud_sibling_exempt")
+    cross_check = spec.load_spec("cross_archive_check") and include_archive_similarity \
         and dim_db == config.DB_ACTIVE
-    pool_check = S("pool_coverage_check")
+    pool_check = spec.load_spec("pool_coverage_check")
 
     proj = db.query(dim_db, "SELECT * FROM projects WHERE id=%s", (project_id,), one=True)
     if not proj:
@@ -86,7 +70,6 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 "warnings": [], "summary": {"error": 1, "warn": 0, "pass": False}}
     subs_by_fp = {fp["id"]: derive.fp_subs(dim_db, fp["id"]) for fp in fps}
     all_subs = [sp for sps in subs_by_fp.values() for sp in sps]
-    fp_names = {f["id"]: f["fp_name"] for f in fps}  # 预建 dict，替代循环内线性扫描
     ban = forbidden_words()
     pseudo = pseudo_fields()
 
@@ -141,10 +124,10 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     for sp in all_subs:
         dgn = sp["data_group_name"] or ""
         dmt = sp["data_move_type"]
-        fp_name = fp_names.get(sp["fp_id"], "")
+        fp_name = next((f["fp_name"] for f in fps if f["id"] == sp["fp_id"]), "")
         verb = fp_name[:2]
         ref = f"子过程#{sp['id']} {dgn}"
-        groups = S("data_group_templates")
+        groups = spec.load_spec("data_group_templates")
         # 期望后缀 = 模板去掉 {obj}{verb} 后的固定部分
         gkey = f"{dmt}_预览" if verb == "预览" and f"{dmt}_预览" in groups else dmt
         suffix = groups.get(gkey, "").format(obj="", verb="").replace("{obj}", "").replace("{verb}", "")
@@ -154,7 +137,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 6/7. 数据属性：分隔符 + 字段数
     for sp in all_subs:
         attrs = sp["data_attributes"] or ""
-        ref = f"子过程#{sp['id']} {fp_names.get(sp['fp_id'], '')}"
+        ref = f"子过程#{sp['id']} {fp_name_of(fps, sp['fp_id'])}"
         if "," in attrs:
             add("数据属性", "error", ref, "含逗号分隔符，必须用、")
         n = len(_split_fields(attrs))
@@ -178,7 +161,7 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
     # 10. 属性池化差异化
     fp_attrs = {fid: [sp["data_attributes"] for sp in sps] for fid, sps in subs_by_fp.items()}
     for fid, sps in subs_by_fp.items():
-        fp_name = fp_names.get(fid, "")
+        fp_name = fp_name_of(fps, fid)
         attr_sets = [tuple(sorted(_split_fields(sp["data_attributes"]))) for sp in sps]
         if len(set(attr_sets)) < len(attr_sets):
             verb = fp_name[:2]
@@ -197,8 +180,8 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 a, b = mfps[i], mfps[j]
                 if a["fp_name"][:2] != b["fp_name"][:2]:
                     continue
-                sa = _first_attrs(fp_attrs.get(a["id"]))
-                sb = _first_attrs(fp_attrs.get(b["id"]))
+                sa = set((fp_attrs.get(a["id"], [""])[0] or "").split("、")) - {""}
+                sb = set((fp_attrs.get(b["id"], [""])[0] or "").split("、")) - {""}
                 if sa and sb:
                     jac = similarity.jaccard(sa, sb)
                     if jac >= jac_threshold:
@@ -244,6 +227,9 @@ def lint_project(dim_db: str, project_id: int, include_archive_similarity: bool 
                 warn("字段池", "warn", f"子过程#{sp['id']}",
                      f"数据组'{sp['data_group_name']}'未在字段池中定义")
 
+    # 14. 自定义门禁规则（对话可录入，spec 驱动，改完立即生效）
+    _eval_custom_rules(spec.load_spec("custom_rules"), fps, all_subs, add, warn, _split_fields)
+
     summary = {"error": len(issues), "warn": len(warnings), "pass": not issues}
     return {"errors": issues, "warnings": warnings, "summary": summary}
 
@@ -253,3 +239,58 @@ def fp_name_of(fps, fp_id):
         if f["id"] == fp_id:
             return f["fp_name"]
     return ""
+
+
+def _eval_custom_rules(rules, fps, all_subs, add, warn, split_fields):
+    """评估对话录入的自定义门禁规则（spec.custom_rules 列表）。
+    规则类型：fp_name_regex / sub_desc_regex / attr_regex / fp_name_prefix / sub_desc_min_len。
+    """
+    if not isinstance(rules, list):
+        return
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        rid = rule.get("id", "?")
+        rname = rule.get("name", rid)
+        rtype = rule.get("type")
+        pattern = rule.get("pattern")
+        severity = rule.get("severity", "error")
+        emit = add if severity == "error" else warn
+        try:
+            if rtype == "fp_name_regex" and pattern:
+                rx = re.compile(pattern)
+                for fp in fps:
+                    if rx.search(fp["fp_name"] or ""):
+                        emit("自定义规则", severity, f"FP#{fp['id']} {fp['fp_name']}",
+                             f"[{rname}] FP名命中正则 {pattern!r}")
+            elif rtype == "sub_desc_regex" and pattern:
+                rx = re.compile(pattern)
+                for sp in all_subs:
+                    if rx.search(sp["description"] or ""):
+                        emit("自定义规则", severity, f"子过程#{sp['id']}",
+                             f"[{rname}] 子过程描述命中正则 {pattern!r}")
+            elif rtype == "attr_regex" and pattern:
+                rx = re.compile(pattern)
+                for sp in all_subs:
+                    for f in split_fields(sp["data_attributes"]):
+                        if rx.search(f):
+                            emit("自定义规则", severity, f"子过程#{sp['id']}",
+                                 f"[{rname}] 字段'{f}'命中正则 {pattern!r}")
+                            break
+            elif rtype == "fp_name_prefix" and pattern:
+                prefixes = [p.strip() for p in str(pattern).split(",") if p.strip()]
+                for fp in fps:
+                    if not any((fp["fp_name"] or "").startswith(p) for p in prefixes):
+                        emit("自定义规则", severity, f"FP#{fp['id']} {fp['fp_name']}",
+                             f"[{rname}] FP名不以 {prefixes} 中任一前缀开头")
+            elif rtype == "sub_desc_min_len" and pattern:
+                n = int(pattern)
+                for sp in all_subs:
+                    d = sp["description"] or ""
+                    if len(d) < n:
+                        emit("自定义规则", severity, f"子过程#{sp['id']}",
+                             f"[{rname}] 子过程描述长度 {len(d)} < {n}")
+        except re.error:
+            warn("自定义规则", "warn", f"规则#{rid}", f"[{rname}] 正则非法: {pattern!r}")
+        except (ValueError, TypeError):
+            warn("自定义规则", "warn", f"规则#{rid}", f"[{rname}] 参数非法: {pattern!r}")
