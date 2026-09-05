@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MinIO 对象存储 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>MinIO 对象存储</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / MinIO 对象存储</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="minio">MinIO 对象存储</h1>
+<blockquote>
+<p>兼容 S3 协议的自托管对象存储，为知识库（KB）体系提供文件、头像、附件等二进制对象的统一存储后端；对外暴露 S3 兼容 API 供各业务服务读写，对外暴露 Web 控制台供运维管理桶与对象。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（存储）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>minio/minio:latest（部署时拉取的最新版，非固定版本号）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>mykng（192.168.31.105）容器 <code>platform-minio</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>API 9000 / 控制台 19001（宿主机映射 9000、19001；容器内 API 9000、控制台 9001）</td>
+</tr>
+<tr>
+<td>数据卷</td>
+<td>命名卷 <code>platform_platform-minio-data</code> → 容器内 <code>/data</code></td>
+</tr>
+<tr>
+<td>健康状态</td>
+<td>healthy（docker healthcheck 通过）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/minio/minio（自部署，无自研源码）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，随 platform 层 <code>python woodScript/trigger-pipeline.py platform</code> 一并拉起）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网控制台：<code>https://kb.marschat.online/minio/</code>（经 mykng nginx 反代）</li>
+<li>公网 S3 API：<code>https://s3.marschat.online</code>（S3 兼容端点，供程序调用，不供人浏览）</li>
+<li>内网：<code>http://192.168.31.105:9000</code>（API）、<code>http://192.168.31.105:19001</code>（控制台）</li>
+<li>Tailscale：<code>http://100.93.36.113:9000</code>、<code>http://100.93.36.113:19001</code></li>
+<li>账密：AccessKey/SecretKey 见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能（禁止明文落盘）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<p>控制台链路：</p>
+<pre><code>浏览器 → https://kb.marschat.online/minio/
+  → 腾讯云2号 nginx (443, TLS 终止) → http://100.93.36.113:80
+  → mykng nginx /minio/ → proxy_pass http://127.0.0.1:19001/
+  → 容器 platform-minio 控制台 (容器内 :9001，宿主映射 19001)
+</code></pre>
+<p>S3 API 链路：</p>
+<pre><code>程序/服务 → https://s3.marschat.online
+  → 腾讯云2号 nginx (443, TLS 终止) → proxy_pass http://100.93.36.113:9000
+  → 容器 platform-minio API (:9000)
+</code></pre>
+<blockquote>
+<p>注：控制台（19001/容器内 9001）与 API（9000）是 MinIO 两个独立端口。控制台用于人工管理桶与对象；API（9000）是 S3 兼容数据面，业务服务用 AccessKey/SecretKey 调用，不是给人点的网页。mykng nginx 的 <code>minio.conf</code> 配置为 <code>location /minio/ { proxy_pass http://127.0.0.1:19001/; }</code>（尾斜杠已对齐）。</p>
+</blockquote>
+<h2 id="docker-inspect2026-09-05">实采配置快照（docker inspect，2026-09-05）</h2>
+<ul>
+<li>启动命令：<code>minio server /data --console-address :9001</code>（数据目录 <code>/data</code>，控制台绑定 :9001）。</li>
+<li>凭证注入：根凭证<strong>通过文件注入</strong>（ENV 含 <code>MINIO_ROOT_USER_FILE=access_key</code>、<code>MINIO_ROOT_PASSWORD_FILE=secret_key</code>、<code>MINIO_CONFIG_ENV_FILE=config.env</code>），不在 ENV 明文，符合不落盘原则；实际 AccessKey/SecretKey 见 Vaultwarden。</li>
+<li>健康检查：容器 healthcheck 状态 healthy。</li>
+<li>数据卷：<code>platform_platform-minio-data</code> → <code>/data</code>（对象持久化位置）。</li>
+</ul>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>对象存储桶（Bucket）管理：在控制台创建/删除桶、设置公开或私有访问策略。KB 体系的用户头像、上传附件、知识库文件等存放在此。</li>
+<li>S3 兼容 API：任何兼容 AWS S3 SDK 的客户端（如 kb-file、kb-knowledge 服务，以及外部脚本）均可用同一套 AccessKey/SecretKey 读写对象，无需关心对象存在哪台机器。</li>
+<li>控制台运维：查看桶内对象、下载、预览、设置生命周期与配额。具体按钮级操作以控制台实际界面为准（不在此逐条编造）。</li>
+<li>多租户隔离：通过不同前缀/不同桶区分各业务系统的对象空间（具体桶命名以 KB 服务配置为准，待确认）。</li>
+<li>预签名 URL：业务侧通常对私有对象签发有时效的预签名 URL 供前端临时下载，避免把 SecretKey 下发到客户端。</li>
+</ul>
+<h2 id="api">客户端/API 调用示例（组件通用用法，非本机实装步骤）</h2>
+<ul>
+<li>命令行 <code>mc</code>：<code>mc alias set mykng https://s3.marschat.online &lt;ACCESS_KEY&gt; &lt;SECRET_KEY&gt;</code> 后 <code>mc ls/mykng/&lt;bucket&gt;</code>。</li>
+<li>AWS SDK（Python boto3）：endpoint_url 指向 <code>https://s3.marschat.online</code>，用 AccessKey/SecretKey 初始化 client，调用 <code>list_objects_v2</code> / <code>put_object</code>。</li>
+<li>控制台：浏览器打开 <code>https://kb.marschat.online/minio/</code> 登录后管理。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：宿主 mykng 的 docker 引擎与数据卷；无外部数据库依赖（元数据自管于 <code>/data</code>）。</li>
+<li>被依赖/关联系统：</li>
+<li><code>kb-file</code>（文件服务）、<code>kb-knowledge</code>（知识库，8092）等 KB 服务经 S3 API 读写对象；</li>
+<li>知识库前端 <code>kb-web</code> / <code>kb.marschat.online</code> 展示的图片附件等多源自 MinIO；</li>
+<li><code>s3.marschat.online</code> 公网域名专供外部 S3 客户端访问；</li>
+<li>与 MeiliSearch（检索）、Qdrant（向量）共同构成 KB 的非结构化数据底座，但三者职责不同：MinIO 存原始文件、MeiliSearch 存可全文检索的文本索引、Qdrant 存向量。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：随 platform 中间件栈管理。<code>python woodScript/trigger-pipeline.py platform</code> 拉起；或直接在 mykng 上 <code>docker compose -f /root/devtools/platform/docker-compose.platform.yml up -d platform-minio</code>。</li>
+<li>日志查看：<code>docker logs platform-minio</code>（持续 <code>docker logs -f platform-minio</code>）；亦可在 obs-dozzle（mykng :15500）按容器名检索。</li>
+<li>数据与备份：数据卷 <code>platform_platform-minio-data</code> → 容器内 <code>/data</code>。备份需对该卷做快照/同步（当前备份体系是否覆盖以 infra-monitor 备份策略为准，未实测处写待确认）。建议对对象做跨机同步或定期 <code>mc mirror</code> 到异地。</li>
+<li>可观测性：容器日志入 Loki（mykng promtail → 内网 Deb obs-loki :15100），可在 Grafana（内网 Deb :15300）检索；控制台访问量可结合 nginx 日志观察。</li>
+<li>扩容：单节点 MinIO，容量受 mykng 磁盘限制；如需分布式需在 compose 增加多节点（当前非分布式，待确认是否有扩容计划）。</li>
+</ul>
+<h2 id="_7">常见问题</h2>
+<ul>
+<li>控制台 19001 与 API 9000 别混淆——配 SDK 用 9000 的 AccessKey，别把控制台地址当 API 端点。</li>
+<li>公网 S3 域名是 <code>s3.marschat.online</code>（指向 :9000），控制台是 <code>kb.marschat.online/minio/</code>（指向 :19001），二者不可互换。</li>
+<li>控制台经公网暴露，务必保证 AccessKey 强度并定期轮换，凭证统一存 Vaultwarden。</li>
+<li>单节点部署无纠删码，磁盘故障会导致对象丢失，重要数据务必纳入备份。</li>
+</ul>
+<h2 id="_8">与其他存储/中间件的关系（便于定位）</h2>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>存什么</th>
+<th>访问方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MinIO</td>
+<td>原始文件/附件/头像</td>
+<td>kb-file、kb-knowledge、外部 S3 客户端</td>
+</tr>
+<tr>
+<td>MeiliSearch</td>
+<td>全文检索索引</td>
+<td>kb-gateway、kb-knowledge</td>
+</tr>
+<tr>
+<td>Qdrant</td>
+<td>文本向量</td>
+<td>RAG 管线、rag-embedding</td>
+</tr>
+<tr>
+<td>platform-redis</td>
+<td>缓存/会话/队列</td>
+<td>KB、portal、activecode</td>
+</tr>
+<tr>
+<td>platform-mongo</td>
+<td>文档数据</td>
+<td>使用 Mongo 的业务服务</td>
+</tr>
+<tr>
+<td>platform-kafka</td>
+<td>异步消息流</td>
+<td>使用 Kafka 的业务服务</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

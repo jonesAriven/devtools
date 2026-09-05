@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>思源笔记 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>思源笔记</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 思源笔记</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="_1">思源笔记</h1>
+<blockquote>
+<p>自托管的 SiYuan 笔记系统，用于个人笔记与知识块管理（Go + Electron + Vue 技术栈），数据私有、可离线优先。</p>
+</blockquote>
+<h2 id="_2">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>工具软件 / 知识管理（笔记）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>SiYuan（自托管）；具体版本号未实采 (待确认)</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>应运行于 mykng（材料包：note.marschat.online → mykng:6806）；<strong>实采（2026-09-05）mykng 上 6806 无监听、docker ps/docker ps -a 均无 siyuan/note 容器，当前疑似未运行/已停止</strong> (待确认运行态)</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源 <code>siyuan-note/siyuan</code>（Go + Electron + Vue）；自托管部署，本地无构建仓库</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">访问入口</h2>
+<ul>
+<li>公网：<code>https://note.marschat.online</code>（腾讯云2号 nginx 终止 TLS 443）</li>
+<li>内网：<code>http://192.168.31.105:6806</code>（mykng，当前不可达——服务未监听）</li>
+<li>Tailscale：<code>http://100.93.36.113:6806</code>（同未监听）</li>
+</ul>
+<h2 id="_4">全链路</h2>
+<pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 note.marschat.online)
+       → http://100.93.36.113:6806  (mykng SiYuan, 端口 6806)
+</code></pre>
+<blockquote>
+<p>链路配置依据：材料包第 5 节 <code>note.marschat.online → http://100.93.36.113:6806</code>。
+<strong>实采告警</strong>：2026-09-05 在 mykng 上 <code>ss -tlnp | grep 6806</code> 无结果，<code>docker ps -a</code> 无 siyuan/note 相关容器——公网域名虽已配置反代，但后端当前未运行，访问会 502/超时。重启后需确认容器名/服务与 6806 端口映射是否仍匹配。</p>
+</blockquote>
+<h2 id="_5">核心功能与使用</h2>
+<ul>
+<li>个人知识库/笔记：块级（block）编辑模型，支持双向链接、关系图、SQL 式查询、 Markdown/公众号导出等。</li>
+<li>自托管优势：数据落在本机（mykng），不依赖商业云服务，适合存放私密/长期笔记。</li>
+<li>典型场景：日常笔记、项目知识沉淀、资料归档；通过 <code>note.marschat.online</code> 随处访问。</li>
+</ul>
+<blockquote>
+<p>UI 具体操作未经实测（服务当前未运行），按 SiYuan 通用能力描述；如启用后需补充本地功能细节。</p>
+</blockquote>
+<h2 id="_6">依赖与关联</h2>
+<ul>
+<li>依赖：mykng 宿主/容器运行时；SiYuan 工作空间数据目录（路径未实采）(待确认)；可选对象存储/图床（未实采）。</li>
+<li>被依赖/关联系统：经腾讯云2号 nginx <code>note.marschat.online</code> 对外；与「记忆提炼面板」(memory.marschat.online) 同属知识类，但二者独立（SiYuan 为人工笔记，memory-panel 为自动提炼）。</li>
+</ul>
+<h2 id="_7">运维要点</h2>
+<ul>
+<li>启停方式：<strong>当前运行态待确认</strong>。SiYuan 自托管常见为 Docker（<code>siyuan</code> 镜像，映射 6806）。建议排查：</li>
+<li><code>docker ps -a | grep -i siyuan</code> 确认容器是否存在/退出。</li>
+<li>若容器已删，需按原部署（镜像/卷）重建并映射 6806。</li>
+<li>具体 compose/启停文件未实采 (待确认)。</li>
+<li>日志查看：<code>docker logs &lt;siyuan容器&gt;</code>；或 SiYuan 工作空间日志（未实采）。</li>
+<li>数据与备份</li>
+<li>工作空间数据（笔记库）路径未实采 (待确认)，建议确认是否纳入 mykng 数据备份体系——笔记属高价值私密数据，丢失不可逆。</li>
+<li>常见问题</li>
+<li>公网 502/打不开：多为 mykng 侧 SiYuan 未运行（与本次实采一致）。先确认 6806 是否监听再查 nginx。</li>
+<li>首次启动需设置访问口令（SiYuan 自带鉴权），口令应入 Vaultwarden，勿明文。</li>
+</ul>
+<h2 id="_8">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于材料包链路 + mykng SSH 实采「6806 未监听/无容器」生成；显著标注当前服务疑似未运行，需确认）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

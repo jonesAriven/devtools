@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>基础设施监控（infra-monitor） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>基础设施监控（infra-monitor）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 基础设施监控（infra-monitor）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="infra-monitor">基础设施监控（infra-monitor）</h1>
+<blockquote>
+<p>基础设施信息中心：统一登记主机、凭据、配置项、服务的资产台账，提供登录鉴权、总览看板、SSH/HTTP 健康巡检与 JSON/YAML 导入导出。是 devtools 局域网"基础设施一张图"。访问入口 https://monitor.marschat.online/infra/。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>自研 Web 系统（运维平台 / 基础设施）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>1.0.0（后端 Spring Boot 3.2.5 / Java 21；前端 Vue3 + Vite + TS 0.1.0）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng（192.168.31.105），容器 <code>infra-monitor</code>（后端 8088，context <code>/infra/</code>）+ <code>infra-monitor-web</code>（前端 nginx，宿主机 8094）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>后端 <code>D:\huliang\java\ideaworkspace\devtools\infra-monitor\infra-monitor-server\</code>，前端 <code>infra-monitor/infra-monitor-web\</code>；mykng 上 <code>/root/devtools/infra-monitor</code></td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Woodpecker 项目 <code>infra-monitor</code> + <code>infra-monitor-web</code>；后端 compose <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>），前端 compose <code>kb-web</code>（<code>docker-compose.web.yml</code>）</td>
+</tr>
+<tr>
+<td>技术栈</td>
+<td>Spring Boot 3.2.5、Java 21、Spring Security、Spring Data MongoDB、JSch（SSH）、JJWT 0.12.5、Jackson YAML、Hutool、Actuator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网（前端 + 监控域名）：<code>https://monitor.marschat.online/infra/</code></li>
+<li>公网（后端 API）：<code>https://monitor.marschat.online/infra/api/</code>（反代到 <code>infra-monitor:8088</code>）</li>
+<li>内网（前端）：<code>http://192.168.31.105:8094/</code></li>
+<li>内网（后端）：<code>http://192.168.31.105:8088/infra/</code></li>
+<li>Tailscale：<code>http://100.93.36.113:8094/</code>（前端）、<code>http://100.93.36.113:8088/infra/</code>（后端）</li>
+<li>健康检查：<code>http://192.168.31.105:8088/infra/actuator/health</code></li>
+<li>登录（自带账号体系，区别于 kb-ops）：<code>POST /infra/auth/login</code></li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>前端 SPA:
+monitor.marschat.online → 腾讯云2号 nginx(443) → http://100.93.36.113:80 → mykng nginx(:80) /infra/ → 127.0.0.1:8094 (infra-monitor-web 静态)
+
+后端 API:
+monitor.marschat.online/infra/api → 腾讯云2号 nginx(443) → mykng nginx(:80) /infra/api/ → 127.0.0.1:8088 (infra-monitor)
+（注：腾讯云2号 monitor 子域直接回源 mykng:80 的整站 /infra/ 路径）
+</code></pre>
+<p>说明：与 kb-ops 不同，infra-monitor <strong>自带登录</strong>（<code>AuthController /auth/login</code> 签发 JWT，<code>JwtAuthFilter</code> 校验）。<code>/auth/login</code> 与 <code>/actuator/**</code> 放行，其余全需鉴权。</p>
+<h2 id="_4">核心功能与使用</h2>
+<p>后端模块（<code>com.kb.infra.controller</code>），数据模型统一为 <code>InfraItem</code>（按 <code>type</code> 区分 host / credential / config / service），能力如下：</p>
+<ul>
+<li><strong>资产总览（InfraItemController <code>/items</code>）</strong>：主机、凭据、配置项、服务的统一 CRUD；支持 <code>/list</code>、<code>/all</code>、<code>/category/{type}/{category}</code> 按类目筛选、<code>/stats/{type}</code> 统计。</li>
+<li><strong>主机台账</strong>：记录每台主机的 IP、系统、角色、虚拟化信息、Tailscale IP、挂载点、出口代理（Clash）等。当前实例已登记的主机涵盖：旧 Windows 宿主机（192.168.31.243）、内网 Debian（192.168.31.182）、mykng-debian（192.168.31.105 / Tailscale 100.93.36.113）、腾讯云2号（1.117.70.30）、阿里云 FRP（120.26.66.182）、龙虾主机等。</li>
+<li><strong>凭据管理（CredentialController <code>/credentials</code>）</strong>：集中登记各系统的账号/Token 类别（WEB/DB/API_TOKEN/OTHER），密码字段经 <code>CryptoUtil</code> <strong>AES 加密落库</strong>，接口按权限返回。</li>
+<li><strong>配置项（config 类型）</strong>：FRP 隧道状态、SMB 共享、代理链路、mykng nginx 反代、Nexus 缓存策略、SSL 证书、RAG 记忆增强、知识时光机、Nexus 缓存预热等结构化配置台账（TABLE / KEY_VALUE 两种形态）。</li>
+<li><strong>服务监控（service 类型）</strong>：登记各服务的 URL、健康检查 URL、技术栈、启用状态；由巡检器周期探活。</li>
+<li><strong>健康巡检（HealthCheckController <code>/health</code> + <code>HealthCheckScheduler</code>）</strong>：<code>/check-all</code> 手动全量探活、<code>/check/{serviceId}</code> 单服务探活、<code>/logs/{serviceId}</code>（含 <code>/recent</code>）查看探活历史；调度器周期性对 <code>healthCheckUrl</code> 发请求并写 <code>InfraHealthLog</code>。</li>
+<li><strong>总览看板（DashboardController <code>/dashboard/summary</code>）</strong>：聚合主机数、凭据数、配置数、服务健康概览等指标。</li>
+<li><strong>导入导出（ImportExportController <code>/io</code>）</strong>：<code>/import</code> 从 JSON 导入资产；<code>/export/json</code>、<code>/export/yaml</code> 全量导出，便于备份与跨环境迁移。</li>
+<li><strong>SSH 探活</strong>：<code>SshUtil</code>（基于 JSch）对主机执行 SSH 连通性/命令检查，配合健康检查。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：</li>
+<li><strong>MongoDB</strong>：<code>platform-mongo</code>（mykng 27017）存储 <code>InfraItem</code> 与 <code>InfraHealthLog</code>（Spring Data MongoDB Repository）。</li>
+<li><strong>SSH 凭据</strong>：探活内网主机需主机 SSH 账号（凭据加密存放，见 Vaultwarden / infrastructure-map）。</li>
+<li>被依赖/关联系统：</li>
+<li>与 <strong>kb-ops</strong> 互补：infra-monitor 偏"资产总览 + 凭据 + 配置 + 健康巡检"，kb-ops 偏"运维台账 + 知识 + 部署记录 + 矛盾检测"。</li>
+<li>巡检结果数据经日志链路汇入 <strong>Loki/Grafana</strong>（mykng 侧 promtail 3.0.0 采集）。</li>
+<li>资产数据可作为 <strong>kb-ops</strong> 的同步来源之一（kb-ops 的 <code>SyncController</code> 从 intelligence 拉取，二者台账可对照）。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停/发布（应用层只允许走流水线）：</li>
+<li>后端：<code>python woodScript/trigger-pipeline.py infra-monitor</code></li>
+<li>前端：<code>python woodScript/trigger-pipeline.py infra-monitor-web</code></li>
+<li>后端部署目标 compose <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>），健康检查 <code>localhost:8088/infra/actuator/health</code>；前端部署目标 <code>kb-web</code>，健康检查 <code>localhost:8094/health</code>。</li>
+<li>数据初始化：<code>DataInitializer</code>（CommandLineRunner）在 host 数量为 0 时 seed 初始主机/凭据/配置/服务数据；已存在则跳过（幂等）。<strong>seed 中的明文账密属于密级数据，禁止出现在文档，统一以 Vaultwarden 或 infrastructure-map 技能为准</strong>。</li>
+<li>日志查看：</li>
+<li>容器日志：<code>docker logs -f infra-monitor</code> / <code>docker logs -f infra-monitor-web</code></li>
+<li>容器日志面板：mykng <code>obs-dozzle</code>（15500）</li>
+<li>数据与备份：资产在 MongoDB（<code>platform-mongo</code>），建议用 <code>/io/export/json</code> 定期导出作为轻量备份；MongoDB 本身由 platform 层统一维护。</li>
+<li>凭据安全：所有密码经 <code>CryptoUtil</code> AES 加密，前端展示脱敏；<strong>任何系统明文账密一律不写入文档</strong>。</li>
+<li>常见问题：</li>
+<li>巡检一直 UNKNOWN：检查对应 service 的 <code>healthCheckUrl</code> 是否可达、目标服务是否在线。</li>
+<li>登录态失效：JWT 由本系统签发，过期重新 <code>/auth/login</code> 即可。</li>
+<li>导入失败：确认 JSON 结构与 <code>/items</code> 字段一致，建议先用 <code>/export/json</code> 取模板。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/DataInitializer 生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

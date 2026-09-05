@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nginx UI · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Nginx UI</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Nginx UI</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="nginx-ui">Nginx UI</h1>
+<blockquote>
+<p>腾讯云2号主机上公网 nginx 入口的可视化管理面板，提供 server block、反向代理、证书的可视化配置与热重载，降低手工改 nginx 配置出错风险。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>工具软件 / 运维（nginx 管理）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>Nginx UI（二进制 <code>/usr/local/bin/nginx-ui</code>）；具体版本号未实采 (待确认)</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>腾讯云2号主机（1.117.70.30 / Tailscale 100.110.114.16）<strong>宿主 systemd 服务</strong> <code>nginx-ui.service</code>，非 Docker；二进制 <code>--config /etc/nginx-ui/app.ini</code>；监听 19900</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源 Nginx UI（linuxserver/nginx-ui 或等价实现）；腾讯云2号宿主 <code>/usr/local/bin/nginx-ui</code></td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（宿主自部署 systemd 服务）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://nginxui.marschat.online</code>（腾讯云2号 nginx 终止 TLS 443）</li>
+<li>内网：<code>http://1.117.70.30:19900</code>（腾讯云2号宿主）</li>
+<li>Tailscale：<code>http://100.110.114.16:19900</code></li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 nginxui.marschat.online)
+       → 127.0.0.1:19900  (本机 nginx-ui 服务)
+</code></pre>
+<p>实采（腾讯云2号，2026-09-05）：
+- <code>systemctl</code> 存在 <code>nginx-ui.service</code>（loaded active running）与 <code>nginx.service</code>（公网入口 nginx 本身）。
+- 进程：<code>/usr/local/bin/nginx-ui --config /etc/nginx-ui/app.ini</code>（PID 194216，7月18日启动）。
+- 监听：<code>*:19900</code>（进程名 <code>nginx-ui</code>），本机探测 <code>http://127.0.0.1:19900/</code> 返回 200。</p>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>可视化管理腾讯云2号上的 nginx（即全站 marschat.online 公网 HTTPS 入口）：</li>
+<li>站点/反向代理配置（server block、location、upstream）的可视化增改。</li>
+<li>TLS 证书管理（Let's Encrypt / 自有证书）与自动续期配置。</li>
+<li>配置校验与一键 reload/restart，减少手工改 <code>/etc/nginx/</code> 的语法错误。</li>
+<li>典型场景：新增/调整某个 <code>*.marschat.online</code> 子域反代、证书轮换、排查 502/404 时通过 UI 直接查看与回滚配置。</li>
+</ul>
+<blockquote>
+<p>UI 具体操作步骤未经实测，按能力层面描述；本面板直接操控公网入口 nginx，<strong>改错会影响全站</strong>，操作需谨慎。</p>
+</blockquote>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：腾讯云2号宿主的 <code>nginx.service</code>（被管理对象）；配置目录 <code>/etc/nginx-ui/</code>（app.ini）与 nginx 配置目录 <code>/etc/nginx/</code>。</li>
+<li>被依赖/关联系统：<strong>所有</strong>经腾讯云2号公网入口的服务（main/kb/woodci/nexus/monitor/note/vault/memory/s3/tokenhub/tools*/workcheck 等）。Nginx UI 是该入口的「控制台」。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式</li>
+<li><code>systemctl start|stop|restart|status nginx-ui</code></li>
+<li>配置：<code>/etc/nginx-ui/app.ini</code>（Nginx UI 自身配置）</li>
+<li>日志查看</li>
+<li><code>journalctl -u nginx-ui -f</code>；nginx 入口日志 <code>/var/log/nginx/</code>。</li>
+<li>数据与备份</li>
+<li>Nginx UI 的站点配置通常落盘在 <code>/etc/nginx-ui/</code> 与 <code>/etc/nginx/</code> 下（具体路径未实采，建议纳入主机配置备份）(待确认)。</li>
+<li>注意：与 mykng 侧的 nginx（路径透传反代）是<strong>不同主机</strong>的两套 nginx，本面板只管腾讯云2号这一侧。</li>
+<li>常见问题</li>
+<li>该服务是宿主进程（非 Docker），<code>docker ps</code> 看不到；定位用 <code>systemctl</code> 与 <code>ss -tlnp | grep 19900</code>。</li>
+<li>误改公网 nginx 配置可能导致全站 502；建议通过 UI 的校验/回滚能力操作，并保留 <code>/etc/nginx/sites-backup/</code> 历史（材料包显示存在 <code>cache-*</code> 备份目录）。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于腾讯云2号 SSH 实采进程/systemd + 材料包生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

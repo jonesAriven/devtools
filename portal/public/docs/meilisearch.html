@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeiliSearch 搜索引擎 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>MeiliSearch 搜索引擎</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / MeiliSearch 搜索引擎</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="meilisearch">MeiliSearch 搜索引擎</h1>
+<blockquote>
+<p>高性能开源全文搜索引擎，作为知识库（KB）体系的全文检索后端，为文章/文档标题与正文提供近实时、带相关度排序的搜索能力。对外经 <code>kb.marschat.online/meilisearch/</code> 暴露其自带调试面板。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（搜索中间件）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>getmeili/meilisearch:v1.12（实采确认；容器内 MEILI 版本以镜像为准）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>mykng（192.168.31.105）容器 <code>platform-meilisearch</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>7700（HTTP API + 内置调试面板）</td>
+</tr>
+<tr>
+<td>数据卷</td>
+<td>命名卷 <code>platform_platform-meili-data</code> → 容器内 <code>/meili_data</code></td>
+</tr>
+<tr>
+<td>健康状态</td>
+<td>healthy（docker healthcheck 通过）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/meilisearch/MeiliSearch（自部署，无自研源码）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，随 platform 层一并拉起）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://kb.marschat.online/meilisearch/</code>（经 mykng nginx 反代至 :7700，含 MeiliSearch 自带调试面板）</li>
+<li>内网：<code>http://192.168.31.105:7700</code></li>
+<li>Tailscale：<code>http://100.93.36.113:7700</code></li>
+<li>账密：主密钥（Master Key）见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能（禁止明文落盘）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器/服务 → https://kb.marschat.online/meilisearch/
+  → 腾讯云2号 nginx (443, TLS 终止) → http://100.93.36.113:80
+  → mykng nginx /meilisearch/ → proxy_pass http://127.0.0.1:7700/
+  → 容器 platform-meilisearch (:7700)
+</code></pre>
+<blockquote>
+<p>注：mykng nginx 的 <code>meilisearch.conf</code> 中 <code>location /meilisearch/ { proxy_pass http://127.0.0.1:7700/; }</code>——尾斜杠已对齐，访问路径 <code>/meilisearch/</code> 等价于直接访问 MeiliSearch 根。公网入口即 MeiliSearch 自带的 Web 调试面板（Search Preview），生产检索流量由 KB 服务经内网 :7700 直连。</p>
+</blockquote>
+<h2 id="docker-inspect2026-09-05">实采配置快照（docker inspect，2026-09-05）</h2>
+<ul>
+<li>启动：容器内执行 <code>/bin/meilisearch</code>，HTTP 监听 <code>0.0.0.0:7700</code>（<code>MEILI_HTTP_ADDR</code>）。</li>
+<li>运行模式：<code>MEILI_ENV=production</code>（生产模式，强制要求主密钥，未带密钥的写操作会被拒）。</li>
+<li>主密钥：<code>MEILI_MASTER_KEY</code> 已设置（值见 Vaultwarden，<strong>禁止明文落盘</strong>）；生产模式下创建索引、写入文档等需携带该密钥。</li>
+<li>健康检查：容器 healthcheck 状态 healthy；数据卷 <code>platform_platform-meili-data</code> → <code>/meili_data</code>。</li>
+</ul>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>全文检索：对索引（Index）中的文档做分词检索，支持中文（内置分词器对中文按字符切分，长词效果一般，复杂中文场景常配合额外分词策略）。</li>
+<li>索引与文档管理：在调试面板或通过 API 创建索引、增删改文档、配置可搜索字段（searchable attributes）与排序规则。</li>
+<li>近实时写入：文档 upsert 后秒级可被检索，适合知识库文章频繁更新场景。</li>
+<li>相关度与高亮：返回结果带匹配高亮与相关度评分，前端可直接展示。</li>
+<li>关联 KB：知识库前端的搜索框查询由 <code>kb-gateway</code>/<code>kb-knowledge</code> 转发到本实例的 :7700 API，返回带高亮与相关度的结果。具体检索字段映射以 KB 服务实现为准。</li>
+</ul>
+<h2 id="api">客户端/API 调用示例（组件通用用法）</h2>
+<ul>
+<li>健康检查：<code>curl https://kb.marschat.online/meilisearch/health</code>（或内网 <code>:7700/health</code>）返回 <code>{"status":"available"}</code>。</li>
+<li>搜索（带主密钥）：<code>curl -X Post 'https://kb.marschat.online/meilisearch/indexes/&lt;idx&gt;/search' -H "Authorization: Bearer &lt;MASTER_KEY&gt;" -H 'Content-Type: application/json' -d '{"q":"关键词"}'</code>。</li>
+<li>调试面板：浏览器打开 <code>https://kb.marschat.online/meilisearch/</code>，输入主密钥后可可视化搜索/管理索引。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：宿主 mykng 的 docker 引擎与数据卷；无独立外部依赖（索引自管于 <code>/meili_data</code>）。</li>
+<li>被依赖/关联系统：</li>
+<li><code>kb-knowledge</code>（知识库，8092）、<code>kb-gateway</code>（8090）经内网 :7700 调用搜索；</li>
+<li><code>kb-web</code> / <code>kb.marschat.online</code> 的站内搜索体验依赖本实例；</li>
+<li>与 MinIO（原始文件）、Qdrant（向量）并列构成 KB 检索/存储底座，但分工不同（见 MinIO 文档的关系表）。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：随 platform 中间件栈管理。<code>python woodScript/trigger-pipeline.py platform</code>；或 mykng 上 <code>docker compose -f /root/devtools/platform/docker-compose.platform.yml up -d platform-meilisearch</code>。</li>
+<li>日志查看：<code>docker logs platform-meilisearch</code>（持续 <code>docker logs -f platform-meilisearch</code>）；obs-dozzle（mykng :15500）按容器名检索。</li>
+<li>数据与备份：数据卷 <code>platform_platform-meili-data</code> → 容器内 <code>/meili_data</code>。备份对该卷做快照/同步（是否纳入统一备份以 infra-monitor 策略为准，待确认）。重建索引可由 KB 服务重新全量 upsert，故索引本身通常可从源头重建。</li>
+<li>可观测性：日志入 Loki（mykng promtail），可在 Grafana（内网 Deb :15300）检索；检索延迟/错误率可结合 nginx 与容器日志估计。</li>
+<li>版本升级：实采版本 v1.12（镜像 tag 固定为 <code>v1.12</code>，非 latest），升级前需确认 KB 服务 SDK 兼容矩阵，避免 API 破坏性变更。升级建议走 platform 层 compose 改 tag 后 <code>trigger-pipeline.py platform</code> 或手工 <code>docker compose up -d</code>。</li>
+</ul>
+<h2 id="_7">常见问题</h2>
+<ul>
+<li>7700 同时承载 API 与调试面板；公网 <code>kb.marschat.online/meilisearch/</code> 直接暴露了调试面板，注意主密钥保护，避免未授权索引操作（索引可被匿名增删）。</li>
+<li>中文检索质量受默认分词影响，长句/专业词召回可能不理想，调优需在写入侧做分词或字段配置（如拆字段、加拼音/同义词）。</li>
+<li>索引重建：若数据损坏或需调整 schema，可由 KB 服务端触发全量重建，无需手工逐条操作。</li>
+<li>生产模式必须带主密钥，忘记密钥会导致写 API 返回 401；密钥统一存 Vaultwarden。</li>
+</ul>
+<h2 id="_8">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

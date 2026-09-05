@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redis 管理面板（RedisInsight） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Redis 管理面板（RedisInsight）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Redis 管理面板（RedisInsight）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="redis-redisinsight">Redis 管理面板（RedisInsight）</h1>
+<blockquote>
+<p>面向 Redis 实例的 Web 可视化面板，预期提供键浏览、数据结构查看、慢查询与内存分析等运维能力。当前实采<strong>未部署</strong>，公网入口无真实上游。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>工具软件（缓存/KV 管理面板）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>RedisInsight（<strong>(待确认)</strong> 当前未实采到运行中容器，版本未知）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 redisinsight / redis-commander 容器（mykng 与内网 Debian 均无）</td>
+</tr>
+<tr>
+<td>端口</td>
+<td><strong>(待确认)</strong> portal 表登记公网路径 <code>tools.marschat.online/redis/</code>，但实采无对应上游</td>
+</tr>
+<tr>
+<td>后端</td>
+<td>platform-redis（mykng，redis:7-alpine，:6379）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/redisinsight/redisinsight（自部署）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
+<blockquote>
+<p>⚠️ <strong>discrepancy（2026-09-05 实采）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/redis/</code>，但核实后：
+- mykng 与内网 Debian <code>docker ps -a</code> 均无 redisinsight / redis-commander 容器；
+- 腾讯云2号与 mykng nginx 均无 <code>/redis/</code> location；
+- <code>/root/devtools/platform/</code> 部署目录未定义该服务。</p>
+<p>结论：该面板<strong>当前疑似未部署或已移除</strong>，公网 <code>/redis/</code> 无真实上游。入口状态标「待确认」，待运维确认是否需重新部署。</p>
+</blockquote>
+<ul>
+<li>公网：<code>https://tools.marschat.online/redis/</code>（<strong>(待确认)</strong> 实采无对应上游）</li>
+<li>内网：<strong>(待确认)</strong> 后端 Redis 在 <code>http://192.168.31.105:6379</code>，但面板本身未部署</li>
+<li>Tailscale：<strong>(待确认)</strong></li>
+<li>账密：Redis 密码见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能（禁止明文落盘）</li>
+</ul>
+<h2 id="_3">全链路 —— 实采结果</h2>
+<pre><code>登记链路：tools.marschat.online/redis/ → 腾讯云2号 nginx → ? (未知上游)
+实采：腾讯云2号 tools.marschat.online 仅配置
+        /activecode/ → http://100.105.196.63:18080
+        /codexclaw/  → http://100.93.36.113:8080/
+      无 /redis/ 段落 → 链路断点
+后端 Redis 实况：mykng 容器 platform-redis :6379 正常运行（docker ps 确认，redis:7-alpine）
+</code></pre>
+<p>预期（若重新部署）后端链路：<code>RedisInsight → platform-redis:6379</code>。<strong>(待确认)</strong></p>
+<h2 id="redis">后端 Redis 实况（已实采确认）</h2>
+<ul>
+<li>实例：<code>platform-redis</code>（mykng，镜像 redis:7-alpine），端口 3306→映射 6379（宿主 0.0.0.0:6379）。</li>
+<li>数据卷：命名卷 <code>platform_platform-redis-data</code> → 容器内 <code>/data</code>（RDB/AOF 持久化目录）。</li>
+<li>角色：作为 KB 体系、portal、activecode 等服务的缓存/会话/队列后端。</li>
+<li>若面板恢复，连接目标为 <code>platform-redis:6379</code>（容器内网络）或 <code>192.168.31.105:6379</code>（宿主网络），依部署网络而定；需提供 Redis 密码（见 Vaultwarden）。</li>
+</ul>
+<h2 id="_4">核心功能与使用（能力层面）</h2>
+<ul>
+<li>键空间浏览：按前缀查看 key、类型（string/hash/list/set/zset）与值，便于排查缓存。</li>
+<li>数据结构可视化：对各类 Redis 数据结构做图形化展示与编辑。</li>
+<li>慢查询/内存分析：借助 INFO、SLOWLOG 等做容量与性能分析。</li>
+<li>发布订阅调试：在面板内订阅 channel 观察消息。</li>
+</ul>
+<blockquote>
+<p>具体按钮级操作以实际部署后的面板为准，未实装界面不编造步骤。</p>
+</blockquote>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：后端 Redis <code>platform-redis</code>（mykng :6379）。</li>
+<li>被依赖/关联系统：KB 体系、portal、activecode 等服务以 Redis 作缓存/会话/队列，运维排查时用到本面板（若部署）。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：<strong>(待确认)</strong> 当前未部署。恢复建议在 mykng 部署 RedisInsight 容器连 <code>platform-redis:6379</code>，并在 mykng 或腾讯云2号 nginx 增加 <code>/redis/</code> 反代。</li>
+<li>部署参考（非当前生效，供恢复用）：RedisInsight 官方镜像 <code>redis/redisinsight</code>，置于 mykng 同网络，环境变量配置 Redis 连接串与密码；反代建议放 mykng nginx，再经腾讯云2号 <code>tools.marschat.online</code> 暴露。</li>
+<li>日志查看：部署后 <code>docker logs &lt;redisinsight 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>数据与备份：面板无状态，数据即后端 Redis；Redis 持久化（AOF/RDB）以容器卷 <code>platform_platform-redis-data</code> → <code>/data</code> 为准。</li>
+<li>安全：公网暴露面板风险较高，建议加访问保护或仅 Tailscale 暴露；凭证存 Vaultwarden。</li>
+</ul>
+<h2 id="_7">常见问题</h2>
+<ul>
+<li>公网 <code>/redis/</code> 当前无上游，属「未部署」预期表现。</li>
+<li>连 Redis 建议用只读/监控账号，避免面板误操作 FLUSH 清空缓存。</li>
+<li>恢复部署时 Redis 7 的 ACL/密码需与 <code>platform-redis</code> 实际配置一致。</li>
+</ul>
+<h2 id="_8">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 redisinsight 面板实采未部署、入口待确认，并补充 Redis 后端实况</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>mykng 知识库 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>mykng 知识库</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / mykng 知识库</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="mykng">mykng 知识库</h1>
+<blockquote>
+<p>基于 Spring Cloud 的私有化个人/团队知识库系统，提供文档管理、文件存储、全文搜索、网页收藏与智能知识抽取（实体图谱）能力，全端可通过浏览器访问。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>Web 系统（自研）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>Spring Boot 3.2.5 / Java 21 / MyBatis-Plus（微服务矩阵，README 标注）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng-debain（192.168.31.105）；容器 kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence / kb-web（均在 mykng 宿主机 docker）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\mykng\</code>；mykng 机 <code>/root/devtools/mykng</code>（Gitee + GitHub 双推）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Woodpecker 流水线项目 <code>mykng</code>（woodScript 触发：<code>python woodScript/trigger-pipeline.py mykng --wait</code>）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://kb.marschat.online/kb/</code>（经腾讯云2号 nginx → mykng nginx :80）</li>
+<li>内网：<code>http://192.168.31.105/kb/</code>（同机 80 端口，整站路径透传）</li>
+<li>Tailscale：<code>http://100.93.36.113/kb/</code></li>
+<li>API 网关调试：<code>http://192.168.31.105:8090/kb/api/</code>（kb-gateway 宿主机映射端口）</li>
+<li>入口重定向：访问 <code>https://main.marschat.online/</code> 或 <code>/kb</code> 会 302 跳转到 <code>/portal/</code>，知识库需显式走 <code>kb.marschat.online</code> 或 <code>/kb/</code> 路径</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器
+  → https://kb.marschat.online (腾讯云2号 nginx :443, TLS 终止)
+  → http://100.93.36.113:80 (mykng nginx)
+       /kb/、/kb/s/        → 127.0.0.1:8091 (kb-web 前端容器)
+       /kb/api/            → 127.0.0.1:8090 (kb-gateway)
+  → kb-gateway 按路由转发到注册在 Nacos 的后端微服务：
+       /kb/api/auth/*      → kb-auth
+       /kb/api/file/*      → kb-file
+       /kb/api/knowledge/* → kb-knowledge（注：各 Controller 的 @RequestMapping 前缀为 /doc、/folder、/space、/tag、/search、/share、/trash、/version、/web，统一挂在 /kb/api 下）
+       /kb/api/intelligence/* → kb-intelligence
+</code></pre>
+<blockquote>
+<p>说明：外部统一只暴露 kb-gateway（8090）。各微服务内部端口（README 标注：kb-auth 8081 / kb-file 8082 / kb-knowledge 8083 / kb-intelligence 8086）经 Nacos 服务发现互访，宿主机另映射了 8085/8089/8092/8086 供调试，前端不直接访问。</p>
+</blockquote>
+<h2 id="_4">核心功能与使用</h2>
+<p>mykng 由 5 个微服务 + 1 个前端组成，能力按模块划分（以下路由均相对 <code>/kb/api</code>）：</p>
+<h3 id="kb-gatewayapi-8090">kb-gateway（API 网关 · 端口 8090）</h3>
+<ul>
+<li>统一入口、JWT 鉴权、限流。</li>
+<li><code>GET /kb/api/system/modules</code>、<code>/kb/api/system/modules/{name}</code>：模块健康/状态探测（前端启动自检用）。</li>
+</ul>
+<h3 id="kb-auth">kb-auth（认证服务）</h3>
+<ul>
+<li><code>POST /auth/login</code>、<code>/auth/logout</code>、<code>/auth/refresh</code>、<code>GET /auth/me</code>：登录态与令牌管理。</li>
+<li><code>GET /user/profile</code>、<code>/user/list</code>、<code>PUT /user/profile</code>、<code>PUT /user/password</code>：当前用户资料、密码修改。</li>
+<li><code>POST /token</code>、<code>GET /token</code>、<code>DELETE /token/{id}</code>、<code>PUT /token/{id}/toggle</code>、<code>POST /token/verify</code>：API Token 的签发/列表/吊销/启用停用/校验（供脚本/第三方调用知识库接口）。</li>
+<li><code>GET /auth/log</code>、<code>GET /auth/request-log</code>、<code>POST /auth/error-log/report</code>：操作日志、请求日志、前端错误日志上报（运维审计用）。</li>
+</ul>
+<h3 id="kb-file-minio">kb-file（文件服务 · MinIO 存储）</h3>
+<ul>
+<li><code>POST /file/upload</code>（分块上传）、<code>POST /file/merge</code>（合并）、<code>GET /file/list</code>、<code>GET /file/{id}</code>、<code>GET /file/{id}/download</code>、<code>/download-stream</code>、<code>/content</code>（读写）、<code>PUT /file/{id}/content</code>。</li>
+<li><code>POST /file/{id}/reparse</code>：重新解析（全文索引构建）；<code>POST /file/rebuild-index</code>：重建全量索引。</li>
+<li><code>PUT /file/{id}/star</code>、<code>PUT /file/{id}/move</code>、<code>GET /file/trash</code>、<code>PUT /file/{id}/restore</code>、<code>DELETE /file/{id}/permanent</code>、<code>DELETE /file/trash/empty</code>：星标、移动、回收站与清空。</li>
+<li><code>GET /bucket/list</code>、<code>GET /bucket/{id}/stats</code>：文件桶（存储分区）列表与统计。</li>
+</ul>
+<h3 id="kb-knowledge">kb-knowledge（知识服务）</h3>
+<ul>
+<li><code>POST /doc</code>、<code>GET /doc/list</code>、<code>GET /doc/{id}</code>、<code>PUT /doc/{id}</code>、<code>DELETE /doc/{id}</code>、<code>PUT /doc/{id}/star</code>、<code>PUT /doc/{id}/move</code>、<code>GET /doc/{id}/versions</code>：文档 CRUD、星标、移动、历史版本。</li>
+<li><code>POST /folder</code>、<code>GET /folder/tree/{spaceId}</code>、<code>/tree-with-resources/{spaceId}</code>、<code>PUT /folder/{id}/move</code>、<code>/sort</code>、<code>DELETE /folder/{id}</code>：知识空间内的文件夹树（含资源树）。</li>
+<li><code>GET /space/list</code>、<code>POST /space</code>、<code>PUT /space/{id}</code>、<code>DELETE /space/{id}</code>：知识空间（顶层分类）管理。</li>
+<li><code>GET /tag/list</code>、<code>/stats</code>、<code>POST /tag</code>、<code>POST /tag/bind</code>、<code>/unbind</code>：标签与资源打标。</li>
+<li><code>GET /search</code>、<code>/search/suggest</code>、<code>/search/starred</code>：全文搜索（底层 MeiliSearch）、联想、星标检索。</li>
+<li><code>POST /share</code>、<code>GET /share/list</code>、<code>/my</code>、<code>/verify/{code}</code>、<code>/detail/{code}</code>、<code>DELETE /share/{id}</code>：文档分享（生成分享码、凭码访问）。</li>
+<li><code>GET /trash/list</code>、<code>POST /trash/restore/{type}/{id}</code>、<code>DELETE /trash/{type}/{id}</code>、<code>DELETE /trash/empty</code>：知识库级回收站。</li>
+<li><code>GET /version/list</code>、<code>POST /version/{id}/rollback</code>：版本列表与回滚。</li>
+<li><code>POST /web/collect</code>、<code>GET /web/list</code>、<code>/refetch</code>、<code>PUT /web/{id}/move</code>、<code>/star</code>：网页收藏（抓取 URL 存为知识页）。</li>
+</ul>
+<h3 id="kb-intelligence">kb-intelligence（智能服务）</h3>
+<ul>
+<li><code>GET /intelligence/machine/docs</code>（文档索引列表）、<code>/docs/{docId}/meta</code>、<code>/content</code>、<code>/entities</code>（抽取实体：hosts / services / commands / timelines / ports / credentials / domains）。</li>
+<li><code>POST /intelligence/machine/search</code>：语义/全文混合检索；<code>GET /intelligence/machine/stats</code>：知识图谱统计。</li>
+<li><code>/internal/*</code>（hosts / services / ports / credentials / domains / dependencies）：内部实体全量接口（供其他系统拉取基础设施台账）。</li>
+<li><code>POST /intelligence/import/path</code>、<code>GET /intelligence/import/status</code>：按本地路径批量导入并解析文档进知识库。</li>
+</ul>
+<h3 id="kb-web">kb-web（前端）</h3>
+<ul>
+<li><code>nginx:alpine</code> 托管静态 SPA，挂载路径 <code>/kb/</code>、<code>/kb/s/</code>，调用 <code>/kb/api/</code> 网关。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>存储/中间件（均位于 mykng 宿主的 platform 层容器，MySQL 为 GR 集群）：</li>
+<li>MySQL（<code>platform-mysql-1</code> 3306，GR 多主，库名 <code>tools</code> 之外的知识库业务库）—— 主业务库</li>
+<li>Redis 7（<code>platform-redis</code> 6379）—— 缓存 / 会话</li>
+<li>MongoDB 7（<code>platform-mongo</code> 27017）—— 文档/非结构化内容</li>
+<li>MinIO（<code>platform-minio</code> 9000/19001）—— 文件对象存储</li>
+<li>MeiliSearch（<code>platform-meilisearch</code> 7700）—— 全文搜索索引</li>
+<li>Nacos（<code>platform-nacos</code> 8848）—— 服务注册发现（实际版本 v2.4.3）</li>
+<li>Kafka（<code>platform-kafka</code> 9092）—— 异步任务（导入/解析）消息</li>
+<li>关联系统：kb-ops 运维管理（同源微服务，共用 Nacos/MySQL）；portal 工具看板将本系统登记为 id=1；infra-monitor / Dozzle 可观测其容器日志。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：<code>bash scripts/deploy.sh up</code> / <code>down</code>（仓库内 docker-compose）；或走 Woodpecker <code>mykng</code> 流水线（build → 产物推 <code>/mnt/shared/woodScript/publish/</code> → drone-ssh 到 mykng 执行 cd/deploy-*.sh 重建容器 + 健康检查 24×10s）。</li>
+<li>健康检查：<code>curl http://192.168.31.105:8090/kb/api/system/modules</code> 应返回 200 与各模块状态。</li>
+<li>日志：<code>docker logs kb-gateway</code> 等，<code>obs-dozzle</code>（mykng 侧 :15500）看实时日志，Grafana/Loki 聚合。</li>
+<li>数据与备份：业务数据在 MySQL GR（105:3306 主，182:3307/3308 从），落地有 GR 多副本；MinIO 文件、MongoDB 需纳入备份体系（待确认是否已在定期备份任务中）。</li>
+<li>常见问题：</li>
+<li>前端访问 302 跳 <code>/portal/</code>：知识库路径是 <code>/kb/</code>，不要走 <code>main.marschat.online</code> 根路径。</li>
+<li>文件解析/搜索为空：先 <code>POST /file/rebuild-index</code> 重建索引，再确认 MeiliSearch 容器健康。</li>
+<li>令牌调用失败：用 <code>/token/verify</code> 校验 API Token 状态（是否被禁用）。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 本地源码 Controller 路由 + README 生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

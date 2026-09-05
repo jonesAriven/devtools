@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>腾讯云2号主机 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>腾讯云2号主机</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 腾讯云2号主机</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="2">腾讯云2号主机</h1>
+<blockquote>
+<p>公网唯一入口主机（1.117.70.30 / Tailscale 100.110.114.16），nginx 终止全部 marschat.online 子域的 HTTPS 并反代到内网（Tailscale 隧道）；同时跑 Clash 出海代理与 Nginx UI。portal 上的管理入口现状：卡片 URL 指向 mykng Cockpit（192.168.31.105:15090），本机 Cockpit 未对外开放端口，实际管理走 SSH。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（主机）</td>
+</tr>
+<tr>
+<td>系统</td>
+<td>Ubuntu/Debian 系（Nginx sites-available 结构）</td>
+</tr>
+<tr>
+<td>公网 IP</td>
+<td>1.117.70.30</td>
+</tr>
+<tr>
+<td>Tailscale IP</td>
+<td>100.110.114.16</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>root@1.117.70.30（凭证见 infrastructure-map 技能）</td>
+</tr>
+<tr>
+<td>本机容器</td>
+<td>obs-dozzle（:15500）、obs-promtail（127.0.0.1:15200）、Nginx UI（宿主/进程 :19900）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网 SSH：<code>root@1.117.70.30</code>（22 端口开放）</li>
+<li>Nginx UI（本机 Nginx 的 Web 管理台）：<code>https://nginxui.marschat.online</code> → 127.0.0.1:19900</li>
+<li>Cockpit：本机 <code>systemctl is-active cockpit</code> 为 active，但 9090 被 Clash（127.0.0.1:9090）占用、未监听对外端口——portal 卡片 URL（192.168.31.105:15090）实际是 mykng 的 Cockpit，⚠️ 属配置错位，待修正 portal 条目或在本机给 Cockpit 独立端口</li>
+</ul>
+<h2 id="2026-09-05-etcnginxsites-enabled">全链路（本机承担的公网反代，2026-09-05 实采 /etc/nginx/sites-enabled/）</h2>
+<table>
+<thead>
+<tr>
+<th>子域</th>
+<th>上游</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main.marschat.online</td>
+<td>http://100.93.36.113（mykng nginx :80，portal/kb/ops/nacos/minio/meili 等全在此展开）</td>
+</tr>
+<tr>
+<td>kb.marschat.online</td>
+<td>http://100.93.36.113</td>
+</tr>
+<tr>
+<td>woodci.marschat.online</td>
+<td>http://100.93.36.113:8000（Woodpecker）</td>
+</tr>
+<tr>
+<td>nexus.marschat.online</td>
+<td>upstream nexus_backend（mykng Nexus；Docker 组走 :8083）</td>
+</tr>
+<tr>
+<td>monitor.marschat.online</td>
+<td>http://100.93.36.113:80 → /infra/</td>
+</tr>
+<tr>
+<td>nginxui.marschat.online</td>
+<td>127.0.0.1:19900（本机 Nginx UI）</td>
+</tr>
+<tr>
+<td>note.marschat.online</td>
+<td>http://100.93.36.113:6806（思源）</td>
+</tr>
+<tr>
+<td>vault.marschat.online</td>
+<td>http://100.93.36.113:8222（Vaultwarden）</td>
+</tr>
+<tr>
+<td>memory.marschat.online</td>
+<td>http://100.93.36.113:8720（memory-panel）</td>
+</tr>
+<tr>
+<td>s3.marschat.online</td>
+<td>http://100.93.36.113:9000（MinIO API）</td>
+</tr>
+<tr>
+<td>tokenhub.marschat.online</td>
+<td>http://100.93.36.113:13000</td>
+</tr>
+<tr>
+<td>tools.marschat.online</td>
+<td>激活码 → http://100.105.196.63:18080（直通内网Deb）；/akhq/ → http://100.93.36.113:8080</td>
+</tr>
+<tr>
+<td>tools-test.marschat.online</td>
+<td>upstream tools_test_backend（激活码测试）</td>
+</tr>
+<tr>
+<td>workcheck.marschat.online</td>
+<td>mykng :8010</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">核心功能与使用</h2>
+<ul>
+<li><strong>HTTPS 终止 + 反代</strong>：全家族域名的 443 TLS 证书（含 acme-challenge 自动续期）都在本机；加新子域 = sites-available 新增 conf + ln -s 到 sites-enabled + nginx -t reload（建议直接用 Nginx UI 操作）</li>
+<li><strong>Nginx UI</strong>（:19900）：可视化管 server/location、证书、日志——公网入口的首选操作面</li>
+<li><strong>Clash 出海代理</strong>：127.0.0.1:9090（clash-meta API）+ 7890 系端口，供内网机器出海（拉 DockerHub/依赖包等场景的前置通道之一）</li>
+<li><strong>安全边界</strong>：本机是唯一直接暴露公网的应用面，nginx 之外端口尽量不开放</li>
+</ul>
+<h2 id="_4">依赖与关联</h2>
+<ul>
+<li>下游：mykng（nginx :80 及各直连端口）、内网 Debian（激活码 18080）——全部走 Tailscale 隧道，公网请求 → 本机 → Tailscale → 内网</li>
+<li>关联：Uptime Kuma 持续探活本机全部子域；证书到期告警同在 Kuma</li>
+</ul>
+<h2 id="_5">运维要点</h2>
+<ul>
+<li>Nginx 配置备份：sites-backup/ 目录与多个 .bak 时间戳文件（历史变更留痕）</li>
+<li>日志：nginx access/error 在本机，promtail（127.0.0.1:15200）送 Loki 可在 Grafana 查</li>
+<li>常见问题：新子域 502 多为 Tailscale 隧道断或下游容器挂；证书续期失败查 acme-challenge location</li>
+<li>⚠️ 遗留：portal"腾讯云2号主机"卡片入口指向 mykng Cockpit，属历史配置错位，待修正</li>
+</ul>
+<h2 id="_6">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

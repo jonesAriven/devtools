@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>内网 Debian 主机 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>内网 Debian 主机</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 内网 Debian 主机</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="debian">内网 Debian 主机</h1>
+<blockquote>
+<p>内网 Debian 主机（192.168.31.182 / Tailscale 100.105.196.63 / 主机名 MiWiFi-RD15-srv）的 Cockpit 管理入口 + 主机角色总览。这台机器承担"第二机房"角色：可观测性栈（Kuma/Grafana/Loki/Dozzle/Promtail）、向量与 embedding（Qdrant/BGE）、激活码生产（activecode）、FRP 管理端（frp-manager）、MySQL GR 集群 Node2/Node3。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（主机）</td>
+</tr>
+<tr>
+<td>系统</td>
+<td>Debian（Cockpit + Docker）</td>
+</tr>
+<tr>
+<td>管理入口</td>
+<td>Cockpit 宿主服务，端口 15090（实探 http 可访问）</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>root@192.168.31.182（凭证见 infrastructure-map 技能）</td>
+</tr>
+<tr>
+<td>主要容器</td>
+<td>11 个（docker ps 实采 2026-09-05，见下表）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—</li>
+<li>Cockpit 内网：<code>http://192.168.31.182:15090</code></li>
+<li>Cockpit Tailscale：<code>http://100.105.196.63:15090</code></li>
+<li>账密：Linux 系统账号，见 Vaultwarden 或 infrastructure-map 技能</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（家庭局域网 / Tailscale）→ http://192.168.31.182:15090 → 宿主 Cockpit
+</code></pre>
+<h2 id="2026-09-05">本机容器清单（实采 2026-09-05）</h2>
+<table>
+<thead>
+<tr>
+<th>容器</th>
+<th>镜像</th>
+<th>宿主端口</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>activecode</td>
+<td>activecode:latest</td>
+<td>18080</td>
+<td>激活码服务生产（tools.marschat.online 上游）</td>
+</tr>
+<tr>
+<td>frp-manager</td>
+<td>frp-manager:1.0.0</td>
+<td>18082</td>
+<td>FRP 内网穿透管理端</td>
+</tr>
+<tr>
+<td>rag-qdrant</td>
+<td>qdrant/qdrant:latest</td>
+<td>6333/6334</td>
+<td>向量库（Hermes 记忆/知识检索）</td>
+</tr>
+<tr>
+<td>rag-embedding</td>
+<td>rag-embedding:bge-small-zh-v1.5</td>
+<td>8081</td>
+<td>BGE 中文向量化服务</td>
+</tr>
+<tr>
+<td>obs-uptime-kuma</td>
+<td>louislam/uptime-kuma:1</td>
+<td>15001</td>
+<td>存活监控+告警（18 monitor）</td>
+</tr>
+<tr>
+<td>obs-grafana</td>
+<td>grafana/grafana:11.3.0</td>
+<td>15300</td>
+<td>仪表盘可视化</td>
+</tr>
+<tr>
+<td>obs-loki</td>
+<td>grafana/loki:3.2.0</td>
+<td>15100</td>
+<td>日志聚合存储</td>
+</tr>
+<tr>
+<td>obs-dozzle</td>
+<td>amir20/dozzle:v8.11.7</td>
+<td>15888</td>
+<td>容器实时日志</td>
+</tr>
+<tr>
+<td>obs-promtail</td>
+<td>grafana/promtail:3.2.0</td>
+<td>内部</td>
+<td>日志采集 → Loki</td>
+</tr>
+<tr>
+<td>hive-metastore</td>
+<td>hive:4.2.0</td>
+<td>内部 9083/10000/10002</td>
+<td>Hive 元数据服务</td>
+</tr>
+<tr>
+<td>platform-mysql-2/3</td>
+<td>mysql:8.0</td>
+<td>3307/3308</td>
+<td>MySQL GR 集群 Node2/Node3</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>Cockpit</strong>：资源水位、systemd 服务、Web 终端、存储/网络——与 mykng Cockpit 用法一致</li>
+<li><strong>观测中枢</strong>：Grafana（:15300）/ Loki（:15100）/ Kuma（:15001）/ Dozzle（:15888）全在这台，跨机排查从这台进</li>
+<li><strong>数据面</strong>：MySQL GR Node2/3（deploy-mysql-cluster.sh 统一重启三节点）；Qdrant 向量存储 /var/lib/qdrant-storage 落盘</li>
+<li><strong>业务面</strong>：激活码生产实例（18080，公网 tools.marschat.online 直达本机 Tailscale IP 100.105.196.63:18080，链路为 腾讯云2号 → 内网Deb，是少数绕过 mykng 的业务链路）</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>关联：腾讯云2号（tools 域名反代到本机）；mykng（MySQL GR 对端、Loki 接收本机及全集群日志）</li>
+<li>备份：MySQL 数据随 GR 多副本；Qdrant/Kuma/Grafana 数据卷未纳入统一备份体系</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>compose 项目：/opt/observability/docker-compose.yml（观测栈）、activecode/frp-manager 独立 compose</li>
+<li>日志：本机容器用本机 Dozzle；journal 由本机 promtail 送 Loki</li>
+<li>常见问题：Tailscale 掉线会导致 tools.marschat.online（激活码）公网不可用，Kuma 会第一时间告警</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

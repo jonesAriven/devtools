@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loki 日志聚合 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Loki 日志聚合</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Loki 日志聚合</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="loki">Loki 日志聚合</h1>
+<blockquote>
+<p>轻量级日志聚合存储（Loki 3.2.0），接收三台主机 Promtail 采集的 journal/文件/容器日志，供 Grafana Explore 与仪表盘用 LogQL 查询；是"Grafana 看、Promtail 采、Loki 存"日志链路的存储中枢。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（可观测性）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>grafana/loki:3.2.0（容器实采）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>内网 Debian（192.168.31.182）容器 <code>obs-loki</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>15100（宿主）→ 容器 3100</td>
+</tr>
+<tr>
+<td>数据卷</td>
+<td>命名卷 <code>observability_loki-data</code> → /loki；配置 /opt/observability/loki/config.yml → /etc/loki/config.yml</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/grafana/loki</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，compose 位于内网 Debian /opt/observability/docker-compose.yml）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—（无公网反代）</li>
+<li>内网：<code>http://192.168.31.182:15100</code>（API 层面；人工查询统一走 Grafana）</li>
+<li>Tailscale：<code>http://100.105.196.63:15100</code></li>
+<li>账密：无鉴权（内网监听），Grafana 侧见 Vaultwarden</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<p>采集与查询两条链路：</p>
+<pre><code>采集：mykng / 内网Deb / 腾讯云2号 三台主机 obs-promtail
+  → 推送 http://192.168.31.182:15100（Loki /loki/api/v1/push）
+  → 容器 obs-loki (:3100)
+
+查询：浏览器 → Grafana (192.168.31.182:15300)
+  → Explore/看板 → 内部调用 obs-loki (:15100)
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>日志集中存储</strong>：三台主机（mykng 100.93.36.113、内网Deb 100.105.196.63、腾讯云2号 100.110.114.16）的 systemd journal、/var/log、Docker 容器 stdout 全部汇聚</li>
+<li><strong>LogQL 查询</strong>：在 Grafana Explore 按 <code>{container="kb-gateway"}</code>、<code>{host="tx2"}</code> 等标签检索，支持管道过滤与指标化（rate/bytes_over_time）</li>
+<li><strong>排查场景</strong>：portal 状态"离线"定位、流水线部署失败回看部署日志、生产日志滚动异常跨机比对（日志文件名与内容日期不匹配问题排查时即用此链路）</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>被依赖：Grafana（唯一查询入口）</li>
+<li>采集侧：各主机 obs-promtail（mykng 3.0.0 :15200、deb 3.2.0 内部、tx2 127.0.0.1:15200）</li>
+<li>关联：Dozzle（临时直看单容器日志，无需 LogQL）；两者互补——Dozzle 快、Loki 存历史可跨机</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：内网 Debian /opt/observability compose 项目</li>
+<li>配置：/opt/observability/loki/config.yml（retention/存储路径在此调整）</li>
+<li>数据与备份：loki-data 卷，未纳入统一备份，日志属可丢失数据，容量告急优先调 retention</li>
+<li>常见问题：promtail 断连后日志有洞；Loki 磁盘满会拒收（报 429/500），先清 retention 再重启采集端</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

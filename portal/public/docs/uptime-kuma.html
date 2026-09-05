@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Uptime Kuma 监控告警 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Uptime Kuma 监控告警</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Uptime Kuma 监控告警</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="uptime-kuma">Uptime Kuma 监控告警</h1>
+<blockquote>
+<p>站点/服务/端口存活监控与告警通知（Uptime Kuma 1.x，18 个 monitor），覆盖全部 portal 收录系统的健康检查；观测栈里"第一时间知道谁挂了"的哨兵，部署在内网 Debian，需 Tailscale/家庭局域网访问。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（可观测性）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>louislam/uptime-kuma:1（容器实采，1.x 线）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>内网 Debian（192.168.31.182）容器 <code>obs-uptime-kuma</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>15001（宿主）→ 容器 3001</td>
+</tr>
+<tr>
+<td>数据卷</td>
+<td>命名卷 <code>observability_uptime-kuma-data</code> → /app/data（SQLite，含全部 monitor 配置）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/louislam/uptime-kuma</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，compose 位于内网 Debian /opt/observability/docker-compose.yml）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—（无公网反代）</li>
+<li>内网：<code>http://192.168.31.182:15001</code></li>
+<li>Tailscale：<code>http://100.105.196.63:15001</code></li>
+<li>账密：见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（家庭局域网 / Tailscale）
+  → http://192.168.31.182:15001（docker-proxy 直连，无 nginx 层）
+  → 容器 obs-uptime-kuma (:3001)
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>存活监控（18 个 monitor）</strong>：portal 上收录的域名/系统（main / kb / nexus / woodci / vault / note / memory / tokenhub / tools / tools-test / monitor 等）+ 内部服务端口，按 HTTP(s)/TCP/关键字多类型探活</li>
+<li><strong>告警通知</strong>：探活失败触发通知渠道（配置于系统内 Notification），恢复自动通知</li>
+<li><strong>状态页</strong>：可发布公开/私有状态页（当前以内部使用为主）</li>
+<li><strong>证书监控</strong>：HTTPS 域名证书到期提醒（marschat.online 全家桶统一在此盯）</li>
+<li><strong>使用建议</strong>：portal 卡片"在线/离线"是浏览器端即时探测，仅当前会话视角；Uptime Kuma 才是 7×24 权威存活记录，二者不一致时以 Kuma 历史为准</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：无外部中间件（SQLite 自包含）</li>
+<li>关联：infra-monitor（自研，台账+配置漂移+账密登记视角）；Grafana（指标/日志可视化）——三层分工：Kuma 管存活告警、Grafana 管趋势定位、infra-monitor 管资产台账</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：内网 Debian /opt/observability compose 项目</li>
+<li>数据与备份：uptime-kuma-data 卷内 SQLite，改 monitor/通知后建议顺手备份该卷；未纳入统一备份体系</li>
+<li>日志：容器日志可由同机 Dozzle（:15888）直查</li>
+<li>常见问题：告警发不出先测 Notification 测试按钮；monitor 探测目标写公网域名时注意本机 Clash 出海代理会影响探测路径（内网 Debian 7890 端口有代理监听）</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成；monitor 数量取自 portal 卡片描述 18 个）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

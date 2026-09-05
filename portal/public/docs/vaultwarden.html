@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vaultwarden 密码管理 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vaultwarden 密码管理</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Vaultwarden 密码管理</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="vaultwarden">Vaultwarden 密码管理</h1>
+<blockquote>
+<p>全基础设施账密「唯一真相源」：Bitwarden 兼容的自托管密码库，集中保管所有主机、容器、服务与第三方 API 的账号密码/密钥。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施 / 安全（密码管理）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td><code>vaultwarden/server:latest</code>（材料包实采）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>mykng 容器 <code>vaultwarden</code>（镜像 <code>vaultwarden/server:latest</code>），端口 8222 → 80，<code>restart</code> 策略见 compose</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源 <code>vaultwarden/server</code>（Rust 实现 Bitwarden 服务端）；本地无构建仓库，直接拉官方镜像</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署容器）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://vault.marschat.online</code>（腾讯云2号 nginx 终止 TLS 443）</li>
+<li>内网：<code>http://192.168.31.105:8222</code>（mykng 宿主）</li>
+<li>Tailscale：<code>http://100.93.36.113:8222</code></li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 vault.marschat.online)
+       → http://100.93.36.113:8222  (mykng vaultwarden 容器)
+</code></pre>
+<p>（mykng 本机 nginx 另有 <code>/vault/ → 127.0.0.1:8222</code> 的 path 反代。）</p>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>密码库（Bitwarden 兼容）：登录/密码、安全笔记、API Key、卡片等条目的加密存储。</li>
+<li>多端客户端：浏览器扩展、桌面/移动 App、CLI 均可通过 <code>vault.marschat.online</code> 同步。</li>
+<li>作为「真相源」的用途：</li>
+<li>全基础设施的账密（主机 SSH、数据库、各服务后台、云厂商、LLM API Key 等）统一存放于此。</li>
+<li>全组文档（含本次 portal 文档补全）约定：<strong>任何文档不得出现明文密码/token/密钥</strong>，一律写「账密见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能」。</li>
+<li>典型场景：新成员/新服务开通时，从 Vaultwarden 取对应凭据；轮换密码后回写此处。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：SQLite 主库 <code>db.sqlite3</code>（默认）、可选 <code>attachments/</code> 附件卷、可选 SMTP（邮件/邀请）。</li>
+<li>被依赖/关联系统：<strong>几乎所有</strong>其他系统的凭证都存放在此（mykng/Deb/腾讯云/阿里云主机、MySQL/Redis/Mongo/MinIO/Nacos/Woodpecker、FRP dashboard、各类 API Key 等）。它与 <code>infrastructure-map</code> 技能互为「运行时凭证」与「架构事实」的两大知识源。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：<code>docker</code>（容器 <code>vaultwarden</code>，端口 8222）；具体 compose/启停命令未实采 (待确认)。</li>
+<li>日志查看：<code>docker logs vaultwarden</code>；Grafana/Loki（Deb 侧）可纳入日志归集。</li>
+<li>数据与备份</li>
+<li>备份仓库：<code>D:\huliang\java\ideaworkspace\vaultwarden-backup\</code>。</li>
+<li>备份内容（实采 2026-09-05）：每日 <strong>02:00</strong> 左右生成一组：<ul>
+<li><code>db_&lt;YYYYMMDD&gt;_*.sqlite3</code>（约 278KB，主数据库）</li>
+<li><code>config_&lt;YYYYMMDD&gt;_*.json</code>（约 1.9KB，服务配置）</li>
+<li><code>attachments_&lt;YYYYMMDD&gt;_*.tar.gz</code>（附件归档，当前约 45B，近乎空）</li>
+</ul>
+</li>
+<li>连续性：已连续存在 <strong>2026-08-29 至 2026-09-05</strong>（每日一份，9/5 当天也在），说明存在定时备份任务且稳定运行。</li>
+<li>备份任务位置未实采（可能在 mykng cron 或独立脚本拉取/导出）(待确认)；建议确认备份是否异地/长寿保留。</li>
+<li>安全要点</li>
+<li>这是最高敏感系统：<strong>禁止任何明文凭据外泄</strong>（含提交到仓库、写入文档）。</li>
+<li>建议开启 admin 令牌、失败锁定、定期改密；备份文件同样含敏感数据，需受控访问。</li>
+<li>常见问题</li>
+<li>容器非默认端口 80 而是宿主机 8222，nginx 反代注意 <code>/vault/</code> 路径与根域名两种入口的转发一致性。</li>
+<li>备份 <code>attachments</code> 体积长期为 45B：可能未实际使用附件功能，属正常。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 mykng 容器实采 + vaultwarden-backup 仓库实采 + 材料包生成；明确全基础设施账密真相源定位与每日备份现状）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

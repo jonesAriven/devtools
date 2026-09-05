@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus 私服（公网入口） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Nexus 私服（公网入口）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Nexus 私服（公网入口）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="nexus">Nexus 私服（公网入口）</h1>
+<blockquote>
+<p>Sonatype Nexus Repository Manager 3 自建制品仓库，统一代理 Maven / npm / PyPI / Docker 等源，作为 devtools 全部构建的依赖中枢与缓存加速层。本篇从<strong>公网域名入口</strong>视角描述；同一实例的内网直连用法见 <code>nexus-lan.md</code>。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施 / 制品仓库（开源组件自部署）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>Nexus Repository Manager <strong>3.91.1</strong>（<code>sonatype/nexus3:3.91.1</code>）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng（192.168.31.105），容器 <code>nexus</code>，端口 <code>8081-8083</code>（8081=UI/REST+Maven/npm/PyPI，8082/8083=Docker registry）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 github.com/sonatype-nexus-community；本实例配置见 mykng 上 <code>/root</code> 下 nexus 数据卷（容器挂载）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（基础设施层，自部署；首次安装/重启走手工 <code>docker</code>，不归应用流水线管）</td>
+</tr>
+<tr>
+<td>技术栈</td>
+<td>Java（Nexus OSS 3）、OrientDB/D blob 存储、REST API v1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网（主入口）：<code>https://nexus.marschat.online</code>（Maven/npm/PyPI 仓库与 Web 控制台，经腾讯云2号 nginx 443）</li>
+<li>公网（Docker registry）：经同一域名、Docker 走 <code>nexus_backend_docker:8083</code>（push/pull 用 8083）</li>
+<li>内网：<code>http://192.168.31.105:8081/</code>（Web 控制台与 REST）</li>
+<li>Tailscale：<code>http://100.93.36.113:8081/</code></li>
+<li>状态探针（匿名可探）：<code>/service/rest/v1/status</code>；Web 控制台 <code>/</code>（登录后管理仓库/权限）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>Maven/npm/PyPI + Web 控制台:
+nexus.marschat.online → 腾讯云2号 nginx(443) → upstream nexus_backend (mykng nexus :8081)
+
+Docker registry (push/pull):
+Docker 客户端 → 腾讯云2号 nginx → upstream nexus_backend_docker (mykng nexus :8083)
+（内网机也可直连 192.168.31.105:8082/8083，见 nexus-lan.md）
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<p>Nexus 作为"单一依赖源"，对外暴露若干仓库（repo），本实例实际配置与 infra-monitor 资产台账中的缓存策略一致：</p>
+<ul>
+<li><strong>Maven（maven-public / maven-releases / maven-snapshots）</strong>：</li>
+<li><code>maven-public</code> 为 group 仓库（聚合 releases + snapshots + 代理中央仓库），是 Maven 构建的统一 <code>mirror</code>/<code>repository</code>。</li>
+<li>应用项目（如 kb-ops、infra-monitor）的 <code>pom.xml</code> 将 <code>repositories</code>/<code>pluginRepositories</code> 与 <code>distributionManagement</code> 全部指向 <code>https://nexus.marschat.online/repository/maven-public/</code>（releases/snapshots），<strong>强制走 Nexus，禁用其他公网源</strong>。</li>
+<li><strong>npm（npm-public）</strong>：group 仓库（代理 npmjs + hosted），前端 pnpm 构建的 registry 指向 <code>192.168.31.105:8081/repository/npm-public/</code>（见 woodpecker 文档 <code>env.sh</code> 的 <code>NEXUS_NPM_REGISTRY</code>）。</li>
+<li><strong>PyPI（pypi）</strong>：代理仓库，供 Python 构建/依赖安装。</li>
+<li><strong>Docker（docker group，8082/8083）</strong>：托管/代理基础镜像，供内网 <code>docker pull</code> 加速（具体仓库名见控制台）。</li>
+<li><strong>缓存策略</strong>（与本实例一致）：<code>negativeCache</code> 关闭（避免临时失败被缓存为不存在）、<code>contentMaxAge=525600</code>（制品缓存 365 天，制品不可变）、<code>metadataMaxAge=1440</code>（版本列表每天刷新）。</li>
+<li><strong>缓存预热</strong>：<code>/home/liangzi/tools/nexus-warmup.sh</code>（腾讯云2号）每周日 03:30 执行，覆盖 npm(Top250+80 包)/maven(33)/pypi(47)/docker(22 个基础镜像)，日志 <code>/var/log/nexus-warmup.log</code>；实测 react 6.8MB 首次 19s → 缓存后 0.08s（约 237× 提速）。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：</li>
+<li><strong>出口代理</strong>：拉取公网源（google/github/docker/pypi）经各机 Clash Meta <code>:7890</code> 代理（见 infra-monitor 代理链路配置）。</li>
+<li><strong>存储卷</strong>：Nexus 数据卷（blob + 元数据）挂在 mykng 本地，建议纳入备份。</li>
+<li><strong>腾讯云2号 nginx</strong>：公网 HTTPS 终止与反代（nexus_backend / nexus_backend_docker）。</li>
+<li>被依赖/关联系统：</li>
+<li><strong>全部 Maven/npm 构建</strong>：kb-ops、infra-monitor、portal、mykng 等 <code>pom.xml</code>/<code>package.json</code> 指向本 Nexus。</li>
+<li><strong>Woodpecker CI</strong>：CI 容器内编译直接消费 Nexus 私服。</li>
+<li><strong>Docker 镜像拉取</strong>：内网机器经 8082/8083 拉基础镜像（见 nexus-lan.md）。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：<code>docker start/stop/restart nexus</code>（基础设施层，手工管理，不归应用流水线）。</li>
+<li>日志：<code>docker logs -f nexus</code>；Nexus 自身 <code>sonatype-work/nexus3/log/</code> 在容器内数据卷。</li>
+<li>数据与备份：blob 存储与元数据在 mykng 本地数据卷，建议定期备份；缓存预热日志在腾讯云2号 <code>/var/log/nexus-warmup.log</code>。</li>
+<li>凭据安全：Nexus 管理员账号与发布账号为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>；Maven/npm 发布用的 <code>settings.xml</code>/<code>_authToken</code> 亦不得明文入文档。</li>
+<li>常见问题：</li>
+<li>公网拉取慢：先确认缓存预热是否覆盖该包；未覆盖的首次拉取会经代理回源。</li>
+<li><code>negativeCache</code> 误伤：若曾回源失败被缓存，清对应仓库 negative cache 或等 <code>metadataMaxAge</code> 过期。</li>
+<li>Docker 推送 443/8083 不通：确认客户端 <code>daemon.json</code> 已配置 insecure-registry 或走 nginx TLS（见 nexus-lan.md）。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 腾讯云2号 nginx 配置 + 源码/infra-monitor 缓存策略生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

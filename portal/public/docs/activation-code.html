@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>激活码服务 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>激活码服务</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 激活码服务</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="_1">激活码服务</h1>
+<blockquote>
+<p>自研的软件授权（激活码）管理服务：管理员在后台生成带 RSA 签名的激活码，客户端软件内嵌验证库离线校验激活码有效性/过期/设备绑定，并记录激活流水。分为「生成/管理后台」与「客户端验证库」两部分，本篇为服务端（生成与管理）。</p>
+</blockquote>
+<h2 id="_2">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>Web 系统（自研）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>Spring Boot（Java）；镜像 <code>activecode:latest</code>（实采 <code>docker inspect</code>）；测试环境为 Spring Boot 3.4 + Java 21（portal 表 tools-test 条目）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>生产：内网 Debian（192.168.31.182）容器 <code>activecode</code>，<code>0.0.0.0:18080-&gt;8080</code>；挂载 <code>/mnt/shared/www/download/QRCodeTools → /app/downloads</code></td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server\</code>（仓库 <code>active-manager</code>，与前端静态页、验证库同仓）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Woodpecker 流水线项目 <code>active-manager</code>（woodScript <code>deploy-active-manager.sh</code> 部署到内网 Debian activecode compose，健康检查 <code>localhost:18080/activecode/login.html</code>）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">访问入口</h2>
+<ul>
+<li>公网（生产）：<code>https://tools.marschat.online/activecode/login.html</code>（腾讯云2号 nginx <code>tools.marschat.online</code> → <code>http://100.105.196.63:18080</code>）</li>
+<li>公网（测试）：<code>https://tools-test.marschat.online/</code>（portal 表里 tools-test 条目，对应 mykng 上 portal-server 8087 的激活码测试环境，Spring Boot 3.4 + Java 21）</li>
+<li>内网：<code>http://192.168.31.182:18080/activecode/login.html</code>（内网 Debian 直连）</li>
+<li>Tailscale：<code>http://100.105.196.63:18080/activecode/login.html</code></li>
+<li>管理后台页面：<code>/activecode/main.html</code>（登录后）、<code>/activecode/index.html</code>、<code>/activecode/downloads.html</code>（二维码工具下载页）；登录页 <code>/activecode/login.html</code></li>
+</ul>
+<h2 id="_4">全链路（生产）</h2>
+<pre><code>管理员浏览器
+  → https://tools.marschat.online/activecode/login.html (腾讯云2号 nginx :443)
+  → http://100.105.196.63:18080 (内网 Debian activecode 容器)
+       /activecode/login.html 等静态页由后端 PageController 从 classpath 读取返回
+       /activecode/api/*        由 Spring Boot 接口处理
+</code></pre>
+<blockquote>
+<p>测试环境链路：<code>tools-test.marschat.online</code> → mykng nginx :80 → <code>127.0.0.1:8087</code>（portal-server 容器内的激活码测试模块）。</p>
+</blockquote>
+<h2 id="_5">核心功能与使用</h2>
+<p>服务端由 4 个 Controller 组成（前缀 <code>/activecode/api</code>）：</p>
+<h3 id="authcontrolleractivecodeapiauth">AuthController（<code>/activecode/api/auth</code>）</h3>
+<ul>
+<li><code>POST /auth/login</code>、<code>/auth/logout</code>、<code>GET /auth/session</code>、<code>POST /auth/change-password</code>：管理员会话登录（基于 HttpSession，SHA-256 + 随机盐哈希口令）。</li>
+<li>首次启动若 <code>admin</code> 表为空，自动创建内置默认管理员账号（初始凭据见源码初始化逻辑，<strong>上线后务必改密，账密统一见 Vaultwarden 或 infrastructure-map 技能</strong>）。</li>
+</ul>
+<h3 id="activationcontrolleractivecodeapiactivation">ActivationController（<code>/activecode/api/activation</code>）—— 核心</h3>
+<ul>
+<li><code>POST /generate</code>：根据唯一序列号（软件初始序列号 + 机器码加密串）生成激活码（序列号 + 过期时间戳的 RSA 签名加密串）。每条生成记录落库。</li>
+<li><code>POST /verify</code>：激活码在线校验接口（客户端可调用，等价于离线验证库的在线版）。</li>
+<li><code>GET /list</code>：激活码记录查询（按 keyword/status 分页）。</li>
+<li><code>GET /logs</code>：激活流水查询（按 recordId/serialNumber/eventType/deviceId/时间区间）。</li>
+<li><code>GET /parse-code</code>、<code>/parse-serial</code>：解析激活码 / 序列号中的明文信息（调试/排查用）。</li>
+<li><code>DELETE /{id}</code>、<code>DELETE /batch</code>：单条/批量（≤100）删除记录。</li>
+<li><code>PUT /{id}/alias</code>：修改设备别名（便于管理识别）。</li>
+<li><code>GET/PUT /config/default-expire</code>：默认有效期配置（默认 43200 分钟 = 30 天）。</li>
+<li><code>GET/PUT /version-check</code>：版本校验配置（控制客户端激活时是否校验软件版本）。</li>
+</ul>
+<h3 id="downloadcontrolleractivecodeapidownload">DownloadController（<code>/activecode/api/download</code>）</h3>
+<ul>
+<li><code>GET /list</code>：扫描挂载目录 <code>/app/downloads</code>（→ <code>/mnt/shared/www/download/QRCodeTools</code>）下的 <code>.exe</code>，按修改时间倒序列出可下载版本（含大小）。</li>
+<li><code>GET /{filename}.exe</code>：带路径遍历防护的文件下载（二维码工具等客户端分发）。</li>
+</ul>
+<h3 id="pagecontroller">PageController（静态页）</h3>
+<ul>
+<li>提供 <code>/activecode/login.html</code>、<code>main.html</code>、<code>index.html</code>、<code>downloads.html</code>；未登录访问 <code>main.html</code> 自动 302 跳登录页。</li>
+</ul>
+<h2 id="_6">依赖与关联</h2>
+<ul>
+<li>数据库：MySQL（业务库，连接信息见 Vaultwarden / infrastructure-map；服务内使用连接池，记录表 <code>activation_record</code>、<code>activation_log</code>、<code>admin_user</code> 等）。</li>
+<li>关联系统：</li>
+<li><strong>激活码使用页面 / 验证库（activation-verifier）</strong>：客户端内嵌的验证 SDK，离线用 RSA 公钥验签，与服务端 <code>/generate</code> 生成的激活码一一对应。本服务是「发证机关」，对端是「验票终端」。</li>
+<li>客户端软件（如二维码工具 QRCodeTools）：拿到激活码后在本地调用验证库完成激活，相关 exe 由本服务 <code>/download</code> 分发。</li>
+</ul>
+<h2 id="_7">运维要点</h2>
+<ul>
+<li>启停：内网 Debian 上 <code>docker compose</code> 管理 <code>activecode</code> 容器；升级走 Woodpecker <code>active-manager</code> 流水线（<code>deploy-active-manager.sh</code>）。</li>
+<li>健康检查：<code>curl -s -o /dev/null -w '%{http_code}' http://192.168.31.182:18080/activecode/login.html</code> → <code>200</code>（2026-09-05 实采确认）。</li>
+<li>日志：<code>docker logs activecode</code>；内网 Debian 侧 <code>obs-dozzle</code>（:15888）实时日志，Grafana/Loki 聚合。</li>
+<li>数据与备份：激活码记录与流水在 MySQL；默认管理员账号 <code>admin</code> 在 <code>admin_user</code> 表，改密后请同步更新 Vaultwarden。</li>
+<li>常见问题：</li>
+<li>默认密码风险：首次部署的默认管理员账号必须改密（账密见 Vaultwarden 或 infrastructure-map 技能），否则任何人可进入后台生成激活码。</li>
+<li>客户端激活失败：先 <code>/parse-code</code> 看激活码是否过期或设备不匹配；再核对 <code>/version-check</code> 配置是否拦截了当前客户端版本。</li>
+</ul>
+<h2 id="_8">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps/inspect + 本地 <code>activation-code-server</code> 源码 Controller + 腾讯云2号 nginx 配置生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

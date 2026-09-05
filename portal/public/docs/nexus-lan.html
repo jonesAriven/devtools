@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus 私服（内网直连） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Nexus 私服（内网直连）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Nexus 私服（内网直连）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="nexus">Nexus 私服（内网直连）</h1>
+<blockquote>
+<p>与 <code>nexus.md</code> <strong>同一个 Nexus 实例</strong>（<code>sonatype/nexus3:3.91.1</code>，mykng 容器 <code>nexus</code>，端口 8081-8083）。本篇从<strong>内网构建依赖</strong>视角描述：局域网/ Tailscale 机器如何绕过公网、直连 <code>192.168.31.105:8081</code> 拉取 Maven/npm/PyPI/Docker 制品，获得最低延迟、不挤占腾讯云2号公网带宽。公网入口与仓库清单见 <code>nexus.md</code>。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施 / 制品仓库（内网视角）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>同 <code>nexus.md</code>：Nexus Repository Manager <strong>3.91.1</strong></td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng（192.168.31.105，内网 IP），容器 <code>nexus</code>，<code>8081-8083</code></td>
+</tr>
+<tr>
+<td>与 nexus.md 的关系</td>
+<td><strong>同一容器、同一数据卷</strong>，仅访问入口/用途侧重不同（内网直连 vs 公网域名）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（基础设施层，自部署）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口（内网视角）</h2>
+<ul>
+<li>内网直连（推荐构建用）：<code>http://192.168.31.105:8081/</code></li>
+<li>Tailscale：<code>http://100.93.36.113:8081/</code>（与腾讯云2号同机，Tailscale 直接到 mykng）</li>
+<li>Docker registry 内网直连：<code>http://192.168.31.105:8082/</code>（拉取）、<code>http://192.168.31.105:8083/</code>（推送/拉取，对应公网 <code>nexus_backend_docker</code>）</li>
+<li>公网（对照）：<code>https://nexus.marschat.online</code>（见 <code>nexus.md</code>）</li>
+</ul>
+<h2 id="_3">全链路（内网）</h2>
+<pre><code>内网构建机 / Tailscale 节点:
+  Maven  → http://192.168.31.105:8081/repository/maven-public/
+  npm    → http://192.168.31.105:8081/repository/npm-public/
+  PyPI   → http://192.168.31.105:8081/repository/pypi/   (仓库名以控制台为准)
+  Docker → http://192.168.31.105:8082/ 或 :8083/
+
+（不经过腾讯云2号，也不经公网带宽；仅 mykng 本机 nginx/lan 路由可达）
+</code></pre>
+<h2 id="_4">核心功能与使用（内网构建配置）</h2>
+<p>本实例对内网构建的意义是"把公网源收敛到一台机器并缓存"，各语言/工具需把源指向内网 Nexus：</p>
+<ul>
+<li><strong>Maven（<code>settings.xml</code>）</strong>：将 <code>&lt;mirror&gt;</code> 指向 <code>http://192.168.31.105:8081/repository/maven-public/</code>，或用 <code>pom.xml</code> 的 <code>repository</code> 指向同一地址。应用项目（kb-ops/infra-monitor/portal/mykng）已强制走 Nexus，内网直连即生效。</li>
+<li><strong>npm / pnpm</strong>：registry 指向 <code>http://192.168.31.105:8081/repository/npm-public/</code>（与 woodpecker <code>env.sh</code> 的 <code>NEXUS_NPM_REGISTRY</code> 一致）；前端流水线 <code>setup_pnpm()</code> 即锁定此地址。</li>
+<li><strong>PyPI（pip）</strong>：<code>pip install -i http://192.168.31.105:8081/repository/pypi/simple/ ...</code>（仓库名以控制台为准）。</li>
+<li><strong>Docker</strong>：内网 <code>daemon.json</code> 将 <code>192.168.31.105:8082</code>（或 <code>:8083</code>）加入 <code>insecure-registries</code>（HTTP 内网直连无需 TLS），<code>docker pull 192.168.31.105:8082/&lt;image&gt;</code> 走缓存。</li>
+<li><strong>缓存收益</strong>：依赖首次回源（经 mykng Clash <code>:7890</code> 代理）后缓存 365 天（<code>contentMaxAge</code>），内网后续拉取近乎本地速度；每周日 03:30 有 <code>nexus-warmup.sh</code> 预热常用包（npm Top250+/maven 33/pypi 47/docker 22）。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：</li>
+<li><strong>mykng Clash 代理</strong>（<code>:7890</code>）：Nexus 回源公网时经此出口（google/github/docker/pypi → Proxy）。</li>
+<li><strong>存储卷</strong>：同 nexus.md，mykng 本地数据卷。</li>
+<li>被依赖/关联系统：</li>
+<li><strong>所有内网构建机 / Tailscale 节点</strong>：Maven、pnpm、pip、docker 默认源指向此处。</li>
+<li><strong>Woodpecker CI 节点</strong>：CI 容器内编译消费 Nexus（内网可达）。</li>
+<li>与 <code>nexus.md</code> 互为入口：公网域名用于外部/移动访问，内网直连用于高频构建。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>验证内网可达：<code>curl -s -m 5 http://192.168.31.105:8081/service/rest/v1/status</code>（匿名可取状态；个别接口需权限返回空属正常）。</li>
+<li>启停：<code>docker restart nexus</code>（基础设施层手工管理）。</li>
+<li>日志：<code>docker logs -f nexus</code>；容器内 <code>sonatype-work/nexus3/log/</code>。</li>
+<li>数据与备份：同 nexus.md（blob + 元数据在 mykng 数据卷）。</li>
+<li>凭据安全：Nexus 管理员/发布账号与 Maven/npm/PyPI/Docker 凭证均为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>；内网 <code>settings.xml</code>/<code>_authToken</code>/<code>daemon.json</code> 中的明文不得入文档。</li>
+<li>常见问题：</li>
+<li>内网 8081 不通：确认 mykng 防火墙/lan 路由允许 8081-8083，且非经公网回环。</li>
+<li>Docker HTTP 被拒：内网直连需在客户端 <code>daemon.json</code> 声明 <code>insecure-registries</code>，或改用公网 HTTPS 域名。</li>
+<li>某包首次极慢：首次回源经代理，预热脚本未覆盖；可手动触发一次让其进缓存。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 内网入口与 nexus.md 同源实例生成；与 nexus.md 为同一实例的不同视角）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

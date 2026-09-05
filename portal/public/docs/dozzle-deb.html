@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dozzle 日志 (内网 Deb) · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dozzle 日志 (内网 Deb)</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Dozzle 日志 (内网 Deb)</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="dozzle-deb">Dozzle 日志 (内网 Deb)</h1>
+<blockquote>
+<p>内网 Debian（192.168.31.182）的 Docker 容器实时日志直查工具（Dozzle v8.11.7），挂载 docker.sock 直读全部容器 stdout，免登录即看；适合快速盯 Grafana/Loki 覆盖之外的临时性问题。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（可观测性）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>amir20/dozzle:v8.11.7（容器实采）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>内网 Debian（192.168.31.182）容器 <code>obs-dozzle</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>15888（宿主）→ 容器 8080</td>
+</tr>
+<tr>
+<td>挂载</td>
+<td>/var/run/docker.sock → /var/run/docker.sock（直读容器日志流）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/amir20/dozzle</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，compose 位于内网 Debian /opt/observability/docker-compose.yml）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—（无公网反代）</li>
+<li>内网：<code>http://192.168.31.182:15888</code></li>
+<li>Tailscale：<code>http://100.105.196.63:15888</code></li>
+<li>账密：实例未启用认证（内网监听），故 portal 描述注明"需 Tailscale/家庭局域网"</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（家庭局域网 / Tailscale）
+  → http://192.168.31.182:15888（docker-proxy 直连）
+  → 容器 obs-dozzle (:8080) → 读 docker.sock 容器日志流
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>实时日志流</strong>：本机全部容器（activecode、frp-manager、rag-qdrant、obs-grafana、obs-loki、obs-uptime-kuma、obs-promtail、rag-embedding、hive-metastore、platform-mysql-2/3 等）选即看、多容器合并视图</li>
+<li><strong>搜索/下载</strong>：日志内关键词搜索、时间范围回看、日志文件导出</li>
+<li><strong>典型场景</strong>：激活码服务（activecode）联调时实时盯日志；MySQL GR Node2/3 异常时快速看容器输出；Qdrant/embedding 调试</li>
+<li>与 Loki 的分工：Dozzle 看"现在"（无索引、直连快），Loki 存"历史"（可跨机检索）；临时排查用 Dozzle，跨机/历史归 Loki</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：Docker daemon（docker.sock 只读日志能力）</li>
+<li>关联：Dozzle (mykng)（同款，192.168.31.105:15500）；Grafana+Loki（历史日志）</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：内网 Debian /opt/observability compose 项目</li>
+<li>安全：因未开认证且挂载 docker.sock，务必保持仅内网/Tailscale 可达，不要加公网反代</li>
+<li>数据与备份：无状态（不落盘日志），可随时重建</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

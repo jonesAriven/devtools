@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工作量管理系统（WorkCheck） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>工作量管理系统（WorkCheck）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / 工作量管理系统（WorkCheck）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="workcheck">工作量管理系统（WorkCheck）</h1>
+<blockquote>
+<p>面向研发团队的「工作量自检 + COSMIC 功能点度量」统一平台：管理员做日报/周报/工时/功能点清单管理与系统配置，员工端填报工作日报并由 AI 生成内容、自动产出 COSMIC 拆分表。由「工作量查重」与「COSMIC 自动生成」两系统合并而成，FastAPI 单仓双端。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>Web 系统（自研）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>FastAPI 应用（<code>app/main.py</code> 标注 <code>title="WorkCheck System", version="1.0"</code>）；前端 Vue3 + jQuery/layui 静态托管</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng-debain（192.168.31.105）；容器 <code>workcheck-python</code>，<code>0.0.0.0:8010-&gt;8000</code>；启动命令 <code>uvicorn app.main:app --host 0.0.0.0 --port 8000</code>；数据卷 <code>/mnt/shared/workcheck-python/data → /app/data</code></td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>mykng 机 <code>/root/workcheck_python</code>（独立仓库，Gitee 双推）；本地仅有 <code>.env</code> 与 <code>data/</code> 镜像，非完整源码</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>独立仓库，<strong>不走 woodScript</strong>；自带 docker compose，手动 <code>docker compose up -d --build</code> 发布（2026-09-05 实采确认容器与挂载）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://workcheck.marschat.online/</code>（腾讯云2号 nginx <code>workcheck.marschat.online</code> → mykng :80 → <code>127.0.0.1:8010</code>）</li>
+<li>内网：<code>http://192.168.31.105/workcheck/</code>（mykng nginx 路径 <code>/workcheck/</code>、<code>/workcheck/api/</code>、<code>/static/</code> 均反代 127.0.0.1:8010）</li>
+<li>Tailscale：<code>http://100.93.36.113/workcheck/</code></li>
+<li>直接容器端口：<code>http://192.168.31.105:8010/</code>（2026-09-05 探活 200）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（员工端 / 管理端）
+  → https://workcheck.marschat.online (腾讯云2号 nginx :443)
+  → http://100.93.36.113:80 (mykng nginx)
+       /workcheck/、/workcheck/api/、/static/ → 127.0.0.1:8010 (workcheck-python)
+  → FastAPI 应用（静态页在 /app/static，API 在 /api 与各路由前缀）
+       DB: SQLite（WAL）或 MySQL（由 DATABASE_URL 切换）
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<p>后端 <code>app/routes/*</code> 与 <code>app/api/*</code>（COSMIC 原系统 <code>/api</code> 前缀）两大组路由，配对两套前端（<code>static/staff/</code> 员工端、<code>static/admin/</code> 管理端）。</p>
+<h3 id="staticstaff-admin0">员工端（<code>static/staff/</code>，账号 <code>admin=0</code>）</h3>
+<ul>
+<li><strong>工作日报</strong>（<code>/work</code> 路由：<code>getWorkTime</code>、<code>saveDayWorkDetail</code>、<code>getDayWorkContent</code>、<code>dayReport</code>、<code>deleteDay*</code>）：按日填报工作内容/工时/请假调休/加班；提交后自动级联生成并更新对应周报；支持 AI 智能生成工作/加班内容（基于员工最近 80 条日报，节点开启 <code>openAiWorkContentSwitch</code> 后生效）。</li>
+<li><strong>COSMIC 生成</strong>（<code>app/api/tasks.py</code> 等）：需求文本 → NLU 解析 → COSMIC 功能点拆分表（E/R/W/X 数据移动、CFP 统计，两阶段并行生成）→ 在线编辑 → 自动审核（规则引擎）→ 历史/文档内查重 → 导出 Excel/Word 需求规格说明书；案例库支持 zip/单独 xlsx 批量导入与进度展示。</li>
+<li><strong>标准一览</strong>：工作日报填写规范查阅。</li>
+<li><strong>📐 COSMIC 度量工作台（二代，<code>static/cosmic2/staff/</code>）</strong>：需求文档上传（docx/pdf，质量预检）→ 异步生成（LLM 抽取 + 规则判定 E/X/R/W，进度可视）→ 三栏复核（原文证据高亮联动/规则建议/一键修复）→ 近似估算/变更对比/成本区间 → 导出 Excel(5 sheet)/Word 正式报告/审计追溯包；支持第三方 Excel 度量表导入检查。</li>
+<li>全局入口（共享组件 <code>llm-config-panel.js</code>）：⚙ 模型来源 / 📝 提示词配置 / 📊 模型监控；个人模型未配置时回落服务端 <code>.env</code> 兜底 Key。</li>
+</ul>
+<h3 id="staticadmin-admin1-admin2">管理端（<code>static/admin/</code>，账号 <code>admin=1</code> 限本节点，<code>admin=2</code> 超管全节点）</h3>
+<ul>
+<li><strong>工作量管理</strong>（<code>/work</code>、<code>/compare</code>、<code>/case_manage</code>、<code>/history</code>）：</li>
+<li>日报管理：按节点/日期查询明细、删除、导出 Excel。</li>
+<li>周报管理：按周期/节点查询；员工只有日报无周报时系统自动按日报聚合回填；删除/导出（含内容或仅工时两种）。</li>
+<li>工时一览：周期内员工工时统计。</li>
+<li>功能点清单：Excel 上传解析、季度归档、历史下载。</li>
+<li>工作量自检（<code>/compare</code>：<code>check</code>、<code>checkRepeat</code>、<code>batchCheckRepeat</code>、<code>calculateSimilarity</code>、<code>dedupIndexStatus</code>、<code>rebuildDedupIndex</code>）：上传工作量 Excel 逐项校验（账号有效性、长度、敏感词、工时合理性、历史及文件内查重），含去重索引状态与重建。</li>
+<li>案例库管理（<code>/case_manage</code>）：分页查询/预览/编辑/删除恢复/批量下载；按相似度阈值聚合重复案例组；全部删除（软删/物理删两级）。</li>
+<li>导入历史工作量（<code>/history</code>：<code>importHistoryWork</code>、<code>getHistoryImportTasks</code>、<code>getHistoryPeriods</code>、<code>getHistoryWorkDetail</code>）：导入外部历史 Excel（两种模板自动识别），按条拆分到每天归档，加班落加班当天，员工缺失自动建档。</li>
+<li><strong>系统配置</strong>（<code>/period</code>、<code>/node</code>、<code>/staff</code>、<code>/cosmic_config</code>、<code>/mail_config</code>、<code>/account</code>、<code>/rbac</code>、<code>/menu_permission</code>、<code>/system_config</code>、<code>/word</code>、<code>/llm_config</code>、<code>/token_usage</code>）：</li>
+<li>周期管理：填报周期配置（按周，自动算应出勤天数）；每周一凌晨 1 点 APScheduler 自动新增本周周期。</li>
+<li>节点维护：组织节点树、邮件提醒开关、日报模板、AI 生成开关。</li>
+<li>员工信息维护：CRUD、Excel 批量导入导出、模板下载。</li>
+<li>敏感词配置、日报重复度阈值（仅超管）、邮件发送配置（仅超管 SMTP）、账号分配（仅超管，关联节点+角色+重置密码）、员工模型配置（仅超管，Key 掩码）、角色管理（仅超管，接口权限点+可见菜单）、审计日志（仅超管）、菜单权限管控（仅超管）。</li>
+<li>🧮 COSMIC 配置中心（二代，<code>static/cosmic2/admin/</code>）：12 个配置页——概览/检查规则(60+条 L1-L4)/动词词典/Prompt 模板/造价基准 CSBMK/估算参数/示例库/金标准回归门禁/治理看板/LLM 网关(路由/降级链/配额/成本)/质量词表/规则包版本。</li>
+</ul>
+<h3 id="administrator-admin">账号与角色（<code>administrator</code> 表，<code>admin</code> 字段区分）</h3>
+<ul>
+<li>员工 <code>0</code> / 管理员 <code>1</code>（限名下节点 <code>node.userId</code>）/ 超级管理员 <code>2</code>（仅内置 <code>admin</code> 账号，全节点，独占账号分配）。</li>
+<li>账号必须关联节点；超管账号不可页面增删改，启动时若缺失自动建默认超级管理员账号（<strong>上线后改密，账密见 Vaultwarden 或 infrastructure-map</strong>）。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>存储/中间件：SQLite（WAL，默认）或 MySQL（由 <code>DATABASE_URL</code> 切换）；Elasticsearch（<code>.env</code> 配 <code>ELASTICSEARCH_URL</code>，检索增强，<strong>是否启用待确认</strong>）；LLM（DeepSeek 等 OpenAI 兼容接口，<code>.env</code> 配 <code>DEEPSEEK_*</code>）。</li>
+<li>技术组件：SQLAlchemy 2.0、APScheduler（周期/定时任务）、httpx、openpyxl、python-docx、jieba（查重分词）、Vue3 + Element Plus（登录/框架/COSMIC 页）、jQuery + layui + bootstrap-table（管理页，纯静态无构建）。</li>
+<li>关联系统：与 cosmic-studio 同属 COSMIC 度量领域——本系统内置 COSMIC 生成/二代工作台（面向研发团队工作量场景），cosmic-studio 为独立的生产系统（编写库/归档库/推导引擎/质量门禁，P0）。两者能力互补、数据模型不同。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：mykng 上 <code>docker compose</code> 管理 <code>workcheck-python</code>（端口 8010）；发布须 <code>docker compose up -d --build</code>（restart 不更新镜像内代码）。</li>
+<li>健康检查：<code>curl -s -o /dev/null -w '%{http_code}' http://192.168.31.105:8010/</code> → <code>200</code>（2026-09-05 实采）。</li>
+<li>日志：<code>docker logs workcheck-python</code>；<code>obs-dozzle</code>（mykng :15500）实时；Grafana/Loki 聚合。</li>
+<li>数据与备份：业务数据在 <code>/app/data</code>（挂载 <code>/mnt/shared/workcheck-python/data</code>，含 <code>search_index.db</code>、exports/rules/templates）；SQLite/MySQL 需纳入备份体系（待确认是否已在定期备份）。</li>
+<li>常见问题：</li>
+<li>周报缺失：员工只填日报未生成周报时，管理端查询会自动按日报聚合回填。</li>
+<li>AI 生成不出现：检查节点 <code>openAiWorkContentSwitch</code> 是否开启、员工个人模型来源或服务端 <code>.env</code> 兜底 Key 是否配置。</li>
+<li>查重不准：去重索引可经 <code>/compare/rebuildDedupIndex</code> 重建；阈值由超管在「日报重复度阈值」配置。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 <code>/root/workcheck_python</code> 源码 <code>main.py</code>/<code>routes/*</code>/<code>api/*</code> + README + 容器实采生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

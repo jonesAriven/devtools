@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tools-test 测试环境 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>tools-test 测试环境</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / tools-test 测试环境</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="tools-test">tools-test 测试环境</h1>
+<blockquote>
+<p>激活码服务的公网测试环境，与生产 <code>tools.marschat.online</code>（内网 Deb activecode 18080）相隔离，用于激活码相关功能的上线前验证。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>测试环境 / 工具（激活码服务测试版）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>激活码服务测试版（portal 表标注：Spring Boot 3.4 + Java 21）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>公网域名经腾讯云2号 nginx 反代；上游 <code>tools_test_backend</code> = <code>aliyun.marschat.online:18081</code>（即阿里云主机 120.26.66.182 的 18081 端口）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>与激活码服务同体系（自研）；本地 devtools 工作区未见独立仓库，后端位于阿里云主机 (待确认)</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（测试环境，单独部署于阿里云）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<code>https://tools-test.marschat.online</code>（腾讯云2号 nginx 终止 TLS 443）</li>
+<li>内网：无独立内网入口，经公网反代指向阿里云 18081</li>
+<li>Tailscale：阿里云 100.89.102.74:18081（上游真实地址，直连需网络可达）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 tools-test.marschat.online)
+       → upstream tools_test_backend
+       → aliyun.marschat.online:18081  (阿里云主机 120.26.66.182:18081)
+</code></pre>
+<h2 id="2026-09-05-2-nginx">实采依据（2026-09-05 腾讯云2号 nginx）</h2>
+<p><code>/etc/nginx/sites-available/tools-test.marschat.online</code> 全文要点：</p>
+<pre><code>upstream tools_test_backend {
+    server aliyun.marschat.online:18081;
+    keepalive 8;
+}
+
+server {
+    server_name tools-test.marschat.online;
+    location / {
+        proxy_pass http://tools_test_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection &quot;&quot;;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+    }
+    listen 443 ssl; http2 on;
+    ssl_certificate /etc/nginx/ssl/marschat.online/fullchain.pem;
+    ...
+}
+</code></pre>
+<ul>
+<li><code>sites-enabled/</code> 中存在软链 <code>tools-test.marschat.online -&gt; /etc/nginx/sites-available/tools-test.marschat.online</code>（7月14日创建），配置生效中。</li>
+<li>80 端口 <code>server_name tools-test.marschat.online</code> 一律 <code>return 404</code>，强制走 HTTPS。</li>
+</ul>
+<blockquote>
+<p>重要差异：材料包第 5 节曾注「upstream → mykng portal-server 8087 激活码测试环境」，与<strong>实采 nginx 配置不符</strong>——实际指向 <code>aliyun.marschat.online:18081</code>。本文以实采 nginx 为准，并在「常见问题」中标注。</p>
+</blockquote>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>激活码服务测试版：与生产激活码服务同构，但数据/部署隔离，用于：</li>
+<li>新激活码规则、发放/校验逻辑的上线前验证。</li>
+<li>回归测试，避免直接污染生产（<code>tools.marschat.online</code> → 内网 Deb activecode 18080）。</li>
+<li>访问方式：通过公网测试域名直接打开测试页面/接口。</li>
+</ul>
+<blockquote>
+<p>具体页面路径、接口契约、管理后台地址未经实测，按激活码服务测试用途描述；如启用后需补充界面细节。</p>
+</blockquote>
+<h2 id="vs">测试环境 vs 生产环境</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>生产 tools.marschat.online</th>
+<th>测试 tools-test.marschat.online</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>上游</td>
+<td>内网 Deb <code>100.105.196.63:18080</code>（activecode 容器）</td>
+<td>阿里云 <code>aliyun.marschat.online:18081</code></td>
+</tr>
+<tr>
+<td>数据</td>
+<td>生产库</td>
+<td>隔离测试数据</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>正式发放/校验激活码</td>
+<td>上线前验证、回归</td>
+</tr>
+<tr>
+<td>域名创建</td>
+<td>早期</td>
+<td>2026-07-14 入 nginx enabled</td>
+</tr>
+</tbody>
+</table>
+<p>两点并列于同一 nginx 反代家族，互不干扰。</p>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：阿里云主机 120.26.66.182 上的 18081 服务进程；按激活码服务同体系推断可能涉及 MySQL/Redis 等（未实采）(待确认)。</li>
+<li>被依赖/关联系统：</li>
+<li>生产激活码服务：<code>tools.marschat.online</code>（内网 Deb activecode 容器 18080）。</li>
+<li>同一 nginx 反代家族：<code>tools.marschat.online</code>（→ 100.105.196.63:18080）与 <code>tools-test.marschat.online</code>（→ aliyun:18081）并列。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：后端位于阿里云主机，启停命令未实采 (待确认)。</li>
+<li>日志查看：阿里云侧服务日志路径未实采 (待确认)；nginx 侧见腾讯云2号 <code>/var/log/nginx/</code>。</li>
+<li>数据与备份：测试环境数据隔离策略（是否独立库）未实采 (待确认)；建议测试数据定期清理，避免长期堆积。</li>
+<li>常见问题</li>
+<li><strong>upstream 与材料包不一致</strong>：实采 nginx 指向 <code>aliyun.marschat.online:18081</code>，材料包注记的 <code>mykng:8087</code> 已过时或曾误记；以本文实采为准。若后端曾迁移，请在基础设施记录中更新。</li>
+<li>从 mykng 侧探测 <code>120.26.66.182:18081</code> 返回 000（不可达），可能该端口仅对腾讯云2号侧放行或当前未运行——域名经腾讯云2号反代可达，但后端直连性待确认。</li>
+<li>若测试环境返回 502：先查阿里云 18081 进程是否存活、再查 nginx upstream 解析 <code>aliyun.marschat.online</code> 是否正确。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 SSH 实采 nginx 配置 + 材料包生成；标注了 upstream 实采值与材料包注记的差异）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

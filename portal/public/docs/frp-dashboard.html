@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FRP 仪表盘 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>FRP 仪表盘</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / FRP 仪表盘</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="frp">FRP 仪表盘</h1>
+<blockquote>
+<p>内网穿透体系的「服务端状态看板 + 集中管理」双组件：阿里云 frps 服务端仪表盘（7500）查看穿透运行态，内网 Debian 上的 frp-manager 集中管理代理/隧道配置。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>工具软件 / 接入（内网穿透）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>frps 服务端及管理端版本未实采（dashboard 需登录，未取到版本号）(待确认)</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>FRP 服务端 + 仪表盘：阿里云主机 120.26.66.182（Tailscale 100.89.102.74），仪表盘端口 7500；frp-manager：内网 Debian 192.168.31.182（Tailscale 100.105.196.63）容器 <code>frp-manager:1.0.0</code>，端口 18082</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>frp-manager 为自研/自选镜像 <code>frp-manager:1.0.0</code>（Java 21 / Spring Boot，JDK 21.0.11），镜像构建源未在工作区找到 (待确认)；FRP 本体为开源 fatedier/frp</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网（仪表盘）：<code>http://120.26.66.182:7500</code>（直连 IP:端口，非 443；访问需 dashboard 登录凭据，实测得 401 Unauthorized）</li>
+<li>内网 / Tailscale（仪表盘）：<code>http://100.89.102.74:7500</code></li>
+<li>内网（frp-manager 管理端）：<code>http://192.168.31.182:18082</code>（HTTP，根路径返回 404，需具体子路径/登录）</li>
+<li>公网域名：无（仅直连 IP；frp-manager 不暴露公网）</li>
+</ul>
+<blockquote>
+<p>注：FRP 仪表盘与 frp-manager 均未走腾讯云2号 nginx 反代，属于「接入/穿透」侧独立组件，与 marschat.online 公网入口是两套并行通道。</p>
+</blockquote>
+<h2 id="_3">全链路</h2>
+<pre><code>[FRP 仪表盘]
+浏览器 → 阿里云 120.26.66.182:7500 (frps dashboard，401 鉴权)
+
+[frp-manager 管理端]
+浏览器 → 内网 Deb 192.168.31.182:18082 (frp-manager 容器, Java/Spring Boot)
+</code></pre>
+<h2 id="frp_1">背景：FRP 与内网穿透</h2>
+<p>FRP（Fast Reverse Proxy）是一套开源内网穿透工具，由 <strong>frps（服务端）</strong> 与 <strong>frpc（客户端）</strong> 组成：</p>
+<ul>
+<li><strong>frps</strong> 部署在有公网 IP 的机器（本例：阿里云 120.26.66.182），作为中转/出口；其内置 <strong>Dashboard</strong> 在独立端口（本例 7500）提供 Web 状态查看，需单独的用户名/密码鉴权。</li>
+<li><strong>frpc</strong> 部署在需要被暴露的内网机器，把本地端口「注册」到 frps；外部流量经 frps 公网端口转发回 frpc 所在内网服务。</li>
+<li>典型用途：在家/出差访问家里内网的设备与自托管服务，而无需为每台设备申请公网 IP 或开端口。</li>
+</ul>
+<p>本套部署把「出口/看板」放在阿里云、「配置管理」放在内网 Debian，形成「穿透出口 + 集中管控」的分工。</p>
+<h2 id="_4">本套部署拓扑（实采）</h2>
+<ul>
+<li><strong>阿里云 120.26.66.182（Tailscale 100.89.102.74）</strong></li>
+<li>frps 服务端 + Dashboard 7500。</li>
+<li>实采：从 mykng 探测 <code>120.26.66.182:7500</code> 返回 401（鉴权生效，服务在线）；探测默认 bind 端口 <code>:7000</code> 返回 000（不可达，疑似防火墙仅放行 7500 或 bind 端口不同）(待确认)。</li>
+<li><strong>内网 Debian 192.168.31.182（Tailscale 100.105.196.63）</strong></li>
+<li>容器 <code>frp-manager:1.0.0</code>（Java 21 / Spring Boot），端口 18082，挂载极简（仅 <code>/etc/localtime</code>）。</li>
+<li>实采：根路径返回 404，容器进程存活，属 HTTP 管理界面（需具体子路径或登录后访问）。</li>
+</ul>
+<p>两者关系（基于实采推断）：frp-manager 是集中配置/管理 FRP 代理与隧道的控制台；其下发的代理配置最终注册到阿里云 frps，由 7500 仪表盘查看服务端侧运行态。<strong>具体联动/下发机制未实采，标记为 (待确认)。</strong></p>
+<h2 id="_5">核心功能与使用</h2>
+<ul>
+<li>FRP 仪表盘（7500）</li>
+<li>查看 frps 服务端状态：运行时间、版本、客户端连接数、各代理流量统计。</li>
+<li>查看已建立的代理/隧道列表（TCP/UDP/HTTP/HTTPS 等类型）、对应客户端、最近流量。</li>
+<li>运维排障入口：确认某条内网穿透隧道是否在线、流量是否异常、客户端是否掉线。</li>
+<li>frp-manager（18082）</li>
+<li>集中维护 FRP 代理/隧道配置（自研/自选 Java 管理端），通常用于避免手工编辑 frps 配置文件。</li>
+<li>面向「需要把内网服务暴露到阿里云公网出口」的场景。</li>
+</ul>
+<blockquote>
+<p>具体 UI 操作细节（按钮/表单）未经实测，按能力层面描述；如需逐项步骤，建议登录后补录。</p>
+</blockquote>
+<h2 id="_6">依赖与关联</h2>
+<ul>
+<li>依赖：阿里云主机的公网 IP 与带宽（穿透出口）；内网 Deb 的容器运行时（frp-manager）。</li>
+<li>被依赖/关联系统：所有经此穿透暴露的内网服务。与腾讯云2号 nginx 入口（marschat.online）是<strong>两套并行的对外暴露通道</strong>，互不重叠，分工为「公网子域反代」 vs 「任意内网服务穿透」。</li>
+</ul>
+<h2 id="_7">运维要点</h2>
+<ul>
+<li>启停方式</li>
+<li>阿里云 frps：由阿里云主机上的 frps 进程/服务托管（启动方式未实采）(待确认)。</li>
+<li>frp-manager：<code>docker</code>（容器 <code>frp-manager:1.0.0</code>，端口 18082，restart 策略见 compose）— 具体 compose/启停命令未实采 (待确认)。</li>
+<li>日志查看</li>
+<li>frp-manager：<code>docker logs frp-manager</code>。</li>
+<li>阿里云 frps 日志路径未实采 (待确认)。</li>
+<li>数据与备份</li>
+<li>frp-manager 容器挂载极简（仅 <code>/etc/localtime</code>），配置大概率落在容器内部卷或数据库，备份现状未实采 (待确认)。</li>
+<li>FRP 代理配置（frps 侧）的备份/版本管理未实采 (待确认)；建议将 frps 配置与 frp-manager 数据纳入备份。</li>
+<li>常见问题</li>
+<li>访问 7500 返回 401：属正常，需 dashboard 用户名/密码（账密见 Vaultwarden 或 infrastructure-map 技能）。</li>
+<li>从 mykng 探测阿里云 7000（默认 bind 端口）不可达（返回 000），疑似防火墙仅放行 7500 或 bind 端口不同 (待确认)。</li>
+<li>frp-manager 根路径 404：管理界面需登录或具体子路径，属正常。</li>
+</ul>
+<h2 id="_8">安全要点</h2>
+<ul>
+<li>frps Dashboard 必须设强口令（已生效，返回 401）；口令入 Vaultwarden，勿明文。</li>
+<li>穿透会直接把内网服务暴露到公网，隧道权限（谁可建、暴露到哪个端口）需最小化管理，避免误暴露高风险服务。</li>
+<li>frp-manager 仅内网可达、不暴露公网，符合「管理面收敛到内网」的惯例。</li>
+</ul>
+<h2 id="_9">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 SSH 实采 + 材料包生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

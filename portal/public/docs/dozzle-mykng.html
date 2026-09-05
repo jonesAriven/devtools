@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dozzle 日志 (mykng) · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dozzle 日志 (mykng)</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Dozzle 日志 (mykng)</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="dozzle-mykng">Dozzle 日志 (mykng)</h1>
+<blockquote>
+<p>mykng 主机（192.168.31.105）的 Docker 容器实时日志直查工具（Dozzle latest），挂载 docker.sock 直读全部容器 stdout；mykng 是主部署机，kb-* 五件套、portal、kb-ops、infra-monitor、woodpecker、Nexus、各中间件共 30 个容器的日志都能在这一个页面里实时盯。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（可观测性）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>amir20/dozzle:latest（容器实采）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>mykng（192.168.31.105）容器 <code>obs-dozzle</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>15500（宿主）→ 容器 8080</td>
+</tr>
+<tr>
+<td>挂载</td>
+<td>/var/run/docker.sock → /var/run/docker.sock</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/amir20/dozzle</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，独立容器运行）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—（无公网反代）</li>
+<li>内网：<code>http://192.168.31.105:15500</code></li>
+<li>Tailscale：<code>http://100.93.36.113:15500</code></li>
+<li>账密：实例未启用认证（内网监听），portal 描述注明"需 Tailscale/家庭局域网"</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（家庭局域网 / Tailscale）
+  → http://192.168.31.105:15500（docker-proxy 直连）
+  → 容器 obs-dozzle (:8080) → 读 docker.sock 容器日志流
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>实时日志流</strong>：kb-gateway/kb-auth/kb-file/kb-knowledge/kb-intelligence、portal-server/portal-web、kb-ops、infra-monitor、workcheck-python、cosmic-api/cosmic-web、memory-panel、woodpecker-server/agent、nexus、platform-*（mysql/redis/mongo/minio/meilisearch/kafka/nacos）、vaultwarden 等，全部一页可达</li>
+<li><strong>搜索/合并视图</strong>：多容器同屏合并（如 kb 五件套联排）排接口链路问题特别顺</li>
+<li><strong>典型场景</strong>：流水线部署后马上盯新容器启动日志确认健康检查为何不过；生产接口报错时实时看 gateway 日志（与 Loki 历史检索互补）</li>
+<li>与 Loki 分工：Dozzle 看实时，Loki（Grafana）查历史跨机</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：Docker daemon</li>
+<li>关联：Dozzle (内网 Deb)（192.168.31.182:15888）、Dozzle (腾讯云2号)（1.117.70.30:15500，Tailscale 侧）；Woodpecker CI 流水线日志看构建/部署，Dozzle 看应用运行时——部署问题在 CI 日志，运行问题在这里</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：<code>docker restart obs-dozzle</code>（单容器，无 compose 编排）——待确认是否已纳入某 compose 项目</li>
+<li>安全：无认证 + docker.sock，保持仅内网/Tailscale 可达，禁止公网反代</li>
+<li>数据与备份：无状态，可随时重建</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

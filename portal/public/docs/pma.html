@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MySQL 管理面板（phpMyAdmin） · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>MySQL 管理面板（phpMyAdmin）</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / MySQL 管理面板（phpMyAdmin）</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="mysql-phpmyadmin">MySQL 管理面板（phpMyAdmin）</h1>
+<blockquote>
+<p>面向 MySQL Group Replication（GR）集群的 Web 管理面板，预期提供库表浏览、SQL 执行、数据导入导出等 DBA 操作界面。当前实采<strong>未部署</strong>，公网入口无真实上游。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>工具软件（数据库管理面板）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>phpMyAdmin（<strong>(待确认)</strong> 当前未实采到运行中容器，版本未知）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 phpMyAdmin 或 pma 容器（mykng 与内网 Debian 均无）</td>
+</tr>
+<tr>
+<td>端口</td>
+<td><strong>(待确认)</strong> portal 表登记公网路径 <code>tools.marschat.online/pma/</code>，但实采无对应上游</td>
+</tr>
+<tr>
+<td>后端</td>
+<td>platform-mysql-1（mykng，GR 集群 Node1，:3306）；Node2/Node3 在内网 Debian（:3307 / :3308）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/phpmyadmin/phpmyadmin（自部署）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
+<blockquote>
+<p>⚠️ <strong>重要 discrepancy（2026-09-05 实采）</strong>：portal 项目清单登记的公网入口为 <code>https://tools.marschat.online/pma/</code>，但逐一核实后：
+- mykng 与内网 Debian 的 <code>docker ps -a</code> 均无 phpMyAdmin / pma 容器；
+- 腾讯云2号 nginx（<code>/etc/nginx/sites-available/tools.marschat.online</code>）与 mykng nginx（<code>/etc/nginx/conf.d/locations/*</code>）均无 <code>/pma/</code> location；
+- <code>/root/devtools/platform/</code> 部署目录（grep akhq|phpmyadmin|redisinsight|mongo-express）未定义该服务。</p>
+<p>结论：该面板<strong>当前疑似未部署或已被移除</strong>，公网 <code>/pma/</code> 路径无真实上游。以下入口状态以「待确认」标注，待运维确认是否需重新部署。</p>
+</blockquote>
+<ul>
+<li>公网：<code>https://tools.marschat.online/pma/</code>（<strong>(待确认)</strong> 实采无对应上游，可能 404/无响应）</li>
+<li>内网：<strong>(待确认)</strong> 未找到监听端口</li>
+<li>Tailscale：<strong>(待确认)</strong></li>
+<li>账密：MySQL GR 集群账密见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能（禁止明文落盘）</li>
+</ul>
+<h2 id="_3">全链路 —— 实采结果</h2>
+<pre><code>登记链路（材料/portal 表）：tools.marschat.online/pma/ → 腾讯云2号 nginx → ? (未知上游)
+实采：腾讯云2号 tools.marschat.online 当前仅配置
+        /activecode/ → http://100.105.196.63:18080
+        /codexclaw/  → http://100.93.36.113:8080/
+      以及 / → 302 /activecode/
+      无 /pma/ 段落 → 链路断点，无法抵达任何 phpMyAdmin 实例
+</code></pre>
+<p>预期（若重新部署）后端链路应为：<code>phpMyAdmin → platform-mysql-1:3306（GR Node1）</code>，并建议指向 GR 集群读写/读节点。<strong>(待确认)</strong></p>
+<h2 id="mysql-gr">后端 MySQL GR 集群实况（已实采确认）</h2>
+<ul>
+<li>架构：MySQL Group Replication，3 节点。</li>
+<li>Node1：<code>platform-mysql-1</code>（mykng，mysql:8.0，:3306 / 组内通信 :33061）</li>
+<li>Node2：<code>platform-mysql-2</code>（内网 Debian，:3307）</li>
+<li>Node3：<code>platform-mysql-3</code>（内网 Debian，:3308）</li>
+<li>部署脚本：<code>/root/devtools/platform/mysql/</code>（deploy-mysql-cluster.sh）。</li>
+<li>数据：集群承载 <code>tools</code> 库（含 portal 的 <code>portal_system</code> 表）及 KB 等业务的库。</li>
+<li>若面板恢复，连接目标建议为单节点（如 Node1 :3306），或由 phpMyAdmin 通过代理节点访问；GR 多写需注意写入路由。</li>
+</ul>
+<h2 id="phpmyadmin">核心功能与使用（能力层面，基于 phpMyAdmin 通用能力）</h2>
+<ul>
+<li>库表浏览与结构查看：查看 GR 集群中各库、表结构、索引。</li>
+<li>SQL 执行：在 Web 端直接执行查询/管理语句（生产环境慎用，建议走只读节点）。</li>
+<li>数据导入导出：库表级 dump 与恢复（注意集群导出需排除 GTID/复制相关项以免破坏 GR）。</li>
+<li>用户与权限：查看/管理 MySQL 账号（集群账号需与 GR 复制一致，谨慎操作）。</li>
+</ul>
+<blockquote>
+<p>具体按钮级操作以实际部署后的面板为准，本文不编造未实装界面的步骤。</p>
+</blockquote>
+<h2 id="_4">依赖与关联</h2>
+<ul>
+<li>依赖：后端 MySQL GR 集群 <code>platform-mysql-1</code>（mykng :3306）、Node2/Node3（内网 Debian :3307/:3308）。</li>
+<li>被依赖/关联系统：DBA/运维人工管理 MySQL 时使用；KB 体系（kb-*）、portal、activecode 等所有用 MySQL 的服务均落在该集群。</li>
+</ul>
+<h2 id="_5">运维要点</h2>
+<ul>
+<li>启停方式：<strong>(待确认)</strong> 当前未部署。若要恢复，建议在 mykng 以容器方式部署 phpMyAdmin 并连接到 <code>platform-mysql-1:3306</code>，再在 mykng nginx 增加 <code>/pma/</code> location（或在腾讯云2号增加对应反代）。部署命令以运维实际方案为准。</li>
+<li>部署参考（非当前生效，供恢复用）：phpMyAdmin 官方镜像 <code>phpmyadmin/phpmyadmin</code>，环境变量 <code>PMA_HOST=platform-mysql-1</code>、<code>PMA_PORT=3306</code>，置于 mykng 同一 docker 网络；反代建议放 mykng nginx（与 minio/meilisearch 同级），再经腾讯云2号 <code>tools.marschat.online</code> 暴露。</li>
+<li>日志查看：部署后 <code>docker logs &lt;pma 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>数据与备份：phpMyAdmin 本身无状态，数据即后端 MySQL；MySQL 备份以 GR 集群备份策略（见 infra-monitor）为准。</li>
+<li>安全：公网暴露管理面板风险高，建议加访问保护（Basic Auth 或仅 Tailscale 暴露），凭证统一存 Vaultwarden。</li>
+</ul>
+<h2 id="_6">常见问题</h2>
+<ul>
+<li>公网 <code>/pma/</code> 当前无上游，访问会落到 tools 站点的 302 兜底（跳 /activecode/）或直接无响应——属预期「未部署」表现。</li>
+<li>GR 集群多写节点，phpMyAdmin 连接单节点时需注意读写路由，避免跨节点写入冲突。</li>
+<li>恢复部署时留意 phpMyAdmin 与 MySQL 8.0 的认证插件（caching_sha2_password）兼容性，必要时建专用账号。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 pma 面板实采未部署、入口待确认，并补充 GR 集群后端实况</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

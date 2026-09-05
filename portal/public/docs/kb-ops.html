@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>kb-ops 运维管理 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>kb-ops 运维管理</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / kb-ops 运维管理</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="kb-ops">kb-ops 运维管理</h1>
+<blockquote>
+<p>面向 devtools 全栈运维人员的 CMDB + 运维知识平台：集中管理主机、服务、域名、端口、凭据、部署记录与运维知识，并具备矛盾检测、看板快照与从 kb-intelligence 同步的能力。前端 https://kb.marschat.online/ops/，后端 API 走 <code>/ops-api/</code>。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>自研 Web 系统（运维平台）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>1.0.0（后端 Spring Boot 3.2.5 / Java 21；前端 Vue3 + Vite 0.1.0）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>主机 mykng（192.168.31.105），容器 <code>kb-ops</code>（后端 8084）+ <code>kb-ops-web</code>（前端 nginx，宿主机 8093）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>后端 <code>D:\huliang\java\ideaworkspace\devtools\kb-ops\</code>（groupId com.devtools），前端 <code>kb-ops/kb-ops-web\</code>；mykng 上 <code>/root/devtools/kb-ops</code></td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Woodpecker 项目 <code>kb-ops</code> + <code>kb-ops-web</code>（<code>docker-compose.app.yml</code> / <code>docker-compose.web.yml</code>）</td>
+</tr>
+<tr>
+<td>技术栈</td>
+<td>Spring Boot 3.2.5、Java 21、Spring Cloud 2023.0.3、MyBatis-Plus 3.5.6、Redis、OpenFeign、JJWT 0.12.5、Actuator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网（前端 SPA）：<code>https://kb.marschat.online/ops/</code></li>
+<li>公网（后端 API）：<code>https://kb.marschat.online/ops-api/</code>（反代到 <code>kb-ops:8084/kb-ops/</code>）</li>
+<li>公网（认证 API）：<code>https://kb.marschat.online/ops/auth-api/</code>（转发到 <code>kb-gateway:8090/kb/api/auth/</code>，复用知识库统一登录）</li>
+<li>内网（前端）：<code>http://192.168.31.105:8093/</code></li>
+<li>内网（后端）：<code>http://192.168.31.105:8084/kb-ops/</code></li>
+<li>Tailscale：<code>http://100.93.36.113:8093/</code>（前端）、<code>http://100.93.36.113:8084/kb-ops/</code>（后端）</li>
+<li>健康检查：<code>http://192.168.31.105:8084/kb-ops/actuator/health</code></li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>前端 SPA:
+域名 ops → 腾讯云2号 nginx(443) → mykng nginx(:80) /ops/ → alias /var/www/kb-ops-web (nginx 静态)
+
+后端 API:
+域名 ops-api → 腾讯云2号 nginx(443) → mykng nginx(:80) /ops-api/ → 127.0.0.1:8084/kb-ops/
+
+登录鉴权（无独立登录页，复用知识库账号体系）:
+域名 ops/auth-api → mykng nginx(:80) /ops/auth-api/ → kb-gateway:8090 /kb/api/auth/
+  → kb-auth 校验后下发 JWT；kb-ops 通过 JwtAuthenticationFilter + OpenFeign 透传校验
+</code></pre>
+<p>说明：kb-ops 自身 <code>SecurityConfig</code> 全路由 <code>authenticated()</code>，由 <code>JwtAuthenticationFilter</code> 校验 JWT；它不维护用户体系，账号/角色由 <code>kb-auth</code> 统一托管，登录入口在知识库登录页。</p>
+<h2 id="_4">核心功能与使用</h2>
+<p>后端按模块拆分 Controller（<code>com.kb.ops.controller</code>），所有接口前缀 <code>/ops/*</code>，对应能力如下：</p>
+<ul>
+<li><strong>主机管理（HostController <code>/ops/host</code>）</strong>：CMDB 主机台账，增删改查；记录 IP、系统、角色、Tailscale IP、挂载点等资产属性。</li>
+<li><strong>服务管理（ServiceController <code>/ops/service</code>）</strong>：登记各业务/基础设施服务的访问地址、技术栈、健康检查 URL、启用状态。</li>
+<li><strong>域名管理（DomainController <code>/ops/domain</code>）</strong>：维护对外域名与反代路径映射，与 mykng nginx <code>locations/*.conf</code> 互为补充台账。</li>
+<li><strong>端口管理（PortController <code>/ops/port</code>）</strong>：登记主机端口占用，避免端口冲突；与"矛盾检测"联动。</li>
+<li><strong>依赖关系（DependencyController <code>/ops/dependency</code>）</strong>：描述服务/组件间的依赖（如应用层依赖 platform-* 中间件），用于影响面分析。</li>
+<li><strong>凭据管理（CredentialController <code>/ops/credential</code>）</strong>：集中存放各类系统账号/Token（加密存储，见运维要点）；提供列表/详情/增删改。</li>
+<li><strong>部署记录（DeploymentController <code>/ops/deployment</code>）</strong>：记录每次部署的时间、目标、操作人、备注，<code>/recent</code> 取最近记录——与 Woodpecker 流水线变更对应。</li>
+<li><strong>运维知识（KnowledgeController <code>/ops/knowledge</code>）</strong>：运维经验/排障手册的结构化知识库，支持全文检索与分类。</li>
+<li><strong>矛盾检测（ConflictController <code>/ops/conflict</code>）</strong>：<code>/detect</code> 扫描端口冲突、依赖缺失、配置不一致等矛盾，列表展示并支持 <code>/{id}/resolve</code> 标记解决。</li>
+<li><strong>看板（DashboardController <code>/ops/dashboard</code>）</strong>：汇总主机数、服务数、近期部署、未解决矛盾等指标；<code>/snapshot/refresh</code> 刷新快照。</li>
+<li><strong>导入（ImportController <code>/ops/import</code>）</strong>：支持 <code>/csv</code> 批量导入主机/服务/端口等资产数据，降低手工录入成本。</li>
+<li><strong>从 intelligence 同步（SyncController <code>/ops/sync/from-intelligence</code>）</strong>：从 <code>kb-intelligence</code> 拉取资产/拓扑，保持 CMDB 与知识库一致。</li>
+<li><strong>运维日志（OperationLogController <code>/ops/log</code>）</strong>：操作审计日志列表与详情。</li>
+</ul>
+<p>前端（Vue3 + Element Plus + Pinia + ECharts）按上述模块组织页面，看板用 ECharts 展示指标。</p>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：</li>
+<li><strong>MySQL</strong>：<code>platform-mysql-1</code>（mykng 3306，GR 集群 Node1）存储业务数据（MyBatis-Plus 访问）；库名见部署配置（以 mykng 实例为准）。</li>
+<li><strong>Redis</strong>：<code>platform-redis</code>（mykng 6379）用于缓存/会话辅助。</li>
+<li><strong>kb-auth / kb-gateway</strong>：登录与 JWT 校验依赖知识库统一认证（<code>kb-gateway:8090</code>）。</li>
+<li>被依赖/关联系统：</li>
+<li>与 <strong>infra-monitor</strong> 定位互补：kb-ops 偏"运维台账+知识+部署记录+矛盾检测"，infra-monitor 偏"资产总览+凭据+配置+健康巡检"。</li>
+<li>部署记录与 <strong>Woodpecker CI</strong>（woodpecker）变更联动。</li>
+<li>资产数据可被 <strong>kb-intelligence</strong> 提供、由 kb-ops 消费（SyncController）。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停/发布（铁律：应用层只允许走流水线）：</li>
+<li>触发后端：<code>python woodScript/trigger-pipeline.py kb-ops</code></li>
+<li>触发前端：<code>python woodScript/trigger-pipeline.py kb-ops-web</code></li>
+<li>全量：<code>python woodScript/trigger-pipeline.py all</code></li>
+<li>后端部署目标 compose <code>kb-app</code>（<code>docker-compose.app.yml</code>），健康检查 <code>localhost:8084/kb-ops/actuator/health</code>；前端部署目标 compose <code>kb-web</code>（<code>docker-compose.web.yml</code>），健康检查 <code>localhost:8093/health</code>。</li>
+<li>日志查看：</li>
+<li>容器日志：<code>docker logs -f kb-ops</code> / <code>docker logs -f kb-ops-web</code></li>
+<li>容器日志面板：mykng 的 <code>obs-dozzle</code>（15500）</li>
+<li>结构化日志：后端经 logstash-logback-encoder + logback-kafka-appender 推到 Kafka，可被 Loki/Grafana 检索（链路见 infra-monitor 文档）。</li>
+<li>数据与备份：业务数据在 <code>platform-mysql-1</code>；凭据字段经 AES 加密落库（见下）。备份随 MySQL GR 集群整体策略，重要变更前建议 <code>mysqldump</code>。</li>
+<li>凭据安全：凭据（密码/Token）入库前由 <code>com.kb.common</code> 的加密工具 AES 加密存储，接口返回时按权限脱敏；<strong>所有系统明文账密一律不在文档出现，统一见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>。</li>
+<li>常见问题：</li>
+<li>鉴权失败：检查 <code>kb-auth</code>/<code>kb-gateway</code> 是否正常，JWT 由统一认证签发，kb-ops 不单独登录。</li>
+<li>端口冲突：用"端口管理 + 矛盾检测"先行排查，再触发部署。</li>
+<li>依赖解析失败：确认 <code>kb-intelligence</code> 在线，<code>/ops/sync/from-intelligence</code> 才能拉到最新资产。</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/README 生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

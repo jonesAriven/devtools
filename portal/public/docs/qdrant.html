@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Qdrant 向量库 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Qdrant 向量库</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Qdrant 向量库</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="qdrant">Qdrant 向量库</h1>
+<blockquote>
+<p>开源向量数据库，作为 RAG（检索增强生成）管线的向量检索后端，存储文本向量的集合（Collection）并提供相似度检索，配合 bge-small-zh-v1.5 embedding 模型服务使用。当前仅内网可达，不对外暴露。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（向量数据库）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>qdrant/qdrant:latest（实采确认）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>内网 Debian（192.168.31.182，MiWiFi-RD15-srv）容器 <code>rag-qdrant</code></td>
+</tr>
+<tr>
+<td>端口</td>
+<td>6333（HTTP API + Web Dashboard）、6334（gRPC API）</td>
+</tr>
+<tr>
+<td>数据卷</td>
+<td>bind 挂载 <code>/var/lib/qdrant-storage</code> → 容器内 <code>/qdrant/storage</code>（另 bind <code>/etc/localtime</code>）</td>
+</tr>
+<tr>
+<td>配套 embedding</td>
+<td>同机容器 <code>rag-embedding</code>（镜像 rag-embedding:bge-small-zh-v1.5，端口 8081，模型目录 bind <code>/mnt/shared/temp/rag-data/models</code>）</td>
+</tr>
+<tr>
+<td>运行模式</td>
+<td>RUN_MODE=production；时区 Asia/Shanghai</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/qdrant/qdrant（自部署，无自研源码）</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（自部署）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：<strong>—</strong>（无公网反代，不对外暴露；实采确认腾讯云2号 nginx 与 mykng nginx 均无 qdrant 相关 location）</li>
+<li>内网：<code>http://192.168.31.182:6333</code>（Dashboard + API）、<code>http://192.168.31.182:6334</code>（gRPC）</li>
+<li>Tailscale：<code>http://100.105.196.63:6333</code>、<code>http://100.105.196.63:6334</code></li>
+<li>账密：启用 API Key 时见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能（禁止明文落盘）</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>RAG 服务/embedding → http://192.168.31.182:6333  (HTTP)
+                   → http://192.168.31.182:6334  (gRPC)
+  内网直连，无公网反代；不经由腾讯云2号 nginx
+</code></pre>
+<blockquote>
+<p>注：Qdrant 仅在内网 Debian 上运行，未做公网暴露。Dashboard（:6333/dashboard）实测返回 200，可访问。调用方（RAG 管线/embedding 服务）均在同一内网或经 Tailscale 访问。embedding 服务 <code>rag-embedding</code> 与 <code>rag-qdrant</code> 同机部署，降低向量化→入库的网络开销。</p>
+</blockquote>
+<h2 id="docker-inspect2026-09-05">实采配置快照（docker inspect，2026-09-05）</h2>
+<ul>
+<li>启动：容器入口 <code>./entrypoint.sh</code>，运行模式 <code>RUN_MODE=production</code>，时区 <code>TZ=Asia/Shanghai</code>。</li>
+<li>数据目录：bind <code>/var/lib/qdrant-storage</code> → <code>/qdrant/storage</code>（向量与索引持久化）。</li>
+<li>配套 embedding 服务 <code>rag-embedding</code>（同机）：</li>
+<li>镜像 <code>rag-embedding:bge-small-zh-v1.5</code>，启动 <code>gunicorn -w 1 -b 0.0.0.0:8081 --timeout 600 server:app</code>；</li>
+<li>模型 <code>MODEL_NAME=BAAI/bge-small-zh-v1.5</code>，缓存 <code>MODEL_CACHE=/app/models</code>（bind <code>/mnt/shared/temp/rag-data/models</code>）；</li>
+<li>出网经 HTTP 代理 <code>172.17.0.1:7890</code>（模型首次拉取用），<code>no_proxy</code> 覆盖内网网段；</li>
+<li>运行时 Python 3.11。</li>
+<li>Dashboard 探活：<code>:6333/dashboard</code> 返回 200。</li>
+</ul>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li>向量集合（Collection）管理：创建集合、配置向量维度与距离度量（如 cosine），在 Dashboard 或 API 中查看点（Point）数量与集合列表。</li>
+<li>相似度检索：给定查询向量，返回 Top-K 最相近的文本块，是 RAG「先检索后生成」的关键环节。</li>
+<li>配套 embedding：文本→向量由同机 <code>rag-embedding</code>（bge-small-zh-v1.5）完成，默认维度 512；写入/查询 Qdrant 前需经该 embedding 服务统一向量化，保证维度与语义一致。</li>
+<li>过滤与 payload：可在向量检索时附加 payload 过滤（如按知识库 ID、文档来源过滤），具体过滤字段由 RAG 业务定义。</li>
+<li>批量与点操作：支持批量 upsert、按 ID 获取/删除点，适合知识库增量更新。</li>
+</ul>
+<h2 id="api">客户端/API 调用示例（组件通用用法）</h2>
+<ul>
+<li>健康检查：<code>curl http://192.168.31.182:6333/health</code> 返回 <code>{"status":"ok"}</code>。</li>
+<li>列出集合：<code>curl http://192.168.31.182:6333/collections -H "Api-Key: &lt;KEY&gt;"</code>（若启用密钥）。</li>
+<li>Dashboard：浏览器打开 <code>http://192.168.31.182:6333/dashboard</code>（内网/Tailscale）。</li>
+<li>检索：通过 embedding 服务 <code>http://192.168.31.182:8081</code> 取得查询向量后，POST <code>/collections/&lt;name&gt;/points/search</code>。</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：宿主内网 Debian 的 docker 引擎与本地存储目录 <code>/var/lib/qdrant-storage</code>；embedding 向量化依赖同机 <code>rag-embedding</code> 服务（bge-small-zh-v1.5，:8081）。</li>
+<li>被依赖/关联系统：</li>
+<li>RAG 知识库管线（kb-knowledge / kb-intelligence 等相关服务）通过内网 :6333 读写向量；</li>
+<li><code>rag-embedding</code> 与 <code>rag-qdrant</code> 同机部署，形成「向量化—入库—检索」闭环；</li>
+<li>与 MeiliSearch 互为补充：MeiliSearch 做关键词全文检索，Qdrant 做语义向量检索，RAG 常二者融合（hybrid）以提升召回。</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停方式：在内网 Debian 上以 docker 运行（容器 <code>rag-qdrant</code>）。具体 compose/启动命令以该机部署脚本为准（未逐一实采启动文件，待确认完整命令）。</li>
+<li>日志查看：<code>docker logs rag-qdrant</code>（持续 <code>docker logs -f rag-qdrant</code>）；obs-dozzle（内网 Deb :15888）按容器名检索。</li>
+<li>数据与备份：数据目录 bind 挂载 <code>/var/lib/qdrant-storage</code> → 容器内 <code>/qdrant/storage</code>。备份对该目录做快照/同步（是否纳入统一备份以 infra-monitor 策略为准，待确认）。向量索引可由 embedding 服务重新全量重建，故一般可从源头恢复。</li>
+<li>可观测性：容器日志入 Loki（内网 Deb promtail），可在 Grafana（内网 Deb :15300）检索；Dashboard 自带基础统计。</li>
+<li>安全：仅内网/Tailscale 可达，天然不暴露公网；若启用 API Key，凭证存 Vaultwarden。公网不可直接连，跨网访问必须走 Tailscale。</li>
+</ul>
+<h2 id="_7">版本与兼容性</h2>
+<ul>
+<li>镜像为 <code>qdrant/qdrant:latest</code>（非固定版本），升级会与 embedding 维度/距离配置耦合，建议锁定大版本并与 <code>rag-embedding</code> 的模型维度（bge-small-zh-v1.5 = 512）保持一致。</li>
+<li>升级前确认现有 Collection 的向量维度与距离函数不被破坏性变更影响。</li>
+</ul>
+<h2 id="_8">常见问题</h2>
+<ul>
+<li>embedding 维度必须与集合创建时声明的一致（bge-small-zh-v1.5 为 512），否则写入/检索报维度不匹配。</li>
+<li>仅内网可达，跨网访问需走 Tailscale；公网不可直接连。</li>
+<li>向量库与 embedding 服务务必同模型版本，换模型需重建集合并重新向量化全量语料。</li>
+<li>embedding 服务首次需经代理拉取模型权重（172.17.0.1:7890），离线环境需预置 <code>/app/models</code>。</li>
+</ul>
+<h2 id="_9">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>

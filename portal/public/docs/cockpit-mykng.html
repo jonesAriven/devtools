@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit 系统管理 · devtools 项目文档</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.75 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:20px 32px}
+header h1{margin:0;font-size:20px;font-weight:600}
+header .crumb{font-size:13px;opacity:.85;margin-top:4px}
+header a{color:#fff;text-decoration:none}
+.wrap{max-width:980px;margin:24px auto;padding:0 24px 64px}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px 40px;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+h2{font-size:19px;margin:32px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);color:#0f172a}
+h3{font-size:16px;margin:24px 0 8px;color:#0f172a}
+p{margin:8px 0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;vertical-align:top}
+th{background:#f8fafc;font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:#fbfcfe}
+code{background:var(--code);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font:13px/1.5 Consolas,"JetBrains Mono",monospace}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 18px;overflow-x:auto}
+pre code{background:transparent;border:0;color:inherit;padding:0}
+blockquote{border-left:4px solid var(--accent);margin:12px 0;padding:6px 16px;background:#f8faff;color:var(--muted);border-radius:0 8px 8px 0}
+ul,ol{margin:8px 0;padding-left:26px}
+li{margin:4px 0}
+hr{border:0;border-top:1px dashed var(--line);margin:28px 0}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Cockpit 系统管理</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Cockpit 系统管理</div>
+</header>
+<div class="wrap">
+<main>
+<h1 id="cockpit">Cockpit 系统管理</h1>
+<blockquote>
+<p>mykng 主机（192.168.31.105）的 Web 系统管理台（Cockpit，systemd 宿主服务），浏览器里看主机资源、服务状态、存储、网络、日志，并可直接开 Web 终端；portal 上"基础设施"分类的主机管理类入口即指此。</p>
+</blockquote>
+<h2 id="_1">基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分类</td>
+<td>基础设施（主机管理）</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>Debian 12/13 发行版自带 Cockpit（宿主 systemd 服务，非容器）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>mykng 宿主机（192.168.31.105），<code>systemctl</code> 管理，服务 active（实采）</td>
+</tr>
+<tr>
+<td>端口</td>
+<td>15090（cockpit-tls 进程监听，实探 http:200 可访问，非 443 证书那种 TLS）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>开源组件，官方仓库 https://github.com/cockpit-project/cockpit</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>无（发行版包管理安装）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">访问入口</h2>
+<ul>
+<li>公网：—（无公网反代）</li>
+<li>内网：<code>http://192.168.31.105:15090</code></li>
+<li>Tailscale：<code>http://100.93.36.113:15090</code></li>
+<li>账密：Linux 系统账号（root），密码见 Vaultwarden 或 infrastructure-map 技能</li>
+</ul>
+<h2 id="_3">全链路</h2>
+<pre><code>浏览器（家庭局域网 / Tailscale）
+  → http://192.168.31.105:15090（cockpit-tls / systemd 直监听，无 nginx 层）
+  → 宿主机 Cockpit Web 服务
+</code></pre>
+<h2 id="_4">核心功能与使用</h2>
+<ul>
+<li><strong>系统概览</strong>：CPU/内存/磁盘 I/O/网络实时图，33 个服务跑在同一台机上，资源水位一眼可判</li>
+<li><strong>服务管理</strong>：systemd 服务列表启停（含 docker、nginx、cockpit 自身）；容器则跳转 Dozzle/命令行</li>
+<li><strong>Web 终端</strong>：浏览器内直接开 root shell，跑 <code>docker ps</code>、流水线脚本等，RDP 之外的轻量通道</li>
+<li><strong>存储/网络</strong>：磁盘占用、挂载点、网络接口查看；日志页可按 unit 过滤 journal（与 Grafana+Loki 互补，本机即时视角）</li>
+</ul>
+<h2 id="_5">依赖与关联</h2>
+<ul>
+<li>依赖：systemd（宿主原生）</li>
+<li>关联：内网 Debian 主机 Cockpit（192.168.31.182:15090，同款）；Dozzle (mykng)（容器日志专看）；腾讯云2号主机（其 Cockpit 未暴露端口，经 SSH 管理）</li>
+</ul>
+<h2 id="_6">运维要点</h2>
+<ul>
+<li>启停：<code>systemctl status cockpit</code> / <code>cockpit.socket</code></li>
+<li>配置：/etc/cockpit/cockpit.conf（端口 15090 为自定义，默认 9090 被占用或安全考虑改口——以宿主实际配置为准）</li>
+<li>安全：持系统账号权限 + Web 终端，仅限内网/Tailscale，禁止公网反代</li>
+<li>常见问题：登不上先 <code>systemctl is-active cockpit</code>；端口变更后 portal 卡片 URL 需同步更新</li>
+</ul>
+<h2 id="_7">变更记录</h2>
+<ul>
+<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+</ul>
+</main>
+<footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
+</div>
+</body>
+</html>
