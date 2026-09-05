@@ -1,7 +1,7 @@
 package com.kb.portal.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.portal.dto.PortalSystemRequest;
 import com.kb.portal.dto.SystemCredentials;
 import com.kb.portal.entity.PortalSystem;

@@ -1,7 +1,7 @@
 package com.kb.infra.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.infra.dto.InfraItemRequest;
 import com.kb.infra.entity.InfraItem;
 import com.kb.infra.service.InfraItemService;

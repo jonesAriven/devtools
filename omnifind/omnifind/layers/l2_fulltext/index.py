@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import jieba
 
-from omnifind.core.config import DATA_DIR
+from omnifind.core.config import get_data_dir
 
 # 与前端 highlightText 约定的高亮标记(Unicode 私有区)
 _HL0 = "\ue000"
@@ -58,7 +58,7 @@ class FtsHit:
 
 class FullTextIndex:
     def __init__(self, db_path: Path | None = None):
-        self.db_path = db_path or (DATA_DIR / "fulltext.db")
+        self.db_path = db_path or (get_data_dir() / "fulltext.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         import threading
         self._lock = threading.Lock()
@@ -268,6 +268,25 @@ class FullTextIndex:
             self.conn.execute("DELETE FROM files")
             self.conn.execute("DELETE FROM fts")
             self.conn.commit()
+
+    def remove_document(self, path: str) -> None:
+        """增量删除:移除某文件全文索引(文件被删/不可读时调用),走锁。"""
+        with self._lock:
+            row = self.conn.execute("SELECT id FROM files WHERE path=?", (path,)).fetchone()
+            if row is None:
+                return
+            file_id = row[0]
+            self.conn.execute("DELETE FROM fts WHERE rowid=?", (file_id,))
+            self.conn.execute("DELETE FROM files WHERE id=?", (file_id,))
+            self.conn.commit()
+
+    def contains(self, path: str) -> bool:
+        """判断某路径是否已在全文索引中(供 web 层校验,走锁)。"""
+        with self._lock:
+            row = self.conn.execute(
+                "SELECT 1 FROM files WHERE path=? LIMIT 1", (path,)
+            ).fetchone()
+        return row is not None
 
     def count(self) -> int:
         with self._lock:

@@ -61,6 +61,20 @@ Nacos 是 Alibaba 开源的服务注册发现与配置管理中心。v2 的关�
   - 五个微服务（`kb-gateway`、`kb-auth`、`kb-file`、`kb-knowledge`、`kb-intelligence`）经 `spring-cloud-starter-alibaba-nacos-discovery` 启动注册，服务名 = `spring.application.name`（即 kb-gateway 等）。
   - 服务地址经 compose 环境变量下发：`NACOS_HOST=platform-nacos`、`NACOS_PORT=8848`、`NACOS_USERNAME/PASSWORD`（值见 mykng `.env` / Vaultwarden）。
   - **kb-gateway 路由全部用 `lb://服务名`**（如 `uri: lb://kb-auth`、`lb://kb-file`、`lb://kb-knowledge`、`lb://kb-intelligence`），经 Spring Cloud LoadBalancer 从 Nacos 按服务名寻址——模块注册即上线、下线即自动摘除，网关零配置拔插；路由统一上下文 `${KB_CONTEXT:/kb}` + `StripPrefix` 去前缀，Swagger 文档路由（`/v3/api-docs`）也走同一机制。
+  - 服务端接入样例（各 kb-* 服务 application.yml，同一写法）：
+    ```yaml
+    spring:
+      application:
+        name: kb-gateway          # 即 Nacos 服务名
+      cloud:
+        nacos:
+          discovery:
+            server-addr: ${NACOS_HOST:platform-nacos}:${NACOS_PORT:8848}
+            namespace: ${NACOS_NAMESPACE:public}
+            group: ${NACOS_GROUP:DEFAULT_GROUP}
+            username: ${NACOS_USERNAME:nacos}
+            password: ${NACOS_PASSWORD:nacos123}
+    ```
   - 不接入的服务：`kb-ops`、`portal-server`、`infra-monitor`（compose 无 NACOS_* 环境变量、源码无 nacos 依赖，v1 文档"kb-ops/infra-monitor/portal-server 同样接入"的说法不成立，已修正）。
 - **为什么选它**：与 Spring Cloud Alibaba 生态原生集成（lb:// 零代码路由）、standalone+Derby 零外部依赖、资源占用小（mem_limit 384m）。
 
@@ -87,8 +101,10 @@ Nacos 是 Alibaba 开源的服务注册发现与配置管理中心。v2 的关�
 
 ### 发布/升级
 
-- platform 层无流水线。升级：改 compose 中镜像 tag → `docker compose -p platform -f platform/docker-compose.platform.yml up -d platform-nacos` 重建（Derby 数据在卷中保留；跨大版本升级前先备份 `platform-nacos-data` 卷）。
+- platform 层无流水线。升级：改 compose 中镜像 tag → `docker compose -p platform -f platform/docker-compose.platform.yml up -d platform-nacos` 重建（Derby 数据在卷中保留；跨大版本升级前先备份 `platform-nacos-data` 卷，并确认目标版本对 v2.4.x 数据的兼容性说明）。
 - nacos-init 容器每次 platform 启动都会重跑（幂等，已有用户自动跳过）。
+- 若只重启 Nacos 不动其他服务：`docker restart platform-nacos`，客户端自动重连，无需全量重启。
+- 变更 `NACOS_AUTH_TOKEN` 等鉴权三件套时：先改 mykng `.env` → 重建 `platform-nacos` → **必须同时重建全部 kb-* 容器**（客户端缓存旧 Token 会 403）。
 
 ### 回滚
 
@@ -102,7 +118,9 @@ Nacos 是 Alibaba 开源的服务注册发现与配置管理中心。v2 的关�
 - **服务注册与发现**（当前实际使用）：kb-* 五微服务启动自动注册，网关 `lb://` 按名寻址。
 - **实例健康管理**：gRPC 长连接心跳，实例掉线自动摘除，控制台可见健康状态。
 - **配置中心**（能力保留，当前未接入）：可经 `spring.config.import: nacos:` 接入，改配置配合 `@RefreshScope` 下发刷新。
+- **namespace/group 分层**（能力保留，当前统一 public/DEFAULT_GROUP）：多环境隔离时可按 namespace 划分。
 - **控制台**：服务列表（实例数/健康状态）、配置编辑、监听查询。
+- **OpenAPI**：8848 端口 REST 接口（服务列表/实例查询等），脚本化巡检可用。
 
 ### 典型操作路径
 

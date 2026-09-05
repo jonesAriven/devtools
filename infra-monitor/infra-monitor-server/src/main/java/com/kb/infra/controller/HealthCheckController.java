@@ -1,6 +1,6 @@
 package com.kb.infra.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.infra.entity.InfraHealthLog;
 import com.kb.infra.service.HealthCheckService;
 import lombok.RequiredArgsConstructor;

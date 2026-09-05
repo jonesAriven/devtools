@@ -2,7 +2,7 @@ package com.kb.infra.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.infra.entity.InfraItem;
 import com.kb.infra.repository.InfraItemRepository;
 import com.kb.infra.util.CryptoUtil;

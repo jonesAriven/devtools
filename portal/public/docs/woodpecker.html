@@ -120,6 +120,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <ul>
 <li>compose 文件：<code>D:\huliang\java\ideaworkspace\devtools\woodpecker\docker-compose.yml</code>（mykng 上对应路径同目录），compose project <code>woodpecker</code>，专用网络 <code>woodpecker_woodpecker-network</code>（bridge，禁用 IPv6 避免 DNS 解析问题）。</li>
 <li>首次部署：<code>bash deploy.sh --init &amp;&amp; bash deploy.sh --start</code>（同目录 <code>deploy.sh</code>）；后续手动 <code>docker compose -p woodpecker up -d</code>。</li>
+<li>反代配置：腾讯云2号 nginx（<code>woodpecker-nginx.conf</code>）443 TLS 终止，upstream 指向 mykng 8000（经 Tailscale 回源）。</li>
 <li>实采（docker inspect）：</li>
 </ul>
 <table>
@@ -179,8 +180,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li><strong>push 自动构建</strong>：Gitee/GitHub push 即触发对应项目 build→deploy 链——日常开发的默认发布方式。</li>
 <li><strong>手动定点发布</strong>：<code>trigger-pipeline.py &lt;目标&gt; --wait</code> 按参数只部署指定项目——紧急修复/重发场景。</li>
 <li><strong>构建观测</strong>：Web UI 与 <code>check-pipeline.py</code>（状态/日志/<code>--watch</code> 持续监控）——排查部署失败第一步。</li>
+<li><strong>脚本语法门禁</strong>：<code>sync-ci-scripts</code> 步骤对全部 <code>.sh</code> 做 <code>bash -n</code> 检查，语法错误流水线直接失败——防止坏脚本进入部署阶段。</li>
 <li><strong>Secrets 托管</strong>：部署 SSH 私钥等敏感值仓库级托管，流水线文件零明文。</li>
 <li><strong>构建资源治理</strong>：单并发 + 内存上限 + 日志 7 天/构建记录 30 天保留——适配 3 核小主机。</li>
+<li><strong>产物留存</strong>：构建产物统一落 <code>/mnt/shared/woodScript/publish/</code>——回滚重发的基础。</li>
 </ul>
 <h3 id="_13">典型操作路径</h3>
 <ol>

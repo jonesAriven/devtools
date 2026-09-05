@@ -89,7 +89,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
   Docker → http://192.168.31.105:8082/ 或 :8083/ (docker-public group)
 
 （不经过腾讯云2号，也不经公网带宽；局域网路由直达 mykng）
+
+回源路径（仅缓存未命中时）:
+Nexus → mykng 本机 Clash Meta :7890 → 公网上游（maven-central/npmjs/pypi/Docker Hub）
 </code></pre>
+<p>说明：Tailscale 节点把 <code>192.168.31.105</code> 换成 <code>100.93.36.113</code> 即可，端口与仓库路径不变；同一构建配置在"局域网/Tailscale/公网域名"三张网内只需改 host 部分。</p>
 <h2 id="_4">系统设计</h2>
 <h3 id="_5">为什么内网+公网双入口</h3>
 <p>同一实例开两个入口是刻意的分流设计：</p>
@@ -185,20 +189,35 @@ pip download requests -d /tmp -i http://192.168.31.105:8081/repository/pypi-publ
 # Docker
 docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry 生效
 </code></pre>
-<h2 id="_9">部署与发布</h2>
+<h3 id="_9">首次拉取与缓存命中判定</h3>
+<ul>
+<li><strong>首次拉取</strong>（未命中缓存）：经 mykng Clash <code>:7890</code> 代理回源公网，速度取决于上游——此时日志/控制台 Browse 会新增该制品。</li>
+<li><strong>命中缓存</strong>：直接读 <code>/root/nexus/data</code> blob，内网千兆下大包也在秒级。</li>
+<li><strong>判定方法</strong>：对比两次下载耗时，或控制台 Browse 查看制品是否已存在；REST <code>GET /service/rest/v1/search?repository=maven-public&amp;name=&lt;名&gt;</code> 也可查询。</li>
+</ul>
+<h3 id="_10">与公网入口的一致性</h3>
+<p>两个入口指向<strong>同一份数据与配置</strong>（同容器同卷）：</p>
+<ul>
+<li>缓存共享：任一入口拉过的包，另一入口立即可见——内网预热的成果公网访问同样受益，反之亦然。</li>
+<li>配置同步：控制台在内网或公网改动仓库配置，无同步延迟（同一实例）。</li>
+<li>凭据通用：同一套账号在两个入口均可用（传输层不同：内网 HTTP 明文、公网 HTTPS TLS 加密）。</li>
+</ul>
+<h2 id="_11">部署与发布</h2>
 <ul>
 <li>与 <code>nexus.md</code> 完全同一容器：<code>nexus</code>（<code>sonatype/nexus3:3.91.1</code>，bridge 网络，<code>restart: unless-stopped</code>，卷 <code>/root/nexus/data</code> → <code>/nexus-data</code>，端口 8081-8083 直映射）。</li>
 <li>本篇无独立部署物——内网入口是同一实例的端口直暴露，无需额外配置；运维/升级/回滚/备份全部见 <code>nexus.md</code> 部署与发布节。</li>
+<li>客户端侧唯一需要维护的是各构建工具的源配置（<code>settings.xml</code>/<code>.npmrc</code>/<code>pip.conf</code>/<code>daemon.json</code>），属各机器自身配置管理，建议纳入 infra-monitor 的 config 台账登记。</li>
 </ul>
-<h2 id="_10">核心功能与使用</h2>
-<h3 id="_11">功能清单（内网视角）</h3>
+<h2 id="_12">核心功能与使用</h2>
+<h3 id="_13">功能清单（内网视角）</h3>
 <ul>
 <li><strong>内网构建提速</strong>：CI 与开发机直连 8081，缓存命中后近乎本地速度。</li>
 <li><strong>不依赖公网/代理</strong>：缓存命中时构建完全不回源——公网或 Clash 故障不影响存量依赖拉取。</li>
-<li><strong>内部制品发布</strong>：<code>maven-releases</code>/<code>npm-hosted</code>/<code>pypi-hosted</code> 经内网直接 <code>mvn deploy</code>/<code>npm publish</code>（发布凭证见 Vaultwarden）。</li>
+<li><strong>内部制品发布</strong>：<code>maven-releases</code>/<code>npm-hosted</code>/<code>pypi-hosted</code>/<code>docker-hosted</code> 经内网直接 <code>mvn deploy</code>/<code>npm publish</code>/<code>docker push</code>（发布凭证见 Vaultwarden）。</li>
 <li><strong>Docker 镜像内网分发</strong>：基础镜像 <code>docker pull 192.168.31.105:8082/...</code>，不受 Docker Hub 限流影响。</li>
+<li><strong>多源容错</strong>：group 聚合多 proxy（maven-central+aliyun、npm 双源、pypi 三源、docker 双源），内网构建端单 URL 即享受容错。</li>
 </ul>
-<h3 id="_12">典型操作路径</h3>
+<h3 id="_14">典型操作路径</h3>
 <ol>
 <li><strong>新机器接入</strong>：编辑 Maven <code>settings.xml</code> / npm <code>.npmrc</code> / pip <code>pip.conf</code> / docker <code>daemon.json</code>（配置见上文"内网构建端接入配置"）→ 跑一次构建验证依赖来自内网。</li>
 <li><strong>验证内网可达</strong>：<code>curl -s -m 5 http://192.168.31.105:8081/service/rest/v1/status</code>（匿名可取状态）；<code>curl -s .../service/rest/v1/repositories</code> 列仓库确认 group 仓库名。</li>
@@ -206,7 +225,7 @@ docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry �
 <li><strong>内网 CI 构建验证</strong>：在 Woodpecker 触发任一前端流水线 → 构建日志确认 registry 走 <code>192.168.31.105:8081/repository/npm-public/</code>。</li>
 <li><strong>发布内部制品</strong>：<code>mvn deploy</code>（maven-releases/snapshots）或 <code>npm publish</code>（npm-hosted）→ 控制台 Browse 确认上架 → 团队经 group 仓库自动可拉。</li>
 </ol>
-<h2 id="_13">依赖与关联</h2>
+<h2 id="_15">依赖与关联</h2>
 <ul>
 <li>依赖：</li>
 <li><strong>mykng Clash 代理</strong>（<code>:7890</code>）：Nexus 缓存未命中回源公网时经此出口（google/github/docker/pypi → Proxy）。</li>
@@ -214,9 +233,10 @@ docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry �
 <li>被依赖/关联系统：</li>
 <li><strong>所有内网构建机 / Tailscale 节点</strong>：Maven、pnpm、pip、docker 默认源指向此处。</li>
 <li><strong>Woodpecker CI 节点</strong>：CI 容器内编译消费 Nexus（mykng 本机直连，延迟最低）。</li>
+<li><strong>infra-monitor</strong>：Nexus 缓存策略/预热登记为其 config 台账，8081 状态探活纳入巡检。</li>
 <li>与 <code>nexus.md</code> 互为入口：公网域名用于外部/移动访问，内网直连用于高频构建。</li>
 </ul>
-<h2 id="_14">运维要点</h2>
+<h2 id="_16">运维要点</h2>
 <ul>
 <li>验证内网可达：<code>curl -s -m 5 http://192.168.31.105:8081/service/rest/v1/status</code>（匿名可取状态；个别接口需权限返回空属正常）。</li>
 <li>启停/日志/备份/升级：与 <code>nexus.md</code> 完全一致（同一容器），此处不重复。</li>
@@ -229,7 +249,7 @@ docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry �
 <li>Tailscale 节点 8081 不通：确认目标机 Tailscale 已连（<code>ping 100.93.36.113</code>），mykng 侧 <code>tailscale0</code> 接口未被防火墙规则排除。</li>
 <li>内网拉取到的包版本旧：group 命中 hosted 优先于 proxy，内部包与代理包同名时以 hosted 为准；确认是否误发到 hosted。</li>
 </ul>
-<h2 id="_15">变更记录</h2>
+<h2 id="_17">变更记录</h2>
 <ul>
 <li>2026-09-05 v2 补全设计/部署/使用三维度（新增"为什么双入口"设计与仓库入口对照表，group 仓库名按 REST API 实采修正为 maven-public/npm-public/pypi-public/docker-public；与 nexus.md 同源实例）</li>
 <li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 内网入口与 nexus.md 同源实例生成）</li>

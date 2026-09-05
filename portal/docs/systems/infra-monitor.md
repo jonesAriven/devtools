@@ -85,7 +85,8 @@ Controller 位于 `com.kb.infra.controller`（容器 context `/infra/`）：
 
 - 后端：容器 `infra-monitor`，镜像 `infra-monitor:latest`（`build: .`），归属 compose project `infra-monitor`，compose 文件 `/root/devtools/infra-monitor/infra-monitor-server/docker-compose.yml`。
   - 特殊点：**`network_mode: host`**（直接用宿主机网络，MongoDB 走 `127.0.0.1:27017`），不走 kb-app-net。
-- 前端：容器 `infra-monitor-web`（nginx:alpine），归属 compose project `kb-web`，compose 文件 `/root/devtools/docker/docker-compose.web.yml`。
+  - 无 depends_on：后端启动时 MongoDB 不在线会连库失败重启（on-failure:5 自动重试），平台层就绪后自然恢复。
+- 前端：容器 `infra-monitor-web`（nginx:alpine），归属 compose project `kb-web`，compose 文件 `/root/devtools/docker/docker-compose.web.yml`——与 kb-web/kb-ops-web/portal-web 同 project，可独立重建。
 
 ### 配置清单
 
@@ -163,7 +164,8 @@ python woodScript/trigger-pipeline.py infra-monitor-web   # 前端
   - 容器日志：`docker logs -f infra-monitor` / `docker logs -f infra-monitor-web`
   - 落盘日志：mykng `/data/infra-monitor/logs/`
   - 容器日志面板：mykng `obs-dozzle`（15500）
-- 数据与备份：资产在 `platform-mongo` 的 `infra_monitor` 库；日常用 `/io/export/json` 导出作轻量备份，MongoDB 本身由 platform 层统一维护。
+- 数据与备份：资产在 `platform-mongo` 的 `infra_monitor` 库；日常用 `/io/export/json` 导出作轻量备份，或 `mongodump --uri <连接串> --db infra_monitor`（连接串见 Vaultwarden / compose）。MongoDB 本身由 platform 层统一维护。
+- 巡检日志清理：`infra_health_logs` 每 60s 增长，长期运行后按时间清理旧文档（保留最近 7~30 天足够排障）。
 - 凭据安全：所有密码经 `CryptoUtil` AES 加密，前端展示脱敏；**任何系统明文账密一律不写入文档**。
 - 常见问题：
   - 巡检一直 UNKNOWN：检查对应 service 的 `healthCheckUrl` 是否可达、目标服务是否在线；SSH 型巡检确认主机 SSH 凭据有效。

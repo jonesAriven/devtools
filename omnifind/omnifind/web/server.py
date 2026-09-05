@@ -17,6 +17,7 @@ from omnifind.core.config import OmniConfig, ensure_dirs
 from omnifind.core.router import QueryRouter
 from omnifind.layers.l1_filename.index import FilenameIndex
 from omnifind.layers.l2_fulltext.index import FullTextIndex
+from omnifind.extractors import extract_text, load_all_extractors
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -34,10 +35,56 @@ _index_task: dict = {
     "error": "",
 }
 
+# 保护 _index_task 字典:后台构建线程写、API 线程读,避免并发读写竞态(聚类A)。
+_index_task_lock = threading.Lock()
+
+
+def _set_task(**kw) -> None:
+    """线程安全地更新索引任务状态。"""
+    with _index_task_lock:
+        _index_task.update(kw)
+
+
+def _rebuild_layer(cfg, live, build_fn) -> tuple[int, object]:
+    """双缓冲重建(诚实化):构建到临时 DB,成功后原子替换 live,失败保留旧索引。
+
+    避免「先 clear 再 build」一旦 build 中途失败就留下空/半成品索引的坑
+    (聚类C 重建 honest 化)。返回 (索引条数, 新的 live 索引对象)。
+
+    注意:本函数**不**关闭 live —— live 的句柄由调用方在把新对象写入 _state 之后关闭,
+    避免在本函数持有旧连接期间就关闭它、导致 _state 仍指向已关闭 DB 的竞态。
+    """
+    import os
+    from pathlib import Path
+    tmp_path = live.db_path.with_suffix(live.db_path.suffix + ".rebuild")
+    tmp = type(live)(db_path=tmp_path)
+    try:
+        n = build_fn(cfg, tmp)
+    except Exception:
+        # 构建失败:关闭临时对象并清理临时文件,旧索引(live)原样保留
+        try:
+            tmp.close()
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+        raise
+    # 构建成功:先关闭临时对象的连接释放磁盘句柄(Windows 上 os.replace 需句柄已释放,
+    # 否则可能 "file in use";也避免替换后 live 文件上残留第二个句柄导致锁竞争),再原子替换。
+    tmp.close()
+    for suf in ("-wal", "-shm"):
+        try:
+            Path(str(tmp_path) + suf).unlink()
+        except OSError:
+            pass
+    os.replace(str(tmp_path), str(live.db_path))
+    return n, type(live)(db_path=live.db_path)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ensure_dirs()
+    # 注册表自举:确保 extractors/ 下所有抽取器已注册。web 层预览统一走注册表,
+    # 不再各自手写抽取逻辑,避免注册表契约被切断导致抽取失效(聚类A 根因)。
+    load_all_extractors()
     cfg = OmniConfig.load()
     l1 = FilenameIndex()
     l2 = FullTextIndex()
@@ -226,16 +273,17 @@ def update_config(data: dict):
 
 @app.get("/api/index/status")
 def index_status():
-    return {
-        "running": _index_task["running"],
-        "type": _index_task["type"],
-        "progress": _index_task["progress"],
-        "total": _index_task["total"],
-        "message": _index_task["message"],
-        "start_time": _index_task["start_time"],
-        "elapsed": time.time() - _index_task["start_time"] if _index_task["running"] else 0,
-        "error": _index_task["error"],
-    }
+    with _index_task_lock:
+        return {
+            "running": _index_task["running"],
+            "type": _index_task["type"],
+            "progress": _index_task["progress"],
+            "total": _index_task["total"],
+            "message": _index_task["message"],
+            "start_time": _index_task["start_time"],
+            "elapsed": time.time() - _index_task["start_time"] if _index_task["running"] else 0,
+            "error": _index_task["error"],
+        }
 
 
 _rebuild_lock = threading.Lock()
@@ -249,22 +297,22 @@ def _run_build(type: str) -> None:
     l3 = _state.get("l3")
     try:
         if type in ("l1", "all"):
-            _index_task["message"] = "正在重建文件名索引..."
+            _set_task(message="正在重建文件名索引...")
             from omnifind.core.indexer import build_filename_index
-            l1.clear()
-            n = build_filename_index(cfg, l1)
-            _index_task["progress"] = n
-            _index_task["total"] = n
-            _index_task["message"] = f"文件名索引完成: {n} 条"
+            n, new_l1 = _rebuild_layer(cfg, l1, build_filename_index)
+            _state["l1"] = new_l1
+            _state["router"].l1 = new_l1
+            l1.close()  # 已替换为新对象,关闭旧索引释放句柄
+            _set_task(progress=n, total=n, message=f"文件名索引完成: {n} 条")
 
         if type in ("l2", "all"):
-            _index_task["message"] = "正在重建全文索引..."
+            _set_task(message="正在重建全文索引...")
             from omnifind.core.indexer import build_fulltext_index
-            l2.clear()
-            n = build_fulltext_index(cfg, l2)
-            _index_task["progress"] = n
-            _index_task["total"] = n
-            _index_task["message"] = f"全文索引完成: {n} 篇"
+            n, new_l2 = _rebuild_layer(cfg, l2, build_fulltext_index)
+            _state["l2"] = new_l2
+            _state["router"].l2 = new_l2
+            l2.close()  # 已替换为新对象,关闭旧索引释放句柄
+            _set_task(progress=n, total=n, message=f"全文索引完成: {n} 篇")
 
         if type in ("l3", "all"):
             if l3 is None:
@@ -275,33 +323,55 @@ def _run_build(type: str) -> None:
                     "[L3] 未配置 semantic_dirs 且 semantic_full_disk=False，跳过语义构建(避免全盘向量化)"
                 )
             else:
-                _index_task["message"] = "正在重建语义索引..."
+                _set_task(message="正在重建语义索引...")
+                import os as _os
+                import shutil
+                from pathlib import Path as _Path
                 from omnifind.layers.l3_semantic.builder import build_semantic_index
-                l3.drop()
-                build_semantic_index(cfg, l3)
-                _index_task["message"] = f"语义索引完成: {l3.count()} chunks"
+                from omnifind.layers.l3_semantic.index import SemanticIndex
+                # 双缓冲(诚实化):构建到临时目录,成功后才替换 live;构建中途失败则旧索引原样保留,
+                # 杜绝「先 drop 再 build」一旦失败就清空语义索引的坑。
+                tmp_dir = _Path(str(l3.db_path) + ".rebuild")
+                if tmp_dir.exists():
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                tmp_l3 = SemanticIndex(db_path=tmp_dir)
+                try:
+                    build_semantic_index(cfg, tmp_l3)
+                    n = tmp_l3.count()
+                finally:
+                    tmp_l3.close()
+                # 替换:关闭旧 live -> 删除旧目录 -> 原子移动临时目录 -> 重新打开 live
+                l3.close()
+                if _Path(str(l3.db_path)).exists():
+                    shutil.rmtree(str(l3.db_path), ignore_errors=True)
+                _os.replace(str(tmp_dir), str(l3.db_path))
+                new_l3 = SemanticIndex(db_path=l3.db_path)
+                _state["l3"] = new_l3
+                _state["router"].l3 = new_l3
+                _set_task(message=f"语义索引完成: {n} chunks")
 
-        _index_task["message"] += " · 全部完成"
+        with _index_task_lock:
+            msg = _index_task["message"]
+        _set_task(message=msg + " · 全部完成")
     except Exception as e:
         logger.exception("索引重建失败")
-        _index_task["error"] = str(e)
-        _index_task["message"] = f"失败: {e}"
+        _set_task(error=str(e), message=f"失败: {e}")
     finally:
-        _index_task["running"] = False
+        with _index_task_lock:
+            _index_task["running"] = False
 
 
 def start_build(type: str) -> bool:
     """原子启动一次构建任务;若已有任务在进行中返回 False。"""
     with _rebuild_lock:
-        if _index_task["running"]:
-            return False
-        _index_task["running"] = True
-    _index_task["type"] = type
-    _index_task["progress"] = 0
-    _index_task["total"] = 0
-    _index_task["message"] = "准备中..."
-    _index_task["start_time"] = time.time()
-    _index_task["error"] = ""
+        with _index_task_lock:
+            if _index_task["running"]:
+                return False
+            _index_task["running"] = True
+    _set_task(
+        type=type, progress=0, total=0,
+        message="准备中...", start_time=time.time(), error="",
+    )
     t = threading.Thread(target=_run_build, args=(type,), daemon=True)
     t.start()
     return True
@@ -336,15 +406,13 @@ _TEXT_EXTS = {
     "Dockerfile", "Makefile", "README", "LICENSE", "CHANGELOG",
     "CONTRIBUTING", ".gitattributes", ".mailmap",
 }
-# 需要用专用库提取文本的文档扩展名
-_DOC_EXTS = {".docx", ".xlsx", ".xls"}
 # 预览最大 500KB（增大限制，用户反馈预览内容不全）
 _MAX_PREVIEW_SIZE = 500 * 1024
 
 
 @app.get("/api/preview")
 def preview(path: str = Query(...)):
-    """读取文件内容用于预览。优先从 L2 索引取 body，否则直接读文件。"""
+    """读取文件内容用于预览。统一走抽取注册表,再退化为文本文件直读。"""
     ok, resolved, err = _verify_path_in_index(path)
     if not ok:
         status = 400 if "必填" in (err or "") or "无效" in (err or "") else (404 if "不存在" in (err or "") else 403)
@@ -370,54 +438,33 @@ def preview(path: str = Query(...)):
             "message": f"文件过大({fsize // (1024 * 1024)}MB)，超过预览硬限制(50MB)。",
         })
 
-    # ===== 核心策略：预览优先读原始文件，L2 body 仅作最后 fallback =====
-    # 原因: L2 存的是 jieba 分词后的 token(空格分隔)，格式全丢，用户看不懂
+    # ===== 核心策略：预览统一走抽取注册表(修复聚类A「web 层绕过封装」根因) =====
+    # extractors/ 下所有抽取器(docx/xlsx/xls/pptx/pdf/纯文本代码)统一实现 extract(),
+    # web 不再各自手写抽取逻辑,避免注册表契约被切断导致抽取失效。
+    res = extract_text(p)
+    if res.ok and res.text:
+        content = res.text
+        truncated = len(content) > _MAX_PREVIEW_SIZE
+        return JSONResponse({
+            "ok": True, "path": path,
+            "content": content[:_MAX_PREVIEW_SIZE],
+            "source": "extract_registry",
+            "size": p.stat().st_size,
+            "truncated": truncated,
+        })
 
-    # 1) 文档格式 (.docx/.xlsx/.xls) → 用专用库提取
-    if ext in _DOC_EXTS:
-        doc_result = _extract_document_text(p, ext)
-        if doc_result is not None:
-            content, src_label = doc_result
-            truncated = len(content) > _MAX_PREVIEW_SIZE
-            return JSONResponse({
-                "ok": True, "path": path,
-                "content": content[:_MAX_PREVIEW_SIZE],
-                "source": src_label, "size": p.stat().st_size,
-                "truncated": truncated,
-            })
-
-    # 2) PDF → fitz / pdfplumber / PyPDF2 提取
-    if ext == ".pdf":
-        pdf_result = _extract_pdf_text(p)
-        if pdf_result is not None:
-            content, src_label = pdf_result
-            truncated = len(content) > _MAX_PREVIEW_SIZE
-            return JSONResponse({
-                "ok": True, "path": path,
-                "content": content[:_MAX_PREVIEW_SIZE],
-                "source": src_label, "size": p.stat().st_size,
-                "truncated": truncated,
-            })
-        else:
-            return JSONResponse({
-                "ok": True, "path": path, "content": None,
-                "source": "pdf_no_lib",
-                "message": "PDF 文本提取失败（文件可能为扫描件/图片型 PDF，或解析库均不可用）。",
-            })
-
-    # 3) 判断是否为文本/代码文件
+    # 注册表未覆盖(无抽取器/二进制/非文本)→ 启发式判断文本文件,直接读原始字节
     is_text = (ext in _TEXT_EXTS or name in _TEXT_EXTS or _is_text_file(p))
 
     if not is_text:
         return JSONResponse({
             "ok": True, "path": path, "content": None,
             "source": "binary_skip",
-            "message": f"二进制/不支持的格式({ext or '未知类型'})。支持预览: 纯文本/.docx/.xlsx/.xls/.pdf(需pdfplumber)。",
+            "message": f"二进制/不支持的格式({ext or '未知类型'})。支持预览: 纯文本/.docx/.xlsx/.xls/.pdf。",
         })
 
-    # 4) 文本文件 → 直接读取原始内容（保留原始格式！）
+    # 文本文件 → 直接读取原始内容（保留原始格式!）;先按 stat 大小拒绝,再读
     try:
-        # 先按 stat 大小拒绝，再读 —— 不允许"整读后才发现太大"
         if fsize > _MAX_PREVIEW_SIZE * 10:
             return JSONResponse({
                 "ok": True, "path": path, "content": None,
@@ -447,135 +494,24 @@ def preview(path: str = Query(...)):
 
 
 def _is_text_file(p: Path) -> bool:
-    """启发式检测：读一小段判断是否为文本文件。"""
+    """启发式检测:只读文件头部判断是否为文本文件(避免大文件整读 OOM)。"""
     try:
-        raw = p.read_bytes()
-        chunk = raw[:min(8192, len(raw))]
-        if b'\x00' in chunk:
+        with p.open("rb") as f:
+            chunk = f.read(8192)
+        if b"\x00" in chunk:
             return False
-        chunk.decode('utf-8')
+        chunk.decode("utf-8")
         return True
     except (OSError, UnicodeDecodeError):
         return False
 
 
-def _extract_document_text(p: Path, ext: str) -> tuple[str, str] | None:
-    """
-    从 Office 文档中提取纯文本内容。
-    返回 (text, source_label) 或 None（解析失败）。
-    """
-    try:
-        if ext == ".docx":
-            import docx
-            doc = docx.Document(str(p))
-            parts = []
-            for para in doc.paragraphs:
-                text = para.text.strip()
-                if text:
-                    parts.append(text)
-            # 也尝试提取表格中的文字
-            for table in doc.tables:
-                for row in table.rows:
-                    row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
-                    if row_text:
-                        parts.append(" | ".join(row_text))
-            body = "\n\n".join(parts)
-            return (body, "docx_extract") if body else None
-
-        elif ext == ".xlsx":
-            import openpyxl
-            wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
-            parts = []
-            for sheet_name in wb.sheetnames:
-                sheet = wb[sheet_name]
-                parts.append(f"=== {sheet_name} ===")
-                for row in sheet.iter_rows(values_only=True):
-                    # 过滤全空行
-                    row_text = [str(c) if c is not None else "" for c in row]
-                    if any(cell.strip() for cell in row_text if cell):
-                        parts.append("\t".join(row_text))
-            wb.close()
-            body = "\n".join(parts)
-            return (body, "xlsx_extract") if body else None
-
-        elif ext == ".xls":
-            import xlrd
-            wb = xlrd.open_workbook(str(p))
-            parts = []
-            for sheet in wb.sheets():
-                parts.append(f"=== {sheet.name} ===")
-                for row_idx in range(sheet.nrows):
-                    row = sheet.row_values(row_idx)
-                    row_text = [str(c) if c is not None else "" for c in row]
-                    if any(cell.strip() for cell in row_text if cell):
-                        parts.append("\t".join(row_text))
-            body = "\n".join(parts)
-            return (body, "xls_extract") if body else None
-
-    except ImportError as e:
-        logger.debug("文档库缺失 ext=%s: %s", ext, e)
-        return None
-    except Exception as e:
-        logger.debug("文档解析失败 path=%s ext=%s: %s", p, ext, e)
-        return None
-
-
-def _extract_pdf_text(p: Path) -> tuple[str, str] | None:
-    """从 PDF 中提取文本。优先 PyMuPDF/fitz（项目已声明依赖），
-    其次 pdfplumber，最后 PyPDF2。"""
-    # 优先 fitz（requirements.txt 已声明 pymupdf，与索引抽取器一致）
-    try:
-        import fitz  # PyMuPDF
-        parts = []
-        with fitz.open(str(p)) as doc:
-            for i, page in enumerate(doc):
-                text = page.get_text("text")
-                if text and text.strip():
-                    parts.append(f"--- Page {i+1} ---\n{text}")
-        body = "\n\n".join(parts)
-        return (body, "pdf_fitz") if body else None
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.debug("fitz 解析失败: %s", e)
-
-    # fallback: pdfplumber（更好的表格/布局支持）
-    try:
-        import pdfplumber
-        parts = []
-        with pdfplumber.open(str(p)) as pdf:
-            for i, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text and text.strip():
-                    parts.append(f"--- Page {i+1} ---\n{text}")
-        body = "\n\n".join(parts)
-        return (body, "pdf_plumber") if body else None
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.debug("pdfplumber 解析失败: %s", e)
-
-    # fallback: PyPDF2
-    try:
-        import PyPDF2
-        reader = PyPDF2.PdfReader(str(p))
-        parts = []
-        for i, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text and text.strip():
-                parts.append(f"--- Page {i+1} ---\n{text}")
-        body = "\n\n".join(parts)
-        return (body, "pdf_pypdf2") if body else None
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.debug("PyPDF2 解析失败: %s", e)
-
-    return None
-
-
 def _verify_path_in_index(path_str: str) -> tuple[bool, Path | None, str | None]:
-    """验证文件路径是否在索引中，返回 (是否在索引中, 解析后的路径, 错误信息)。"""
+    """验证文件路径是否在索引中，返回 (是否在索引中, 解析后的路径, 错误信息)。
+
+    逐层走各 Index 的 contains()(持锁,不裸触 conn),并补查 L3 语义层,
+    修复「L3 命中文件预览/打开/定位返回 403 死路」的根因(聚类A)。
+    """
     if not path_str:
         return False, None, "path 参数必填"
     try:
@@ -584,25 +520,16 @@ def _verify_path_in_index(path_str: str) -> tuple[bool, Path | None, str | None]
         return False, None, f"无效路径: {e}"
     l1 = _state.get("l1")
     l2 = _state.get("l2")
+    l3 = _state.get("l3")
     in_index = False
-    if l2:
-        try:
-            row = l2.conn.execute(
-                "SELECT 1 FROM files WHERE path=? LIMIT 1", (str(resolved),)
-            ).fetchone()
-            if row:
-                in_index = True
-        except Exception:
-            pass
-    if not in_index and l1:
-        try:
-            row = l1.conn.execute(
-                "SELECT 1 FROM entries WHERE path=? LIMIT 1", (str(resolved),)
-            ).fetchone()
-            if row:
-                in_index = True
-        except Exception:
-            pass
+    # 逐层走 contains()(持锁,不裸触底层 conn —— 修复「web 层绕过封装」根因)
+    if l2 is not None and l2.contains(str(resolved)):
+        in_index = True
+    if not in_index and l1 is not None and l1.contains(str(resolved)):
+        in_index = True
+    # 补查 L3 语义层:语义命中文件此前只查 L1/L2,会走 403 死路(聚类A P0)
+    if not in_index and l3 is not None and l3.contains(str(resolved)):
+        in_index = True
     if not in_index:
         return False, resolved, "文件不在索引中，无法操作（安全限制：仅可操作已索引文件）"
     if not resolved.exists():

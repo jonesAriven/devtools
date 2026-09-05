@@ -944,23 +944,25 @@ async function copyToClipboard(text) {
   }
 }
 
-/** 提取搜索关键词用于高亮 */
+/** 提取搜索关键词用于高亮(剥离语法前缀,与后端 parse_query 口径一致) */
 function extractKeywords(query) {
   const q = (query || '').trim();
   if (!q) return [];
-  let keywords = [];
-
-  const prefixMatch = q.match(/^(filename|content|all|re|name):(.+)$/);
-  if (prefixMatch) {
-    if (prefixMatch[1] === 're') return [];
-    keywords.push(prefixMatch[2].trim());
-  } else if (q.startsWith('?')) {
-    keywords.push(q.substring(1).trim());
-  } else {
-    keywords.push(q);
+  const keywords = [];
+  for (const raw of q.split(/\s+/)) {
+    if (!raw) continue;
+    if (raw.startsWith('?')) continue;                 // 语义搜索前缀,不参与高亮
+    const modeM = raw.match(/^(filename|name|content|all|re|filename-re|name-re):(.+)$/i);
+    if (modeM) {
+      if (modeM[1].toLowerCase() === 're') continue;    // 正则不参与高亮
+      const body = modeM[2].trim();
+      if (body.length > 1) keywords.push(body);
+      continue;
+    }
+    if (/^(ext|sort):/i.test(raw)) continue;           // 过滤/排序 token 不参与高亮
+    if (raw.length > 1) keywords.push(raw);
   }
-
-  return keywords.filter(k => k.length > 1);
+  return keywords;
 }
 
 /** 对文本中的关键词进行高亮。FTS5 snippet 自带的私有区标记(/)一并转为高亮 */
@@ -1292,6 +1294,56 @@ async function loadStatus() {
   updateLayerFilterUI();
 }
 
+/* ========== 查询语法 → 控件状态同步 ========== */
+/** 将侧栏控件状态同步到查询串中的显式语法前缀(mode/sort/ext),
+ *  避免“查询带 filename:/content:/all:/?/sort:/ext: 但侧栏高亮与下拉仍停留在旧值”的错位。
+ *  仅当查询含对应前缀时才覆盖该控件;用户的显式选择(currentLayer/currentSort/currentExtFilter)
+ *  在无前缀的正常搜索中保持不变。模式前缀只同步高亮(currentLayerFilter),不改写 currentLayer 持久选择。 */
+function syncControlsToQuery(q) {
+  const query = (q || '').trim();
+  if (!query) return;
+
+  // 模式前缀: 仅同步侧栏高亮
+  let effMode = null;
+  if (/^\?/i.test(query)) effMode = 'semantic';
+  else if (/^(?:filename|name)-re:|re:/i.test(query)) effMode = 'filename';
+  else if (/^(?:filename|name):/i.test(query)) effMode = 'filename';
+  else if (/^content:/i.test(query)) effMode = 'fulltext';
+  else if (/^all:/i.test(query)) effMode = 'all';
+  if (effMode && effMode !== currentLayerFilter) {
+    currentLayerFilter = effMode;
+  }
+
+  // sort: 前缀: 同步下拉与 currentSort
+  const sm = query.match(/\bsort:(\S+)/i);
+  if (sm) {
+    const map = {
+      time: 'time_desc', time_desc: 'time_desc', time_asc: 'time_asc', date: 'time_desc',
+      size: 'size_desc', size_desc: 'size_desc', size_asc: 'size_asc',
+      score: 'score', relevance: 'score'
+    };
+    const eff = map[sm[1].toLowerCase()] || 'score';
+    if (eff !== currentSort) {
+      currentSort = eff;
+      const sel = document.getElementById('sortSelect');
+      if (sel) sel.value = eff;
+    }
+  }
+
+  // ext: 前缀: 同步文件类型筛选高亮(仅命中已知扩展名时)
+  const em = query.match(/\bext:(\S+)/i);
+  if (em) {
+    let ev = em[1].toLowerCase();
+    if (!ev.startsWith('.')) ev = '.' + ev;
+    const chip = document.querySelector('#extFilters .filter-tag[data-ext="' + ev + '"]');
+    if (chip) {
+      currentExtFilter = ev;
+      document.querySelectorAll('#extFilters .filter-tag').forEach(el =>
+        el.classList.toggle('active', el.dataset.ext === ev));
+    }
+  }
+}
+
 /* ========== 搜索功能 ========== */
 async function doSearch(opts) {
   opts = opts || {};
@@ -1315,6 +1367,8 @@ async function doSearch(opts) {
   const myReqId = ++searchReqId;
 
   saveHistory(q);
+  // 查询可能内嵌语法前缀,先同步侧栏高亮/排序/类型控件,避免 UI 与实际情况错位
+  syncControlsToQuery(q);
 
   if (searchAbortController) searchAbortController.abort();
   searchAbortController = new AbortController();
@@ -1832,6 +1886,7 @@ function resetUI() {
   // 注意：清空输入框只重置结果与类型/排序，但【不重置搜索模式 currentLayer】，
   // 因为模式是用户的显式选择，应跨查询持久（支持“先选模式→再输入搜索”的流畅流程）。
   currentExtFilter = '';
+  currentLayerFilter = currentLayer;  // 清空后侧栏高亮回到当前持久模式
   currentSort = 'score';
   document.getElementById('sortSelect').value = 'score';
   updateLayerFilterUI();
@@ -2105,6 +2160,12 @@ document.addEventListener('keydown', e => {
   }
 
   if (e.ctrlKey && e.key === 'c' && activeIndex >= 0 && !isSearchFocused) {
+    // 仅当用户没有选中文本时才劫持 Ctrl+C 复制路径;
+    // 选中文本时放行原生复制,避免在预览/结果区复制文字时被强制改成路径
+    const sel = window.getSelection();
+    if (sel && sel.toString().trim().length > 0) {
+      return;
+    }
     e.preventDefault();
     copyHitPath(activeIndex);
   }

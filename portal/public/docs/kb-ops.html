@@ -110,7 +110,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li><strong>可观测</strong>：Actuator 暴露 <code>health,info</code>（<code>show-details: always</code>）；logback 经 logstash-logback-encoder + kafka-appender 推结构化日志（profile <code>kafka-log</code>）。</li>
 </ul>
 <h3 id="_6">核心数据模型</h3>
-<p>MySQL 库 <code>kb_ops</code>，初始化脚本 <code>src/main/resources/sql/kb_ops_init.sql</code>（11 张表，实体注解 <code>@TableName</code> 与之一一对应）：</p>
+<p>MySQL 库 <code>kb_ops</code>，初始化脚本 <code>src/main/resources/sql/kb_ops_init.sql</code>（11 张表，均 InnoDB + utf8mb4，实体注解 <code>@TableName</code> 与之一一对应；应用启动不自动执行脚本，首次建库需手动导入）：</p>
 <table>
 <thead>
 <tr>

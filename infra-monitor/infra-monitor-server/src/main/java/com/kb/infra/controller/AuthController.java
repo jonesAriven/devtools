@@ -1,6 +1,6 @@
 package com.kb.infra.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.infra.util.JwtUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

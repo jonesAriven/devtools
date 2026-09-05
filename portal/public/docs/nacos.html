@@ -136,6 +136,19 @@ kb-* 容器 → platform-net 网络 → platform-nacos:8848 (HTTP) + :9848 (gRPC
 <li>五个微服务（<code>kb-gateway</code>、<code>kb-auth</code>、<code>kb-file</code>、<code>kb-knowledge</code>、<code>kb-intelligence</code>）经 <code>spring-cloud-starter-alibaba-nacos-discovery</code> 启动注册，服务名 = <code>spring.application.name</code>（即 kb-gateway 等）。</li>
 <li>服务地址经 compose 环境变量下发：<code>NACOS_HOST=platform-nacos</code>、<code>NACOS_PORT=8848</code>、<code>NACOS_USERNAME/PASSWORD</code>（值见 mykng <code>.env</code> / Vaultwarden）。</li>
 <li><strong>kb-gateway 路由全部用 <code>lb://服务名</code></strong>（如 <code>uri: lb://kb-auth</code>、<code>lb://kb-file</code>、<code>lb://kb-knowledge</code>、<code>lb://kb-intelligence</code>），经 Spring Cloud LoadBalancer 从 Nacos 按服务名寻址——模块注册即上线、下线即自动摘除，网关零配置拔插；路由统一上下文 <code>${KB_CONTEXT:/kb}</code> + <code>StripPrefix</code> 去前缀，Swagger 文档路由（<code>/v3/api-docs</code>）也走同一机制。</li>
+<li>服务端接入样例（各 kb-* 服务 application.yml，同一写法）：
+    <code>yaml
+    spring:
+      application:
+        name: kb-gateway          # 即 Nacos 服务名
+      cloud:
+        nacos:
+          discovery:
+            server-addr: ${NACOS_HOST:platform-nacos}:${NACOS_PORT:8848}
+            namespace: ${NACOS_NAMESPACE:public}
+            group: ${NACOS_GROUP:DEFAULT_GROUP}
+            username: ${NACOS_USERNAME:nacos}
+            password: ${NACOS_PASSWORD:nacos123}</code></li>
 <li>不接入的服务：<code>kb-ops</code>、<code>portal-server</code>、<code>infra-monitor</code>（compose 无 NACOS_* 环境变量、源码无 nacos 依赖，v1 文档"kb-ops/infra-monitor/portal-server 同样接入"的说法不成立，已修正）。</li>
 <li><strong>为什么选它</strong>：与 Spring Cloud Alibaba 生态原生集成（lb:// 零代码路由）、standalone+Derby 零外部依赖、资源占用小（mem_limit 384m）。</li>
 </ul>
@@ -161,8 +174,10 @@ kb-* 容器 → platform-net 网络 → platform-nacos:8848 (HTTP) + :9848 (gRPC
 </ul>
 <h3 id="_9">发布/升级</h3>
 <ul>
-<li>platform 层无流水线。升级：改 compose 中镜像 tag → <code>docker compose -p platform -f platform/docker-compose.platform.yml up -d platform-nacos</code> 重建（Derby 数据在卷中保留；跨大版本升级前先备份 <code>platform-nacos-data</code> 卷）。</li>
+<li>platform 层无流水线。升级：改 compose 中镜像 tag → <code>docker compose -p platform -f platform/docker-compose.platform.yml up -d platform-nacos</code> 重建（Derby 数据在卷中保留；跨大版本升级前先备份 <code>platform-nacos-data</code> 卷，并确认目标版本对 v2.4.x 数据的兼容性说明）。</li>
 <li>nacos-init 容器每次 platform 启动都会重跑（幂等，已有用户自动跳过）。</li>
+<li>若只重启 Nacos 不动其他服务：<code>docker restart platform-nacos</code>，客户端自动重连，无需全量重启。</li>
+<li>变更 <code>NACOS_AUTH_TOKEN</code> 等鉴权三件套时：先改 mykng <code>.env</code> → 重建 <code>platform-nacos</code> → <strong>必须同时重建全部 kb-* 容器</strong>（客户端缓存旧 Token 会 403）。</li>
 </ul>
 <h3 id="_10">回滚</h3>
 <ul>
@@ -175,7 +190,9 @@ kb-* 容器 → platform-net 网络 → platform-nacos:8848 (HTTP) + :9848 (gRPC
 <li><strong>服务注册与发现</strong>（当前实际使用）：kb-* 五微服务启动自动注册，网关 <code>lb://</code> 按名寻址。</li>
 <li><strong>实例健康管理</strong>：gRPC 长连接心跳，实例掉线自动摘除，控制台可见健康状态。</li>
 <li><strong>配置中心</strong>（能力保留，当前未接入）：可经 <code>spring.config.import: nacos:</code> 接入，改配置配合 <code>@RefreshScope</code> 下发刷新。</li>
+<li><strong>namespace/group 分层</strong>（能力保留，当前统一 public/DEFAULT_GROUP）：多环境隔离时可按 namespace 划分。</li>
 <li><strong>控制台</strong>：服务列表（实例数/健康状态）、配置编辑、监听查询。</li>
+<li><strong>OpenAPI</strong>：8848 端口 REST 接口（服务列表/实例查询等），脚本化巡检可用。</li>
 </ul>
 <h3 id="_13">典型操作路径</h3>
 <ol>

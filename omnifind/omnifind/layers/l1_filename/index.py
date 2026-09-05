@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-from omnifind.core.config import DATA_DIR, OmniConfig
+from omnifind.core.config import OmniConfig, get_data_dir
 
 
 @dataclass
@@ -32,7 +32,7 @@ class FilenameIndex:
     """文件名索引存储(后端无关)。"""
 
     def __init__(self, db_path: Path | None = None):
-        self.db_path = db_path or (DATA_DIR / "filename.db")
+        self.db_path = db_path or (get_data_dir() / "filename.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         import threading
         self._lock = threading.Lock()
@@ -75,6 +75,14 @@ class FilenameIndex:
             sub = path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + os.sep + "%"
             self.conn.execute("DELETE FROM entries WHERE path=? OR path LIKE ? ESCAPE '\\'", (path, sub))
             self.conn.commit()
+
+    def contains(self, path: str) -> bool:
+        """判断某路径是否已在文件名索引中(供 web 层校验,走锁,禁止裸触 conn)。"""
+        with self._lock:
+            row = self.conn.execute(
+                "SELECT 1 FROM entries WHERE path=? LIMIT 1", (path,)
+            ).fetchone()
+        return row is not None
 
     @staticmethod
     def _escape_like(s: str) -> str:

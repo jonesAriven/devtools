@@ -5,12 +5,13 @@ L3 语义层 —— 向量索引(LanceDB,嵌入式、离线、自包含)。
 检索:query 向量化 -> LanceDB 余弦近邻 -> 按文档聚合去重 -> 返回。
 """
 from __future__ import annotations
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
-from omnifind.core.config import DATA_DIR
+from omnifind.core.config import get_data_dir
 
 
 @dataclass
@@ -49,7 +50,7 @@ class SemanticIndex:
     def __init__(self, embedder, db_path: Path | None = None, dim: int = 512,
                  min_score: float = 0.5):
         self.embedder = embedder
-        self.db_path = str(db_path or (DATA_DIR / "lancedb"))
+        self.db_path = str(db_path or (get_data_dir() / "lancedb"))
         self.dim = dim
         # 相关性阈值: bge-small-zh 余弦相似度分布整体偏高(实测无关查询 top1 也可达 ~0.46,
         # 真相关 >=0.52), 默认 0.5 以滤掉"什么词都能捞回全部语料"的噪音命中。
@@ -57,28 +58,32 @@ class SemanticIndex:
         self._db = None
         self._table = None
         import threading
-        self._lock = threading.Lock()
+        # 用 RLock: _connect/_ensure_table 在持锁的 add/search 内部也会被调用,
+        # 可重入避免死锁,同时保证连接/建表与并发检索不竞态(聚类B)。
+        self._lock = threading.RLock()
 
     def _connect(self):
-        if self._db is not None:
-            return
-        import lancedb
-        self._db = lancedb.connect(self.db_path)
-        if self.TABLE in self._db.table_names():
-            self._table = self._db.open_table(self.TABLE)
+        with self._lock:
+            if self._db is not None:
+                return
+            import lancedb
+            self._db = lancedb.connect(self.db_path)
+            if self.TABLE in self._db.table_names():
+                self._table = self._db.open_table(self.TABLE)
 
     def _ensure_table(self, sample_vec):
-        if self._table is not None:
-            return
-        import pyarrow as pa
-        schema = pa.schema([
-            pa.field("path", pa.string()),
-            pa.field("title", pa.string()),
-            pa.field("chunk_id", pa.int32()),
-            pa.field("text", pa.string()),
-            pa.field("vector", pa.list_(pa.float32(), len(sample_vec))),
-        ])
-        self._table = self._db.create_table(self.TABLE, schema=schema, mode="overwrite")
+        with self._lock:
+            if self._table is not None:
+                return
+            import pyarrow as pa
+            schema = pa.schema([
+                pa.field("path", pa.string()),
+                pa.field("title", pa.string()),
+                pa.field("chunk_id", pa.int32()),
+                pa.field("text", pa.string()),
+                pa.field("vector", pa.list_(pa.float32(), len(sample_vec))),
+            ])
+            self._table = self._db.create_table(self.TABLE, schema=schema, mode="overwrite")
 
     def add_document(self, path: str, title: str, text: str,
                      chunk_size: int = 512, overlap: int = 64) -> int:
@@ -128,9 +133,10 @@ class SemanticIndex:
 
     def count(self) -> int:
         self._connect()
-        if self._table is None:
-            return 0
-        return self._table.count_rows()
+        with self._lock:
+            if self._table is None:
+                return 0
+            return self._table.count_rows()
 
     def remove_document(self, path: str) -> None:
         """增量删除：移除某文件所有 chunk 向量（文件被删/不可读时调用）。"""
@@ -144,9 +150,30 @@ class SemanticIndex:
             except Exception:
                 pass
 
-    def drop(self) -> None:
-        """清空整个语义索引表（重建前调用）。"""
+    def contains(self, path: str) -> bool:
+        """判断某文档是否已在语义索引中(供 web 层校验,不持锁竞态)。"""
         self._connect()
-        if self._table is not None:
-            self._db.drop_table(self.TABLE)
-            self._table = None
+        if self._table is None:
+            return False
+        esc = path.replace("'", "''")
+        with self._lock:
+            try:
+                return self._table.count_rows(filter=f"path = '{esc}'") > 0
+            except Exception:
+                # 失败则保守返回 False(路径视为不在索引),但记录日志,
+                # 避免 L3 异常静默地把本应可访问的文件判为 403。
+                logging.getLogger(__name__).exception("L3 contains() 查询失败,已按'不在索引'处理")
+                return False
+
+    def drop(self) -> None:
+        """清空整个语义索引表（重建前调用）。持锁,避免与并发检索竞态。"""
+        self._connect()
+        with self._lock:
+            if self._table is not None:
+                self._db.drop_table(self.TABLE)
+                self._table = None
+
+    def close(self) -> None:
+        """释放向量库连接(供服务关闭时调用)。"""
+        self._db = None
+        self._table = None

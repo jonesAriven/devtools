@@ -27,11 +27,21 @@ def resolve_semantic_roots(cfg: OmniConfig) -> list[str]:
 
 def build_semantic_index(cfg: OmniConfig, sem: SemanticIndex,
                          limit: int | None = None) -> int:
-    """遍历圈定范围,抽正文 -> 分块 -> 嵌入 -> 入向量库。"""
+    """遍历圈定范围,抽正文 -> 分块 -> 嵌入 -> 入向量库。
+
+    安全阀(自包含,不只依赖 web 层):未指定 semantic_dirs 且 semantic_full_disk=False
+    时直接跳过,绝不偷偷向量化全盘(避免爆库)。
+    """
     load_all_extractors()
+    # 安全阀:只在明确圈定目录或显式要求全盘时才向量化
+    if not cfg.semantic_dirs and not cfg.semantic_full_disk:
+        print("[L3] 未配置 semantic_dirs 且 semantic_full_disk=False,跳过语义构建(避免全盘向量化)")
+        return 0
     roots = resolve_semantic_roots(cfg)
     exts = set(e.lower() for e in cfg.semantic_exts)   # 2.2 类型过滤
     exclude = set(d.lower() for d in cfg.exclude_dirs)
+    # 体积闸门:复用 max_fulltext_mb,超大全文档跳过(防向量化卡死/爆库)
+    max_bytes = (cfg.max_fulltext_mb * 1024 * 1024) if cfg.max_fulltext_mb > 0 else 0
 
     total_chunks = 0
     docs = 0
@@ -43,6 +53,13 @@ def build_semantic_index(cfg: OmniConfig, sem: SemanticIndex,
                 if ext not in exts or get_extractor(ext) is None:
                     continue
                 p = os.path.join(dirpath, name)
+                # 体积闸门:超 max_fulltext_mb 的文件跳过
+                if max_bytes:
+                    try:
+                        if os.path.getsize(p) > max_bytes:
+                            continue
+                    except OSError:
+                        continue
                 res = extract_text(Path(p))
                 if not res.ok or not res.text.strip():
                     continue

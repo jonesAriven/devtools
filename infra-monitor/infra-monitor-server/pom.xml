@@ -86,6 +86,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+            <!-- 公共核心库（独立仓库 com.marschat:common-core） -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>common-core</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 
     <repositories>

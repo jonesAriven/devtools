@@ -62,6 +62,7 @@ Woodpecker 是 Drone 社区分支的轻量自托管 CI（Go 单二进制），�
 
 - compose 文件：`D:\huliang\java\ideaworkspace\devtools\woodpecker\docker-compose.yml`（mykng 上对应路径同目录），compose project `woodpecker`，专用网络 `woodpecker_woodpecker-network`（bridge，禁用 IPv6 避免 DNS 解析问题）。
 - 首次部署：`bash deploy.sh --init && bash deploy.sh --start`（同目录 `deploy.sh`）；后续手动 `docker compose -p woodpecker up -d`。
+- 反代配置：腾讯云2号 nginx（`woodpecker-nginx.conf`）443 TLS 终止，upstream 指向 mykng 8000（经 Tailscale 回源）。
 - 实采（docker inspect）：
 
 | 容器 | 镜像 | 端口 | 卷挂载 | 重启策略 |
@@ -95,8 +96,10 @@ Woodpecker 是 Drone 社区分支的轻量自托管 CI（Go 单二进制），�
 - **push 自动构建**：Gitee/GitHub push 即触发对应项目 build→deploy 链——日常开发的默认发布方式。
 - **手动定点发布**：`trigger-pipeline.py <目标> --wait` 按参数只部署指定项目——紧急修复/重发场景。
 - **构建观测**：Web UI 与 `check-pipeline.py`（状态/日志/`--watch` 持续监控）——排查部署失败第一步。
+- **脚本语法门禁**：`sync-ci-scripts` 步骤对全部 `.sh` 做 `bash -n` 检查，语法错误流水线直接失败——防止坏脚本进入部署阶段。
 - **Secrets 托管**：部署 SSH 私钥等敏感值仓库级托管，流水线文件零明文。
 - **构建资源治理**：单并发 + 内存上限 + 日志 7 天/构建记录 30 天保留——适配 3 核小主机。
+- **产物留存**：构建产物统一落 `/mnt/shared/woodScript/publish/`——回滚重发的基础。
 
 ### 典型操作路径
 

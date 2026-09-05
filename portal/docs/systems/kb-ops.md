@@ -52,7 +52,7 @@
 
 ### 核心数据模型
 
-MySQL 库 `kb_ops`，初始化脚本 `src/main/resources/sql/kb_ops_init.sql`（11 张表，实体注解 `@TableName` 与之一一对应）：
+MySQL 库 `kb_ops`，初始化脚本 `src/main/resources/sql/kb_ops_init.sql`（11 张表，均 InnoDB + utf8mb4，实体注解 `@TableName` 与之一一对应；应用启动不自动执行脚本，首次建库需手动导入）：
 
 | 表名 | 用途 |
 |------|------|
@@ -112,8 +112,7 @@ MySQL 库 `kb_ops`，初始化脚本 `src/main/resources/sql/kb_ops_init.sql`（
 - 端口映射：`8084:8084`
 - 网络：`kb-app-net`（应用层内部）+ `platform-net`（连全局基础设施）
 - 卷挂载：无持久卷（数据全在 MySQL/Redis）
-- 关键环境变量（值见 Vaultwarden / mykng `.env`，不在文档落盘）：
-  - `SPRING_PROFILES_ACTIVE=prod`（附加 kafka-log 日志 profile）、`JAVA_OPTS`（JVM 内存/GC）
+- 关键环境变量（值见 Vaultwarden / mykng `.env`，不在文档落盘）：  - `SPRING_PROFILES_ACTIVE=prod`（附加 kafka-log 日志 profile）、`JAVA_OPTS`（JVM 内存/GC）
   - `MYSQL_DATABASE=kb_ops`、`MYSQL_USER`、`MYSQL_PASSWORD`（注意：`MYSQL_HOST/PORT` 已废弃，生产连接串为 GR 集群三节点 failover URL，硬编码在 `application-prod.yml`）
   - `REDIS_HOST=platform-redis`、`REDIS_PORT=6379`
   - `CRYPTO_AES_KEY`（凭据 AES 加密密钥）

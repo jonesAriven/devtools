@@ -8,7 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
-REPO = Path("/root/devtools/omnifind")
+REPO = Path(__file__).resolve().parent.parent  # 跨平台定位 omnifind 仓库根(Windows 不再硬编码 /root)
 sys.path.insert(0, str(REPO))
 
 TMP = Path(tempfile.mkdtemp(prefix="omnifind-test-"))

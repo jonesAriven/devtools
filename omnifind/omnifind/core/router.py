@@ -16,6 +16,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, asdict, field
 from typing import Any
+import logging
 import os
 
 # 计数/遍历上限: 防止高频词或超长结果集导致服务端卡死(DoS 防护)。
@@ -297,8 +298,10 @@ class QueryRouter:
                         layer="l3", score=h.score,
                         extra=getattr(h, 'extra', {})
                     ))
-            except Exception:
-                pass
+            except Exception as e:
+                # 不再静默吞掉语义层异常:记录日志 + 置错误标记,让调用方/前端感知降级
+                logging.getLogger(__name__).exception("L3 语义检索失败,已降级跳过")
+                counts["l3_error"] = str(e)[:200]
 
         # ====================== counts: 始终计算所有可用层的真实计数 ======================
         # 修复 P0: 切换单层(mode=filename)时仍返回其它层的真实数, 供前端对比。

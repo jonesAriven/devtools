@@ -29,7 +29,12 @@
   Docker → http://192.168.31.105:8082/ 或 :8083/ (docker-public group)
 
 （不经过腾讯云2号，也不经公网带宽；局域网路由直达 mykng）
+
+回源路径（仅缓存未命中时）:
+Nexus → mykng 本机 Clash Meta :7890 → 公网上游（maven-central/npmjs/pypi/Docker Hub）
 ```
+
+说明：Tailscale 节点把 `192.168.31.105` 换成 `100.93.36.113` 即可，端口与仓库路径不变；同一构建配置在"局域网/Tailscale/公网域名"三张网内只需改 host 部分。
 
 ## 系统设计
 
@@ -82,10 +87,25 @@ pip download requests -d /tmp -i http://192.168.31.105:8081/repository/pypi-publ
 docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry 生效
 ```
 
+### 首次拉取与缓存命中判定
+
+- **首次拉取**（未命中缓存）：经 mykng Clash `:7890` 代理回源公网，速度取决于上游——此时日志/控制台 Browse 会新增该制品。
+- **命中缓存**：直接读 `/root/nexus/data` blob，内网千兆下大包也在秒级。
+- **判定方法**：对比两次下载耗时，或控制台 Browse 查看制品是否已存在；REST `GET /service/rest/v1/search?repository=maven-public&name=<名>` 也可查询。
+
+### 与公网入口的一致性
+
+两个入口指向**同一份数据与配置**（同容器同卷）：
+
+- 缓存共享：任一入口拉过的包，另一入口立即可见——内网预热的成果公网访问同样受益，反之亦然。
+- 配置同步：控制台在内网或公网改动仓库配置，无同步延迟（同一实例）。
+- 凭据通用：同一套账号在两个入口均可用（传输层不同：内网 HTTP 明文、公网 HTTPS TLS 加密）。
+
 ## 部署与发布
 
 - 与 `nexus.md` 完全同一容器：`nexus`（`sonatype/nexus3:3.91.1`，bridge 网络，`restart: unless-stopped`，卷 `/root/nexus/data` → `/nexus-data`，端口 8081-8083 直映射）。
 - 本篇无独立部署物——内网入口是同一实例的端口直暴露，无需额外配置；运维/升级/回滚/备份全部见 `nexus.md` 部署与发布节。
+- 客户端侧唯一需要维护的是各构建工具的源配置（`settings.xml`/`.npmrc`/`pip.conf`/`daemon.json`），属各机器自身配置管理，建议纳入 infra-monitor 的 config 台账登记。
 
 ## 核心功能与使用
 
@@ -93,8 +113,9 @@ docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry �
 
 - **内网构建提速**：CI 与开发机直连 8081，缓存命中后近乎本地速度。
 - **不依赖公网/代理**：缓存命中时构建完全不回源——公网或 Clash 故障不影响存量依赖拉取。
-- **内部制品发布**：`maven-releases`/`npm-hosted`/`pypi-hosted` 经内网直接 `mvn deploy`/`npm publish`（发布凭证见 Vaultwarden）。
+- **内部制品发布**：`maven-releases`/`npm-hosted`/`pypi-hosted`/`docker-hosted` 经内网直接 `mvn deploy`/`npm publish`/`docker push`（发布凭证见 Vaultwarden）。
 - **Docker 镜像内网分发**：基础镜像 `docker pull 192.168.31.105:8082/...`，不受 Docker Hub 限流影响。
+- **多源容错**：group 聚合多 proxy（maven-central+aliyun、npm 双源、pypi 三源、docker 双源），内网构建端单 URL 即享受容错。
 
 ### 典型操作路径
 
@@ -112,6 +133,7 @@ docker pull 192.168.31.105:8082/alpine:3.20     # 成功即 insecure-registry �
 - 被依赖/关联系统：
   - **所有内网构建机 / Tailscale 节点**：Maven、pnpm、pip、docker 默认源指向此处。
   - **Woodpecker CI 节点**：CI 容器内编译消费 Nexus（mykng 本机直连，延迟最低）。
+  - **infra-monitor**：Nexus 缓存策略/预热登记为其 config 台账，8081 状态探活纳入巡检。
   - 与 `nexus.md` 互为入口：公网域名用于外部/移动访问，内网直连用于高频构建。
 
 ## 运维要点

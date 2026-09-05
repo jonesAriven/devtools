@@ -85,7 +85,8 @@ class OmniConfig:
     data_dir: str = field(default_factory=lambda: str(default_data_dir()))
 
     # ---- L1 文件名层 ----
-    scan_roots: list[str] = field(default_factory=default_scan_roots)
+    # 默认空,在 load() 末尾惰性填充(避免 import 即触发 ctypes 枚举盘符)。
+    scan_roots: list[str] = field(default_factory=list)
     exclude_dirs: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     # L1 后端:'usn'(Windows 真USN秒搜,需管理员) 或 'walk'(跨平台遍历+监听)
     l1_backend: str = "auto"  # auto=Windows选usn,其他选walk
@@ -184,6 +185,9 @@ class OmniConfig:
                         print(f"[config] 字段 {k} 需要 int,忽略 bool 值 {v}")
                         continue
                     setattr(cfg, k, v)
+        # scan_roots 默认惰性填充(import 期不枚举盘符),仅当未被配置覆盖时
+        if not cfg.scan_roots:
+            cfg.scan_roots = default_scan_roots()
         return cfg
 
 
@@ -195,9 +199,29 @@ def ensure_dirs(cfg: OmniConfig | None = None) -> None:
         d.mkdir(parents=True, exist_ok=True)
 
 
-# ---- 向后兼容(旧代码里 from omnifind.core.config import DATA_DIR 直接读常量) ----
-# 尽量少改老代码。DATA_DIR 现在指向"当前 config 下的 db_dir"，一次解析。
-_default_cfg = OmniConfig.load()
-DATA_DIR = _default_cfg.db_dir
-MODELS_DIR = _default_cfg.models_dir
-LOGS_DIR = _default_cfg.logs_dir
+# ---- 惰性访问器(替代原模块级 DATA_DIR 常量) ----
+# 原实现在 import 期就执行 OmniConfig.load()(读盘 + ctypes 枚举盘符),
+# 形成「导入即读盘」硬约束,且冻结全局与 cfg.db_dir 可能不一致。
+# 改为惰性 + 进程内缓存的单一真相源,只有真正用到时才解析。
+_DEFAULT_CFG_CACHE: "OmniConfig | None" = None
+
+
+def get_default_config() -> "OmniConfig":
+    """惰性获取默认配置(进程内缓存一次),替代模块级 OmniConfig.load() 副作用。"""
+    global _DEFAULT_CFG_CACHE
+    if _DEFAULT_CFG_CACHE is None:
+        _DEFAULT_CFG_CACHE = OmniConfig.load()
+    return _DEFAULT_CFG_CACHE
+
+
+def get_data_dir() -> Path:
+    """索引 DB 目录(db_dir),惰性解析。"""
+    return get_default_config().db_dir
+
+
+def get_models_dir() -> Path:
+    return get_default_config().models_dir
+
+
+def get_logs_dir() -> Path:
+    return get_default_config().logs_dir

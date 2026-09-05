@@ -1,7 +1,7 @@
 package com.kb.infra.service;
 
-import com.kb.common.exception.NotFoundException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.NotFoundException;
+import com.marschat.common.page.PageResult;
 import com.kb.infra.dto.InfraItemRequest;
 import com.kb.infra.entity.InfraItem;
 import com.kb.infra.repository.InfraItemRepository;

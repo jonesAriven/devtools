@@ -617,12 +617,9 @@ class UsnBackend(FilenameBackend):
                         self.index.bulk_upsert(batch_upsert)
                     if batch_delete:
                         for p in batch_delete:
-                            # 精确路径删除；目录被删时连带清其子树
-                            self.index.conn.execute(
-                                "DELETE FROM entries WHERE path=? OR path LIKE ? ESCAPE '\\'",
-                                (p, self.index._escape_like(p) + "\\\\%"),
-                            )
-                        self.index.conn.commit()
+                            # 精确路径删除；目录被删时连带清其子树。
+                            # 走 remove()(持锁,不再裸触 conn —— 修复「绕过封装」根因)。
+                            self.index.remove(p)
 
                     state[letter]["next_usn"] = next_usn
                     any_progress = True

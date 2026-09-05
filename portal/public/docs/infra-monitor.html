@@ -183,7 +183,8 @@ monitor.marschat.online/infra/api → 腾讯云2号 nginx(443) → mykng nginx(:
 <ul>
 <li>后端：容器 <code>infra-monitor</code>，镜像 <code>infra-monitor:latest</code>（<code>build: .</code>），归属 compose project <code>infra-monitor</code>，compose 文件 <code>/root/devtools/infra-monitor/infra-monitor-server/docker-compose.yml</code>。</li>
 <li>特殊点：<strong><code>network_mode: host</code></strong>（直接用宿主机网络，MongoDB 走 <code>127.0.0.1:27017</code>），不走 kb-app-net。</li>
-<li>前端：容器 <code>infra-monitor-web</code>（nginx:alpine），归属 compose project <code>kb-web</code>，compose 文件 <code>/root/devtools/docker/docker-compose.web.yml</code>。</li>
+<li>无 depends_on：后端启动时 MongoDB 不在线会连库失败重启（on-failure:5 自动重试），平台层就绪后自然恢复。</li>
+<li>前端：容器 <code>infra-monitor-web</code>（nginx:alpine），归属 compose project <code>kb-web</code>，compose 文件 <code>/root/devtools/docker/docker-compose.web.yml</code>——与 kb-web/kb-ops-web/portal-web 同 project，可独立重建。</li>
 </ul>
 <h3 id="_11">配置清单</h3>
 <p><strong>infra-monitor（后端容器）</strong></p>
@@ -254,7 +255,8 @@ python woodScript/trigger-pipeline.py infra-monitor-web   # 前端
 <li>容器日志：<code>docker logs -f infra-monitor</code> / <code>docker logs -f infra-monitor-web</code></li>
 <li>落盘日志：mykng <code>/data/infra-monitor/logs/</code></li>
 <li>容器日志面板：mykng <code>obs-dozzle</code>（15500）</li>
-<li>数据与备份：资产在 <code>platform-mongo</code> 的 <code>infra_monitor</code> 库；日常用 <code>/io/export/json</code> 导出作轻量备份，MongoDB 本身由 platform 层统一维护。</li>
+<li>数据与备份：资产在 <code>platform-mongo</code> 的 <code>infra_monitor</code> 库；日常用 <code>/io/export/json</code> 导出作轻量备份，或 <code>mongodump --uri &lt;连接串&gt; --db infra_monitor</code>（连接串见 Vaultwarden / compose）。MongoDB 本身由 platform 层统一维护。</li>
+<li>巡检日志清理：<code>infra_health_logs</code> 每 60s 增长，长期运行后按时间清理旧文档（保留最近 7~30 天足够排障）。</li>
 <li>凭据安全：所有密码经 <code>CryptoUtil</code> AES 加密，前端展示脱敏；<strong>任何系统明文账密一律不写入文档</strong>。</li>
 <li>常见问题：</li>
 <li>巡检一直 UNKNOWN：检查对应 service 的 <code>healthCheckUrl</code> 是否可达、目标服务是否在线；SSH 型巡检确认主机 SSH 凭据有效。</li>

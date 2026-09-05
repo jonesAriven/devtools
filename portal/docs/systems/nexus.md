@@ -57,8 +57,10 @@ Nexus Repository 3 是 Sonatype 开源的通用制品仓库，核心能力：**h
   - 业务项目（kb-ops/infra-monitor/portal/mykng）的 `pom.xml` 将 `repositories`/`pluginRepositories` 与 `distributionManagement` 全部指向 `https://nexus.marschat.online/repository/maven-public/`（releases/snapshots），**强制走 Nexus，禁用其他公网源**。
   - 前端 pnpm 构建 registry 统一指 `npm-public`（见 woodpecker `env.sh` 的 `NEXUS_NPM_REGISTRY`）。
 - **为什么这样聚合**：group 仓库让构建端只配置一个 URL，内部命中 hosted、未命中逐级落到 proxy 并缓存——多代理源（central+aliyun、npmjs+tuna+aliyun、daocloud+hub-direct）互为容错，任一上游抖动不断供。
-- **缓存策略**：`negativeCache` 关闭（避免上游临时失败被缓存为"不存在"）、`contentMaxAge=525600`（制品缓存 365 天，制品不可变）、`metadataMaxAge=1440`（版本列表每天刷新）。
-- **双入口设计**（为什么内网+公网两个入口，详见 nexus-lan.md）：同一实例同时暴露公网域名（外部/移动场景）与内网直连（高频构建场景），内网流量不绕公网带宽。
+- **缓存策略**：`negativeCache` 关闭——某包回源 404 不会被缓存为"不存在"，避免上游临时故障造成长期误判；`contentMaxAge=525600`（制品缓存 365 天，制品不可变，命中即本地返回）；`metadataMaxAge=1440`（版本列表/索引每天刷新一次，保证新版本可见性的同时减少回源）。
+- **数据一致性**：两入口（公网/内网）同一容器同一数据卷，任一入口的拉取/发布结果对另一入口立即可见，无双写一致性问题。
+- **双入口设计**（为什么内网+公网两个入口，详见 nexus-lan.md）：同一实例同时暴露公网域名（外部/移动场景）与内网直连（高频构建场景），内网流量不绕公网带宽；两入口共享同一份数据与配置。
+- **与 infra-monitor 台账联动**：Nexus 缓存策略、Nexus 缓存预热等配置项在 infra-monitor 的 config 类资产中登记（TABLE 形态），巡检覆盖 `8081/service/rest/v1/status` 探活——Nexus 异常可从 infra-monitor 看板第一时间发现。
 - **缓存预热**：`/home/liangzi/tools/nexus-warmup.sh`（腾讯云2号）每周日 03:30 cron 执行，覆盖 npm（Top250+80 包）/maven（33）/pypi（47）/docker（22 个基础镜像），日志 `/var/log/nexus-warmup.log`；脚本经各仓库下载 API 逐包请求触发缓存（幂等，已缓存仅元数据刷新）；实测 react 6.8MB 首次 19s → 缓存后 0.08s（约 237× 提速）。
 
 ## 部署与发布
@@ -69,6 +71,15 @@ Nexus Repository 3 是 Sonatype 开源的通用制品仓库，核心能力：**h
 - 单容器自部署（无 compose project 编排，`docker run`/手工管理）。
 
 ### 配置清单
+
+- 容器基础（docker inspect 实采）：
+
+| 项 | 值 |
+|----|----|
+| 镜像 | `sonatype/nexus3:3.91.1` |
+| 网络 | bridge（独立于 platform-net） |
+| 重启策略 | unless-stopped |
+| 内存限制 | 无（默认，Nexus 3 建议 ≥2G 可用内存） |
 
 - 端口映射：`8081:8081`（UI/REST + Maven/npm/PyPI）、`8082:8082`、`8083:8083`（Docker registry connector）。
 - 卷挂载（宿主→容器）：`/root/nexus/data` → `/nexus-data`（全部 blob 存储与元数据，唯一持久卷）。
@@ -121,7 +132,7 @@ Nexus Repository 3 是 Sonatype 开源的通用制品仓库，核心能力：**h
 
 - 启停：`docker start/stop/restart nexus`（基础设施层，手工管理，不归应用流水线）。注意 Nexus 3 启动需 1~2 分钟才能就绪，探活以 `/service/rest/v1/status` 返回 200 为准。
 - 日志：`docker logs -f nexus`；Nexus 自身日志在宿主机 `/root/nexus/data/log/karaf.log`（滚动）。
-- 数据与备份：`/root/nexus/data` 整目录（blob + OrientDB 元数据）定期备份；冷备方式：`docker stop nexus` → `tar czf nexus-data-$(date +%F).tgz -C /root/nexus data` → `docker start nexus`。缓存预热日志在腾讯云2号 `/var/log/nexus-warmup.log`。
+- 数据与备份：`/root/nexus/data` 整目录（blob + OrientDB 元数据）定期备份；冷备方式：`docker stop nexus` → `tar czf nexus-data-$(date +%F).tgz -C /root/nexus data` → `docker start nexus`。重要版本升级前必做一次；建议每季度做一次还原演练验证备份可用。缓存预热日志在腾讯云2号 `/var/log/nexus-warmup.log`。
 - 存储清理：代理缓存的旧版本组件会持续膨胀——控制台可按仓库建 Cleanup Policies（按组件最后下载时间/版本数），再配 Tasks → "Admin - Cleanup repositories" + "Admin - Repair - Rebuild blob store list" 定期执行（当前实例策略以控制台为准，未见独立配置文件）。
 - 常用 REST（匿名或带凭证，凭证见 Vaultwarden）：
   - `GET /service/rest/v1/status` — 健康探针
@@ -134,6 +145,10 @@ Nexus Repository 3 是 Sonatype 开源的通用制品仓库，核心能力：**h
   - `negativeCache` 误伤：若曾回源失败被缓存，清对应仓库 negative cache 或等 `metadataMaxAge` 过期。
   - Docker 推送 443/8083 不通：确认客户端 `daemon.json` 已配置 insecure-registry 或走 nginx TLS（见 nexus-lan.md）。
   - 某上游源失效：group 内多个 proxy 互备，控制台停用坏源即可，构建端无需改动。
+  - 启动后 503：Nexus 3 冷启动需 1~2 分钟（OrientDB 恢复），勿急着重启；`docker logs -f nexus` 看到 `Started Sonatype Nexus` 即就绪。
+  - 磁盘膨胀：代理缓存长期累积，按运维要点建 Cleanup Policy 定期清理；`/root/nexus/data` 所在分区建议预留 2 倍现有体积。
+  - 上传大制品失败：默认请求体限制，公网入口检查腾讯云2号 nginx `client_max_body_size` 配置。
+  - 匿名拉取 401：仓库匿名访问权限被关闭时构建端需带凭证——排查顺序：控制台 Security → Anonymous 权限 → 各仓库 Read 权限。
 
 ## 变更记录
 

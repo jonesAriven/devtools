@@ -28,6 +28,7 @@ class SemanticWatcher:
         self._stop = False
         self._thread = None
         self._seen: dict[str, float] = {}   # path -> mtime（已同步状态）
+        self._warned_empty = False          # 空库告警只报一次
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -81,6 +82,15 @@ class SemanticWatcher:
                     del self._seen[p]
         # 刷新 seen 基线
         self._seen = dict(current)
+        # 空库告警:首次扫描后仍有可索引文件但语义库为空,提示需先全量构建
+        # (否则未变更文件永远不会被增量补建,语义检索会缺结果)
+        if prime and not self._warned_empty:
+            self._warned_empty = True
+            if current and self.sem.count() == 0:
+                logger.warning(
+                    "[L3 watch] 语义索引为空,日常增量不会补建未变更文件;"
+                    "如需全量语义检索,请先触发 L3 重建。"
+                )
 
     def _update_file(self, path: str, name: str, chunk_size: int, overlap: int) -> None:
         try:

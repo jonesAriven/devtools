@@ -1,8 +1,8 @@
 package com.kb.portal.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.kb.common.exception.BusinessException;
-import com.kb.common.result.Result;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.result.Result;
 import com.kb.portal.dto.ChangePasswordRequest;
 import com.kb.portal.dto.LoginRequest;
 import com.kb.portal.dto.LoginResponse;

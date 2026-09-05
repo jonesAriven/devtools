@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- kb-common 统一日志配置（v2 统一日志 + 链路追踪）
+<!-- common-core 统一日志配置（v2 统一日志 + 链路追踪）
      - Console → JSON 格式（Docker stdout → Promtail → Loki）
      - FILE → 保留原有滚动文件格式（兼容已有运维习惯）
      - traceId 自动从 MDC 注入（由 TraceIdInterceptor 提供）
