@@ -1,6 +1,6 @@
 # 腾讯云2号主机
 
-> 公网唯一入口主机（1.117.70.30 / Tailscale 100.110.114.16），nginx 终止全部 marschat.online 子域的 HTTPS 并反代到内网（Tailscale 隧道）；同时跑 Clash 出海代理与 Nginx UI。portal 上的管理入口现状：卡片 URL 指向 mykng Cockpit（192.168.31.105:15090），本机 Cockpit 未对外开放端口，实际管理走 SSH。
+> 公网唯一入口主机（1.117.70.30 / Tailscale 100.110.114.16），nginx 终止全部 marschat.online 子域的 HTTPS 并反代到内网（Tailscale 隧道）；同时跑 Clash 出海代理与 Nginx UI。主机管理走本机 Cockpit（Tailscale 入口 15090），Nginx 管理走 Nginx UI。
 
 ## 基本信息
 
@@ -17,7 +17,7 @@
 
 - 公网 SSH：`root@1.117.70.30`（22 端口开放）
 - Nginx UI（本机 Nginx 的 Web 管理台）：`https://nginxui.marschat.online` → 127.0.0.1:19900
-- Cockpit：本机 `systemctl is-active cockpit` 为 active，但 9090 被 Clash（127.0.0.1:9090）占用、未监听对外端口——portal 卡片 URL（192.168.31.105:15090）实际是 mykng 的 Cockpit，⚠️ 属配置错位，待修正 portal 条目或在本机给 Cockpit 独立端口
+- Cockpit：本机 cockpit.socket drop-in（listen.conf）已配置监听 **15090**（2026-09-05 实采确认），但仅经 Tailscale 可达（curl 100.110.114.16:15090 = 200）；9090 端口被 Clash（127.0.0.1:9090）占用，与本机 Cockpit 无关
 
 ## 全链路（本机承担的公网反代，2026-09-05 实采 /etc/nginx/sites-enabled/）
 
@@ -55,7 +55,7 @@
 - Nginx 配置备份：sites-backup/ 目录与多个 .bak 时间戳文件（历史变更留痕）
 - 日志：nginx access/error 在本机，promtail（127.0.0.1:15200）送 Loki 可在 Grafana 查
 - 常见问题：新子域 502 多为 Tailscale 隧道断或下游容器挂；证书续期失败查 acme-challenge location
-- ⚠️ 遗留：portal"腾讯云2号主机"卡片入口指向 mykng Cockpit，属历史配置错位，待修正
+- 2026-09-05 修正：portal 卡片"腾讯云2号主机"原 URL 错指 mykng Cockpit，已改为本机 Cockpit Tailscale 入口 http://100.110.114.16:15090/
 
 ## 变更记录
 
