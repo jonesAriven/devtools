@@ -15,7 +15,7 @@
 ## 访问入口
 
 - 公网：—
-- Cockpit 内网：`http://192.168.31.182:15090` —— **当前不可用**：实采 cockpit.socket 为 failed 状态、15090 无监听、curl 返回 000；修复需 `systemctl restart cockpit.socket` 并排查 drop-in 配置（待处理）
+- Cockpit 内网：`http://192.168.31.182:15090`（2026-09-05 已修复：默认 9090 被 clash-meta 占用导致 socket failed，已加 systemd drop-in `/etc/systemd/system/cockpit.socket.d/listen.conf` 改监听 15090，实测 301 跳登录页正常）
 - Cockpit Tailscale：`http://100.105.196.63:15090`（同上，随服务状态恢复）
 - SSH：`root@192.168.31.182`（当前唯一稳定管理通道）
 - 账密：Linux 系统账号，见 Vaultwarden 或 infrastructure-map 技能
@@ -145,7 +145,7 @@
 2. **查本机容器实时日志**：打开 Dozzle :15888 → 选容器
 3. **重启观测栈**：`ssh root@192.168.31.182 "cd /opt/observability && docker compose up -d"`
 4. **MySQL GR 运维**：SSH 进本机 → 跑 deploy-mysql-cluster.sh 统一管理三节点
-5. **Cockpit 修复**（待处理）：SSH → `systemctl restart cockpit.socket` → 失败则 `journalctl -u cockpit.socket` 排查 drop-in 配置
+5. **Cockpit 已修复**（2026-09-05）：9090 被 clash-meta 占用，drop-in 改监听 15090
 
 ## 依赖与关联
 
@@ -165,7 +165,7 @@
 
 | 症状 | 原因 | 处理 |
 |------|------|------|
-| Cockpit 打不开 | cockpit.socket failed（2026-09-05 实采） | restart socket；失败查 journalctl 与 drop-in（待处理） |
+| Cockpit 打不开 | 端口被占（9090 被 clash-meta 占用，已 drop-in 改 15090） | restart socket；查 `journalctl -u cockpit.socket` |
 | tools.marschat.online 公网不可用 | Tailscale 掉线 | Kuma 会第一时间告警；恢复 Tailscale 即恢复 |
 | 观测栈整体失联 | 本机断电/断网 | 已知边界：Kuma 也在本机，整机故障时告警自身失效，依赖人工发现 |
 | MySQL 单节点异常 | GR 节点故障 | 用 deploy-mysql-cluster.sh 统一重启，勿单点操作 |
