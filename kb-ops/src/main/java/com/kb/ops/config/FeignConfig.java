@@ -1,6 +1,6 @@
 package com.kb.ops.config;
 
-import com.kb.common.trace.FeignTraceIdInterceptor;
+import com.marschat.common.trace.FeignTraceIdInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

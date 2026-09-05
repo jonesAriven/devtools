@@ -1,7 +1,7 @@
 package com.kb.ops.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.ops.dto.OpsKnowledgeRequest;
 import com.kb.ops.entity.OpsKnowledge;
 import com.kb.ops.service.OpsKnowledgeService;

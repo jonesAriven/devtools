@@ -1,6 +1,6 @@
 package com.kb.ops.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.ops.dto.SyncFromIntelRequest;
 import com.kb.ops.dto.SyncFromIntelResult;
 import com.kb.ops.service.SyncFromIntelService;

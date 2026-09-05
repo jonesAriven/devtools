@@ -1,6 +1,6 @@
 package com.kb.ops;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.ops.dto.ImportRequest;
 import com.kb.ops.dto.ImportResult;
 import com.kb.ops.entity.Host;

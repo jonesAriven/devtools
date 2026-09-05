@@ -27,6 +27,12 @@ mybatis-plus:
 crypto:
   aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
+# 认证公共库 com.marschat:auth-core（TokenProvider 自动装配）
+# secret 必须与签发方 kb-auth 完全一致，否则 token 验签失败；长度 >= 32 字节（HS256 要求）
+marschat:
+  auth:
+    secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
+
 # 服务间调用 (单机部署，直接 HTTP URL)
 # 独立运行时可选：kb-ops 脱离 mykng 后，以下 Feign 调用 kb-auth/kb-intelligence 为可选依赖。
 # 若不需要 Token 验证 / 智能同步，可忽略；需要时请确保目标服务可达。

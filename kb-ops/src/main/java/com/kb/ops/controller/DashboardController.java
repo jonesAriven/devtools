@@ -1,6 +1,6 @@
 package com.kb.ops.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.ops.dto.DashboardVO;
 import com.kb.ops.service.DashboardService;
 import lombok.RequiredArgsConstructor;

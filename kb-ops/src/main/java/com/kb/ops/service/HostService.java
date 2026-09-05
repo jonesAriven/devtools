@@ -1,6 +1,6 @@
 package com.kb.ops.service;
 
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 import com.kb.ops.dto.HostRequest;
 import com.kb.ops.entity.Host;
 

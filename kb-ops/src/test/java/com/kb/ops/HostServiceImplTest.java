@@ -1,8 +1,8 @@
 package com.kb.ops;
 
-import com.kb.common.exception.BusinessException;
-import com.kb.common.exception.NotFoundException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.exception.NotFoundException;
+import com.marschat.common.page.PageResult;
 import com.kb.ops.dto.HostRequest;
 import com.kb.ops.entity.Host;
 import com.kb.ops.mapper.HostMapper;
@@ -141,7 +141,7 @@ class HostServiceImplTest {
         page.setTotal(1);
         when(hostMapper.selectPage(any(), any())).thenReturn(page);
 
-        com.kb.common.page.PageResult<Host> result = hostService.list("web", 1, 1, 20);
+        com.marschat.common.page.PageResult<Host> result = hostService.list("web", 1, 1, 20);
 
         assertEquals(1, result.getTotal());
         // 列表不应返回密码
@@ -157,7 +157,7 @@ class HostServiceImplTest {
         page.setTotal(0);
         when(hostMapper.selectPage(any(), any())).thenReturn(page);
 
-        com.kb.common.page.PageResult<Host> result = hostService.list(null, null, 1, 20);
+        com.marschat.common.page.PageResult<Host> result = hostService.list(null, null, 1, 20);
 
         assertEquals(0, result.getTotal());
     }

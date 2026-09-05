@@ -1,5 +1,6 @@
 package com.kb.ops.security;
 
+import com.marschat.auth.jwt.TokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenProvider tokenProvider;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -31,15 +32,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token)) {
             try {
-                if (jwtTokenProvider.validateToken(token)) {
-                    String type = jwtTokenProvider.getTokenType(token);
+                if (tokenProvider.validateToken(token)) {
+                    String type = tokenProvider.getTokenType(token);
                     if (!"access".equals(type)) {
                         sendUnauthorized(response, "无效的Token类型");
                         return;
                     }
 
-                    Long userId = jwtTokenProvider.getUserIdFromToken(token);
-                    String username = jwtTokenProvider.getUsernameFromToken(token);
+                    Long userId = tokenProvider.getUserIdFromToken(token);
+                    String username = tokenProvider.getUsernameFromToken(token);
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(

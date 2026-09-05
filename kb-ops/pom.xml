@@ -41,10 +41,34 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-        </dependencies>
+                <!-- 公共核心库（独立仓库 com.marschat:common-core；Nexus 已发布 1.1.0） -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>common-core</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <!-- 认证公共库（独立仓库 com.marschat:auth-core） -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <!-- 公共核心库（独立仓库 com.marschat:common-core） -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>common-core</artifactId>
+        </dependency>
+
+        <!-- 认证公共库（独立仓库 com.marschat:auth-core）：统一 JWT 签发/验签 -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

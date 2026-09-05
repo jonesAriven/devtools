@@ -1,6 +1,6 @@
 package com.kb.ops.util;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

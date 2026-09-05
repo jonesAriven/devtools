@@ -2,3 +2,5 @@ allowBuilds:
   '@parcel/watcher': true
   esbuild: true
   vue-demi: true
+minimumReleaseAgeExclude:
+  - '@marschat/request@0.1.0'

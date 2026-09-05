@@ -1,7 +1,7 @@
 package com.kb.ops.controller;
 
 import cn.hutool.core.io.IoUtil;
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.ops.dto.ImportRequest;
 import com.kb.ops.dto.ImportResult;
 import com.kb.ops.service.ImportService;

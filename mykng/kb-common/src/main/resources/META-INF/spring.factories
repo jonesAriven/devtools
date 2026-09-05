@@ -1,3 +1,0 @@
-# Spring Boot 3.x auto-configuration moved to:
-# META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
-# This file is kept for backward compatibility with Spring Boot 2.x (not used in this project).

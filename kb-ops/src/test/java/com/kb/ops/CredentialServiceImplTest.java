@@ -1,8 +1,8 @@
 package com.kb.ops;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.exception.NotFoundException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.NotFoundException;
+import com.marschat.common.page.PageResult;
 import com.kb.ops.dto.CredentialRequest;
 import com.kb.ops.entity.Credential;
 import com.kb.ops.mapper.CredentialMapper;

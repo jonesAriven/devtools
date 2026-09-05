@@ -1,7 +1,7 @@
 package com.kb.ops.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.ops.dto.DomainRequest;
 import com.kb.ops.entity.Domain;
 import com.kb.ops.service.DomainService;
