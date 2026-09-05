@@ -280,9 +280,9 @@ def _eval_custom_rules(rules, fps, all_subs, add, warn, split_fields):
             elif rtype == "fp_name_prefix" and pattern:
                 prefixes = [p.strip() for p in str(pattern).split(",") if p.strip()]
                 for fp in fps:
-                    if not any((fp["fp_name"] or "").startswith(p) for p in prefixes):
+                    if any((fp["fp_name"] or "").startswith(p) for p in prefixes):
                         emit("自定义规则", severity, f"FP#{fp['id']} {fp['fp_name']}",
-                             f"[{rname}] FP名不以 {prefixes} 中任一前缀开头")
+                             f"[{rname}] FP名命中禁用前缀 {prefixes}")
             elif rtype == "sub_desc_min_len" and pattern:
                 n = int(pattern)
                 for sp in all_subs:
