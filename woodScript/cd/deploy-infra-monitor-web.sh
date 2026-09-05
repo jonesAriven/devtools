@@ -30,12 +30,15 @@ verify_artifact "${TAR_FILE}"
 
 # ====== Step 2: 解压 & 分发 dist ======
 log_step 2 5 "解压 & 分发前端产物"
-mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist" "${DEPLOY_BASE}/tmp-infra-monitor-web"
+# vite base=/infra/，容器 nginx alias /usr/share/nginx/html/infra/
+# 需要 dist 目录结构为 dist/infra/* （对齐 kb-web 的 dist/kb/s/ 范式）
+mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist/infra" "${DEPLOY_BASE}/tmp-infra-monitor-web"
 extract_artifact "${TAR_FILE}" "${DEPLOY_BASE}/tmp-infra-monitor-web"
 rm -rf "${DEPLOY_BASE}/infra-monitor-web/dist"/*
-cp -r "${DEPLOY_BASE}/tmp-infra-monitor-web/"* "${DEPLOY_BASE}/infra-monitor-web/dist/"
+mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist/infra"
+cp -r "${DEPLOY_BASE}/tmp-infra-monitor-web/"* "${DEPLOY_BASE}/infra-monitor-web/dist/infra/"
 rm -rf "${DEPLOY_BASE}/tmp-infra-monitor-web"
-log_ok "infra-monitor-web dist 已更新"
+log_ok "infra-monitor-web dist 已更新 (结构: dist/infra/*)"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
@@ -45,25 +48,44 @@ ensure_platform
 mkdir -p "${DEPLOY_BASE}/infra-monitor-web/dist"
 touch "${DEPLOY_BASE}/infra-monitor-web/dist/.keep"
 
-# 每次都覆盖 nginx.conf (确保 host.docker.internal 不残留)
+# 每次都覆盖 nginx.conf (确保配置与 vite base=/infra/ 对齐)
+# 前端 base=/infra/、API base=/infra/api ；此前 nginx 只配 location / + /api/
+# 导致 /infra/assets 回退成 text/html(MIME 报错 SPA 不挂载) 且 /infra/api 无代理(登录 404)
 NGINX_CONF="${DEPLOY_BASE}/infra-monitor-web/nginx.conf"
 cat > "${NGINX_CONF}" << 'NGINXEOF'
 server {
     listen 80;
     server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-    client_max_body_size 100m;
 
-    location / {
-        try_files $uri $uri/ /index.html;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1k;
+
+    # 健康检查（显式端点，避免依赖 SPA 文件存在）
+    location /health {
+        access_log off;
+        return 200 '{"status":"ok"}';
+        add_header Content-Type application/json;
     }
 
-    location /api/ {
+    # SPA + 静态资源（vite base: /infra/，dist 解压到 /usr/share/nginx/html/infra/）
+    location /infra/ {
+        alias /usr/share/nginx/html/infra/;
+        index index.html;
+        try_files $uri $uri/ /infra/index.html;
+    }
+
+    # infra-monitor 后端 API（前端 API base: /infra/api → 后端 context /infra/）
+    location /infra/api/ {
         proxy_pass http://172.17.0.1:8088/infra/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 根路径重定向到 /infra/
+    location = / {
+        return 302 /infra/;
     }
 }
 NGINXEOF
