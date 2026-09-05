@@ -41,7 +41,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="nginx-ui">Nginx UI</h1>
 <blockquote>
-<p>腾讯云2号主机上公网 nginx 入口的可视化管理面板，提供 server block、反向代理、证书的可视化配置与热重载，降低手工改 nginx 配置出错风险。</p>
+<p>腾讯云2号主机上公网 nginx 入口的可视化管理面板
+（开源 Nginx UI v2.4.1，Go 实现），
+提供站点/反向代理/证书的可视化配置与热重载，
+降低手工改 nginx 配置出错风险。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,19 +61,23 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>Nginx UI（二进制 <code>/usr/local/bin/nginx-ui</code>）；具体版本号未实采 (待确认)</td>
+<td><code>nginx-ui 2.4.1 2(526) 0540f3ec (go1.26.4 linux/amd64)</code>（<code>--version</code> 实采，"Yet another Nginx Web UI"）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>腾讯云2号主机（1.117.70.30 / Tailscale 100.110.114.16）<strong>宿主 systemd 服务</strong> <code>nginx-ui.service</code>，非 Docker；二进制 <code>--config /etc/nginx-ui/app.ini</code>；监听 19900</td>
+<td>腾讯云2号主机（1.117.70.30 / Tailscale 100.110.114.16）<strong>宿主 systemd 服务</strong> <code>nginx-ui.service</code>，非 Docker</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>二进制 <code>/usr/local/bin/nginx-ui --config /etc/nginx-ui/app.ini</code>；监听 19900</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>开源 Nginx UI（linuxserver/nginx-ui 或等价实现）；腾讯云2号宿主 <code>/usr/local/bin/nginx-ui</code></td>
+<td>开源 Nginx UI（Go 实现的 nginx Web 管理面板）；宿主以官方二进制部署</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（宿主自部署 systemd 服务）</td>
+<td>无（宿主自部署 systemd 服务，二进制替换升级）</td>
 </tr>
 </tbody>
 </table>
@@ -84,43 +91,175 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 nginxui.marschat.online)
        → 127.0.0.1:19900  (本机 nginx-ui 服务)
 </code></pre>
-<p>实采（腾讯云2号，2026-09-05）：
-- <code>systemctl</code> 存在 <code>nginx-ui.service</code>（loaded active running）与 <code>nginx.service</code>（公网入口 nginx 本身）。
-- 进程：<code>/usr/local/bin/nginx-ui --config /etc/nginx-ui/app.ini</code>（PID 194216，7月18日启动）。
-- 监听：<code>*:19900</code>（进程名 <code>nginx-ui</code>），本机探测 <code>http://127.0.0.1:19900/</code> 返回 200。</p>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构（官方能力要点）</h3>
+<p>Nginx UI 是 Go 编写的单二进制 nginx 管理面板：</p>
+<ul>
+<li>可视化管理 server block / location / upstream。</li>
+<li>TLS 证书申请与自动续期（Let's Encrypt / 自有证书）。</li>
+<li>配置语法校验、在线编辑与一键 reload/restart。</li>
+<li>终端/日志查看等运维辅助能力。</li>
+<li>自带 SQLite 数据库（app.ini <code>[database]</code>）保存面板自身的用户与设置。</li>
+</ul>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>实例角色</strong></li>
+<li>腾讯云2号宿主 systemd 常驻服务。</li>
+<li>是全站 marschat.online 公网 HTTPS 入口（该机 <code>nginx.service</code>）的「控制台」。</li>
+<li><strong>与哪些系统连接</strong></li>
+<li>被管理对象：本机 nginx（配置目录 <code>/etc/nginx/</code>）。</li>
+<li>面板数据库：<code>/etc/nginx-ui/database</code>（SQLite）。</li>
+<li>影响面：所有经腾讯云2号公网入口的服务
+    （main/kb/woodci/nexus/monitor/note/vault/memory/s3/tokenhub/tools*/workcheck 等）。</li>
+<li><strong>为什么选它</strong></li>
+<li>公网入口站点数量多（十余个子域），手工改配置易出语法错误且无历史。</li>
+<li>Nginx UI 提供校验 + 备份 + 可视化，把高危操作收敛到面板。</li>
+<li><strong>关键配置思路</strong>（<code>/etc/nginx-ui/app.ini</code> 实采，敏感项略）：</li>
+<li><code>[server] Port = 19900</code>，<code>RunMode = debug</code>。</li>
+<li>未启用面板自身 HTTPS（TLS 由外层 nginx 终止）。</li>
+<li><code>[auth] MaxAttempts = 10</code>、<code>BanThresholdMinutes = 10</code>（登录失败 10 次封禁 10 分钟）。</li>
+<li>IP 白名单未启用。</li>
+<li><code>[log] EnableRotate = true</code>（日志轮转开启）。</li>
+</ul>
+<h3 id="systemd-etcsystemdsystemnginx-uiservice">systemd 单元关键字段（实采 /etc/systemd/system/nginx-ui.service）</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Description</td>
+<td>Nginx UI</td>
+<td>—</td>
+</tr>
+<tr>
+<td>After</td>
+<td>nginx.service</td>
+<td>被管理 nginx 先起</td>
+</tr>
+<tr>
+<td>ExecStart</td>
+<td>/usr/local/bin/nginx-ui --config /etc/nginx-ui/app.ini</td>
+<td>单二进制</td>
+</tr>
+<tr>
+<td>Restart / RestartSec</td>
+<td>always / 5</td>
+<td>崩溃自愈</td>
+</tr>
+<tr>
+<td>WantedBy</td>
+<td>multi-user.target</td>
+<td>开机自启</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">对外接口概览</h3>
+<ul>
+<li>Web 面板（登录后站点/证书/配置管理）+ 自身 API。</li>
+<li>按开源项目通用路由，本文不逐个列。</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<ul>
+<li>编排与位置</li>
+<li><strong>非 Docker，systemd 服务</strong>：<code>/etc/systemd/system/nginx-ui.service</code>。</li>
+<li>二进制：<code>/usr/local/bin/nginx-ui</code>。</li>
+<li>配置：<code>/etc/nginx-ui/app.ini</code>。</li>
+<li>配置清单</li>
+<li>端口：<code>*:19900</code>（实采 ss 确认；本机 <code>curl 127.0.0.1:19900</code> 返回 200）。</li>
+<li>目录：<code>/etc/nginx-ui/</code>（app.ini + 面板数据库 database）。</li>
+<li>目录：<code>/etc/nginx/</code>（被管理对象：sites-available/sites-enabled/ssl）。</li>
+<li>环境变量：无特殊注入，全部走 app.ini。</li>
+<li>发布/升级：二进制替换 + 重启，实际操作步骤：
+  1. 下载新版 nginx-ui 二进制（对应 amd64）。
+  2. <code>systemctl stop nginx-ui</code> → 替换 <code>/usr/local/bin/nginx-ui</code> → <code>systemctl start nginx-ui</code>。
+  3. <code>nginx-ui --version</code> 验证版本。
+  4. 面板登录确认站点列表完整。</li>
+<li>升级动作未在本机执行过，步骤按单二进制服务惯例整理 (待确认)。</li>
+<li>回滚</li>
+<li>保留旧版二进制副本，替换回去后 <code>systemctl restart nginx-ui</code>。</li>
+<li>面板数据库与 nginx 配置不受升级影响。</li>
+</ul>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
 <ul>
 <li>可视化管理腾讯云2号上的 nginx（即全站 marschat.online 公网 HTTPS 入口）：</li>
 <li>站点/反向代理配置（server block、location、upstream）的可视化增改。</li>
 <li>TLS 证书管理（Let's Encrypt / 自有证书）与自动续期配置。</li>
 <li>配置校验与一键 reload/restart，减少手工改 <code>/etc/nginx/</code> 的语法错误。</li>
-<li>典型场景：新增/调整某个 <code>*.marschat.online</code> 子域反代、证书轮换、排查 502/404 时通过 UI 直接查看与回滚配置。</li>
+<li>典型场景：</li>
+<li>新增/调整某个 <code>*.marschat.online</code> 子域反代。</li>
+<li>证书轮换。</li>
+<li>排查 502/404 时通过 UI 直接查看与回滚配置。</li>
 </ul>
+<h3 id="_11">典型操作路径</h3>
+<ol>
+<li><strong>新增子域反代</strong>
+   - 登录面板 <code>https://nginxui.marschat.online</code>（账密见 Vaultwarden）。
+   - 站点列表 → 新建站点（域名 + 反代目标）。
+   - 保存并校验 → reload nginx → 公网验证。</li>
+<li><strong>证书管理</strong>
+   - 证书页查看各域名证书有效期。
+   - 到期前通过面板申请/续期 Let's Encrypt 或替换自有证书。
+   - 部署后 reload。</li>
+<li><strong>故障排查</strong>
+   - 公网某子域 502 时 → 面板打开对应站点配置核对 upstream。
+   - 查看面板内 nginx 错误日志 → 修正后 reload。</li>
+</ol>
 <blockquote>
-<p>UI 具体操作步骤未经实测，按能力层面描述；本面板直接操控公网入口 nginx，<strong>改错会影响全站</strong>，操作需谨慎。</p>
+<p>UI 具体按钮细节按 v2.4.1 通用能力描述；
+本面板直接操控公网入口 nginx，<strong>改错会影响全站</strong>，操作需谨慎。</p>
 </blockquote>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_12">依赖与关联</h2>
 <ul>
-<li>依赖：腾讯云2号宿主的 <code>nginx.service</code>（被管理对象）；配置目录 <code>/etc/nginx-ui/</code>（app.ini）与 nginx 配置目录 <code>/etc/nginx/</code>。</li>
-<li>被依赖/关联系统：<strong>所有</strong>经腾讯云2号公网入口的服务（main/kb/woodci/nexus/monitor/note/vault/memory/s3/tokenhub/tools*/workcheck 等）。Nginx UI 是该入口的「控制台」。</li>
+<li>依赖</li>
+<li>腾讯云2号宿主的 <code>nginx.service</code>（被管理对象）。</li>
+<li><code>/etc/nginx-ui/</code>（面板自身）与 <code>/etc/nginx/</code>（被管理配置）。</li>
+<li>被依赖/关联系统</li>
+<li><strong>所有</strong>经腾讯云2号公网入口的服务
+    （main/kb/woodci/nexus/monitor/note/vault/memory/s3/tokenhub/tools*/workcheck 等）。</li>
+<li>Nginx UI 是该入口的「控制台」。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
 <li>启停方式</li>
-<li><code>systemctl start|stop|restart|status nginx-ui</code></li>
-<li>配置：<code>/etc/nginx-ui/app.ini</code>（Nginx UI 自身配置）</li>
+<li><code>systemctl start|stop|restart|status nginx-ui</code>。</li>
+<li>单元 Restart=always，崩溃 5 秒后自动拉起。</li>
 <li>日志查看</li>
-<li><code>journalctl -u nginx-ui -f</code>；nginx 入口日志 <code>/var/log/nginx/</code>。</li>
+<li><code>journalctl -u nginx-ui -f</code>。</li>
+<li>nginx 入口日志 <code>/var/log/nginx/</code>。</li>
 <li>数据与备份</li>
-<li>Nginx UI 的站点配置通常落盘在 <code>/etc/nginx-ui/</code> 与 <code>/etc/nginx/</code> 下（具体路径未实采，建议纳入主机配置备份）(待确认)。</li>
-<li>注意：与 mykng 侧的 nginx（路径透传反代）是<strong>不同主机</strong>的两套 nginx，本面板只管腾讯云2号这一侧。</li>
+<li><code>/etc/nginx-ui/</code>（app.ini + SQLite 数据库）与 <code>/etc/nginx/</code> 纳入主机配置备份。</li>
+<li><code>/etc/nginx/sites-backup/</code> 存有历史配置备份目录（含 <code>cache-*</code>），误改后可回溯。</li>
 <li>常见问题</li>
-<li>该服务是宿主进程（非 Docker），<code>docker ps</code> 看不到；定位用 <code>systemctl</code> 与 <code>ss -tlnp | grep 19900</code>。</li>
-<li>误改公网 nginx 配置可能导致全站 502；建议通过 UI 的校验/回滚能力操作，并保留 <code>/etc/nginx/sites-backup/</code> 历史（材料包显示存在 <code>cache-*</code> 备份目录）。</li>
+<li>该服务是宿主进程（非 Docker），<code>docker ps</code> 看不到。<ul>
+<li>定位用 <code>systemctl</code> 与 <code>ss -tlnp | grep 19900</code>。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+</li>
+<li>误改公网 nginx 配置可能导致全站 502。<ul>
+<li>通过 UI 校验/回滚能力操作，勿跳过校验直接 reload。</li>
+</ul>
+</li>
+<li><code>RunMode = debug</code> 为当前实采值，生产建议切换 release 模式 (待确认是否影响行为)。</li>
+<li>与 mykng 侧的 nginx（路径透传反代）是<strong>不同主机</strong>的两套 nginx，本面板只管腾讯云2号这一侧。</li>
+</ul>
+<h2 id="_14">安全要点</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于腾讯云2号 SSH 实采进程/systemd + 材料包生成）</li>
+<li>面板可直接改公网入口 nginx，账号必须强口令并仅限运维人员；账密入 Vaultwarden。</li>
+<li>app.ini 登录防爆破已启用（10 次/10 分钟封禁）。</li>
+<li>IP 白名单未启用，可考虑仅放行 Tailscale 网段 (待确认需求)。</li>
+<li>面板端口 19900 经公网域名反代暴露，若需收敛可改为仅本机/内网访问。</li>
+</ul>
+<h2 id="_15">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>实采版本 2.4.1、systemd 单元全文、app.ini 关键配置（端口/防爆破/日志轮转）。</li>
+<li>补二进制升级与回滚方式、典型操作路径。</li>
+<li>2026-09-05 v1 首次生成（基于进程/systemd 实采）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

@@ -41,7 +41,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="vaultwarden">Vaultwarden 密码管理</h1>
 <blockquote>
-<p>全基础设施账密「唯一真相源」：Bitwarden 兼容的自托管密码库，集中保管所有主机、容器、服务与第三方 API 的账号密码/密钥。</p>
+<p>全基础设施账密「唯一真相源」：
+Bitwarden 兼容的自托管密码库（Rust 实现），
+集中保管所有主机、容器、服务与第三方 API 的账号密码/密钥。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,19 +60,27 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td><code>vaultwarden/server:latest</code>（材料包实采）</td>
+<td>Vaultwarden <strong>1.36.0</strong>（镜像 label 实采 <code>org.opencontainers.image.version: 1.36.0</code>，2026-05-03 构建）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng 容器 <code>vaultwarden</code>（镜像 <code>vaultwarden/server:latest</code>），端口 8222 → 80，<code>restart</code> 策略见 compose</td>
+<td>mykng（192.168.31.105）单容器 <code>vaultwarden</code>（镜像 <code>vaultwarden/server:latest</code>）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>端口 8222 → 80，<code>restart: always</code></td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>开源 <code>vaultwarden/server</code>（Rust 实现 Bitwarden 服务端）；本地无构建仓库，直接拉官方镜像</td>
+<td>开源 dani-garcia/vaultwarden（Rust 实现 Bitwarden 服务端）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>直接拉官方镜像，本地无构建仓库</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署容器）</td>
+<td>无（<code>docker run</code> 单容器自部署，未发现 compose 编排）</td>
 </tr>
 </tbody>
 </table>
@@ -85,44 +95,168 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
        → http://100.93.36.113:8222  (mykng vaultwarden 容器)
 </code></pre>
 <p>（mykng 本机 nginx 另有 <code>/vault/ → 127.0.0.1:8222</code> 的 path 反代。）</p>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构（官方能力要点）</h3>
+<p>Vaultwarden 是 Bitwarden 服务端兼容实现（Rust，AGPL-3.0）：</p>
 <ul>
-<li>密码库（Bitwarden 兼容）：登录/密码、安全笔记、API Key、卡片等条目的加密存储。</li>
+<li>提供密码库端到端加密存储：登录/密码、安全笔记、API Key、卡片、身份。</li>
+<li>支持 Bitwarden 全家桶客户端（浏览器扩展、桌面/移动 App、CLI）通过自托管服务器同步。</li>
+<li>轻量到可跑在树莓派，数据落 SQLite 单文件。</li>
+</ul>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>实例角色</strong></li>
+<li>mykng 上单容器常驻。</li>
+<li>是<strong>全基础设施的唯一账密真相源</strong>——主机 SSH、数据库、各服务后台、云厂商、LLM API Key 等凭据统一存放。</li>
+<li><strong>与哪些系统连接</strong></li>
+<li>上游：腾讯云2号 nginx（vault.marschat.online 唯一公网入口）+ mykng 本机 nginx <code>/vault/</code> 路径反代。</li>
+<li>下游（消费方）：几乎所有系统——mykng/Deb/腾讯云/阿里云主机、MySQL/Redis/Mongo/MinIO/Nacos/Woodpecker、FRP dashboard、各类 API Key。</li>
+<li>与 <code>infrastructure-map</code> 技能互为「运行时凭证」与「架构事实」两大知识源。</li>
+<li><strong>为什么选它</strong></li>
+<li>Bitwarden 生态客户端齐全（多端同步 + 浏览器扩展自动填充）。</li>
+<li>Vaultwarden 资源占用极低、单文件存储易备份。</li>
+<li><strong>关键配置思路</strong>（<code>docker inspect</code> 环境变量名实采，值不落盘）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>环境变量</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DOMAIN</code></td>
+<td>服务对外地址（vault.marschat.online）</td>
+</tr>
+<tr>
+<td><code>SIGNUPS_ALLOWED</code></td>
+<td>公开注册开关（生产应关闭）</td>
+</tr>
+<tr>
+<td><code>INVITATIONS_ALLOWED</code></td>
+<td>邀请注册开关</td>
+</tr>
+<tr>
+<td><code>ADMIN_TOKEN</code></td>
+<td>管理后台令牌</td>
+</tr>
+<tr>
+<td><code>WEBSOCKET_ENABLED</code></td>
+<td>客户端实时同步</td>
+</tr>
+<tr>
+<td><code>ROCKET_ADDRESS</code> / <code>ROCKET_PORT</code> / <code>ROCKET_PROFILE</code></td>
+<td>内置 HTTP 服务监听</td>
+</tr>
+<tr>
+<td><code>IP_HEADER</code></td>
+<td>反代下真实 IP 取头</td>
+</tr>
+<tr>
+<td><code>SHOW_PASSWORD_HINT</code></td>
+<td>密码提示行为</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>凭证值统一见 Vaultwarden 本身或 infrastructure-map 技能。</li>
+</ul>
+<h3 id="_7">数据模型概览</h3>
+<ul>
+<li>主库 <code>db.sqlite3</code>（用户/加密条目/组织/收藏等 Bitwarden 全量表）。</li>
+<li>数据卷：<code>/root/vaultwarden-data → /data</code>。</li>
+<li>可选 <code>attachments/</code> 附件目录（当前近乎空，未实际使用附件功能）。</li>
+<li>可选 SMTP（邮件/邀请），未启用。</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<ul>
+<li>编排与位置</li>
+<li><code>docker run</code> 单容器（inspect 无 compose labels）。</li>
+<li>数据卷宿主路径：<code>/root/vaultwarden-data</code> → 容器 <code>/data</code>。</li>
+<li>配置清单</li>
+<li>端口映射：宿主 <code>8222</code> → 容器 <code>80</code>。</li>
+<li>卷挂载：<code>/root/vaultwarden-data → /data</code>（含 db.sqlite3、attachments/）。</li>
+<li>环境变量：见「系统设计」节变量名清单（值不落盘）。</li>
+<li>重启策略：<code>always</code>。</li>
+<li>发布/升级（单容器镜像升级，实际步骤）
+  1. 备份数据：<code>cp -a /root/vaultwarden-data /root/vaultwarden-data.bak.&lt;date&gt;</code>。
+  2. <code>docker pull vaultwarden/server:latest</code>。
+  3. <code>docker stop vaultwarden &amp;&amp; docker rm vaultwarden</code>。
+  4. 按原参数 <code>docker run -d --name vaultwarden --restart always -p 8222:80 -v /root/vaultwarden-data:/data &lt;env...&gt; vaultwarden/server:latest</code>（env 清单见上，值从 Vaultwarden/记录取）。
+  5. 验证：<code>https://vault.marschat.online</code> 登录 + 客户端同步。</li>
+<li>升级未实采执行过，步骤按官方单容器惯例整理 (待确认)。</li>
+<li>回滚</li>
+<li>数据卷备份目录换回 + 用旧镜像 tag 重建容器。</li>
+<li>SQLite 单文件整体恢复，无增量问题。</li>
+</ul>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
+<ul>
+<li>密码库（Bitwarden 兼容）：登录/密码、安全笔记、API Key、卡片等条目的加密存储；文件夹/收藏组织。</li>
 <li>多端客户端：浏览器扩展、桌面/移动 App、CLI 均可通过 <code>vault.marschat.online</code> 同步。</li>
 <li>作为「真相源」的用途：</li>
-<li>全基础设施的账密（主机 SSH、数据库、各服务后台、云厂商、LLM API Key 等）统一存放于此。</li>
-<li>全组文档（含本次 portal 文档补全）约定：<strong>任何文档不得出现明文密码/token/密钥</strong>，一律写「账密见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能」。</li>
-<li>典型场景：新成员/新服务开通时，从 Vaultwarden 取对应凭据；轮换密码后回写此处。</li>
+<li>全基础设施账密统一存放于此。</li>
+<li>全组文档约定：<strong>任何文档不得出现明文密码/token/密钥</strong>，一律写「账密见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能」。</li>
+<li>典型场景：新成员/新服务开通时取对应凭据；轮换密码后回写此处。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_11">典型操作路径</h3>
+<ol>
+<li><strong>查某服务凭据</strong>
+   - 浏览器打开 <code>https://vault.marschat.online</code>（或 Bitwarden 客户端登录自托管服务器）。
+   - 搜索服务名/主机名 → 复制密码/查看安全笔记。</li>
+<li><strong>新增一批凭据</strong>
+   - 登录 Web 界面 → 新建条目（类型选登录/安全笔记/API Key）。
+   - 归入对应文件夹 → 保存，客户端自动同步。</li>
+<li><strong>轮换密码</strong>
+   - 改目标系统密码 → 回 Vaultwarden 更新该条目 → 备注轮换日期。</li>
+</ol>
+<h2 id="_12">依赖与关联</h2>
 <ul>
-<li>依赖：SQLite 主库 <code>db.sqlite3</code>（默认）、可选 <code>attachments/</code> 附件卷、可选 SMTP（邮件/邀请）。</li>
-<li>被依赖/关联系统：<strong>几乎所有</strong>其他系统的凭证都存放在此（mykng/Deb/腾讯云/阿里云主机、MySQL/Redis/Mongo/MinIO/Nacos/Woodpecker、FRP dashboard、各类 API Key 等）。它与 <code>infrastructure-map</code> 技能互为「运行时凭证」与「架构事实」的两大知识源。</li>
+<li>依赖</li>
+<li>SQLite 主库 <code>db.sqlite3</code>（数据卷）。</li>
+<li>mykng 容器运行时；可选 SMTP 未启用。</li>
+<li>被依赖/关联系统</li>
+<li><strong>几乎所有</strong>其他系统的凭证都存放在此
+    （mykng/Deb/腾讯云/阿里云主机、MySQL/Redis/Mongo/MinIO/Nacos/Woodpecker、FRP dashboard、各类 API Key 等）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
-<li>启停方式：<code>docker</code>（容器 <code>vaultwarden</code>，端口 8222）；具体 compose/启停命令未实采 (待确认)。</li>
-<li>日志查看：<code>docker logs vaultwarden</code>；Grafana/Loki（Deb 侧）可纳入日志归集。</li>
+<li>启停方式</li>
+<li><code>docker start|stop|restart vaultwarden</code>（单容器，无 compose）。</li>
+<li>日志查看</li>
+<li><code>docker logs vaultwarden</code>。</li>
+<li>Grafana/Loki（Deb 侧）可纳入日志归集。</li>
 <li>数据与备份</li>
 <li>备份仓库：<code>D:\huliang\java\ideaworkspace\vaultwarden-backup\</code>。</li>
-<li>备份内容（实采 2026-09-05）：每日 <strong>02:00</strong> 左右生成一组：<ul>
+<li>备份内容（实采 2026-09-05），每日 <strong>02:00</strong> 左右生成一组：<ul>
 <li><code>db_&lt;YYYYMMDD&gt;_*.sqlite3</code>（约 278KB，主数据库）</li>
 <li><code>config_&lt;YYYYMMDD&gt;_*.json</code>（约 1.9KB，服务配置）</li>
 <li><code>attachments_&lt;YYYYMMDD&gt;_*.tar.gz</code>（附件归档，当前约 45B，近乎空）</li>
 </ul>
 </li>
-<li>连续性：已连续存在 <strong>2026-08-29 至 2026-09-05</strong>（每日一份，9/5 当天也在），说明存在定时备份任务且稳定运行。</li>
-<li>备份任务位置未实采（可能在 mykng cron 或独立脚本拉取/导出）(待确认)；建议确认备份是否异地/长寿保留。</li>
+<li>连续性：2026-08-29 至 2026-09-05 每日一份稳定运行。</li>
+<li>备份任务位置未实采（可能在 mykng cron 或独立脚本拉取/导出）(待确认)。</li>
+<li>建议确认异地/长寿保留策略。</li>
 <li>安全要点</li>
-<li>这是最高敏感系统：<strong>禁止任何明文凭据外泄</strong>（含提交到仓库、写入文档）。</li>
-<li>建议开启 admin 令牌、失败锁定、定期改密；备份文件同样含敏感数据，需受控访问。</li>
+<li><strong>最高敏感系统</strong>：禁止任何明文凭据外泄（含提交仓库、写入文档）。</li>
+<li>建议开启 admin 令牌、失败锁定、定期改密。</li>
+<li>备份文件同样含敏感数据，需受控访问。</li>
 <li>常见问题</li>
-<li>容器非默认端口 80 而是宿主机 8222，nginx 反代注意 <code>/vault/</code> 路径与根域名两种入口的转发一致性。</li>
-<li>备份 <code>attachments</code> 体积长期为 45B：可能未实际使用附件功能，属正常。</li>
+<li>容器非默认 80 而是宿主 8222，nginx 反代注意 <code>/vault/</code> 路径与根域名两种入口的转发一致性。</li>
+<li>备份 attachments 长期 45B：未使用附件功能，属正常。</li>
+<li>升级后客户端连不上：<ul>
+<li>先核对 <code>DOMAIN</code> 环境变量与 nginx 反代是否一致。</li>
+<li>再看 websocket 是否需要开启。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+</li>
+</ul>
+<h2 id="_14">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 mykng 容器实采 + vaultwarden-backup 仓库实采 + 材料包生成；明确全基础设施账密真相源定位与每日备份现状）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>实采版本 1.36.0（镜像 label）、数据卷 /root/vaultwarden-data。</li>
+<li>docker run 部署形态与全部环境变量名，补单容器升级/回滚步骤与典型操作路径。</li>
+<li>2026-09-05 v1 首次生成（明确全基础设施账密真相源定位与每日备份现状）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

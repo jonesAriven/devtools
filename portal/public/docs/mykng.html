@@ -72,6 +72,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <td>CI/CD</td>
 <td>Woodpecker 流水线项目 <code>mykng</code>（woodScript 触发：<code>python woodScript/trigger-pipeline.py mykng --wait</code>）</td>
 </tr>
+<tr>
+<td>编排</td>
+<td>应用层 <code>/root/kb-deploy/docker-compose.app.yml</code>（compose project：kb-app），前端层 <code>/root/kb-deploy/docker-compose.web.yml</code>（compose project：kb-web）</td>
+</tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口</h2>
@@ -89,15 +93,171 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
        /kb/、/kb/s/        → 127.0.0.1:8091 (kb-web 前端容器)
        /kb/api/            → 127.0.0.1:8090 (kb-gateway)
   → kb-gateway 按路由转发到注册在 Nacos 的后端微服务：
-       /kb/api/auth/*      → kb-auth
-       /kb/api/file/*      → kb-file
-       /kb/api/knowledge/* → kb-knowledge（注：各 Controller 的 @RequestMapping 前缀为 /doc、/folder、/space、/tag、/search、/share、/trash、/version、/web，统一挂在 /kb/api 下）
-       /kb/api/intelligence/* → kb-intelligence
+       /kb/api/auth/*、/user/*、/token/*、/log/* → kb-auth
+       /kb/api/file/*、/bucket/*                 → kb-file
+       /kb/api/doc|folder|web|search|share|tag|space|trash|version/* → kb-knowledge
+       /kb/api/intelligence/*                    → kb-intelligence
 </code></pre>
 <blockquote>
-<p>说明：外部统一只暴露 kb-gateway（8090）。各微服务内部端口（README 标注：kb-auth 8081 / kb-file 8082 / kb-knowledge 8083 / kb-intelligence 8086）经 Nacos 服务发现互访，宿主机另映射了 8085/8089/8092/8086 供调试，前端不直接访问。</p>
+<p>说明：外部统一只暴露 kb-gateway（8090）。各微服务内部端口（README 标注：kb-auth 8081 / kb-file 8082 / kb-knowledge 8083 / kb-intelligence 8086）经 Nacos 服务发现互访，宿主机另映射了 8085/8089/8092/8086 供调试，前端不直接访问。网关另有 <code>/v3/api-docs</code>、<code>/swagger-ui</code> 聚合路由（StripPrefix=3），可按服务查看 Swagger 文档。</p>
 </blockquote>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">总体架构</h3>
+<p>Spring Cloud 微服务矩阵 + 前端 SPA，5 个后端服务 + 1 个前端 + 1 个公共模块：</p>
+<table>
+<thead>
+<tr>
+<th>服务</th>
+<th>端口</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kb-gateway</td>
+<td>8090（容器 8080）</td>
+<td>API 网关：路由转发（Spring Cloud Gateway）、JWT 鉴权、限流、模块健康探测</td>
+</tr>
+<tr>
+<td>kb-auth</td>
+<td>8081</td>
+<td>认证：登录/令牌签发刷新、用户管理、API Token、操作/请求/错误日志</td>
+</tr>
+<tr>
+<td>kb-file</td>
+<td>8082</td>
+<td>文件：MinIO 对象存储、分块上传/合并、文本解析、回收站、桶统计</td>
+</tr>
+<tr>
+<td>kb-knowledge</td>
+<td>8083</td>
+<td>知识：空间/文件夹/文档 CRUD、MeiliSearch 全文搜索、分享、版本、标签、网页收藏</td>
+</tr>
+<tr>
+<td>kb-intelligence</td>
+<td>8086</td>
+<td>智能：知识导入/解析、实体抽取（hosts/services/ports/credentials/domains/commands/timelines）、语义检索</td>
+</tr>
+<tr>
+<td>kb-web</td>
+<td>8091（容器 80）</td>
+<td><code>nginx:alpine</code> 托管静态 SPA，挂载路径 <code>/kb/</code>、<code>/kb/s/</code></td>
+</tr>
+<tr>
+<td>kb-common</td>
+<td>—</td>
+<td>公共模块（Maven 依赖，非独立服务）：统一工具/DTO/异常</td>
+</tr>
+</tbody>
+</table>
+<p>服务注册发现走 Nacos（<code>platform-nacos:8848</code>），服务间调用 Feign 经 Nacos 路由（M5-1 起不再硬编码 URL）。</p>
+<h3 id="init-sql">核心数据模型（init-sql 建表脚本）</h3>
+<p>kb-auth 库：
+- <code>user</code>：用户账号
+- <code>refresh_token</code>：刷新令牌
+- <code>jwt_blacklist</code>：JWT 黑名单（登出/吊销后拦截）
+- <code>ops_api_token</code>：API Token（供脚本/第三方调用）
+- <code>operation_log</code>：操作日志</p>
+<p>kb-file 库：
+- <code>file</code>：文件元数据（对象存储索引）
+- <code>file_chunk</code>：分块上传的分片记录
+- <code>bucket</code>：文件桶（存储分区）</p>
+<p>kb-knowledge 库：
+- <code>space</code>：知识空间（顶层分类，private/team/public）
+- <code>folder</code>：文件夹树（parent_id=0 为根）
+- <code>doc</code>：文档
+- <code>web_page</code>：网页收藏（抓取 URL 存为知识页）
+- <code>tag</code> / <code>resource_tag</code>：标签与资源打标（resource_type: file/doc/web/folder）
+- <code>share</code> / <code>share_access_log</code>：分享（UUID 分享码 + 4 位提取码 + 过期时间）与访问流水
+- <code>version</code>：文档历史版本</p>
+<p>kb-intelligence 库（kn_ 前缀实体图谱）：
+- <code>kn_doc</code>：导入文档索引
+- <code>kn_host</code> / <code>kn_service</code> / <code>kn_port</code> / <code>kn_credential</code> / <code>kn_domain</code> / <code>kn_dependency</code> / <code>kn_command</code> / <code>kn_timeline</code>：八类基础设施实体
+- <code>kn_doc_entity_ref</code>：文档—实体关联</p>
+<h3 id="_6">关键设计决策</h3>
+<ol>
+<li><strong>多存储分工</strong>：结构化元数据走 MySQL（GR 集群多主），文件二进制走 MinIO（bucket <code>kb-file</code>），文档正文/非结构化内容走 MongoDB，全文检索走 MeiliSearch（索引 <code>kb_docs</code>/<code>kb_files</code>），Redis 承担缓存/会话 + 事件通道 <code>kb:events</code>（跨服务变更广播）。各取所长，避免单库既扛元数据又扛大文件与检索。</li>
+<li><strong>网关统一入口 + Nacos 服务发现</strong>：外部只暴露 kb-gateway 一个端口，路由按 <code>/kb/api/&lt;域&gt;/**</code> 前缀分流（StripPrefix=2），后端扩缩容/重启对前端透明。</li>
+<li><strong>MySQL GR 多主 failover 连接串</strong>：生产 <code>application-prod.yml</code> 硬编码 <code>jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...</code> 多主机 failover URL（<code>failOverReadOnly=false</code>），compose 里的 MYSQL_HOST 仅作降级 fallback，单点故障自动切主。</li>
+<li><strong>服务可独立部署</strong>：compose 无 depends_on，每个服务可单独 <code>up -d --force-recreate</code>，互不影响；前端容器层与应用层彻底分离，后端不可用时前端仅显示 502。</li>
+</ol>
+<h3 id="_7">对外接口概览</h3>
+<p>全部经 kb-gateway 暴露（路由均相对 <code>/kb/api</code>，详细接口清单见"核心功能与使用"）：</p>
+<ul>
+<li>kb-auth：<code>/auth</code>（登录态）、<code>/user</code>（资料/密码）、<code>/token</code>（API Token）、<code>/log</code>（审计日志）</li>
+<li>kb-file：<code>/file</code>（上传/下载/解析/回收站）、<code>/bucket</code>（存储分区）</li>
+<li>kb-knowledge：<code>/doc</code>、<code>/folder</code>、<code>/space</code>、<code>/tag</code>、<code>/search</code>、<code>/share</code>、<code>/trash</code>、<code>/version</code>、<code>/web</code></li>
+<li>kb-intelligence：<code>/intelligence/machine</code>（实体抽取/语义检索/统计）、<code>/intelligence/import</code>（批量导入）、<code>/internal</code>（实体全量接口）</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<h3 id="_9">编排与位置</h3>
+<ul>
+<li>应用层 compose：<code>/root/kb-deploy/docker-compose.app.yml</code>（服务 kb-gateway/kb-auth/kb-file/kb-knowledge/kb-intelligence/kb-ops/portal-server，compose project 默认按目录 kb-deploy）；本地材料包镜像 <code>material/composes/kb-app.yml</code></li>
+<li>前端层 compose：<code>/root/kb-deploy/docker-compose.web.yml</code>（kb-web/kb-ops-web/infra-monitor-web/portal-web，均为 nginx:alpine）；本地材料包镜像 <code>material/composes/kb-web.yml</code></li>
+<li>网络：应用层双网 <code>kb-app-net</code>（内部）+ <code>platform-net</code>（external，连全局基础设施）；前端层独立 <code>kb-web-net</code></li>
+<li>镜像：后端均 <code>build: /root/devtools/mykng/&lt;服务&gt;</code> 现场构建；前端直接用 <code>nginx:alpine</code> + 挂载 dist</li>
+</ul>
+<h3 id="kb-appyml">配置清单（kb-app.yml）</h3>
+<table>
+<thead>
+<tr>
+<th>容器</th>
+<th>端口映射</th>
+<th>关键环境变量（只列名）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kb-gateway</td>
+<td>8090→8080</td>
+<td>SPRING_PROFILES_ACTIVE=prod,kafka-log、NACOS_*、JWT_SECRET</td>
+</tr>
+<tr>
+<td>kb-auth</td>
+<td>8085→8085</td>
+<td>NACOS_<em>、JWT_SECRET、MYSQL_</em>（已废弃仅 fallback）、REDIS_*</td>
+</tr>
+<tr>
+<td>kb-file</td>
+<td>8089→8089</td>
+<td>NACOS_<em>、MYSQL_</em>（fallback）、REDIS_*、MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY</td>
+</tr>
+<tr>
+<td>kb-knowledge</td>
+<td>8092→8092</td>
+<td>NACOS_<em>、MYSQL_</em>（fallback）、REDIS_<em>、MONGO_</em>、MEILI_HOST/KEY</td>
+</tr>
+<tr>
+<td>kb-intelligence</td>
+<td>8086→8086</td>
+<td>同 kb-knowledge 一组（Xmx512m、mem_limit 640m）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>资源限制：后端 mem_limit 384m（kb-intelligence 640m），JVM -Xms128m -Xmx256m（kb-intelligence 512m）+ G1GC</li>
+<li>密钥来源：compose <code>${VAR:-默认}</code> 读取同目录 <code>.env</code>；真实账密见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</li>
+<li>前端挂载：<code>${DEPLOY_BASE:-/root/kb-deploy}/kb-web/dist → /usr/share/nginx/html:ro</code>、同目录 <code>nginx.conf → /etc/nginx/conf.d/default.conf:ro</code></li>
+</ul>
+<h3 id="_10">发布/升级</h3>
+<p>走 Woodpecker 流水线：</p>
+<pre><code class="language-bash">python woodScript/trigger-pipeline.py mykng --wait
+</code></pre>
+<p>链路：CI 构建 → 产物推 <code>/mnt/shared/woodScript/publish/</code> → drone-ssh 到 mykng 执行 deploy-*.sh 重建容器 + 健康检查（24×10s）。</p>
+<p>手动部署（仓库内）：</p>
+<pre><code class="language-bash">bash scripts/deploy.sh build   # 构建
+bash scripts/deploy.sh up      # 启动
+bash scripts/health-check.sh   # 健康检查
+</code></pre>
+<p>单服务重建（compose 隔离性设计）：</p>
+<pre><code class="language-bash">docker compose -f /root/kb-deploy/docker-compose.app.yml up -d --force-recreate kb-gateway kb-auth kb-file kb-knowledge kb-intelligence
+</code></pre>
+<h3 id="_11">回滚</h3>
+<ul>
+<li><code>scripts/rollback.sh</code>（仓库内回滚脚本）</li>
+<li>compose 重建到旧镜像/旧产物：产物目录回退后 <code>up -d --force-recreate</code> 对应服务</li>
+</ul>
+<h2 id="_12">核心功能与使用</h2>
 <p>mykng 由 5 个微服务 + 1 个前端组成，能力按模块划分（以下路由均相对 <code>/kb/api</code>）：</p>
 <h3 id="kb-gatewayapi-8090">kb-gateway（API 网关 · 端口 8090）</h3>
 <ul>
@@ -141,21 +301,28 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <ul>
 <li><code>nginx:alpine</code> 托管静态 SPA，挂载路径 <code>/kb/</code>、<code>/kb/s/</code>，调用 <code>/kb/api/</code> 网关。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_13">典型操作路径</h3>
+<ul>
+<li>日常使用：浏览器打开 <code>https://kb.marschat.online/kb/</code> → 登录 → 空间/文件夹内新建文档或上传文件 → 编辑/星标/搜索。</li>
+<li>分享协作：选中文档 → 生成分享（分享码 + 可选提取码/过期时间）→ 把 <code>kb.marschat.online/kb/s/&lt;code&gt;</code> 链接发给对方。</li>
+<li>全文索引修复：登录后（或脚本带 API Token）调 <code>POST /kb/api/file/rebuild-index</code> → 确认 MeiliSearch 容器健康。</li>
+<li>第三方接入：kb-auth 登录 → 签发 API Token → 脚本以 <code>Authorization</code> 头调用网关接口。</li>
+</ul>
+<h2 id="_14">依赖与关联</h2>
 <ul>
 <li>存储/中间件（均位于 mykng 宿主的 platform 层容器，MySQL 为 GR 集群）：</li>
-<li>MySQL（<code>platform-mysql-1</code> 3306，GR 多主，库名 <code>tools</code> 之外的知识库业务库）—— 主业务库</li>
-<li>Redis 7（<code>platform-redis</code> 6379）—— 缓存 / 会话</li>
+<li>MySQL（<code>platform-mysql-1</code> 3306，GR 多主，105:3306 / 182:3307 / 182:3308）—— 主业务库</li>
+<li>Redis 7（<code>platform-redis</code> 6379）—— 缓存 / 会话 / 事件通道 kb:events</li>
 <li>MongoDB 7（<code>platform-mongo</code> 27017）—— 文档/非结构化内容</li>
-<li>MinIO（<code>platform-minio</code> 9000/19001）—— 文件对象存储</li>
-<li>MeiliSearch（<code>platform-meilisearch</code> 7700）—— 全文搜索索引</li>
+<li>MinIO（<code>platform-minio</code> 9000/19001）—— 文件对象存储（bucket kb-file）</li>
+<li>MeiliSearch（<code>platform-meilisearch</code> 7700）—— 全文搜索索引（kb_docs / kb_files）</li>
 <li>Nacos（<code>platform-nacos</code> 8848）—— 服务注册发现（实际版本 v2.4.3）</li>
-<li>Kafka（<code>platform-kafka</code> 9092）—— 异步任务（导入/解析）消息</li>
+<li>Kafka（<code>platform-kafka</code> 9092）—— 异步任务（导入/解析）消息（profile kafka-log）</li>
 <li>关联系统：kb-ops 运维管理（同源微服务，共用 Nacos/MySQL）；portal 工具看板将本系统登记为 id=1；infra-monitor / Dozzle 可观测其容器日志。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_15">运维要点</h2>
 <ul>
-<li>启停：<code>bash scripts/deploy.sh up</code> / <code>down</code>（仓库内 docker-compose）；或走 Woodpecker <code>mykng</code> 流水线（build → 产物推 <code>/mnt/shared/woodScript/publish/</code> → drone-ssh 到 mykng 执行 cd/deploy-*.sh 重建容器 + 健康检查 24×10s）。</li>
+<li>启停：<code>bash scripts/deploy.sh up</code> / <code>down</code>（仓库内 docker-compose）；或走 Woodpecker <code>mykng</code> 流水线（见"部署与发布"）。</li>
 <li>健康检查：<code>curl http://192.168.31.105:8090/kb/api/system/modules</code> 应返回 200 与各模块状态。</li>
 <li>日志：<code>docker logs kb-gateway</code> 等，<code>obs-dozzle</code>（mykng 侧 :15500）看实时日志，Grafana/Loki 聚合。</li>
 <li>数据与备份：业务数据在 MySQL GR（105:3306 主，182:3307/3308 从），落地有 GR 多副本；MinIO 文件、MongoDB 需纳入备份体系（待确认是否已在定期备份任务中）。</li>
@@ -164,9 +331,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li>文件解析/搜索为空：先 <code>POST /file/rebuild-index</code> 重建索引，再确认 MeiliSearch 容器健康。</li>
 <li>令牌调用失败：用 <code>/token/verify</code> 校验 API Token 状态（是否被禁用）。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_16">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 本地源码 Controller 路由 + README 生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计：架构/数据模型/设计决策/接口概览；新增部署与发布：compose 位置/配置清单/流水线与回滚；新增典型操作路径；表用途与索引名读 init-sql 与源码实采）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 本地源码 Controller 路由 + README 生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

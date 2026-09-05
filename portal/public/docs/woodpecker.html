@@ -58,154 +58,285 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>Woodpecker <strong>v3</strong>（实测运行 <code>3.16.0</code>），Agent 同 v3，元数据库 PostgreSQL 16</td>
+<td>Woodpecker <strong>v3</strong>（实测运行 <code>woodpeckerci/woodpecker-server:v3</code> / <code>woodpecker-agent:v3</code>，v1 实采版本号 3.16.0），元数据库 PostgreSQL 16（<code>postgres:16-alpine</code>）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>主机 mykng（192.168.31.105），容器 <code>woodpecker-server</code>（8000 + gRPC 9002→9000）、<code>woodpecker-agent</code>（内部）、<code>woodpecker-db</code>（postgres:16-alpine，5433→5432）</td>
+<td>主机 mykng（192.168.31.105），compose project <code>woodpecker</code>，容器 <code>woodpecker-server</code>（8000 + gRPC 9002→9000）、<code>woodpecker-agent</code>、<code>woodpecker-db</code>（5433→5432）</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>流水线脚本集 <code>D:\huliang\java\ideaworkspace\devtools\woodScript\</code>（mykng 上 <code>/root/devtools/woodScript</code>）；官方仓库 github.com/woodpecker-ci/woodpecker</td>
+<td>开源组件，官方仓库 github.com/woodpecker-ci/woodpecker；本实例流水线脚本集 <code>D:\huliang\java\ideaworkspace\devtools\woodScript\</code>（mykng 上 <code>/root/devtools/woodScript</code>），compose 定义 <code>devtools/woodpecker/docker-compose.yml</code></td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>自身即 CI；由 <code>trigger-pipeline.py</code> 经 Woodpecker REST API 触发，仓库 <code>/root/devtools</code>（Gitee + GitHub 双推，Webhook 触发）</td>
+<td>自身即 CI；由 <code>trigger-pipeline.py</code> 经 Woodpecker REST API 触发，仓库 <code>/root/devtools</code>（Gitee + GitHub 双推，push Webhook 触发）</td>
 </tr>
 <tr>
 <td>技术栈</td>
-<td>Woodpecker Server/Agent (Go) + PostgreSQL 16 + drone-ssh 部署 + Maven/pnpm 构建 + Docker Compose</td>
+<td>Woodpecker Server/Agent (Go) + PostgreSQL 16 + appleboy/drone-ssh 部署 + Maven/pnpm 构建 + Docker Compose</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口</h2>
 <ul>
-<li>公网：<code>https://woodci.marschat.online</code>（经腾讯云2号 nginx 443 反代）</li>
+<li>公网：<code>https://woodci.marschat.online</code>（经腾讯云2号 nginx 443 反代，回源走 Tailscale）</li>
 <li>内网：<code>http://192.168.31.105:8000/</code></li>
 <li>Tailscale：<code>http://100.93.36.113:8000/</code></li>
-<li>登录方式：GitHub OAuth（<code>WOODPECKER_GITHUB=true</code>，server 环境变量）；API Token 见 Vaultwarden / infrastructure-map 技能（脚本 <code>trigger-pipeline.py</code> 内置默认值，可用 <code>WOODPECKER_TOKEN</code> 覆盖）。</li>
+<li>登录方式：GitHub OAuth（server 环境变量 <code>WOODPECKER_GITHUB</code> + <code>WOODPECKER_GITHUB_CLIENT/SECRET</code>）；API Token 见 Vaultwarden / infrastructure-map 技能（脚本 <code>trigger-pipeline.py</code> 内置默认值，可用 <code>WOODPECKER_TOKEN</code> 覆盖）。</li>
 </ul>
 <h2 id="_3">全链路</h2>
 <pre><code>浏览器/脚本 → 腾讯云2号 nginx(443) → http://100.93.36.113:8000 (woodpecker-server)
   ├─ Webhook: Gitee/GitHub push → 触发 pipeline
   └─ REST API: trigger-pipeline.py / check-pipeline.py 调 /api/...
 
-流水线执行（CI 容器内）:
-  ci/build-*.sh  (Maven/pnpm 编译)
+流水线执行（Agent 经 gRPC 9000 领任务，起构建容器跑步骤）:
+  ci/build-*.sh  (maven/node 镜像内编译)
     → 产物推 /mnt/shared/woodScript/publish/&lt;项目&gt;-latest.tar.gz
-  cd/deploy-*.sh  (drone-ssh 到 mykng)
-    → 解压 → docker compose 重建 → 健康检查 24×10s
+  appleboy/drone-ssh (携 ssh_key_mykng Secret SSH 到 mykng)
+    → cd/deploy-*.sh → 解压 → docker compose 重建 → 健康检查 24×10s
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
-<h3 id="1-trigger-pipelinepy">1. 触发流水线 — <code>trigger-pipeline.py</code></h3>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Woodpecker 是 Drone 社区分支的轻量自托管 CI（Go 单二进制），核心三角色：</p>
+<ul>
+<li><strong>Server</strong>（<code>woodpecker-server</code>）：Web UI + REST API + Webhook 接收，持久化到 PostgreSQL，经 gRPC（容器内 9000，宿主机映射 9002 以避开 MinIO 9000-9001）向 Agent 派发任务。</li>
+<li><strong>Agent</strong>（<code>woodpecker-agent</code>）：构建代理，领到任务后用本机 Docker daemon（挂载 <code>/var/run/docker.sock</code>）按 <code>.woodpecker.yml</code> 逐步骤起容器执行。</li>
+<li><strong>DB</strong>（<code>woodpecker-db</code>）：PostgreSQL 16 存储 pipeline/build/secret/user 元数据。</li>
+</ul>
+<p>本实例资源画像（compose 明确限制）：Server 0.5 核/256M、Agent 2 核/1.5G（<code>WOODPECKER_MAX_PROCS=1</code>，同时只跑 1 个构建）、DB 0.3 核/128M，构建容器内存上限 1G（+512M swap）。</p>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>流水线定义</strong>：单文件统一编排——仓库根 <code>.woodpecker.yml</code> 定义 6 条 <code>build→deploy</code> 链（mykng / kb-ops / kb-ops-web / infra-web / infra-mon / active-mgr 等），用 <code>depends_on</code> 控制串并行（如 kb-ops 部署排在 mykng 之后，保证 kb-app project 内启动顺序）；<code>when.evaluate: DEPLOY_TARGET == "..."</code> 实现一个文件按参数选择性执行，改串并行不用改脚本。</li>
+<li><strong>步骤结构</strong>：每条链两步——<code>*-build</code>（maven:3.9-eclipse-temurin-21 或 node:20-slim 镜像内跑 <code>woodScript/ci/build-*.sh</code>，挂载 <code>/mnt/shared</code> 与宿主缓存目录）+ <code>*-deploy</code>（appleboy/drone-ssh）；首步 <code>sync-ci-scripts</code>（bash:5.2）负责清空并同步 woodScript 脚本、各项目 compose 文件与 <code>platform/nacos/init-nacos.sh</code> 到共享目录，并做 <code>bash -n</code> 语法检查。</li>
+<li><strong>触发方式</strong>：① Gitee/GitHub push Webhook 自动触发（<code>event: push</code>）；② <code>trigger-pipeline.py</code> 经 REST API 手动触发（<code>event: manual</code>，带 <code>DEPLOY_TARGET</code> 环境变量选择目标，默认分支 dev）；<code>check-pipeline.py</code> 查询状态与日志。</li>
+<li><strong>Secrets 机制</strong>：敏感信息全部走 Woodpecker 内置 Secrets（仓库级），部署步骤 <code>settings.key: { from_secret: ssh_key_mykng }</code> 注入 mykng SSH 私钥给 drone-ssh——流水线文件与日志中均不出现明文；Server 侧的 <code>WOODPECKER_AGENT_SECRET</code>（Server↔Agent gRPC 鉴权）、<code>WOODPECKER_GRPC_SECRET</code>、OAuth Client Secret 均由 mykng <code>.env</code> 注入 compose。</li>
+<li><strong>drone-ssh 部署模式</strong>：部署步骤用 <code>appleboy/drone-ssh</code> 插件镜像 SSH 到目标机执行 <code>cd/deploy-*.sh</code>（<code>host: 192.168.31.105</code>，<code>command_timeout: 30m</code>，<code>script_stop: false</code>）。配套两个关键设计：<code>lib-deploy.sh</code> 里 <code>trap '' TERM</code> 防止 drone-ssh 超时发出的 SIGTERM 中断部署半途状态；产物与脚本经共享目录 <code>/mnt/shared/woodScript/</code>（sync-ci-scripts 步骤先同步过去）流转，CI 容器与目标机不直传。</li>
+<li><strong>Webhook 与仓库布局</strong>：代码仓库 mykng <code>/root/devtools</code>（Gitee + GitHub 双推），push 任一远端即触发；另有独立仓库 workcheck-python（repo_id=2）自管流水线。日志与构建记录保留策略（7 天 / 30 天）控制小主机磁盘占用。</li>
+<li><strong>为什么选它</strong>：比 Jenkins/GitLab CI 轻得多（三容器即可跑）、YAML 配置简单、原生支持 Docker 后端与插件生态（drone-ssh 直接复用）、对 Gitee/GitHub 双仓库友好；mykng 只有 3 核，资源分层限制后 CI 与业务服务可共存。</li>
+</ul>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">编排与位置</h3>
+<ul>
+<li>compose 文件：<code>D:\huliang\java\ideaworkspace\devtools\woodpecker\docker-compose.yml</code>（mykng 上对应路径同目录），compose project <code>woodpecker</code>，专用网络 <code>woodpecker_woodpecker-network</code>（bridge，禁用 IPv6 避免 DNS 解析问题）。</li>
+<li>首次部署：<code>bash deploy.sh --init &amp;&amp; bash deploy.sh --start</code>（同目录 <code>deploy.sh</code>）；后续手动 <code>docker compose -p woodpecker up -d</code>。</li>
+<li>实采（docker inspect）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>容器</th>
+<th>镜像</th>
+<th>端口</th>
+<th>卷挂载</th>
+<th>重启策略</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>woodpecker-server</td>
+<td>woodpeckerci/woodpecker-server:v3</td>
+<td>8000→8000（UI/API）、9002→9000（gRPC）</td>
+<td>named volume <code>woodpecker_woodpecker-data</code> → <code>/var/lib/woodpecker</code>；<code>/var/run/docker.sock</code></td>
+<td>unless-stopped</td>
+</tr>
+<tr>
+<td>woodpecker-agent</td>
+<td>woodpeckerci/woodpecker-agent:v3</td>
+<td>无对外端口</td>
+<td><code>/var/run/docker.sock</code>（构建起容器用）</td>
+<td>unless-stopped</td>
+</tr>
+<tr>
+<td>woodpecker-db</td>
+<td>postgres:16-alpine</td>
+<td>5433→5432</td>
+<td>named volume <code>woodpecker_woodpecker-db-data</code> → <code>/var/lib/postgresql/data</code></td>
+<td>unless-stopped</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>三容器均在 <code>woodpecker_woodpecker-network</code> 网络内互联（不接 platform-net，独立于 platform 基础设施层）。</li>
+<li>关键环境变量（只列名与用途，值在 mykng <code>.env</code> / Vaultwarden）：<code>WOODPECKER_HOST</code>（对外地址）、<code>WOODPECKER_SERVER_ADDR</code>/<code>WOODPECKER_GRPC_ADDR</code>、<code>WOODPECKER_DATABASE_DRIVER/DATASOURCE</code>（连 woodpecker-db）、<code>WOODPECKER_GITHUB</code> + <code>WOODPECKER_GITHUB_CLIENT/SECRET</code>（OAuth）、<code>WOODPECKER_AGENT_SECRET</code>/<code>WOODPECKER_GRPC_SECRET</code>（内部鉴权）、<code>WOODPECKER_ADMIN</code>、<code>WOODPECKER_LOGS_RETENTION=7</code> / <code>WOODPECKER_PIPELINE_RETENTION=30</code>（日志/构建记录保留期）、Agent 侧 <code>WOODPECKER_MAX_PROCS=1</code>、<code>WOODPECKER_BACKEND=docker</code>。</li>
+</ul>
+<h3 id="_9">配置清单（数据流）</h3>
+<ul>
+<li>产物共享目录：<code>/mnt/shared/woodScript/publish/</code>（CI 构建产物）+ <code>/mnt/shared/woodScript/cd/</code>（部署脚本），从 mykng 挂载进 CI 容器。</li>
+<li>部署根目录：目标机 <code>/root/kb-deploy/</code>（<code>DEPLOY_BASE</code>，前端 dist 与 nginx.conf 落地处）。</li>
+<li>代码仓库：mykng <code>/root/devtools</code>（Gitee + GitHub 双推）。</li>
+</ul>
+<h3 id="woodpecker">发布/升级（Woodpecker 自身）</h3>
+<p>基础设施层，不在应用流水线管理范围。升级改 <code>docker-compose.yml</code> 中镜像 tag 后 <code>docker compose -p woodpecker up -d</code> 重建；升级前对 <code>woodpecker-db</code> 做 <code>pg_dump</code>。</p>
+<h3 id="_10">回滚</h3>
+<ul>
+<li>镜像回退：compose 中改回旧 tag 重建即可（Server 数据在 named volume，不受影响）。</li>
+<li>元数据回退：<code>pg_dump</code> 备份文件回导 <code>woodpecker-db</code>。</li>
+</ul>
+<h2 id="_11">核心功能与使用</h2>
+<h3 id="_12">功能清单</h3>
+<ul>
+<li><strong>push 自动构建</strong>：Gitee/GitHub push 即触发对应项目 build→deploy 链——日常开发的默认发布方式。</li>
+<li><strong>手动定点发布</strong>：<code>trigger-pipeline.py &lt;目标&gt; --wait</code> 按参数只部署指定项目——紧急修复/重发场景。</li>
+<li><strong>构建观测</strong>：Web UI 与 <code>check-pipeline.py</code>（状态/日志/<code>--watch</code> 持续监控）——排查部署失败第一步。</li>
+<li><strong>Secrets 托管</strong>：部署 SSH 私钥等敏感值仓库级托管，流水线文件零明文。</li>
+<li><strong>构建资源治理</strong>：单并发 + 内存上限 + 日志 7 天/构建记录 30 天保留——适配 3 核小主机。</li>
+</ul>
+<h3 id="_13">典型操作路径</h3>
+<ol>
+<li><strong>日常发布</strong>：改代码 → push 到 Gitee/GitHub dev 分支 → Woodpecker 自动跑对应链 → <code>python woodScript/check-pipeline.py --watch</code> 观察到成功。</li>
+<li><strong>手动重发</strong>：<code>python woodScript/trigger-pipeline.py kb-ops --wait</code>（全量用 <code>all</code>）→ 结束后到 kb-ops 部署记录核对。</li>
+<li><strong>失败排查</strong>：<code>check-pipeline.py --log &lt;编号&gt;</code> 看步骤日志 → 常见卡点是健康检查 24×10s 不过（容器起慢/端口未就绪）。</li>
+<li><strong>新增流水线目标</strong>：<code>.woodpecker.yml</code> 加一组 build/deploy 步骤 + <code>woodScript/ci|cd</code> 各加一个脚本 → push 生效。</li>
+</ol>
+<h3 id="cicd">统一 CI/CD 流程细节</h3>
+<p><strong>构建（ci/build-*.sh，CI 容器内 maven/node 镜像执行）</strong></p>
+<table>
+<thead>
+<tr>
+<th>脚本</th>
+<th>工具</th>
+<th>产物</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>build-mykng.sh</td>
+<td>Maven（5 微服务 <code>-T 2C</code> 并行，MAVEN_OPTS -Xmx2048m）</td>
+<td>mykng-latest.tar.gz</td>
+</tr>
+<tr>
+<td>build-kb-ops.sh / build-portal-server.sh / build-active-manager.sh / build-infra-monitor.sh</td>
+<td>Maven</td>
+<td><code>&lt;项目&gt;-latest.tar.gz</code></td>
+</tr>
+<tr>
+<td>build-kb-web.sh / build-kb-ops-web.sh / build-portal-web.sh / build-infra-monitor-web.sh</td>
+<td>pnpm（node:20-slim，pnpm-store 挂宿主机 /var/cache/pnpm-store 复用缓存）</td>
+<td><code>&lt;项目&gt;-latest.tar.gz</code></td>
+</tr>
+</tbody>
+</table>
+<p>统一流程：<code>编译 → collect_artifacts → publish_artifact</code>（<code>lib-build.sh</code> 提供，产物写失败即 exit 1，杜绝半截产物）。<code>setup_pnpm()</code> 读项目 <code>package.json</code> 的 <code>packageManager</code> 字段锁定 pnpm 版本，registry 指向本机 Nexus <code>192.168.31.105:8081/repository/npm-public/</code>。</p>
+<p><strong>部署（cd/deploy-*.sh，drone-ssh 在目标机执行）</strong></p>
+<table>
+<thead>
+<tr>
+<th>脚本</th>
+<th>Compose Project</th>
+<th>Compose 文件</th>
+<th>健康检查</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deploy-mykng.sh</td>
+<td>kb-app</td>
+<td>docker-compose.app.yml</td>
+<td>localhost:8090/actuator/health</td>
+</tr>
+<tr>
+<td>deploy-kb-ops.sh</td>
+<td>kb-app</td>
+<td>docker-compose.app.yml</td>
+<td>localhost:8084/kb-ops/actuator/health</td>
+</tr>
+<tr>
+<td>deploy-portal-server.sh</td>
+<td>kb-app</td>
+<td>docker-compose.app.yml</td>
+<td>localhost:8087/portal/actuator/health</td>
+</tr>
+<tr>
+<td>deploy-kb-web.sh</td>
+<td>kb-web</td>
+<td>docker-compose.web.yml</td>
+<td>localhost:8091/health</td>
+</tr>
+<tr>
+<td>deploy-kb-ops-web.sh</td>
+<td>kb-web</td>
+<td>docker-compose.web.yml</td>
+<td>localhost:8093/health</td>
+</tr>
+<tr>
+<td>deploy-portal-web.sh</td>
+<td>kb-web</td>
+<td>docker-compose.web.yml</td>
+<td>localhost:8095/health</td>
+</tr>
+<tr>
+<td>deploy-infra-monitor.sh</td>
+<td>infra-monitor</td>
+<td>infra-monitor-server/docker-compose.yml</td>
+<td>localhost:8088/infra/actuator/health</td>
+</tr>
+<tr>
+<td>deploy-infra-monitor-web.sh</td>
+<td>kb-web</td>
+<td>docker-compose.web.yml</td>
+<td>localhost:8094/health</td>
+</tr>
+<tr>
+<td>deploy-active-manager.sh</td>
+<td>activecode</td>
+<td>activation-code-server/docker-compose.yml</td>
+<td>localhost:18080/activecode/login.html</td>
+</tr>
+</tbody>
+</table>
+<p>健康检查参数：最多 24 次 × 10 秒（<code>HEALTH_MAX_RETRIES</code>/<code>HEALTH_INTERVAL</code>，见 <code>env.sh</code>）。公共库分工：<code>env.sh</code>（SHARED_DIR/DEPLOY_BASE/GIT_REPO/NEXUS_NPM_REGISTRY 等变量）、<code>lib-build.sh</code>（collect_artifacts/publish_artifact/setup_pnpm）、<code>lib-deploy.sh</code>（442 行，含 <code>trap '' TERM</code> 与产物校验/compose 重建/健康检查原语）。</p>
+<p><strong>compose 归属</strong>：应用层按 <code>kb-app</code>（docker-compose.app.yml）/ <code>kb-web</code>（docker-compose.web.yml）/ <code>infra-monitor</code>（infra-monitor-server/docker-compose.yml）/ <code>activecode</code> 分 project 部署，project 内串行（depends_on 链）、project 间并行。</p>
+<h3 id="_14">触发与监控脚本</h3>
 <pre><code class="language-bash">cd /root/devtools
 python woodScript/trigger-pipeline.py mykng            # 触发单项目（默认分支 dev）
 python woodScript/trigger-pipeline.py mykng --wait     # 触发并监控到结束（推荐）
 python woodScript/trigger-pipeline.py kb-ops --note &quot;修复登录bug&quot;
 python woodScript/trigger-pipeline.py mykng --branch main
 python woodScript/trigger-pipeline.py all              # 全量（部署所有项目）
-</code></pre>
-<p>支持的项目名（DEPLOY_TARGET）：</p>
-<table>
-<thead>
-<tr>
-<th>项目名</th>
-<th>部署服务</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mykng</code></td>
-<td>kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence</td>
-</tr>
-<tr>
-<td><code>kb-ops</code></td>
-<td>kb-ops</td>
-</tr>
-<tr>
-<td><code>kb-ops-web</code></td>
-<td>kb-ops-web</td>
-</tr>
-<tr>
-<td><code>kb-web</code></td>
-<td>kb-web</td>
-</tr>
-<tr>
-<td><code>infra-monitor</code></td>
-<td>infra-monitor</td>
-</tr>
-<tr>
-<td><code>infra-monitor-web</code></td>
-<td>infra-monitor-web</td>
-</tr>
-<tr>
-<td><code>active-manager</code></td>
-<td>activation-code-server</td>
-</tr>
-<tr>
-<td><code>portal-web</code></td>
-<td>portal-web</td>
-</tr>
-<tr>
-<td><code>portal-server</code></td>
-<td>portal-server</td>
-</tr>
-<tr>
-<td><code>platform</code></td>
-<td>起 Kafka + 重启 MySQL GR 集群</td>
-</tr>
-<tr>
-<td><code>all</code></td>
-<td>以上全部</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><code>workcheck-python</code> <strong>不在本列表</strong>：它是独立仓库（Woodpecker repo_id=2，分支 main），使用自己的流水线，不走 <code>trigger-pipeline.py</code>。</p>
-</blockquote>
-<h3 id="2-check-pipelinepy">2. 查询/监控 — <code>check-pipeline.py</code></h3>
-<pre><code class="language-bash">python woodScript/check-pipeline.py 342            # 某次流水线（状态+全部步骤日志）
+
+python woodScript/check-pipeline.py 342            # 某次流水线（状态+全部步骤日志）
 python woodScript/check-pipeline.py --log 342     # 只看日志
 python woodScript/check-pipeline.py --watch 342   # 持续监控到结束
 python woodScript/check-pipeline.py               # 不编号=最新一条
 python woodScript/check-pipeline.py --recent 5    # 最近 N 条
 </code></pre>
-<h3 id="3-cicd">3. 统一 CI/CD 流程</h3>
-<ul>
-<li><strong>构建（CI 容器内）</strong>：<code>ci/build-*.sh</code> 编译，产物命名为 <code>&lt;项目&gt;-latest.tar.gz</code> 推到共享目录 <code>/mnt/shared/woodScript/publish/</code>。</li>
-<li>Maven 项目：<code>build-mykng.sh</code>(5 微服务 <code>-T 2C</code> 并行)、<code>build-kb-ops.sh</code>、<code>build-portal-server.sh</code>、<code>build-active-manager.sh</code>、<code>build-infra-monitor.sh</code></li>
-<li>前端（pnpm）：<code>build-kb-web.sh</code>、<code>build-kb-ops-web.sh</code>、<code>build-portal-web.sh</code>、<code>build-infra-monitor-web.sh</code>；<code>setup_pnpm()</code> 锁定 pnpm 版本，registry 指向本机 Nexus <code>192.168.31.105:8081/repository/npm-public/</code>。</li>
-<li><strong>部署（drone-ssh 到目标机）</strong>：<code>cd/deploy-*.sh</code> 取产物、解压、<code>docker compose</code> 重建、健康检查（最多 24 次 ×10 秒）。核心函数库 <code>lib-deploy.sh</code>（含 <code>trap '' TERM</code> 防止 drone-ssh SIGTERM 中断部署）。</li>
-<li><strong>compose 归属</strong>：应用层按 <code>kb-app</code>（<code>docker-compose.app.yml</code>）/ <code>kb-web</code>（<code>docker-compose.web.yml</code>）/ <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>）分项目部署。</li>
-</ul>
-<h3 id="4-platform">4. platform 层（基础设施中间件）</h3>
-<p><code>DEPLOY_TARGET=platform</code> 时流水线重启 Kafka（<code>docker compose ... up -d --no-deps platform-kafka</code>）与 MySQL GR 集群（<code>deploy-mysql-cluster.sh</code>，按 MySQL 官方"Restarting a Group"流程：mykng 重启 Node1 并 bootstrap → SSH 到 Debian 重启 Node2/Node3 并显式 <code>START GROUP_REPLICATION</code> → 校验 3/3 ONLINE）。Redis/Mongo/MinIO/Meili/Nacos 的首次安装与重启走 <code>platform/start-platform.sh</code> 手动执行，流水线不管。</p>
-<h2 id="_5">依赖与关联</h2>
+<p>脚本环境变量：<code>WOODPECKER_URL</code>（默认 https://woodci.marschat.online）、<code>WOODPECKER_TOKEN</code>（API Token，脚本内置默认值，可覆盖）——均为密级见 Vaultwarden。</p>
+<p>支持的项目名（DEPLOY_TARGET）：<code>mykng</code>、<code>kb-ops</code>、<code>kb-ops-web</code>、<code>kb-web</code>、<code>infra-monitor</code>、<code>infra-monitor-web</code>、<code>active-manager</code>、<code>portal-web</code>、<code>portal-server</code>、<code>platform</code>（起 Kafka + 重启 MySQL GR 集群）、<code>all</code>。</p>
+<blockquote>
+<p><code>workcheck-python</code> 不在此列：独立仓库（Woodpecker repo_id=2，分支 main），用自带流水线，不走 <code>trigger-pipeline.py</code>。</p>
+</blockquote>
+<h2 id="_15">依赖与关联</h2>
 <ul>
 <li>依赖：</li>
-<li><strong>PostgreSQL 16</strong>（<code>woodpecker-db</code>，5433）：存储流水线/构建/Secret 元数据。</li>
+<li><strong>PostgreSQL 16</strong>（<code>woodpecker-db</code>，宿主机 5433）：存储流水线/构建/Secret 元数据。</li>
 <li><strong>共享目录</strong> <code>/mnt/shared/woodScript/</code>（publish + cd 脚本，经 SMB/NFS 从 mykng 挂载到 CI 节点）——产物与部署脚本的流转中枢。</li>
 <li><strong>Nexus 私服</strong>：Maven（<code>nexus.marschat.online/repository/maven-public/</code>）、npm（<code>192.168.31.105:8081/repository/npm-public/</code>）依赖源。</li>
-<li><strong>Docker daemon</strong>（mykng）：部署阶段 <code>docker compose</code> 重建容器。</li>
+<li><strong>Docker daemon</strong>（mykng）：Agent 起构建容器、部署阶段 <code>docker compose</code> 重建容器。</li>
 <li><strong>GitHub / Gitee</strong>：OAuth 登录与代码仓库 Webhook 触发。</li>
 <li>被依赖/关联系统：<strong>所有应用层服务</strong>（kb-ops、infra-monitor、portal、mykng、激活码等）的发布都依赖本流水线；其"部署记录"在 kb-ops 中可对应查询。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_16">运维要点</h2>
 <ul>
 <li>重启策略分层（铁律）：</li>
-<li>平台层 <code>platform-*</code> → <code>restart: on-failure:5</code> + daemon 重启后 <code>@reboot</code> 拉起。</li>
+<li>平台层 <code>platform-*</code> → <code>restart: unless-stopped/on-failure</code> + daemon 重启后 <code>@reboot</code> 拉起。</li>
 <li>应用层 <code>kb-*/portal*/infra-monitor</code> → <code>restart: on-failure:5</code>，<strong>且只能走流水线部署</strong>，禁止手动 <code>docker compose up</code>。</li>
 <li>日志查看：Woodpecker 界面查看构建/部署步骤日志；目标机容器日志 <code>docker logs &lt;服务&gt;</code> 或 mykng <code>obs-dozzle</code>（15500）。</li>
-<li>数据与备份：元数据在 <code>woodpecker-db</code>（PostgreSQL 16）；重要变更前建议对 <code>woodpecker-db</code> 做 <code>pg_dump</code>。共享产物目录 <code>/mnt/shared/woodScript</code> 建议纳入备份。</li>
-<li>凭据安全：Woodpecker Agent Secret、GitHub OAuth Secret、API Token 等均为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>，文档不写明文。</li>
+<li>数据与备份：元数据在 <code>woodpecker-db</code>（PostgreSQL 16）；重要变更前对 <code>woodpecker-db</code> 做 <code>pg_dump</code>。共享产物目录 <code>/mnt/shared/woodScript</code> 建议纳入备份。</li>
+<li>凭据安全：Woodpecker Agent Secret、gRPC Secret、GitHub OAuth Secret、API Token、仓库 Secret <code>ssh_key_mykng</code> 均为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>，文档不写明文。</li>
 <li>常见问题：</li>
-<li>部署卡在健康检查：查看 <code>check-pipeline.py --log</code> 对应步骤，多为容器启动慢或端口未就绪；健康检查 24×10s 仍失败则回滚。</li>
-<li>产物缺失：确认 CI 阶段 <code>publish_artifact</code> 成功推到 <code>/mnt/shared/woodScript/publish/</code>。</li>
-<li>pnpm store 膨胀：流水线含 <code>cleanup-pnpm-store.sh</code>（距上次 &lt;7 天跳过），必要时 <code>--force</code>。</li>
+<li>部署卡在健康检查：<code>check-pipeline.py --log</code> 看对应步骤，多为容器启动慢或端口未就绪；24×10s 仍失败则回滚。</li>
+<li>产物缺失：确认 CI 阶段 <code>publish_artifact</code> 成功推到 <code>/mnt/shared/woodScript/publish/</code>；<code>sync-ci-scripts</code> 步骤失败（脚本语法检查不过）会导致后续全部跳过。</li>
+<li>pnpm store 膨胀：流水线含 <code>cleanup-pnpm-store.sh</code>（距上次 &lt;7 天跳过），必要时 <code>--force</code>（固定 pnpm@8.15.9，兼容 v6/v9 lockfile，@latest v10 会误删活跃包）。</li>
+<li>保留策略清理：日志 7 天 / 构建记录 30 天自动过期，查历史构建过期的属正常现象。</li>
+<li>Agent 离线：<code>docker logs woodpecker-agent</code> 看 gRPC 连接，多为 <code>WOODPECKER_AGENT_SECRET</code> 与 server 不一致（.env 改动后只重启了单边）。</li>
+<li>脚本被中断在半途：确认 <code>lib-deploy.sh</code> 的 <code>trap '' TERM</code> 未被改动——drone-ssh 超时会发 SIGTERM，屏蔽后部署才能跑完。</li>
+<li>手动触发 401/403：<code>WOODPECKER_TOKEN</code> 过期或权限不足，见 Vaultwarden 更新脚本内置 Token。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_17">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + woodScript/README.md + 容器环境变量生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计节：Server/Agent/DB 架构、Secrets 机制、drone-ssh 模式、<code>.woodpecker.yml</code> 统一编排；部署节按 woodpecker/docker-compose.yml + docker inspect 实采重写）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + woodScript/README.md + 容器环境变量生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

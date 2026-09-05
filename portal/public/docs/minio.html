@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng（192.168.31.105）容器 <code>platform-minio</code></td>
+<td>mykng（192.168.31.105）容器 <code>platform-minio</code>，compose project <code>platform</code></td>
 </tr>
 <tr>
 <td>端口</td>
@@ -82,7 +82,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，随 platform 层 <code>python woodScript/trigger-pipeline.py platform</code> 一并拉起）</td>
+<td>无独立流水线（自部署，随 platform 层 <code>python woodScript/trigger-pipeline.py platform</code> 一并拉起）</td>
 </tr>
 </tbody>
 </table>
@@ -109,52 +109,116 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <blockquote>
 <p>注：控制台（19001/容器内 9001）与 API（9000）是 MinIO 两个独立端口。控制台用于人工管理桶与对象；API（9000）是 S3 兼容数据面，业务服务用 AccessKey/SecretKey 调用，不是给人点的网页。mykng nginx 的 <code>minio.conf</code> 配置为 <code>location /minio/ { proxy_pass http://127.0.0.1:19001/; }</code>（尾斜杠已对齐）。</p>
 </blockquote>
-<h2 id="docker-inspect2026-09-05">实采配置快照（docker inspect，2026-09-05）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>MinIO 是高性能、S3 兼容的开源对象存储：数据面提供 AWS S3 兼容 REST API（桶/对象/预签名 URL/生命周期策略），管理面提供独立 Web Console；单节点部署时对象与元数据统一存于数据目录，无需外部数据库。API 与 Console 是两个独立监听端口（本实例 9000 / 9001）。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>启动命令：<code>minio server /data --console-address :9001</code>（数据目录 <code>/data</code>，控制台绑定 :9001）。</li>
-<li>凭证注入：根凭证<strong>通过文件注入</strong>（ENV 含 <code>MINIO_ROOT_USER_FILE=access_key</code>、<code>MINIO_ROOT_PASSWORD_FILE=secret_key</code>、<code>MINIO_CONFIG_ENV_FILE=config.env</code>），不在 ENV 明文，符合不落盘原则；实际 AccessKey/SecretKey 见 Vaultwarden。</li>
-<li>健康检查：容器 healthcheck 状态 healthy。</li>
-<li>数据卷：<code>platform_platform-minio-data</code> → <code>/data</code>（对象持久化位置）。</li>
+<li><strong>实例角色</strong>：<code>platform-minio</code> 是 platform 全局基础设施层的对象存储底座，承担 KB 体系全部二进制对象（知识库原始文件、用户头像、上传附件）的持久化存储；对象与元数据自管于 <code>/data</code>，不依赖外部数据库。</li>
+<li><strong>谁读写它</strong>：</li>
+<li><code>kb-file</code>（文件服务）、<code>kb-knowledge</code>（知识库，8092）经 S3 兼容 API 写入/读取对象；</li>
+<li><code>kb-web</code> / <code>kb.marschat.online</code> 前端展示的图片附件最终取自 MinIO（通常经预签名 URL）；</li>
+<li>外部脚本/客户端可经公网 <code>s3.marschat.online</code> 用 AccessKey/SecretKey 访问。</li>
+<li><strong>为什么选它</strong>：S3 协议是对象存储事实标准，业务侧用任意 S3 SDK 即可接入、未来可平滑迁移到云上 S3；相比直接落盘 NAS，桶级策略、预签名 URL、生命周期管理开箱即用。</li>
+<li><strong>与其他存储的分工</strong>：与 MeiliSearch、Qdrant 构成 KB 的非结构化数据底座——MinIO 存原始文件、MeiliSearch 存全文检索索引、Qdrant 存语义向量，三者职责不重叠（见「依赖与关联」关系表）。</li>
+<li><strong>关键配置思路</strong>：</li>
+<li>根凭证<strong>通过文件注入</strong>（<code>MINIO_ROOT_USER_FILE=access_key</code>、<code>MINIO_ROOT_PASSWORD_FILE=secret_key</code>、<code>MINIO_CONFIG_ENV_FILE=config.env</code>），凭证值不进 compose ENV 明文（实采 docker inspect 确认，2026-09-05）；</li>
+<li>数据目录用命名卷持久化，healthcheck 走 <code>/minio/health/live</code>；</li>
+<li>内存限额 512m，控制台 <code>--console-address :9001</code> 独立端口，便于 nginx 只反代控制台而不暴露数据面。</li>
 </ul>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">编排与位置</h3>
 <ul>
-<li>对象存储桶（Bucket）管理：在控制台创建/删除桶、设置公开或私有访问策略。KB 体系的用户头像、上传附件、知识库文件等存放在此。</li>
-<li>S3 兼容 API：任何兼容 AWS S3 SDK 的客户端（如 kb-file、kb-knowledge 服务，以及外部脚本）均可用同一套 AccessKey/SecretKey 读写对象，无需关心对象存在哪台机器。</li>
-<li>控制台运维：查看桶内对象、下载、预览、设置生命周期与配额。具体按钮级操作以控制台实际界面为准（不在此逐条编造）。</li>
-<li>多租户隔离：通过不同前缀/不同桶区分各业务系统的对象空间（具体桶命名以 KB 服务配置为准，待确认）。</li>
-<li>预签名 URL：业务侧通常对私有对象签发有时效的预签名 URL 供前端临时下载，避免把 SecretKey 下发到客户端。</li>
+<li>compose 文件：<code>/root/devtools/platform/docker-compose.platform.yml</code>（compose project：<code>platform</code>，服务名 <code>platform-minio</code>）</li>
+<li>网络：<code>platform-net</code>（bridge；其他层项目经 external 引入该网络互访）</li>
+<li>启动脚本：<code>bash platform/start-platform.sh</code>（即 compose up -d）</li>
+<li>归属：platform 中间件层<strong>不归任何流水线管理</strong>，手动启动、持久运行；mykng/kb-ops/infra-monitor 等项目共享此基础设施</li>
 </ul>
-<h2 id="api">客户端/API 调用示例（组件通用用法，非本机实装步骤）</h2>
+<h3 id="_9">配置清单</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>容器名</td>
+<td><code>platform-minio</code></td>
+</tr>
+<tr>
+<td>镜像</td>
+<td><code>minio/minio:latest</code></td>
+</tr>
+<tr>
+<td>端口映射</td>
+<td>宿主 9000 → 容器 9000（S3 API）；宿主 19001 → 容器 9001（Console）</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td>命名卷 <code>platform-minio-data</code> → <code>/data</code>（对象持久化）</td>
+</tr>
+<tr>
+<td>环境变量</td>
+<td><code>MINIO_ROOT_USER</code> / <code>MINIO_ROOT_PASSWORD</code>（根凭证；实际部署经文件注入，值见 Vaultwarden，禁止落盘）</td>
+</tr>
+<tr>
+<td>启动命令</td>
+<td><code>server /data --console-address ":9001"</code></td>
+</tr>
+<tr>
+<td>healthcheck</td>
+<td><code>curl -f http://localhost:9000/minio/health/live</code>，间隔 10s</td>
+</tr>
+<tr>
+<td>资源限制</td>
+<td>mem_limit 512m</td>
+</tr>
+<tr>
+<td>重启策略</td>
+<td><code>unless-stopped</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="_10">发布/升级</h3>
 <ul>
-<li>命令行 <code>mc</code>：<code>mc alias set mykng https://s3.marschat.online &lt;ACCESS_KEY&gt; &lt;SECRET_KEY&gt;</code> 后 <code>mc ls/mykng/&lt;bucket&gt;</code>。</li>
-<li>AWS SDK（Python boto3）：endpoint_url 指向 <code>https://s3.marschat.online</code>，用 AccessKey/SecretKey 初始化 client，调用 <code>list_objects_v2</code> / <code>put_object</code>。</li>
-<li>控制台：浏览器打开 <code>https://kb.marschat.online/minio/</code> 登录后管理。</li>
+<li>常规拉起：<code>python woodScript/trigger-pipeline.py platform</code>（platform 层流水线），或在 mykng 上手工：
+  <code>docker compose -p platform -f /root/devtools/platform/docker-compose.platform.yml up -d platform-minio</code></li>
+<li>停止：<code>docker compose -p platform -f /root/devtools/platform/docker-compose.platform.yml down</code></li>
+<li>镜像 tag 为 <code>latest</code>，升级 = 重新 pull 后重建容器；升级前确认 KB 服务 SDK 对新版本无破坏性依赖。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_11">回滚</h3>
+<ul>
+<li>单容器回滚：改用旧镜像 ID <code>docker compose ... up -d platform-minio</code>（latest 无固定版本锚点，建议升级前 <code>docker tag</code> 留存旧镜像）。</li>
+<li>数据回退：对象数据在命名卷 <code>platform_platform-minio-data</code>，恢复即还原该卷快照。</li>
+</ul>
+<h2 id="_12">核心功能与使用</h2>
+<h3 id="_13">功能清单</h3>
+<ul>
+<li><strong>对象存储桶管理</strong>：控制台创建/删除桶、设置公开或私有访问策略。KB 体系的用户头像、上传附件、知识库文件存放在此。</li>
+<li><strong>S3 兼容 API</strong>：任何兼容 AWS S3 SDK 的客户端（kb-file、kb-knowledge 及外部脚本）用同一套 AccessKey/SecretKey 读写对象。</li>
+<li><strong>预签名 URL</strong>：业务侧对私有对象签发有时效的预签名 URL 供前端临时下载，避免把 SecretKey 下发到客户端。</li>
+<li><strong>控制台运维</strong>：查看桶内对象、下载、预览、设置生命周期与配额（按钮级操作以控制台实际界面为准）。</li>
+<li><strong>多租户隔离</strong>：通过不同前缀/不同桶区分各业务系统的对象空间（具体桶命名以 KB 服务配置为准，待确认）。</li>
+</ul>
+<h3 id="_14">典型操作路径</h3>
+<ol>
+<li><strong>控制台管理</strong>：浏览器打开 <code>https://kb.marschat.online/minio/</code>（或内网 <code>:19001</code>）→ 用 AccessKey/SecretKey 登录 → Object Browser 选桶 → 上传/下载/查看对象。</li>
+<li><strong>命令行 mc</strong>：<code>mc alias set mykng https://s3.marschat.online &lt;ACCESS_KEY&gt; &lt;SECRET_KEY&gt;</code> → <code>mc ls mykng/&lt;bucket&gt;</code> / <code>mc mirror</code>（备份同步常用）。</li>
+<li><strong>程序调用（boto3 为例）</strong>：endpoint_url 指向 <code>https://s3.marschat.online</code>，用 AccessKey/SecretKey 初始化 client → <code>put_object</code> / <code>list_objects_v2</code> / <code>generate_presigned_url</code>。</li>
+<li><strong>健康探测</strong>：<code>curl http://192.168.31.105:9000/minio/health/live</code>（HTTP 200 即健康）。</li>
+</ol>
+<h2 id="_15">依赖与关联</h2>
 <ul>
 <li>依赖：宿主 mykng 的 docker 引擎与数据卷；无外部数据库依赖（元数据自管于 <code>/data</code>）。</li>
 <li>被依赖/关联系统：</li>
 <li><code>kb-file</code>（文件服务）、<code>kb-knowledge</code>（知识库，8092）等 KB 服务经 S3 API 读写对象；</li>
 <li>知识库前端 <code>kb-web</code> / <code>kb.marschat.online</code> 展示的图片附件等多源自 MinIO；</li>
 <li><code>s3.marschat.online</code> 公网域名专供外部 S3 客户端访问；</li>
-<li>与 MeiliSearch（检索）、Qdrant（向量）共同构成 KB 的非结构化数据底座，但三者职责不同：MinIO 存原始文件、MeiliSearch 存可全文检索的文本索引、Qdrant 存向量。</li>
+<li>与 MeiliSearch（检索）、Qdrant（向量）共同构成 KB 的非结构化数据底座，三者职责不同。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
-<ul>
-<li>启停方式：随 platform 中间件栈管理。<code>python woodScript/trigger-pipeline.py platform</code> 拉起；或直接在 mykng 上 <code>docker compose -f /root/devtools/platform/docker-compose.platform.yml up -d platform-minio</code>。</li>
-<li>日志查看：<code>docker logs platform-minio</code>（持续 <code>docker logs -f platform-minio</code>）；亦可在 obs-dozzle（mykng :15500）按容器名检索。</li>
-<li>数据与备份：数据卷 <code>platform_platform-minio-data</code> → 容器内 <code>/data</code>。备份需对该卷做快照/同步（当前备份体系是否覆盖以 infra-monitor 备份策略为准，未实测处写待确认）。建议对对象做跨机同步或定期 <code>mc mirror</code> 到异地。</li>
-<li>可观测性：容器日志入 Loki（mykng promtail → 内网 Deb obs-loki :15100），可在 Grafana（内网 Deb :15300）检索；控制台访问量可结合 nginx 日志观察。</li>
-<li>扩容：单节点 MinIO，容量受 mykng 磁盘限制；如需分布式需在 compose 增加多节点（当前非分布式，待确认是否有扩容计划）。</li>
-</ul>
-<h2 id="_7">常见问题</h2>
-<ul>
-<li>控制台 19001 与 API 9000 别混淆——配 SDK 用 9000 的 AccessKey，别把控制台地址当 API 端点。</li>
-<li>公网 S3 域名是 <code>s3.marschat.online</code>（指向 :9000），控制台是 <code>kb.marschat.online/minio/</code>（指向 :19001），二者不可互换。</li>
-<li>控制台经公网暴露，务必保证 AccessKey 强度并定期轮换，凭证统一存 Vaultwarden。</li>
-<li>单节点部署无纠删码，磁盘故障会导致对象丢失，重要数据务必纳入备份。</li>
-</ul>
-<h2 id="_8">与其他存储/中间件的关系（便于定位）</h2>
+<h3 id="_16">与其他存储/中间件的关系</h3>
 <table>
 <thead>
 <tr>
@@ -196,9 +260,25 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 </tbody>
 </table>
-<h2 id="_9">变更记录</h2>
+<h2 id="_17">运维要点</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>启停：随 platform 中间件栈管理（见「部署与发布」）；单服务重建 <code>docker compose -p platform -f /root/devtools/platform/docker-compose.platform.yml up -d platform-minio</code>。</li>
+<li>日志：<code>docker logs -f platform-minio</code>；亦可在 obs-dozzle（mykng :15500）按容器名检索。</li>
+<li>数据与备份：数据卷 <code>platform_platform-minio-data</code> → 容器内 <code>/data</code>。备份需对该卷做快照/同步（当前备份体系是否覆盖以 infra-monitor 备份策略为准，待确认）。建议定期 <code>mc mirror</code> 到异地。</li>
+<li>可观测性：容器日志入 Loki（mykng promtail → 内网 Deb obs-loki :15100），可在 Grafana（内网 Deb :15300）检索；控制台访问量可结合 nginx 日志观察。</li>
+<li>扩容：单节点 MinIO，容量受 mykng 磁盘限制；如需分布式需在 compose 增加多节点（当前非分布式，待确认是否有扩容计划）。</li>
+</ul>
+<h2 id="_18">常见问题</h2>
+<ul>
+<li>控制台 19001 与 API 9000 别混淆——配 SDK 用 9000 的 AccessKey，别把控制台地址当 API 端点。</li>
+<li>公网 S3 域名是 <code>s3.marschat.online</code>（指向 :9000），控制台是 <code>kb.marschat.online/minio/</code>（指向 :19001），二者不可互换。</li>
+<li>控制台经公网暴露，务必保证 AccessKey 强度并定期轮换，凭证统一存 Vaultwarden。</li>
+<li>单节点部署无纠删码，磁盘故障会导致对象丢失，重要数据务必纳入备份。</li>
+</ul>
+<h2 id="_19">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计、部署与发布节，compose/配置细节引自 platform.yml 原文与 docker inspect 实采）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

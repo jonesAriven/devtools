@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cockpit 系统管理 · devtools 项目文档</title>
+<title>Cockpit 系统管理 (mykng) · devtools 项目文档</title>
 <style>
 :root{--bg:#f6f8fa;--card:#fff;--line:#e2e8f0;--txt:#1e293b;--muted:#64748b;--accent:#4f6ef7;--code:#f1f5f9}
 *{box-sizing:border-box}
@@ -34,14 +34,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </head>
 <body>
 <header>
-  <h1>Cockpit 系统管理</h1>
-  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Cockpit 系统管理</div>
+  <h1>Cockpit 系统管理 (mykng)</h1>
+  <div class="crumb"><a href="/portal/">devtools 看板</a> / <a href="./">项目文档</a> / Cockpit 系统管理 (mykng)</div>
 </header>
 <div class="wrap">
 <main>
-<h1 id="cockpit">Cockpit 系统管理</h1>
+<h1 id="cockpit-mykng">Cockpit 系统管理 (mykng)</h1>
 <blockquote>
-<p>mykng 主机（192.168.31.105）的 Web 系统管理台（Cockpit，systemd 宿主服务），浏览器里看主机资源、服务状态、存储、网络、日志，并可直接开 Web 终端；portal 上"基础设施"分类的主机管理类入口即指此。</p>
+<p>mykng 主机（192.168.31.105）的 Web 系统管理台（Cockpit，systemd 宿主服务，非容器），浏览器里看主机资源、服务状态、存储、网络、日志，并可直接开 Web 终端；portal 上"基础设施"分类的主机管理类入口即指此。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -62,11 +62,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng 宿主机（192.168.31.105），<code>systemctl</code> 管理，服务 active（实采）</td>
+<td>mykng 宿主机（192.168.31.105），<code>systemctl</code> 管理，cockpit.service 与 cockpit.socket 均 active（实采 2026-09-05）</td>
 </tr>
 <tr>
 <td>端口</td>
-<td>15090（cockpit-tls 进程监听，实探 http:200 可访问，非 443 证书那种 TLS）</td>
+<td>15090（cockpit-tls 进程 + systemd socket 监听 *:15090，实采）</td>
 </tr>
 <tr>
 <td>源码位置</td>
@@ -87,31 +87,338 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </ul>
 <h2 id="_3">全链路</h2>
 <pre><code>浏览器（家庭局域网 / Tailscale）
-  → http://192.168.31.105:15090（cockpit-tls / systemd 直监听，无 nginx 层）
+  → http://192.168.31.105:15090（systemd socket → cockpit-tls 直监听，无 nginx 层）
   → 宿主机 Cockpit Web 服务
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Cockpit 是 Red Hat 系发行版的 Web 管理台，官方能力要点：</p>
 <ul>
-<li><strong>系统概览</strong>：CPU/内存/磁盘 I/O/网络实时图，33 个服务跑在同一台机上，资源水位一眼可判</li>
-<li><strong>服务管理</strong>：systemd 服务列表启停（含 docker、nginx、cockpit 自身）；容器则跳转 Dozzle/命令行</li>
-<li><strong>Web 终端</strong>：浏览器内直接开 root shell，跑 <code>docker ps</code>、流水线脚本等，RDP 之外的轻量通道</li>
-<li><strong>存储/网络</strong>：磁盘占用、挂载点、网络接口查看；日志页可按 unit 过滤 journal（与 Grafana+Loki 互补，本机即时视角）</li>
+<li>以 <strong>systemd 为底座</strong>，通过 D-Bus 聚合主机各维度信息；socket 激活模式平时不占资源，连接进来才起会话</li>
+<li>模块化页面：Overview（资源总览）、Services（systemd 服务）、Storage（磁盘/挂载）、Networking（接口/防火墙）、Logs（journal 过滤）、Terminal（Web 终端）等</li>
+<li>认证走系统账号（PAM），权限即 Linux 账号权限——登录什么账号就有什么权限</li>
+<li>cockpit-tls 进程可提供 TLS；也支持 AllowUnencrypted 明文 http（靠网络边界保护）</li>
+<li>非容器部署，随发行版包管理升级</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>实例角色</strong>：mykng（主部署机，33 个服务同机）的图形化管理面——RDP/SSH 之外的第三通道，最贴近"看一眼资源水位 + 点两下服务"的场景</li>
+<li><strong>数据连接</strong>：直接读宿主 systemd/D-Bus/journal，不经过 Docker；容器层面则与 Dozzle (mykng)（:15500）分工——systemd 服务与主机资源在 Cockpit，容器日志在 Dozzle</li>
+<li><strong>为什么选它</strong>：发行版自带、零容器化成本；Web 终端对临时救急（SSH 客户端不在手边）非常实用</li>
+<li><strong>关键配置思路</strong>（实采 2026-09-05）：</li>
+<li>端口定制：<strong>不在 cockpit.conf</strong>，而是 systemd socket drop-in <code>/etc/systemd/system/cockpit.socket.d/listen.conf</code>，<code>[Socket] ListenStream=15090</code>（默认 9090 让路——本机 9090 场景见各主机说明）</li>
+<li><code>/etc/cockpit/cockpit.conf</code>：<code>AllowUnencrypted = true</code>；Origin 白名单含内网 IP / Tailscale IP 的 15090 入口；<code>ProtocolHeader = X-Forwarded-Proto</code> 为反代场景预留</li>
+<li>cockpit-tls 同时承担 TLS：https 握手可通（实采）；http 因 AllowUnencrypted 同样可用</li>
+<li>白名单中 <code>cockpit-mykng.marschat.online:15090</code> 域名当前<strong>无 DNS 解析记录</strong>（实采 getent 无结果），属预留项，暂不可用作入口</li>
+<li>安全边界：持系统账号权限 + Web 终端，仅限内网/Tailscale，禁止公网反代</li>
+</ul>
+<h3 id="cockpit">两台 Cockpit 与一台未暴露的布局</h3>
+<table>
+<thead>
+<tr>
+<th>主机</th>
+<th>入口</th>
+<th>状态（2026-09-05 实采）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mykng（本篇）</td>
+<td>192.168.31.105:15090 / 100.93.36.113:15090</td>
+<td>active，正常服务</td>
+</tr>
+<tr>
+<td>内网 Debian</td>
+<td>192.168.31.182:15090</td>
+<td>cockpit.socket failed，入口不可用（待修复）</td>
+</tr>
+<tr>
+<td>腾讯云2号</td>
+<td>100.110.114.16:15090（仅 Tailscale）</td>
+<td>socket drop-in 已配 15090，可达</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dozzlessh">功能模块与 Dozzle/SSH 的分工（官方模块 × 实例用法）</h3>
+<table>
+<thead>
+<tr>
+<th>Cockpit 模块</th>
+<th>官方能力</th>
+<th>实例用法</th>
+<th>不用它的场合</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overview</td>
+<td>CPU/内存/磁盘 I/O/网络实时图</td>
+<td>日常资源水位巡检</td>
+<td>精细时序去 Grafana</td>
+</tr>
+<tr>
+<td>Services</td>
+<td>systemd 服务列表与启停</td>
+<td>docker/nginx 等宿主服务管理</td>
+<td>容器日志去 Dozzle</td>
+</tr>
+<tr>
+<td>Terminal</td>
+<td>浏览器内 shell</td>
+<td>救急通道（SSH 客户端不在手边）</td>
+<td>批量操作仍走 SSH 脚本</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>磁盘/挂载点/RAID</td>
+<td>磁盘水位与挂载检查</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Networking</td>
+<td>接口/地址/防火墙</td>
+<td>快速看网卡与监听</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Logs</td>
+<td>journal 过滤查看</td>
+<td>本机即时日志</td>
+<td>历史/跨机去 Grafana+Loki</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">权限与安全模型（官方机制）</h3>
+<ul>
+<li>认证走 PAM：登录即 Linux 系统账号，权限与该账号一致（root 登录 = 全权，因此入口必须收敛）</li>
+<li>会话经 cockpit-tls/WebService 转发到 D-Bus，socket 激活模式下无连接即无进程开销</li>
+<li>Origin 白名单（cockpit.conf）是浏览器侧防线；网络边界（仅内网/Tailscale）才是根本防线，两层都要在</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<h3 id="_9">编排与位置</h3>
+<ul>
+<li>非容器部署：宿主 systemd 服务（cockpit.service + cockpit.socket），发行版包管理安装</li>
+<li>配置文件（实采）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/etc/systemd/system/cockpit.socket.d/listen.conf</td>
+<td>端口 15090 定制（socket drop-in）</td>
+</tr>
+<tr>
+<td>/etc/cockpit/cockpit.conf</td>
+<td>AllowUnencrypted / Origins 白名单 / ProtocolHeader</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_10">配置清单</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>监听</td>
+<td>systemd socket *:15090（drop-in 定制）</td>
+</tr>
+<tr>
+<td>认证</td>
+<td>Linux 系统账号（PAM），root 可登录</td>
+</tr>
+<tr>
+<td>TLS</td>
+<td>cockpit-tls 提供 https 能力，http 因 AllowUnencrypted 同时可用</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">发布/升级</h3>
+<ul>
+<li>升级随发行版：<code>apt update &amp;&amp; apt install --only-upgrade cockpit</code></li>
+<li>配置变更流程：编辑上述两个配置文件 → <code>systemctl daemon-reload &amp;&amp; systemctl restart cockpit.socket</code></li>
+<li>portal 卡片 URL 与 Cockpit 入口联动：端口变更后同步改 portal 数据</li>
+</ul>
+<h3 id="_12">回滚</h3>
+<ul>
+<li>配置回退：删除/还原 listen.conf drop-in → daemon-reload → restart cockpit.socket（回到默认 9090）</li>
+<li>服务异常：<code>systemctl restart cockpit.socket</code>（socket 激活模式，重启 socket 即可）</li>
+</ul>
+<h2 id="_13">核心功能与使用</h2>
+<h3 id="_14">功能清单</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>什么场景用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>系统概览</td>
+<td>CPU/内存/磁盘 I/O/网络实时图，33 个服务同机的资源水位一眼可判</td>
+</tr>
+<tr>
+<td>服务管理</td>
+<td>systemd 服务列表启停（含 docker、nginx、cockpit 自身）；容器则跳转 Dozzle/命令行</td>
+</tr>
+<tr>
+<td>Web 终端</td>
+<td>浏览器内直接开 root shell，跑 <code>docker ps</code>、流水线脚本等，RDP 之外的轻量通道</td>
+</tr>
+<tr>
+<td>存储/网络</td>
+<td>磁盘占用、挂载点、网络接口查看</td>
+</tr>
+<tr>
+<td>日志页</td>
+<td>按 unit/优先级过滤 journal（与 Grafana+Loki 互补，本机即时视角）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_15">典型操作路径</h3>
+<ol>
+<li><strong>看资源水位</strong>：登录（:15090）→ Overview 页 → CPU/内存曲线判断是否需要扩容/重启</li>
+<li><strong>救急终端</strong>：登录 → Terminal → 直接跑 <code>docker compose up -d &lt;svc&gt;</code> 等命令</li>
+<li><strong>查本机日志</strong>：登录 → Logs → 按 unit/优先级过滤 journal（历史跨机查询转 Grafana+Loki）</li>
+<li><strong>启停系统服务</strong>：Services 页 → 搜索服务 → Start/Stop/Restart</li>
+</ol>
+<h2 id="_16">依赖与关联</h2>
 <ul>
 <li>依赖：systemd（宿主原生）</li>
-<li>关联：内网 Debian 主机 Cockpit（192.168.31.182:15090，同款）；Dozzle (mykng)（容器日志专看）；腾讯云2号主机（其 Cockpit 未暴露端口，经 SSH 管理）</li>
+<li>关联：</li>
+<li>内网 Debian 主机 Cockpit（192.168.31.182:15090，同款配置思路——注意该机 cockpit.socket 当前 failed，见其文档）</li>
+<li>Dozzle (mykng)（容器日志专看）</li>
+<li>腾讯云2号主机（Cockpit 仅 Tailscale 15090 可达，公网管理走 SSH）</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_17">运维要点</h2>
+<h3 id="_18">启停</h3>
 <ul>
-<li>启停：<code>systemctl status cockpit</code> / <code>cockpit.socket</code></li>
-<li>配置：/etc/cockpit/cockpit.conf（端口 15090 为自定义，默认 9090 被占用或安全考虑改口——以宿主实际配置为准）</li>
-<li>安全：持系统账号权限 + Web 终端，仅限内网/Tailscale，禁止公网反代</li>
-<li>常见问题：登不上先 <code>systemctl is-active cockpit</code>；端口变更后 portal 卡片 URL 需同步更新</li>
+<li>状态检查：<code>systemctl status cockpit</code> / <code>systemctl status cockpit.socket</code></li>
+<li>socket 激活模式重启入口是 restart socket，不是 restart service</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h3 id="_19">常见问题</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>登不上</td>
+<td>socket/服务未起</td>
+<td><code>systemctl is-active cockpit cockpit.socket</code> → restart socket</td>
+</tr>
+<tr>
+<td>浏览器报 Origin 校验失败</td>
+<td>新入口不在白名单</td>
+<td>cockpit.conf 的 Origins 列表加 IP/域名 → restart</td>
+</tr>
+<tr>
+<td>端口对不上</td>
+<td>只改了 cockpit.conf 没改 socket drop-in（或反之）</td>
+<td>两处一起改，daemon-reload 后重启</td>
+</tr>
+<tr>
+<td>portal 卡片打不开</td>
+<td>入口变更未同步</td>
+<td>端口变更后更新 portal 数据</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_20">安全红线</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>持系统账号权限 + Web 终端：<strong>仅限内网/Tailscale，禁止公网反代</strong></li>
+<li>TLS 白名单里的预留域名（cockpit-mykng.marschat.online）启用前需先加 DNS 解析并复核 Origin 配置</li>
+</ul>
+<h3 id="ssh-root19216831105">操作速查（SSH root@192.168.31.105）</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>看状态</td>
+<td><code>systemctl status cockpit cockpit.socket</code></td>
+</tr>
+<tr>
+<td>重启入口</td>
+<td><code>systemctl restart cockpit.socket</code></td>
+</tr>
+<tr>
+<td>看监听</td>
+<td><code>ss -tlnp | grep 15090</code></td>
+</tr>
+<tr>
+<td>看端口配置</td>
+<td><code>cat /etc/systemd/system/cockpit.socket.d/listen.conf</code></td>
+</tr>
+<tr>
+<td>看 Origin 配置</td>
+<td><code>cat /etc/cockpit/cockpit.conf</code></td>
+</tr>
+<tr>
+<td>验证连通</td>
+<td><code>curl -sk -m 5 -o /dev/null -w "%{http_code}" https://127.0.0.1:15090</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mykng">mykng 管理面对照（什么时候用哪个）</h3>
+<table>
+<thead>
+<tr>
+<th>管理面</th>
+<th>入口</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cockpit（本篇）</td>
+<td>:15090 Web</td>
+<td>资源水位、systemd 服务、救急终端、journal</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>root@192.168.31.105</td>
+<td>批量操作、脚本、Cockpit 不可用时的兜底</td>
+</tr>
+<tr>
+<td>Dozzle (mykng)</td>
+<td>:15500 Web</td>
+<td>容器 stdout 实时日志</td>
+</tr>
+<tr>
+<td>RDP</td>
+<td>远程桌面</td>
+<td>需要图形桌面时</td>
+</tr>
+<tr>
+<td>Woodpecker</td>
+<td>woodci.marschat.online</td>
+<td>构建/部署日志（非运行时）</td>
+</tr>
+</tbody>
+</table>
+<p>原则：看主机用 Cockpit，看容器日志用 Dozzle，跑批量命令用 SSH，部署问题去 CI——四者互补不重叠。</p>
+<h2 id="_21">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；实采确认端口定制位于 socket drop-in listen.conf、AllowUnencrypted+Origins 配置、TLS 可用、cockpit-mykng.marschat.online 无 DNS 解析（预留项）；三主机 Cockpit 布局表</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

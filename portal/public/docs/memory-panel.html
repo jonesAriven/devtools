@@ -41,7 +41,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="_1">记忆提炼面板</h1>
 <blockquote>
-<p>对话记忆自动提炼体系的「只读展示端」：把 Hermes 会话经 LLM 提炼出的结构化知识（知识条目 + 来源会话）以 Web 面板呈现，支持检索、筛选与统计。</p>
+<p>对话记忆自动提炼体系的「只读展示端」：
+把 Hermes 会话经 LLM 提炼出的结构化知识（知识条目 + 来源会话）以 Web 面板呈现，
+支持检索、筛选与统计。</p>
 </blockquote>
 <h2 id="_2">基本信息</h2>
 <table>
@@ -62,15 +64,31 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng 容器 <code>memory-panel</code>（镜像 <code>memory-extract-memory-panel</code>），端口 8720，<code>restart: always</code>；docker compose 部署</td>
+<td>mykng 容器 <code>memory-panel</code>（镜像 <code>memory-extract-memory-panel</code>），端口 8720</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td><code>restart: always</code>；docker compose 部署</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\memory-extract\</code>（核心：<code>memory-panel.py</code> 面板 + <code>memory-extract.py</code> 提炼管线 + <code>templates/</code> 前端 + <code>config.yaml</code>）；mykng 路径 <code>/root/devtools/memory-extract/</code></td>
+<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\memory-extract\</code></td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td><code>memory-panel.py</code> 面板 314 行 + <code>memory-extract.py</code> 提炼管线 493 行</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td><code>templates/index.html</code> 前端 + <code>static/</code> + <code>config.yaml</code></td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>mykng 同路径 <code>/root/devtools/memory-extract/</code></td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署 docker compose，见 <code>docker-compose.yml</code>）</td>
+<td>无（自部署 docker compose，compose 文件 <code>/root/devtools/memory-extract/docker-compose.yml</code>）</td>
 </tr>
 </tbody>
 </table>
@@ -84,59 +102,254 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 memory.marschat.online)
        → http://100.93.36.113:8720  (mykng memory-panel 容器)
 </code></pre>
-<p>（mykng 本机 nginx 也有 <code>/memory/ → 127.0.0.1:8720</code> 的 path 反代，但公网域名走的是直连容器端口 8720。）</p>
-<h2 id="_5">核心功能与使用</h2>
-<p>面板为 Flask 单体（API + 前端一体），数据全部来自 SQLite <code>memory-extracts.db</code>。源码路由（memory-panel.py）确定的能力：</p>
+<p>（mykng 本机 nginx 也有 <code>/memory/ → 127.0.0.1:8720</code> 的 path 反代，
+但公网域名走的是直连容器端口 8720。）</p>
+<h2 id="_5">系统设计</h2>
+<h3 id="_6">总体架构</h3>
+<p>两个独立 Python 程序 + 一个 SQLite 库，提炼与展示解耦，可独立部署：</p>
 <ul>
-<li>会话列表 <code>/api/sessions</code></li>
-<li>已处理的 Hermes 会话，分页 + 关键词搜索（按 <code>title</code> / <code>session_id</code>）。</li>
-<li>每条会话显示「已提炼条目数」(<code>extract_count</code>)、起止时间、处理时间。</li>
-<li>默认按 <code>processed_at</code> 倒序。</li>
-<li>会话详情 <code>/api/sessions/&lt;session_id&gt;</code></li>
-<li>会话元信息 + 该会话下全部知识条目（<code>extracts</code>）列表，便于「按来源会话追溯知识」。</li>
-<li>知识条目列表 <code>/api/extracts</code></li>
-<li>提炼出的结构化知识条目，支持：按 <code>type</code> 类型过滤、按 <code>content</code>/<code>tags</code> 关键词搜索、分页。</li>
-<li>默认按 <code>created_at</code> 倒序。</li>
-<li>条目详情 <code>/api/extracts/&lt;extract_id&gt;</code></li>
-<li>单条知识：<code>content</code>、<code>tags</code>、<code>context</code>（JSON，已解析为 <code>context_parsed</code>）、来源会话标题与摘要、起止时间。</li>
-<li>统计 <code>/api/stats</code></li>
-<li>总会话数、总知识条目数、<code>type</code> 类型分布（<code>type_distribution</code>）、最近处理时间。</li>
-<li>首页 <code>/</code>（SSR）</li>
-<li><code>index.html</code> 直接内嵌初始数据（stats + 最近 20 会话），「零额外 API 请求」首屏渲染。</li>
+<li><strong>提炼管线 <code>memory-extract.py</code>（宿主运行，非容器）</strong></li>
+<li>定时/手动扫描 Hermes <code>state.db</code> → 调 LLM 提炼 → 写入 <code>memory-extracts.db</code>。</li>
+<li><strong>展示面板 <code>memory-panel.py</code>（容器运行）</strong></li>
+<li>Flask 单体（API + SSR 前端一体），只读 <code>memory-extracts.db</code>。</li>
+<li><strong>前端</strong></li>
+<li><code>templates/index.html</code> 单页（SSR 首页内嵌初始数据 + 原生 JS 渲染）。</li>
+<li><code>static/</code> 静态资源。</li>
 </ul>
-<p><strong>数据从哪来（提炼管线，memory-extract.py）</strong>
-- 每 15 分钟（<code>schedule_minutes: 15</code>）扫描 Hermes <code>state.db</code>（<code>/root/.hermes/state.db</code>）中「新结束的会话」。
-- 调 LLM（配置见 <code>config.yaml</code>，base_url/model/timeout）将对话提炼为结构化知识，写入 <code>memory-extracts.db</code>。
-- 面板<strong>只读</strong>展示该库；提炼与展示解耦，可独立部署。
-- 支持 <code>--force-session &lt;ID&gt;</code> 强制重处理、<code>--dry-run</code> 仅预览。</p>
-<h2 id="_6">依赖与关联</h2>
+<h3 id="memory-extractpy">提炼管线核心逻辑（memory-extract.py）</h3>
+<ol>
+<li><strong>选会话</strong>
+   - 读 Hermes <code>state.db</code> 的 <code>sessions</code> 表。
+   - 筛选：已结束（ended_at 非空）+ 来源非 cron/webhook + message_count ≥ 4。
+   - 排除已处理（extract 库 sessions 表已有的 session_id）。
+   - 单轮最多处理 5 个（<code>--limit</code> 可调）。</li>
+<li><strong>取消息</strong>
+   - 读 <code>messages</code> 表中 user/assistant 角色、active=1 的有效内容。
+   - 单条截断 200 字。</li>
+<li><strong>LLM 提炼</strong>
+   - 拼装提炼 prompt，调 OpenAI 兼容 <code>/chat/completions</code>。
+   - 配置：<code>config.yaml</code> 的 llm.base_url / model / timeout。
+   - api_key 属凭证，见 Vaultwarden，不落盘。
+   - 要求严格输出 JSON 数组。</li>
+<li><strong>落库</strong>
+   - 解析 JSON（兼容 markdown 代码块/正则兜底）。
+   - 写 sessions 摘要与 extracts 条目。</li>
+<li><strong>CLI 参数</strong>
+   - <code>--dry-run</code>（只预览）
+   - <code>--force-session=&lt;ID&gt;</code>（强制重处理）
+   - <code>--limit=&lt;N&gt;</code>（单轮处理数）
+   - <code>--reset</code>（清空 extract 库重跑）</li>
+</ol>
+<h3 id="memory-extractsdb2">核心数据模型（memory-extracts.db，2 张表）</h3>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>字段</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessions</code></td>
+<td>session_id（主键）</td>
+<td>已处理的 Hermes 会话</td>
+</tr>
+<tr>
+<td></td>
+<td>title / source / user_id / model</td>
+<td>会话元信息</td>
+</tr>
+<tr>
+<td></td>
+<td>started_at / ended_at / message_count</td>
+<td>会话时间与规模</td>
+</tr>
+<tr>
+<td></td>
+<td>input_tokens / output_tokens</td>
+<td>token 消耗</td>
+</tr>
+<tr>
+<td></td>
+<td>processed_at / extract_count</td>
+<td>处理时间与产出条数</td>
+</tr>
+<tr>
+<td></td>
+<td>conversation_summary</td>
+<td>取前 3 条用户消息拼接的摘要</td>
+</tr>
+<tr>
+<td><code>extracts</code></td>
+<td>id（uuid）</td>
+<td>提炼出的知识条目</td>
+</tr>
+<tr>
+<td></td>
+<td>session_id（外键，索引）</td>
+<td>来源会话</td>
+</tr>
+<tr>
+<td></td>
+<td>type</td>
+<td>decision/lesson/architecture/preference/fact/detail/general</td>
+</tr>
+<tr>
+<td></td>
+<td>content / tags / category</td>
+<td>内容、标签、分类（运维/开发/架构/配置）</td>
+</tr>
+<tr>
+<td></td>
+<td>context（JSON）/ created_at</td>
+<td>上下文与创建时间（索引建在 session_id 与 type 上）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">关键设计决策</h3>
+<ol>
+<li><strong>只读展示端</strong>
+   - 面板对 extract 库零写操作，提炼与展示解耦。
+   - 管线挂了面板仍可查历史。</li>
+<li><strong>零依赖倾向</strong>
+   - 管线不引入 pyyaml/openai SDK，自写轻量 YAML 解析与 urllib 调用。
+   - 便于在任何 Python3 环境裸跑。</li>
+<li><strong>SSR 首屏</strong>
+   - <code>/</code> 路由把 stats + 最近 20 条会话直接内嵌进 HTML。
+   - 首屏零额外 API 请求，列表翻页/搜索再走 API。</li>
+<li><strong>质量闸门</strong>
+   - message_count ≥ 4、单条消息 &lt;3 字符跳过、LLM 输出解析失败降级为空。
+   - 避免噪音入库。</li>
+</ol>
+<h3 id="memory-panelpy">对外接口概览（memory-panel.py 路由）</h3>
+<table>
+<thead>
+<tr>
+<th>路由</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/sessions</code></td>
+<td>会话分页列表（page/per_page/search，按 title 或 session_id 模糊），附 extract_count，默认 processed_at 倒序</td>
+</tr>
+<tr>
+<td><code>GET /api/sessions/&lt;session_id&gt;</code></td>
+<td>会话详情 + 该会话全部知识条目</td>
+</tr>
+<tr>
+<td><code>GET /api/extracts</code></td>
+<td>条目分页列表（type 过滤 + content/tags 搜索），默认 created_at 倒序</td>
+</tr>
+<tr>
+<td><code>GET /api/extracts/&lt;extract_id&gt;</code></td>
+<td>单条详情（context 解析为 context_parsed、来源会话标题与摘要）</td>
+</tr>
+<tr>
+<td><code>GET /api/stats</code></td>
+<td>总会话数、总条目数、type 分布、最近处理时间</td>
+</tr>
+<tr>
+<td><code>GET /</code></td>
+<td>SSR 首页（内嵌初始数据）</td>
+</tr>
+<tr>
+<td><code>GET /static/&lt;file&gt;</code></td>
+<td>静态资源</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_8">部署与发布</h2>
+<ul>
+<li>编排与位置</li>
+<li>compose 文件：<code>/root/devtools/memory-extract/docker-compose.yml</code>（compose project：memory-extract）。</li>
+<li>容器：<code>memory-panel</code>；镜像：<code>memory-extract-memory-panel</code>（<code>build: .</code> 由同目录 <code>Dockerfile</code> 构建）。</li>
+<li>配置清单</li>
+<li>端口映射：<code>8720:8720</code>（面板默认 <code>--host 0.0.0.0 --port 8720</code>）。</li>
+<li>卷挂载：<code>./memory-extracts.db:/app/memory-extracts.db</code>（SQLite 单文件直挂，容器无其他持久化）。</li>
+<li>环境变量：<code>TZ=Asia/Shanghai</code>。</li>
+<li>LLM 凭证在宿主 <code>config.yaml</code>（不入容器、不落文档）。</li>
+<li>发布/升级</li>
+<li>无流水线。</li>
+<li>改代码后在 <code>/root/devtools/memory-extract/</code> 执行：<ul>
+<li><code>docker compose build --no-cache</code></li>
+<li><code>docker compose up -d --force-recreate</code></li>
+</ul>
+</li>
+<li>回滚</li>
+<li>git 仓库（devtools）回退源码后重新 compose build。</li>
+<li><code>memory-extracts.db</code> 不随代码回滚。</li>
+<li>提炼管线部署</li>
+<li>宿主 <code>python3 memory-extract.py</code> 直接运行（无容器）。</li>
+<li>当前 mykng 上未见常驻进程或 cron/timer，自动调度触发方式 (待确认)，必要时手动执行。</li>
+</ul>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
+<ul>
+<li><strong>会话追溯</strong>：按会话浏览「哪些 Hermes 对话被提炼过、各提炼出几条知识」，支持标题/ID 搜索。</li>
+<li><strong>知识检索</strong>：按类型（decision/lesson/architecture 等）过滤 + 关键词搜索全部知识条目。</li>
+<li><strong>条目详情</strong>：查看单条知识的完整内容、标签、分类、上下文（来源会话标题与摘要）。</li>
+<li><strong>总量统计</strong>：会话/条目总数、类型分布、最近处理时间——判断提炼管线是否正常运转。</li>
+</ul>
+<h3 id="_11">典型操作路径</h3>
+<ol>
+<li><strong>查最近提炼成果</strong>
+   - 打开 <code>https://memory.marschat.online</code>。
+   - 首页直接看统计与最近 20 条会话。
+   - 点某条会话进详情看其全部知识条目。</li>
+<li><strong>找特定知识</strong>
+   - 知识条目页 → 输入关键词（或选 type）搜索。
+   - 点条目看详情与来源会话。</li>
+<li><strong>补处理某会话</strong>
+   - SSH 到 mykng。
+   - <code>cd /root/devtools/memory-extract &amp;&amp; python3 memory-extract.py --force-session=&lt;会话ID&gt;</code>。
+   - 可先 <code>--dry-run</code> 预览 → 刷新面板确认。</li>
+<li><strong>验证管线活性</strong>
+   - 看 <code>/api/stats</code> 的 last_processed_at 是否在最近推进。
+   - 长期不推进则检查管线运行与 Hermes state.db。</li>
+</ol>
+<h2 id="_12">依赖与关联</h2>
 <ul>
 <li>依赖</li>
-<li>SQLite 存储：<code>memory-extracts.db</code>（compose 挂载 <code>./memory-extracts.db:/app/memory-extracts.db</code>）。</li>
-<li>提炼管线依赖：Hermes <code>state.db</code>（数据源）、LLM API（凭证在 <code>config.yaml</code>，应纳入 Vaultwarden，禁止明文落盘）。</li>
+<li>SQLite 存储：<code>memory-extracts.db</code>（compose 单文件挂载）。</li>
+<li>提炼管线依赖：Hermes <code>state.db</code>（<code>/root/.hermes/state.db</code>，数据源）。</li>
+<li>LLM API（凭证在 <code>config.yaml</code>，应纳入 Vaultwarden，禁止明文落盘）。</li>
 <li>mykng 容器运行时（8720 映射）。</li>
 <li>被依赖/关联系统</li>
 <li>上游数据源：Hermes agent（<code>/root/.hermes/state.db</code>）。</li>
 <li>关联面板入口：经腾讯云2号 nginx <code>memory.marschat.online</code> 对外。</li>
-<li>与 Vaultwarden / infrastructure-map 关联：LLM key、数据库路径等敏感信息统一在 Vaultwarden 管理。</li>
+<li>与 Vaultwarden / infrastructure-map 关联：LLM key 等敏感信息统一在 Vaultwarden 管理。</li>
+<li>与 SiYuan（note.marschat.online）同属知识类但独立：SiYuan 为人工笔记，本面板为自动提炼。</li>
 </ul>
-<h2 id="_7">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
 <li>启停方式</li>
-<li>容器：<code>docker compose up -d memory-panel</code>（镜像由 <code>Dockerfile</code> 构建，<code>restart: always</code>）。</li>
-<li>面板进程默认 <code>--host 0.0.0.0 --port 8720</code>。</li>
+<li><code>cd /root/devtools/memory-extract &amp;&amp; docker compose up -d</code>（restart: always）。</li>
 <li>日志查看</li>
-<li><code>docker logs memory-panel</code>；提炼管线日志在 mykng 宿主 <code>memory-extract.py</code> 运行处（cron/常驻，未实采具体启动方式）(待确认)。</li>
+<li><code>docker logs memory-panel</code>。</li>
+<li>提炼管线输出到 stderr（含每会话处理进度），运行方式（手动/调度）确认后补录 (待确认)。</li>
 <li>数据与备份</li>
-<li>核心数据：<code>memory-extracts.db</code>（SQLite，含全部会话与知识条目）。当前备份现状未实采 (待确认建议纳入 mykng 数据备份)。</li>
-<li>提炼配置 <code>config.yaml</code>（含 LLM 凭证）不应明文入库，应入 Vaultwarden。</li>
+<li>核心数据：<code>memory-extracts.db</code>（SQLite 单文件，含全部会话与知识条目）。</li>
+<li>当前备份现状未实采 (待确认)，建议纳入 mykng 数据备份。</li>
+<li><code>config.yaml</code> 含 LLM 凭证，不入库不入文档。</li>
+<li>目录内另有历史库 <code>extracts.db</code>（早期产物）。</li>
 <li>常见问题</li>
-<li>面板空/数据不更新：提炼管线（memory-extract.py）是否在跑、Hermes state.db 路径是否正确、LLM 调用是否超时。</li>
-<li>升级：改代码后需重建 <code>memory-extract-memory-panel</code> 镜像（compose <code>build: .</code>）。</li>
+<li>面板空/数据不更新：<ul>
+<li>先查提炼管线是否在跑（<code>ps -ef | grep memory-extract</code>）。</li>
+<li>再查 Hermes state.db 路径与 LLM 调用是否超时。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+</li>
+<li>单库单文件挂载：SQLite 并发写弱，提炼管线与面板同时频繁访问时以管线写入优先，面板只读影响小。</li>
+<li><code>--reset</code> 会清空全部提炼数据，慎用；重跑前先备份 <code>memory-extracts.db</code>。</li>
+</ul>
+<h2 id="_14">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于本地源码 memory-panel.py / memory-extract.py / config.yaml / docker-compose.yml 精读 + 材料包生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>精读 memory-panel.py / memory-extract.py 源码。</li>
+<li>补全管线四步逻辑、2 表数据模型、API 路由表、CLI 参数、compose 细节与典型操作路径。</li>
+<li>2026-09-05 v1 首次生成（基于源码精读 + 材料包）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

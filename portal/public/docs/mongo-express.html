@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td><strong>(待确认)</strong> 实采未发现运行/停止态的 mongo-express 容器（mykng 与内网 Debian 均无）</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 mongo-express 容器（2026-09-05 复核 mykng <code>docker ps -a</code> 仍无）</td>
 </tr>
 <tr>
 <td>端口</td>
@@ -78,13 +78,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+<td>无（自部署，platform 部署目录未定义该服务）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
 <blockquote>
-<p>⚠️ <strong>discrepancy（2026-09-05 实采）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/mongo/</code>，但核实后：
+<p>⚠️ <strong>discrepancy（2026-09-05 实采，v2 复核仍成立）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/mongo/</code>，但核实后：
 - mykng 与内网 Debian <code>docker ps -a</code> 均无 mongo-express 容器；
 - 腾讯云2号与 mykng nginx 均无 <code>/mongo/</code> location；
 - <code>/root/devtools/platform/</code> 部署目录未定义该服务。</p>
@@ -105,45 +105,68 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 后端 Mongo 实况：mykng 容器 platform-mongo :27017 正常运行（docker ps 确认，mongo:7.0）
 </code></pre>
 <p>预期（若重新部署）后端链路：<code>mongo-express → platform-mongo:27017</code>。<strong>(待确认)</strong></p>
-<h2 id="mongodb">后端 MongoDB 实况（已实采确认）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>mongo-express 是基于 Node.js/Express 的 MongoDB 轻量 Web 管理面板：无状态接入目标 Mongo 实例，提供 database/collection 浏览、文档 JSON 查看与简单增删改、索引查看等能力；经 <code>ME_CONFIG_MONGODB_URL</code> 连接串（或分项环境变量）指向后端，官方 Docker 镜像分发，可配 Basic Auth 保护面板本身。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>实例：<code>platform-mongo</code>（mykng，镜像 mongo:7.0），宿主映射 0.0.0.0:27017-&gt;27017。</li>
-<li>数据卷：</li>
-<li>命名卷 <code>platform_platform-mongo-data</code> → 容器内 <code>/data/db</code>（数据文件）</li>
-<li>另一匿名卷 → 容器内 <code>/data/configdb</code>（配置）</li>
-<li>角色：作为使用 MongoDB 存储的业务服务（如部分 KB/工具数据）的文档数据库后端。</li>
-<li>若面板恢复，连接目标为 <code>platform-mongo:27017</code>（容器内网络）或 <code>192.168.31.105:27017</code>（宿主网络），需提供 Mongo 账号密码（见 Vaultwarden）。</li>
+<li><strong>实例角色（规划）</strong>：作为 <code>platform-mongo</code> 的可视化运维面板，供运维浏览库/集合、查看文档；当前<strong>未部署</strong>，仅存在于 portal 登记表。</li>
+<li><strong>后端实况（已实采确认）</strong>：</li>
+<li>实例：<code>platform-mongo</code>（mykng，镜像 mongo:7.0），宿主映射 0.0.0.0:27017-&gt;27017；</li>
+<li>启动参数（platform.yml）：<code>--wiredTigerCacheSizeGB=0.25</code>（限内存缓存）、<code>MONGO_INITDB_ROOT_USERNAME/PASSWORD</code> 初始化 root 账号（值见 Vaultwarden）；</li>
+<li>数据卷：命名卷 <code>platform_platform-mongo-data</code> → <code>/data/db</code>（数据），另匿名卷 → <code>/data/configdb</code>（配置）；</li>
+<li>角色：使用 MongoDB 存储的业务服务（如部分 KB/工具数据）的文档数据库后端。</li>
+<li><strong>谁读写它</strong>：使用 Mongo 的业务服务经内网 :27017 读写；mongo-express 若恢复部署，仅作为人工管理面接入（连接目标 <code>platform-mongo:27017</code> 容器网络或 <code>192.168.31.105:27017</code> 宿主网络，需 Mongo 账号密码）。</li>
+<li><strong>关键设计约束</strong>：Mongo 7 默认启用认证，mongo-express 连接串需带账密且与实例鉴权方式对齐；面板支持文档编辑，公网暴露需 Basic Auth 或仅 Tailscale。</li>
 </ul>
-<h2 id="_4">核心功能与使用（能力层面）</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">当前状态</h3>
+<p><strong>(待确认/未部署)</strong> platform 部署目录与两台宿主机均无该服务定义与容器。</p>
+<h3 id="_9">恢复部署参考（非当前生效，供运维实施用）</h3>
+<ul>
+<li>镜像：mongo-express 官方镜像。</li>
+<li>编排建议：在 mykng 以容器/compose 部署，加入与 <code>platform-mongo</code> 相同的 docker 网络（如 platform-net）。</li>
+<li>关键环境变量：<code>ME_CONFIG_MONGODB_URL=mongodb://&lt;user&gt;:&lt;pass&gt;@platform-mongo:27017</code>（连接串含凭证，实际以环境注入，禁止落盘）。</li>
+<li>反代链路：mykng nginx 增加 <code>/mongo/</code> location，再经腾讯云2号 <code>tools.marschat.online</code> 暴露；或仅 Tailscale 暴露。</li>
+<li>发布：手工 <code>docker compose up -d</code>（无流水线）；回滚 = 移除容器，面板无状态无数据回退需求。</li>
+</ul>
+<h2 id="_10">核心功能与使用（能力层面）</h2>
+<h3 id="_11">功能清单</h3>
 <ul>
 <li>库/集合浏览：查看 database 与 collection 列表、文档数量。</li>
-<li>文档查看与编辑：在 Web 端查看 JSON 文档、做简单增删改（复杂写操作建议在客户端完成）。</li>
+<li>文档查看与编辑：Web 端查看 JSON 文档、简单增删改（复杂写操作建议在客户端完成）。</li>
 <li>索引查看：查看集合索引定义。</li>
 </ul>
+<h3 id="_12">典型操作路径（部署后的预期用法）</h3>
+<ol>
+<li>打开面板（公网 <code>/mongo/</code> 或内网端口，若配 Basic Auth 先过面板认证）→ 顶部选 database。</li>
+<li>左侧选 collection → 浏览/搜索文档，点开查看 JSON。</li>
+<li>需要编辑时在面板内做小改动；批量/复杂操作走 mongosh 或业务代码。</li>
+</ol>
 <blockquote>
 <p>具体按钮级操作以实际部署后的面板为准，未实装界面不编造步骤。</p>
 </blockquote>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_13">依赖与关联</h2>
 <ul>
 <li>依赖：后端 MongoDB <code>platform-mongo</code>（mykng :27017）。</li>
 <li>被依赖/关联系统：使用 MongoDB 存储的业务服务（如部分 KB/工具数据）运维排查时用到本面板（若部署）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_14">运维要点</h2>
 <ul>
-<li>启停方式：<strong>(待确认)</strong> 当前未部署。恢复建议在 mykng 部署 mongo-express 容器连 <code>platform-mongo:27017</code>，并在 mykng 或腾讯云2号 nginx 增加 <code>/mongo/</code> 反代。</li>
-<li>部署参考（非当前生效，供恢复用）：mongo-express 官方镜像，环境变量 <code>ME_CONFIG_MONGODB_URL=mongodb://&lt;user&gt;:&lt;pass&gt;@platform-mongo:27017</code>，置于 mykng 同网络；反代建议放 mykng nginx，再经腾讯云2号 <code>tools.marschat.online</code> 暴露。</li>
-<li>日志查看：部署后 <code>docker logs &lt;mongo-express 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
-<li>数据与备份：面板无状态，数据即后端 Mongo；Mongo 数据卷 <code>platform_platform-mongo-data</code> → <code>/data/db</code>（另含 configdb 卷）。</li>
-<li>安全：公网暴露面板风险较高，建议加访问保护或仅 Tailscale 暴露；凭证存 Vaultwarden。</li>
+<li>启停：<strong>(待确认)</strong> 当前未部署；若恢复，启停即容器 <code>docker start/stop &lt;mongo-express 容器&gt;</code>。</li>
+<li>日志：部署后 <code>docker logs &lt;mongo-express 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>数据与备份：面板无状态，数据即后端 Mongo；Mongo 数据卷 <code>platform_platform-mongo-data</code> → <code>/data/db</code>（另含 configdb 卷），备份以 infra-monitor 策略为准。</li>
+<li>安全：公网暴露面板风险较高，建议加访问保护（Basic Auth）或仅 Tailscale 暴露；凭证存 Vaultwarden。</li>
 </ul>
-<h2 id="_7">常见问题</h2>
+<h2 id="_15">常见问题</h2>
 <ul>
 <li>公网 <code>/mongo/</code> 当前无上游，属「未部署」预期表现。</li>
 <li>mongo-express 对认证/SSL 的连接串配置较挑剔，部署时需与 <code>platform-mongo</code> 的鉴权方式对齐（Mongo 7 默认启用认证）。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+<h2 id="_16">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 mongo-express 面板实采未部署、入口待确认，并补充 Mongo 后端实况</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；复核面板仍未部署（docker ps -a 复核），维持 v1 实采结论；补充 platform-mongo 启动参数（wiredTiger 限额/初始化账号）实况</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 mongo-express 面板实采未部署、入口待确认，并补充 Mongo 后端实况</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

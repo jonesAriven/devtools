@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="grafana">Grafana 仪表盘</h1>
 <blockquote>
-<p>日志/指标可视化平台，承载 Hermes-Ops-Overview 等仪表盘，与 Loki（日志）、Promtail（采集）、自研 infra-monitor（主机台账）组成可观测性栈的可视化层；部署在内网 Debian 上，需 Tailscale/家庭局域网访问。</p>
+<p>日志/指标可视化平台，承载 Hermes-Ops-Overview 等仪表盘，与 Loki（日志存储）、Promtail（采集）、Uptime Kuma（存活告警）、自研 infra-monitor（主机台账）组成可观测性栈的可视化层；部署在内网 Debian 上，需 Tailscale/家庭局域网访问。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,7 +58,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>grafana/grafana:11.3.0（容器实采）</td>
+<td>grafana/grafana:11.3.0（容器实采 2026-09-05）</td>
 </tr>
 <tr>
 <td>部署位置</td>
@@ -84,7 +84,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </table>
 <h2 id="_2">访问入口</h2>
 <ul>
-<li>公网：—（未配置公网反代，属内网观测资产，不放公网）</li>
+<li>公网：—（未配置公网反代，属内网观测资产，刻意不放公网）</li>
 <li>内网：<code>http://192.168.31.182:15300</code></li>
 <li>Tailscale：<code>http://100.105.196.63:15300</code></li>
 <li>账密：见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</li>
@@ -97,29 +97,287 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <blockquote>
 <p>内网 Debian 不在公网入口链路上（公网入口是腾讯云2号 → mykng），Grafana/Loki/Uptime Kuma 刻意只留内网+Tailscale 入口。</p>
 </blockquote>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Grafana 是开源的可视化与观测平台，官方能力要点：</p>
 <ul>
-<li><strong>Hermes-Ops-Overview 仪表盘</strong>：8 面板总览（portal 卡片描述），展示主机/服务/容器运行指标</li>
-<li><strong>Loki 日志查询</strong>：Explore → Loki 数据源，用 LogQL 按容器/主机/关键词查日志（promtail 从 mykng、内网Deb、腾讯云2号 三台采集）</li>
-<li><strong>仪表盘管理</strong>：provisioning 目录预置数据源/看板，重启自动加载；手工建的看板存 /var/lib/grafana 数据卷</li>
-<li><strong>告警</strong>：Grafana Alerting 能力具备，当前告警主战场在 Uptime Kuma（存活类），Grafana 侧重可视化</li>
+<li>核心数据模型：<strong>数据源（DataSource）→ 查询（Query）→ 面板（Panel）→ 仪表盘（Dashboard）</strong>，一个仪表盘由若干面板组成，每个面板绑定一个数据源的一条查询</li>
+<li>多数据源统一界面：Loki、Prometheus、MySQL、PostgreSQL 等几十种数据源插件化接入，查询与展示体验一致</li>
+<li>Explore：即席查询视图，适合临时排查（区别于固定布局的 Dashboard）</li>
+<li>Alerting：告警规则、通知渠道、静默等能力内建</li>
+<li>Provisioning：声明式配置机制——数据源、看板、告警等以 YAML/JSON 文件描述，服务启动时自动加载</li>
+<li>插件体系：面板插件/数据源插件可扩展（我们实例未加装额外插件）</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>依赖：Loki（日志数据源，obs-loki :15100）</li>
+<li><strong>实例角色</strong>：可观测性栈的"人机界面"——所有日志检索、指标看板、跨机排查的统一入口；自身不存业务数据，只做查询与展示</li>
+<li><strong>数据连接</strong>：</li>
+<li>读 Loki（同机 obs-loki :15100）——日志数据源，Explore 与看板面板均走 LogQL</li>
+<li>读 infra-monitor（自研，monitor.marschat.online/infra/）——主机/服务台账视角互补（台账与漂移在 infra-monitor 看，时序在这里看）</li>
+<li><strong>为什么选它</strong>：与 Loki 同属 Grafana 家族，数据源零适配；LogQL 查询界面成熟；单容器部署成本低，符合家庭机房运维强度</li>
+<li><strong>关键配置思路</strong>：</li>
+<li><strong>Provisioning 预置为主</strong>：宿主 /opt/observability/grafana/provisioning 挂载到 /etc/grafana/provisioning，数据源（Loki）与看板以文件声明，容器启动即自动加载——compose 重建后配置不丢的关键</li>
+<li><strong>UI 手工配置为辅</strong>：手工建的看板/用户存 grafana-data 命名卷（SQLite），与 provisioning 互补</li>
+<li>认证账密在 Vaultwarden 登记，不落文档</li>
+</ul>
+<h3 id="_7">观测栈分工（本实例所处位置）</h3>
+<table>
+<thead>
+<tr>
+<th>成员</th>
+<th>角色</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Uptime Kuma</td>
+<td>存活探测 + 告警（知道谁挂了）</td>
+<td>内网Deb :15001</td>
+</tr>
+<tr>
+<td>Grafana（本篇）</td>
+<td>可视化与查询（看趋势、查现场）</td>
+<td>内网Deb :15300</td>
+</tr>
+<tr>
+<td>Loki</td>
+<td>日志集中存储（可跨机检索历史）</td>
+<td>内网Deb :15100</td>
+</tr>
+<tr>
+<td>Promtail</td>
+<td>各主机日志采集推送</td>
+<td>mykng / 内网Deb / 腾讯云2号</td>
+</tr>
+<tr>
+<td>Dozzle</td>
+<td>单机容器日志实时直查</td>
+<td>内网Deb :15888 / mykng :15500</td>
+</tr>
+<tr>
+<td>infra-monitor（自研）</td>
+<td>资产台账 + 配置漂移</td>
+<td>monitor.marschat.online/infra/</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_8">部署与发布</h2>
+<h3 id="_9">编排与位置</h3>
+<ul>
+<li>compose 文件：<code>/opt/observability/docker-compose.yml</code>（内网 Debian 192.168.31.182）</li>
+<li>compose project：<code>observability</code>（同项目共 5 容器：obs-promtail / obs-loki / obs-grafana / obs-uptime-kuma / obs-dozzle，<code>docker compose ls</code> 实采确认）</li>
+<li>容器名：<code>obs-grafana</code>，镜像 <code>grafana/grafana:11.3.0</code></li>
+</ul>
+<h3 id="_10">配置清单（实采）</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>宿主 15300 → 容器 3000</td>
+</tr>
+<tr>
+<td>卷挂载 1</td>
+<td>/opt/observability/grafana/provisioning → /etc/grafana/provisioning（数据源/看板预置）</td>
+</tr>
+<tr>
+<td>卷挂载 2</td>
+<td>命名卷 observability_grafana-data → /var/lib/grafana（SQLite 库存用户/手工看板/偏好）</td>
+</tr>
+<tr>
+<td>环境变量</td>
+<td>账密/域类变量（值不落盘，见 compose 原文与 Vaultwarden）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="provisioning">Provisioning 机制（实例用法）</h3>
+<ul>
+<li>宿主目录 /opt/observability/grafana/provisioning 挂载为容器 /etc/grafana/provisioning，按官方约定分子目录：</li>
+<li><code>datasources/</code>——数据源声明（我们的 Loki 数据源在此，指向 obs-loki :15100）</li>
+<li><code>dashboards/</code>——预置看板（JSON 模型文件 + provider 声明，Hermes-Ops-Overview 在此管理）</li>
+<li>加载时机：容器启动时一次性扫描；文件改动后需重启容器生效</li>
+<li>与 UI 的边界：provisioning 的数据源/看板在 UI 里只读（不可改），要改就改文件——避免"UI 改了、重建丢失"的漂移</li>
+</ul>
+<h3 id="ssh-root19216831182">操作速查（SSH root@192.168.31.182）</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>看状态</td>
+<td><code>docker compose -f /opt/observability/docker-compose.yml ps grafana</code></td>
+</tr>
+<tr>
+<td>重启</td>
+<td><code>docker compose -f /opt/observability/docker-compose.yml restart grafana</code></td>
+</tr>
+<tr>
+<td>看容器日志</td>
+<td>同机 Dozzle :15888 选 obs-grafana，或 <code>docker logs -f obs-grafana</code></td>
+</tr>
+<tr>
+<td>进容器排查</td>
+<td><code>docker exec -it obs-grafana bash</code></td>
+</tr>
+<tr>
+<td>备份看板数据</td>
+<td>拷贝 /var/lib/docker/volumes/observability_grafana-data/_data</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">发布/升级</h3>
+<p>自部署，无流水线。实际操作步骤（SSH 到 192.168.31.182）：</p>
+<ol>
+<li>修改 /opt/observability/docker-compose.yml 中 grafana 镜像 tag</li>
+<li><code>docker compose pull grafana &amp;&amp; docker compose up -d grafana</code></li>
+<li>provisioning 目录有改动时随 up -d 自动生效（部分 provisioning 变更需重启容器）</li>
+<li>升级后验证：登录 → Dashboards 看 Hermes-Ops-Overview 是否正常渲染 → Explore 查一条 Loki 日志</li>
+</ol>
+<h3 id="_12">回滚</h3>
+<ul>
+<li>镜像回退：compose 中改回旧版本 tag，<code>docker compose up -d grafana</code></li>
+<li>配置回退：provisioning 目录文件改回后重启容器</li>
+<li>grafana-data 卷损坏：删卷重建（丢失手工建的面板与用户），provisioning 预置内容自动恢复</li>
+</ul>
+<h2 id="_13">核心功能与使用</h2>
+<h3 id="_14">功能清单</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>什么场景用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hermes-Ops-Overview 仪表盘（8 面板）</td>
+<td>日常巡检：主机/服务/容器运行指标总览</td>
+</tr>
+<tr>
+<td>Explore + LogQL</td>
+<td>临时排查：按容器/主机/关键词查历史日志</td>
+</tr>
+<tr>
+<td>仪表盘管理</td>
+<td>沉淀固定视图；provisioning 预置的看板重启自动加载</td>
+</tr>
+<tr>
+<td>告警（Grafana Alerting）</td>
+<td>能力具备但当前主战场在 Uptime Kuma（存活类），Grafana 侧重可视化</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_15">典型操作路径</h3>
+<ol>
+<li><strong>查某容器历史日志</strong>：登录 → Explore → 数据源选 Loki → 输入 <code>{container="obs-uptime-kuma"}</code> → 设时间范围 → 流式/表格查看</li>
+<li><strong>看总览仪表盘</strong>：登录 → Dashboards → Hermes-Ops-Overview → 按主机/时间过滤面板</li>
+<li><strong>新增预置数据源/看板</strong>：SSH 编辑 /opt/observability/grafana/provisioning 下 YAML/JSON → <code>docker compose restart grafana</code></li>
+<li><strong>临时看某个错误趋势</strong>：Explore → LogQL 指标查询（见下表）→ 切图表视图</li>
+</ol>
+<h3 id="logql">常用 LogQL 速查（能力示例）</h3>
+<table>
+<thead>
+<tr>
+<th>查询</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{container="kb-gateway"}</code></td>
+<td>按容器查全部日志</td>
+</tr>
+<tr>
+<td><code>{host="tx2"} |= "ERROR"</code></td>
+<td>按主机 + 关键词过滤</td>
+</tr>
+<tr>
+<td><code>{container="portal-server"} \| json</code></td>
+<td>结构化解析后取字段</td>
+</tr>
+<tr>
+<td><code>rate({job="docker"}[5m])</code></td>
+<td>日志行速率（流量突增感知）</td>
+</tr>
+<tr>
+<td><code>sum by (host) (count_over_time({job="docker"}[15m]))</code></td>
+<td>按主机聚合错误量</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_16">依赖与关联</h2>
+<ul>
+<li>依赖：Loki（日志数据源，obs-loki :15100，同机同 compose 项目）</li>
 <li>采集侧：mykng obs-promtail 3.0.0、内网Deb obs-promtail 3.2.0、腾讯云2号 obs-promtail（journal + /var/log + docker.sock）</li>
-<li>关联：infra-monitor（自研主机/服务台账，monitor.marschat.online/infra/）——Grafana 看时序，infra-monitor 看台账与配置漂移</li>
+<li>关联：infra-monitor（自研主机/服务台账，monitor.marschat.online/infra/）——Grafana 看时序，infra-monitor 看台账与配置漂移；Uptime Kuma 管存活告警</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_17">运维要点</h2>
+<h3 id="_18">启停 / 备份</h3>
 <ul>
-<li>启停：内网 Debian <code>/opt/observability/docker-compose.yml</code>（observability 项目）</li>
+<li>启停：内网 Debian <code>/opt/observability/docker-compose.yml</code>（observability 项目），<code>docker compose up -d grafana</code> / <code>docker compose stop grafana</code></li>
 <li>日志：容器自身可被同机 obs-dozzle（:15888）直查</li>
-<li>数据与备份：grafana-data 卷存看板/用户；Loki 数据独立卷，未纳入统一备份体系，属可重建数据</li>
-<li>常见问题：看不到日志先查对应主机 promtail 是否存活（mykng :15200 / deb / tx2）；时钟不同步会导致时间线错位</li>
+<li>数据与备份：grafana-data 卷存看板/用户；Loki 数据独立卷；均未纳入统一备份体系，属可重建数据；重要手工看板建议导出 JSON 归档到 provisioning 目录（升级为预置看板）</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h3 id="_19">常见问题</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>看不到某主机日志</td>
+<td>对应主机 promtail 挂了</td>
+<td>查 mykng :15200 / 内网Deb / tx2 的 promtail 存活</td>
+</tr>
+<tr>
+<td>时间线错位</td>
+<td>采集端时钟漂移</td>
+<td>校时（NTP）后自然恢复</td>
+</tr>
+<tr>
+<td>provisioning 改动不生效</td>
+<td>文件格式错误或未重启</td>
+<td>校验 YAML/JSON → <code>docker compose restart grafana</code></td>
+</tr>
+<tr>
+<td>手工看板丢失</td>
+<td>grafana-data 卷被重建</td>
+<td>从 provisioning 预置恢复，或养成导出 JSON 习惯</td>
+</tr>
+</tbody>
+</table>
+<h3 id="explore">Explore 使用技巧（官方能力）</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>标签浏览器：查询框左侧点 "Label browser"可看 Loki 实际存在的标签与取值，避免瞎猜标签名</li>
+<li>查询历史：Explore 保留会话内查询历史，微调条件时直接回退</li>
+<li>时间范围：排查时先放宽到 24h 看趋势，再收窄到分钟级看现场</li>
+<li>逐行查看：日志行可展开看完整字段（json 解析后尤其有用），并可加"只显示该值"的过滤器</li>
+</ul>
+<h3 id="_20">升级/变更前检查清单</h3>
+<ul>
+<li>[ ] provisioning 目录改动是否已过 YAML/JSON 格式校验</li>
+<li>[ ] 是否需要导出手工看板 JSON 归档（grafana-data 卷不含于 provisioning）</li>
+<li>[ ] 升级大版本前先查官方 breaking changes（11.x 线内小版本可直接跟）</li>
+<li>[ ] 升级后验证两件事：Hermes-Ops-Overview 渲染正常 + Explore 能查到 Loki 新日志</li>
+</ul>
+<h2 id="_21">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（容器端口/挂载/provisioning 机制实采核验；观测栈分工表、LogQL 速查、FAQ 表整理）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

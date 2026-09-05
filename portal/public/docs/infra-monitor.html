@@ -70,7 +70,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>Woodpecker 项目 <code>infra-monitor</code> + <code>infra-monitor-web</code>；后端 compose <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>），前端 compose <code>kb-web</code>（<code>docker-compose.web.yml</code>）</td>
+<td>Woodpecker 项目 <code>infra-monitor</code> + <code>infra-monitor-web</code>；后端 compose project <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>），前端 compose project <code>kb-web</code>（<code>docker-compose.web.yml</code>）</td>
 </tr>
 <tr>
 <td>技术栈</td>
@@ -97,49 +97,177 @@ monitor.marschat.online/infra/api → 腾讯云2号 nginx(443) → mykng nginx(:
 （注：腾讯云2号 monitor 子域直接回源 mykng:80 的整站 /infra/ 路径）
 </code></pre>
 <p>说明：与 kb-ops 不同，infra-monitor <strong>自带登录</strong>（<code>AuthController /auth/login</code> 签发 JWT，<code>JwtAuthFilter</code> 校验）。<code>/auth/login</code> 与 <code>/actuator/**</code> 放行，其余全需鉴权。</p>
-<h2 id="_4">核心功能与使用</h2>
-<p>后端模块（<code>com.kb.infra.controller</code>），数据模型统一为 <code>InfraItem</code>（按 <code>type</code> 区分 host / credential / config / service），能力如下：</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">总体架构</h3>
+<p>轻量单体前后端分离（后端仅 6 个 Controller），刻意选用文档数据库而非关系库：</p>
 <ul>
-<li><strong>资产总览（InfraItemController <code>/items</code>）</strong>：主机、凭据、配置项、服务的统一 CRUD；支持 <code>/list</code>、<code>/all</code>、<code>/category/{type}/{category}</code> 按类目筛选、<code>/stats/{type}</code> 统计。</li>
-<li><strong>主机台账</strong>：记录每台主机的 IP、系统、角色、虚拟化信息、Tailscale IP、挂载点、出口代理（Clash）等。当前实例已登记的主机涵盖：旧 Windows 宿主机（192.168.31.243）、内网 Debian（192.168.31.182）、mykng-debian（192.168.31.105 / Tailscale 100.93.36.113）、腾讯云2号（1.117.70.30）、阿里云 FRP（120.26.66.182）、龙虾主机等。</li>
-<li><strong>凭据管理（CredentialController <code>/credentials</code>）</strong>：集中登记各系统的账号/Token 类别（WEB/DB/API_TOKEN/OTHER），密码字段经 <code>CryptoUtil</code> <strong>AES 加密落库</strong>，接口按权限返回。</li>
-<li><strong>配置项（config 类型）</strong>：FRP 隧道状态、SMB 共享、代理链路、mykng nginx 反代、Nexus 缓存策略、SSL 证书、RAG 记忆增强、知识时光机、Nexus 缓存预热等结构化配置台账（TABLE / KEY_VALUE 两种形态）。</li>
-<li><strong>服务监控（service 类型）</strong>：登记各服务的 URL、健康检查 URL、技术栈、启用状态；由巡检器周期探活。</li>
-<li><strong>健康巡检（HealthCheckController <code>/health</code> + <code>HealthCheckScheduler</code>）</strong>：<code>/check-all</code> 手动全量探活、<code>/check/{serviceId}</code> 单服务探活、<code>/logs/{serviceId}</code>（含 <code>/recent</code>）查看探活历史；调度器周期性对 <code>healthCheckUrl</code> 发请求并写 <code>InfraHealthLog</code>。</li>
-<li><strong>总览看板（DashboardController <code>/dashboard/summary</code>）</strong>：聚合主机数、凭据数、配置数、服务健康概览等指标。</li>
-<li><strong>导入导出（ImportExportController <code>/io</code>）</strong>：<code>/import</code> 从 JSON 导入资产；<code>/export/json</code>、<code>/export/yaml</code> 全量导出，便于备份与跨环境迁移。</li>
-<li><strong>SSH 探活</strong>：<code>SshUtil</code>（基于 JSch）对主机执行 SSH 连通性/命令检查，配合健康检查。</li>
+<li><strong>后端（infra-monitor-server）</strong>：Spring Boot 单模块（Java 21），包 <code>com.kb.infra</code> 下 <code>controller / service / entity / config / util</code>。数据层 Spring Data MongoDB；巡检用 <code>HealthCheckScheduler</code>（<code>@Scheduled(fixedDelay=60000, initialDelay=30000)</code>，即启动 30s 后每 60s 一轮）+ <code>SshUtil</code>（JSch，对主机做 SSH 连通性/命令检查）；安全用 Spring Security + 自签 JWT（<code>JwtAuthFilter</code>）。</li>
+<li><strong>前端（infra-monitor-web）</strong>：Vue3 + Vite + TypeScript，nginx 静态部署，按资产类型组织页面（主机/凭据/配置/服务/看板/导入导出）。</li>
+<li><strong>网络模式</strong>：后端容器 <code>network_mode: host</code>——巡检需要主动连各主机/服务（SSH、HTTP），host 网络免去端口映射并让"127.0.0.1 即宿主机"的连接串直接生效。</li>
+<li><strong>数据初始化</strong>：<code>DataInitializer</code>（CommandLineRunner）在 <code>infra_items</code> 为空时 seed 主机/凭据/配置/服务初始数据，幂等（已存在则跳过）。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">核心数据模型</h3>
+<p>MongoDB 库 <code>infra_monitor</code>（<code>platform-mongo</code>，27017），仅两个集合——用"统一资产 + extra 动态字段"代替多张表：</p>
+<table>
+<thead>
+<tr>
+<th>集合</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>infra_items</code>（<code>InfraItem</code>）</td>
+<td>统一资产集合：字段仅 <code>type</code>（host/credential/config/service）、<code>name</code>、<code>category</code>、<code>description</code>、<code>extra</code>（Map，承载各类型差异化字段：IP、系统、URL、健康检查地址、Tailscale IP、挂载点、出口代理等）、<code>sortOrder</code>、<code>deleted</code>（软删）、<code>createdAt/updatedAt</code></td>
+</tr>
+<tr>
+<td><code>infra_health_logs</code>（<code>InfraHealthLog</code>）</td>
+<td>巡检历史：每次探活的服务、结果、耗时、时间</td>
+</tr>
+</tbody>
+</table>
+<p>当前实例已登记的资产类别（extra 台账）：主机涵盖旧 Windows 宿主机、内网 Debian（192.168.31.182）、mykng-debian（192.168.31.105）、腾讯云2号（1.117.70.30）、阿里云 FRP（120.26.66.182）等；config 类含 FRP 隧道、SMB 共享、代理链路、mykng nginx 反代、Nexus 缓存策略/预热、SSL 证书、RAG 记忆增强、知识时光机等（TABLE / KEY_VALUE 两形态）。</p>
+<h3 id="_7">关键设计决策</h3>
+<ol>
+<li><strong>四类资产一个集合</strong>：host/credential/config/service 共用 <code>InfraItem</code>（type+category+extra），新增资产类型零迁移——台账型应用的字段天生多变，MongoDB 的动态文档比固定表结构更贴合。</li>
+<li><strong>巡检内嵌而非外挂</strong>：60s 定时对登记服务的 <code>healthCheckUrl</code> 发 HTTP 请求、对主机走 JSch SSH 检查，结果写 <code>infra_health_logs</code>——不引入 Prometheus/Zabbix 等重型监控，只做"在不在"级别的探活；<code>/check-all</code>、<code>/check/{serviceId}</code> 可手动触发即时巡检。</li>
+<li><strong>自带账号体系</strong>：<code>INFRA_ADMIN_USER/PASS</code> 环境变量注入管理员，<code>/auth/login</code> 签发 JWT——独立于 kb-auth，监控平台自身可用性不依赖业务系统。</li>
+<li><strong>JSON/YAML 全量导入导出</strong>：<code>/io/export/*</code> 输出全部资产，既是备份也是跨环境迁移通道；<code>/io/import</code> 反向回灌。</li>
+<li><strong>凭据加密分级</strong>：密码字段经 <code>CryptoUtil</code> AES 加密落库（密钥 <code>CRYPTO_AES_KEY</code>），接口按权限返回、前端展示脱敏。</li>
+</ol>
+<h3 id="_8">对外接口概览</h3>
+<p>Controller 位于 <code>com.kb.infra.controller</code>（容器 context <code>/infra/</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>前缀</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AuthController</td>
+<td><code>/auth</code></td>
+<td><code>/login</code> 登录签发 JWT</td>
+</tr>
+<tr>
+<td>InfraItemController</td>
+<td><code>/items</code></td>
+<td>统一资产 CRUD：<code>/list</code>、<code>/all</code>、<code>/category/{type}/{category}</code> 按类目筛选、<code>/stats/{type}</code> 统计</td>
+</tr>
+<tr>
+<td>CredentialController</td>
+<td><code>/credentials</code></td>
+<td>凭据专项（AES 加密存取、脱敏返回）</td>
+</tr>
+<tr>
+<td>HealthCheckController</td>
+<td><code>/health</code></td>
+<td><code>/check-all</code> 全量探活、<code>/check/{serviceId}</code> 单服务探活、<code>/logs/{serviceId}</code>（含 <code>/recent</code>）探活历史</td>
+</tr>
+<tr>
+<td>DashboardController</td>
+<td><code>/dashboard</code></td>
+<td><code>/summary</code> 聚合主机数/凭据数/配置数/健康概览</td>
+</tr>
+<tr>
+<td>ImportExportController</td>
+<td><code>/io</code></td>
+<td><code>/import</code> JSON 导入、<code>/export/json</code>、<code>/export/yaml</code> 全量导出</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">部署与发布</h2>
+<h3 id="_10">编排与位置</h3>
+<ul>
+<li>后端：容器 <code>infra-monitor</code>，镜像 <code>infra-monitor:latest</code>（<code>build: .</code>），归属 compose project <code>infra-monitor</code>，compose 文件 <code>/root/devtools/infra-monitor/infra-monitor-server/docker-compose.yml</code>。</li>
+<li>特殊点：<strong><code>network_mode: host</code></strong>（直接用宿主机网络，MongoDB 走 <code>127.0.0.1:27017</code>），不走 kb-app-net。</li>
+<li>前端：容器 <code>infra-monitor-web</code>（nginx:alpine），归属 compose project <code>kb-web</code>，compose 文件 <code>/root/devtools/docker/docker-compose.web.yml</code>。</li>
+</ul>
+<h3 id="_11">配置清单</h3>
+<p><strong>infra-monitor（后端容器）</strong></p>
+<ul>
+<li>端口：host 网络模式，直接监听宿主机 <code>8088</code>（无端口映射）</li>
+<li>卷挂载：<code>/data/infra-monitor/logs</code> → <code>/app/logs</code>（应用日志落盘）</li>
+<li>关键环境变量（值见 Vaultwarden / compose 文件，不在文档落盘）：</li>
+<li><code>SPRING_PROFILES_ACTIVE=prod</code></li>
+<li><code>SPRING_DATA_MONGODB_URI</code>（MongoDB 连接串，库名 <code>infra_monitor</code>，authSource=admin）</li>
+<li><code>JWT_SECRET</code>（登录 JWT 签名密钥）</li>
+<li><code>CRYPTO_AES_KEY</code>（凭据 AES 加密密钥）</li>
+<li><code>INFRA_ADMIN_USER</code> / <code>INFRA_ADMIN_PASS</code>（初始管理员，首次登录后建议修改）</li>
+<li>内存限制：<code>256m</code>，<code>restart: on-failure:5</code></li>
+</ul>
+<p><strong>infra-monitor-web（前端容器）</strong></p>
+<ul>
+<li>端口映射：<code>8094:80</code></li>
+<li>卷挂载（只读）：</li>
+<li><code>/root/kb-deploy/infra-monitor-web/dist</code> → <code>/usr/share/nginx/html</code></li>
+<li><code>/root/kb-deploy/infra-monitor-web/nginx.conf</code> → <code>/etc/nginx/conf.d/default.conf</code></li>
+<li>内存限制：<code>64m</code></li>
+</ul>
+<h3 id="_12">发布/升级（只允许走流水线）</h3>
+<pre><code class="language-bash">python woodScript/trigger-pipeline.py infra-monitor       # 后端
+python woodScript/trigger-pipeline.py infra-monitor-web   # 前端
+</code></pre>
+<p>链路：push/手动触发 → <code>.woodpecker.yml</code> 的 <code>infra-mon-build</code> / <code>infra-mon-deploy</code>（前端为 <code>infra-web</code> / <code>infra-web-deploy</code>）步骤 → 产物 <code>/mnt/shared/woodScript/publish/infra-monitor-latest.tar.gz</code> → <code>appleboy/drone-ssh</code>（<code>ssh_key_mykng</code> Secret）登录 mykng → <code>cd/deploy-infra-monitor.sh</code>（project <code>infra-monitor</code> 重建 + 健康检查 <code>localhost:8088/infra/actuator/health</code>，24×10s）；前端走 <code>deploy-infra-monitor-web.sh</code>（kb-web project，健康检查 <code>localhost:8094/health</code>）。</p>
+<p>注意：后端 compose <code>build: .</code>——流水线产物解压到 <code>/root/devtools/infra-monitor/infra-monitor-server/</code> 后由 compose 重新 build 镜像（区别于 kb-* 的预构建镜像直拉模式），首次构建耗时略长。</p>
+<h3 id="_13">回滚</h3>
+<ul>
+<li>后端：<code>/mnt/shared/woodScript/publish/</code> 旧产物重新解压 → <code>docker compose -p infra-monitor up -d --build</code>。</li>
+<li>数据回退：用 <code>/io/export/json</code> 的最近导出文件经 <code>/io/import</code> 回灌（导入前先 <code>mongodump</code> 当前库）。</li>
+</ul>
+<h2 id="_14">核心功能与使用</h2>
+<h3 id="_15">功能清单</h3>
+<ul>
+<li><strong>资产总览</strong>：主机/凭据/配置/服务四类资产一张图——查"内网有哪些机器、跑着什么"的第一入口。</li>
+<li><strong>健康巡检</strong>：60s 周期对登记服务探活（HTTP + SSH），异常历史可查——快速定位"哪个服务挂了、什么时候挂的"。</li>
+<li><strong>凭据档案</strong>：各系统账号/Token 加密登记（WEB/DB/API_TOKEN/OTHER 分类）——查账密入口（配合 Vaultwarden）。</li>
+<li><strong>配置台账</strong>：FRP 隧道、SMB 共享、代理链路、nginx 反代、Nexus 缓存策略、SSL 证书等结构化配置记录（TABLE/KEY_VALUE 两形态）。</li>
+<li><strong>总览看板</strong>：资产数量与健康状态聚合展示（<code>/dashboard/summary</code>）。</li>
+<li><strong>导入导出</strong>：JSON/YAML 全量导出——轻量备份与环境迁移。</li>
+</ul>
+<h3 id="_16">典型操作路径</h3>
+<ol>
+<li><strong>首次登录</strong>：打开 <code>https://monitor.marschat.online/infra/</code> → 用管理员账号登录（账密见 Vaultwarden）→ 进入总览看板。</li>
+<li><strong>登记新服务并纳入巡检</strong>：服务页新增（填 URL + healthCheckUrl）→ 等待 60s 调度或点"立即巡检" → 健康日志页查看结果。</li>
+<li><strong>查一台主机的信息</strong>：主机页按类目筛选 → 点开条目看 <code>extra</code> 明细（IP/Tailscale/挂载点/出口代理）。</li>
+<li><strong>登记一批配置</strong>：配置页新增 TABLE 或 KEY_VALUE 形态条目 → 按 category 归类（如"代理链路"/"SSL 证书"）。</li>
+<li><strong>备份资产</strong>：导入导出页 → <code>/io/export/json</code> 下载全量文件 → 存档（建议每次大变更后执行）。</li>
+<li><strong>迁移到新环境</strong>：新环境起服务（DataInitializer 跳过 seed 或清库）→ <code>/io/import</code> 导入导出文件 → 核对 <code>/stats/{type}</code> 数量一致。</li>
+</ol>
+<h2 id="_17">依赖与关联</h2>
 <ul>
 <li>依赖：</li>
-<li><strong>MongoDB</strong>：<code>platform-mongo</code>（mykng 27017）存储 <code>InfraItem</code> 与 <code>InfraHealthLog</code>（Spring Data MongoDB Repository）。</li>
+<li><strong>MongoDB</strong>：<code>platform-mongo</code>（mykng 27017）存储 <code>infra_items</code> 与 <code>infra_health_logs</code>；容器经 host 网络直连 <code>127.0.0.1:27017</code>。</li>
 <li><strong>SSH 凭据</strong>：探活内网主机需主机 SSH 账号（凭据加密存放，见 Vaultwarden / infrastructure-map）。</li>
 <li>被依赖/关联系统：</li>
 <li>与 <strong>kb-ops</strong> 互补：infra-monitor 偏"资产总览 + 凭据 + 配置 + 健康巡检"，kb-ops 偏"运维台账 + 知识 + 部署记录 + 矛盾检测"。</li>
 <li>巡检结果数据经日志链路汇入 <strong>Loki/Grafana</strong>（mykng 侧 promtail 3.0.0 采集）。</li>
-<li>资产数据可作为 <strong>kb-ops</strong> 的同步来源之一（kb-ops 的 <code>SyncController</code> 从 intelligence 拉取，二者台账可对照）。</li>
+<li>资产数据可作为 <strong>kb-ops</strong> 的对照来源（kb-ops 的 SyncController 从 kb-intelligence 拉取，二者台账可互查）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_18">运维要点</h2>
 <ul>
-<li>启停/发布（应用层只允许走流水线）：</li>
-<li>后端：<code>python woodScript/trigger-pipeline.py infra-monitor</code></li>
-<li>前端：<code>python woodScript/trigger-pipeline.py infra-monitor-web</code></li>
-<li>后端部署目标 compose <code>infra-monitor</code>（<code>infra-monitor-server/docker-compose.yml</code>），健康检查 <code>localhost:8088/infra/actuator/health</code>；前端部署目标 <code>kb-web</code>，健康检查 <code>localhost:8094/health</code>。</li>
-<li>数据初始化：<code>DataInitializer</code>（CommandLineRunner）在 host 数量为 0 时 seed 初始主机/凭据/配置/服务数据；已存在则跳过（幂等）。<strong>seed 中的明文账密属于密级数据，禁止出现在文档，统一以 Vaultwarden 或 infrastructure-map 技能为准</strong>。</li>
+<li>启停/发布：应用层铁律——只走流水线（见"部署与发布"节）；应急 <code>docker restart infra-monitor infra-monitor-web</code>。</li>
+<li>数据初始化：<code>DataInitializer</code> 仅在资产为空时 seed；seed 中的明文账密属于密级数据，禁止出现在文档，统一以 Vaultwarden 或 infrastructure-map 技能为准。</li>
 <li>日志查看：</li>
 <li>容器日志：<code>docker logs -f infra-monitor</code> / <code>docker logs -f infra-monitor-web</code></li>
+<li>落盘日志：mykng <code>/data/infra-monitor/logs/</code></li>
 <li>容器日志面板：mykng <code>obs-dozzle</code>（15500）</li>
-<li>数据与备份：资产在 MongoDB（<code>platform-mongo</code>），建议用 <code>/io/export/json</code> 定期导出作为轻量备份；MongoDB 本身由 platform 层统一维护。</li>
+<li>数据与备份：资产在 <code>platform-mongo</code> 的 <code>infra_monitor</code> 库；日常用 <code>/io/export/json</code> 导出作轻量备份，MongoDB 本身由 platform 层统一维护。</li>
 <li>凭据安全：所有密码经 <code>CryptoUtil</code> AES 加密，前端展示脱敏；<strong>任何系统明文账密一律不写入文档</strong>。</li>
 <li>常见问题：</li>
-<li>巡检一直 UNKNOWN：检查对应 service 的 <code>healthCheckUrl</code> 是否可达、目标服务是否在线。</li>
+<li>巡检一直 UNKNOWN：检查对应 service 的 <code>healthCheckUrl</code> 是否可达、目标服务是否在线；SSH 型巡检确认主机 SSH 凭据有效。</li>
 <li>登录态失效：JWT 由本系统签发，过期重新 <code>/auth/login</code> 即可。</li>
 <li>导入失败：确认 JSON 结构与 <code>/items</code> 字段一致，建议先用 <code>/export/json</code> 取模板。</li>
+<li>后端连不上 MongoDB：<code>network_mode: host</code> 下 URI 走 <code>127.0.0.1</code>，确认 <code>platform-mongo</code> 的 27017 已映射到宿主机。</li>
+<li>巡检日志暴涨：每 60s 一轮写 <code>infra_health_logs</code>，长期运行后可按时间清理旧记录（mongosh 删除过期文档）。</li>
+<li>8088 端口被占：host 网络模式下无端口隔离，启动前确认宿主机 8088 空闲。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_19">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/DataInitializer 生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（数据模型/Controller/巡检调度按源码核对，部署节按 infra-monitor-server/docker-compose.yml 实采重写，明确 host 网络模式与 MongoDB 连接方式）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/DataInitializer 生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

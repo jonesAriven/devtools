@@ -70,11 +70,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>Woodpecker 项目 <code>kb-ops</code> + <code>kb-ops-web</code>（<code>docker-compose.app.yml</code> / <code>docker-compose.web.yml</code>）</td>
+<td>Woodpecker 项目 <code>kb-ops</code> + <code>kb-ops-web</code>（统一 <code>.woodpecker.yml</code>，<code>kb-app</code> / <code>kb-web</code> compose）</td>
 </tr>
 <tr>
 <td>技术栈</td>
-<td>Spring Boot 3.2.5、Java 21、Spring Cloud 2023.0.3、MyBatis-Plus 3.5.6、Redis、OpenFeign、JJWT 0.12.5、Actuator</td>
+<td>后端：Spring Boot 3.2.5、Java 21、MyBatis-Plus 3.5.6、Redis、OpenFeign、JJWT 0.12.5、Actuator；前端：Vue 3.4、Element Plus 2.6、Pinia、ECharts 5.5、Vite</td>
 </tr>
 </tbody>
 </table>
@@ -100,56 +100,249 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
   → kb-auth 校验后下发 JWT；kb-ops 通过 JwtAuthenticationFilter + OpenFeign 透传校验
 </code></pre>
 <p>说明：kb-ops 自身 <code>SecurityConfig</code> 全路由 <code>authenticated()</code>，由 <code>JwtAuthenticationFilter</code> 校验 JWT；它不维护用户体系，账号/角色由 <code>kb-auth</code> 统一托管，登录入口在知识库登录页。</p>
-<h2 id="_4">核心功能与使用</h2>
-<p>后端按模块拆分 Controller（<code>com.kb.ops.controller</code>），所有接口前缀 <code>/ops/*</code>，对应能力如下：</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">总体架构</h3>
+<p>单体前后端分离架构（刻意不拆微服务——运维平台自身追求简单可维护）：</p>
 <ul>
-<li><strong>主机管理（HostController <code>/ops/host</code>）</strong>：CMDB 主机台账，增删改查；记录 IP、系统、角色、Tailscale IP、挂载点等资产属性。</li>
-<li><strong>服务管理（ServiceController <code>/ops/service</code>）</strong>：登记各业务/基础设施服务的访问地址、技术栈、健康检查 URL、启用状态。</li>
-<li><strong>域名管理（DomainController <code>/ops/domain</code>）</strong>：维护对外域名与反代路径映射，与 mykng nginx <code>locations/*.conf</code> 互为补充台账。</li>
-<li><strong>端口管理（PortController <code>/ops/port</code>）</strong>：登记主机端口占用，避免端口冲突；与"矛盾检测"联动。</li>
-<li><strong>依赖关系（DependencyController <code>/ops/dependency</code>）</strong>：描述服务/组件间的依赖（如应用层依赖 platform-* 中间件），用于影响面分析。</li>
-<li><strong>凭据管理（CredentialController <code>/ops/credential</code>）</strong>：集中存放各类系统账号/Token（加密存储，见运维要点）；提供列表/详情/增删改。</li>
-<li><strong>部署记录（DeploymentController <code>/ops/deployment</code>）</strong>：记录每次部署的时间、目标、操作人、备注，<code>/recent</code> 取最近记录——与 Woodpecker 流水线变更对应。</li>
-<li><strong>运维知识（KnowledgeController <code>/ops/knowledge</code>）</strong>：运维经验/排障手册的结构化知识库，支持全文检索与分类。</li>
-<li><strong>矛盾检测（ConflictController <code>/ops/conflict</code>）</strong>：<code>/detect</code> 扫描端口冲突、依赖缺失、配置不一致等矛盾，列表展示并支持 <code>/{id}/resolve</code> 标记解决。</li>
-<li><strong>看板（DashboardController <code>/ops/dashboard</code>）</strong>：汇总主机数、服务数、近期部署、未解决矛盾等指标；<code>/snapshot/refresh</code> 刷新快照。</li>
-<li><strong>导入（ImportController <code>/ops/import</code>）</strong>：支持 <code>/csv</code> 批量导入主机/服务/端口等资产数据，降低手工录入成本。</li>
-<li><strong>从 intelligence 同步（SyncController <code>/ops/sync/from-intelligence</code>）</strong>：从 <code>kb-intelligence</code> 拉取资产/拓扑，保持 CMDB 与知识库一致。</li>
-<li><strong>运维日志（OperationLogController <code>/ops/log</code>）</strong>：操作审计日志列表与详情。</li>
+<li><strong>后端（kb-ops）</strong>：Spring Boot 单模块（Java 21），包结构 <code>com.kb.ops</code> 下分 <code>controller / service / mapper / entity / dto / config / security / util</code>，公共层复用 <code>com.kb.common</code>（统一 <code>Result</code> 返回体、分页 <code>page</code>、异常 <code>exception</code>、<code>trace</code> 链路标记、加密工具）。数据访问 MyBatis-Plus（mapper-locations <code>classpath*:/mapper/**/*.xml</code>），登录鉴权不自带而是复用 kb-auth。</li>
+<li><strong>前端（kb-ops-web）</strong>：Vue 3.4 + Element Plus 2.6 + Pinia 2.1 + ECharts 5.5 + Vite，按后端模块组织页面（主机/服务/域名/端口/凭据/部署/知识/矛盾/看板），看板用 ECharts 渲染指标。</li>
+<li><strong>外部协同</strong>：通过 OpenFeign 调 kb-auth（JWT 校验，<code>kb.feign.auth-url</code>）与 kb-intelligence（资产同步，<code>kb.feign.intelligence-url</code>，容器内默认 <code>http://kb-intelligence:8086</code>）。</li>
+<li><strong>可观测</strong>：Actuator 暴露 <code>health,info</code>（<code>show-details: always</code>）；logback 经 logstash-logback-encoder + kafka-appender 推结构化日志（profile <code>kafka-log</code>）。</li>
 </ul>
-<p>前端（Vue3 + Element Plus + Pinia + ECharts）按上述模块组织页面，看板用 ECharts 展示指标。</p>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">核心数据模型</h3>
+<p>MySQL 库 <code>kb_ops</code>，初始化脚本 <code>src/main/resources/sql/kb_ops_init.sql</code>（11 张表，实体注解 <code>@TableName</code> 与之一一对应）：</p>
+<table>
+<thead>
+<tr>
+<th>表名</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ops_host</code></td>
+<td>运维主机表：IP、系统、角色、Tailscale IP、挂载点等资产台账</td>
+</tr>
+<tr>
+<td><code>ops_service</code></td>
+<td>运维服务表：访问地址、技术栈、健康检查 URL、启用状态</td>
+</tr>
+<tr>
+<td><code>ops_domain</code></td>
+<td>域名管理表：对外域名与反代路径映射</td>
+</tr>
+<tr>
+<td><code>ops_port</code></td>
+<td>端口管理表：主机端口占用登记，防冲突</td>
+</tr>
+<tr>
+<td><code>ops_dependency</code></td>
+<td>服务依赖关系表：服务/组件间依赖，用于影响面分析</td>
+</tr>
+<tr>
+<td><code>ops_credential</code></td>
+<td>凭据管理表：账号/Token，密码字段 AES 加密落库</td>
+</tr>
+<tr>
+<td><code>ops_change_log</code></td>
+<td>部署/变更记录表（实体 <code>DeploymentRecord</code>）</td>
+</tr>
+<tr>
+<td><code>ops_knowledge</code></td>
+<td>运维知识表：排障手册/经验，支持分类与检索</td>
+</tr>
+<tr>
+<td><code>ops_conflict</code></td>
+<td>矛盾检测结果表：端口冲突、依赖缺失等</td>
+</tr>
+<tr>
+<td><code>ops_snapshot</code></td>
+<td>运维看板快照表：Dashboard 指标的历史快照</td>
+</tr>
+<tr>
+<td><code>operation_log</code></td>
+<td>操作日志表：接口操作审计</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">关键设计决策</h3>
+<ol>
+<li><strong>鉴权外挂而非重建</strong>：不建用户表，JWT 由 kb-auth 签发、kb-ops 只做过滤器校验——运维平台与知识库共用一套账号，避免多套密码。认证流量单独走 <code>/ops/auth-api/</code> 反代到网关，与业务 API 分路径。</li>
+<li><strong>统一资产模型 + 矛盾检测闭环</strong>：主机/服务/域名/端口/依赖五类台账横向关联，<code>ConflictController /ops/conflict/detect</code> 扫描"端口冲突、依赖缺失、配置不一致"，列表展示并 <code>/{id}/resolve</code> 标记解决——形成"登记 → 检测 → 解决"闭环。</li>
+<li><strong>凭据加密存储</strong>：密码/Token 经 <code>CRYPTO_AES_KEY</code>（AES）加密后才落 <code>ops_credential</code>，接口按权限返回脱敏值；明文永不入文档。</li>
+<li><strong>部署记录对齐流水线</strong>：<code>ops_change_log</code> 的记录与 Woodpecker 部署一一对应，<code>/recent</code> 看板直接展示最近变更；操作行为另落 <code>operation_log</code> 审计。</li>
+<li><strong>GR 集群直连容灾</strong>：<code>application-prod.yml</code> 连接串为三节点随机负载均衡 failover URL（<code>loadBalanceStrategy=random&amp;failOverReadOnly=false&amp;retriesAllDown=3</code>），任一节点宕机自动切换。</li>
+</ol>
+<h3 id="_8">对外接口概览</h3>
+<p>所有 Controller 位于 <code>com.kb.ops.controller</code>，路由统一前缀 <code>/ops/*</code>（容器 context <code>/kb-ops/</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>前缀</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HostController</td>
+<td><code>/ops/host</code></td>
+<td>主机台账 CRUD</td>
+</tr>
+<tr>
+<td>ServiceController</td>
+<td><code>/ops/service</code></td>
+<td>服务台账 CRUD</td>
+</tr>
+<tr>
+<td>DomainController</td>
+<td><code>/ops/domain</code></td>
+<td>域名映射 CRUD</td>
+</tr>
+<tr>
+<td>PortController</td>
+<td><code>/ops/port</code></td>
+<td>端口占用 CRUD</td>
+</tr>
+<tr>
+<td>DependencyController</td>
+<td><code>/ops/dependency</code></td>
+<td>依赖关系 CRUD</td>
+</tr>
+<tr>
+<td>CredentialController</td>
+<td><code>/ops/credential</code></td>
+<td>凭据 CRUD（加密）</td>
+</tr>
+<tr>
+<td>DeploymentController</td>
+<td><code>/ops/deployment</code></td>
+<td>部署记录，<code>/recent</code> 最近记录</td>
+</tr>
+<tr>
+<td>KnowledgeController</td>
+<td><code>/ops/knowledge</code></td>
+<td>运维知识 CRUD/检索</td>
+</tr>
+<tr>
+<td>ConflictController</td>
+<td><code>/ops/conflict</code></td>
+<td><code>/detect</code> 矛盾检测、<code>/{id}/resolve</code> 标记解决</td>
+</tr>
+<tr>
+<td>DashboardController</td>
+<td><code>/ops/dashboard</code></td>
+<td>指标汇总、<code>/snapshot/refresh</code> 快照刷新</td>
+</tr>
+<tr>
+<td>ImportController</td>
+<td><code>/ops/import</code></td>
+<td><code>/csv</code> 批量导入资产</td>
+</tr>
+<tr>
+<td>SyncController</td>
+<td><code>/ops/sync</code></td>
+<td><code>/from-intelligence</code> 从 kb-intelligence 同步资产</td>
+</tr>
+<tr>
+<td>OperationLogController</td>
+<td><code>/ops/log</code></td>
+<td>操作审计日志</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">部署与发布</h2>
+<h3 id="_10">编排与位置</h3>
+<ul>
+<li>后端：容器 <code>kb-ops</code>，镜像由 <code>build: /root/devtools/kb-ops</code>（Dockerfile 在源码根）构建，归属 compose project <code>kb-app</code>，compose 文件 <code>/root/devtools/docker/docker-compose.app.yml</code>（<code>service: kb-ops</code>）。</li>
+<li>前端：容器 <code>kb-ops-web</code>（nginx:alpine 静态服务），归属 compose project <code>kb-web</code>，compose 文件 <code>/root/devtools/docker/docker-compose.web.yml</code>。</li>
+<li>两个 compose project 互相隔离：<code>kb-app.yml</code> 中 kb-ops 无 depends_on，可独立 <code>up -d --force-recreate kb-ops</code>，不影响 mykng 五微服务。</li>
+<li>前端产物落点：流水线把 pnpm 构建产物解压到目标机 <code>/root/kb-deploy/kb-ops-web/dist</code>，nginx 容器只读挂载——前端"发布"实质是换 dist 文件 + 重载 nginx。</li>
+</ul>
+<h3 id="_11">配置清单</h3>
+<p><strong>kb-ops（后端容器）</strong></p>
+<ul>
+<li>端口映射：<code>8084:8084</code></li>
+<li>网络：<code>kb-app-net</code>（应用层内部）+ <code>platform-net</code>（连全局基础设施）</li>
+<li>卷挂载：无持久卷（数据全在 MySQL/Redis）</li>
+<li>关键环境变量（值见 Vaultwarden / mykng <code>.env</code>，不在文档落盘）：</li>
+<li><code>SPRING_PROFILES_ACTIVE=prod</code>（附加 kafka-log 日志 profile）、<code>JAVA_OPTS</code>（JVM 内存/GC）</li>
+<li><code>MYSQL_DATABASE=kb_ops</code>、<code>MYSQL_USER</code>、<code>MYSQL_PASSWORD</code>（注意：<code>MYSQL_HOST/PORT</code> 已废弃，生产连接串为 GR 集群三节点 failover URL，硬编码在 <code>application-prod.yml</code>）</li>
+<li><code>REDIS_HOST=platform-redis</code>、<code>REDIS_PORT=6379</code></li>
+<li><code>CRYPTO_AES_KEY</code>（凭据 AES 加密密钥）</li>
+<li><code>KB_GATEWAY_URL=http://kb-gateway:8080</code></li>
+<li>内存限制：<code>mem_limit: 384m</code>，<code>restart: on-failure:5</code></li>
+</ul>
+<p><strong>kb-ops-web（前端容器）</strong></p>
+<ul>
+<li>端口映射：<code>8093:80</code></li>
+<li>卷挂载（宿主→容器，只读）：</li>
+<li><code>/root/kb-deploy/kb-ops-web/dist</code> → <code>/usr/share/nginx/html</code></li>
+<li><code>/root/kb-deploy/kb-ops-web/nginx.conf</code> → <code>/etc/nginx/conf.d/default.conf</code></li>
+<li>内存限制：<code>64m</code></li>
+</ul>
+<h3 id="_12">发布/升级（只允许走流水线）</h3>
+<pre><code class="language-bash">python woodScript/trigger-pipeline.py kb-ops        # 后端：CI Maven 构建 → drone-ssh → deploy-kb-ops.sh
+python woodScript/trigger-pipeline.py kb-ops-web    # 前端：CI pnpm 构建 → drone-ssh → deploy-kb-ops-web.sh
+python woodScript/trigger-pipeline.py kb-ops --note &quot;修复登录bug&quot;
+</code></pre>
+<p>链路：push/手动触发 → Woodpecker（<code>.woodpecker.yml</code> 的 <code>kb-ops-build</code> / <code>kb-ops-deploy</code> 步骤）→ 产物 <code>/mnt/shared/woodScript/publish/kb-ops-latest.tar.gz</code> → <code>appleboy/drone-ssh</code> 携 <code>ssh_key_mykng</code> Secret 登录 mykng → <code>cd/deploy-kb-ops.sh</code>（kb-app project 重建 + 健康检查 <code>localhost:8084/kb-ops/actuator/health</code>，最多 24×10s）。前端同理，健康检查 <code>localhost:8093/health</code>。</p>
+<h3 id="_13">回滚</h3>
+<ul>
+<li>产物回退：<code>/mnt/shared/woodScript/publish/</code> 保留最近产物，重新解压旧产物后 <code>docker compose -p kb-app up -d --force-recreate kb-ops</code>（实际操作见 <code>lib-deploy.sh</code> 原语）。</li>
+<li>数据库回退：变更前对 <code>kb_ops</code> 库 <code>mysqldump</code>（GR 集群 Node1 执行），异常时回导。</li>
+</ul>
+<h2 id="_14">核心功能与使用</h2>
+<h3 id="_15">功能清单</h3>
+<ul>
+<li><strong>CMDB 台账</strong>：主机/服务/域名/端口/依赖五类资产集中登记与查询——任何部署前先查台账防冲突。</li>
+<li><strong>矛盾检测</strong>：一键扫描端口冲突、依赖缺失、配置不一致——新服务上线前跑一遍。</li>
+<li><strong>凭据保管</strong>：各系统账号/Token 加密存档——查账密入口（配合 Vaultwarden）。</li>
+<li><strong>部署记录</strong>：每次流水线发布的时间/目标/备注留痕——追溯"谁在什么时候改了什么"。</li>
+<li><strong>运维知识库</strong>：排障手册结构化沉淀、全文检索——同类故障二次发生时先查知识。</li>
+<li><strong>看板快照</strong>：主机数/服务数/未解决矛盾/近期部署一屏总览。</li>
+</ul>
+<h3 id="_16">典型操作路径</h3>
+<ol>
+<li><strong>登记一台新主机</strong>：登录知识库获取 JWT → 进入 <code>https://kb.marschat.online/ops/</code> 主机管理 → 新增（填 IP/系统/角色/Tailscale IP）→ 保存。</li>
+<li><strong>上线新服务前查冲突</strong>：先在"服务管理/端口管理"登记拟用端口 → 矛盾检测页点"检测" → 无未解决矛盾再触发流水线部署。</li>
+<li><strong>记录一次部署</strong>：流水线发布完成后 → 部署记录页新增（或 <code>/recent</code> 核对自动记录）→ 填目标与备注。</li>
+<li><strong>沉淀排障经验</strong>：故障解决后 → 运维知识页新增，按分类归档，写明现象/根因/处置步骤。</li>
+<li><strong>从知识库同步资产</strong>：<code>POST /ops/sync/from-intelligence</code>（可传 override/entityTypes）→ 拉取 kb-intelligence 资产/拓扑补全 CMDB。</li>
+</ol>
+<h2 id="_17">依赖与关联</h2>
 <ul>
 <li>依赖：</li>
-<li><strong>MySQL</strong>：<code>platform-mysql-1</code>（mykng 3306，GR 集群 Node1）存储业务数据（MyBatis-Plus 访问）；库名见部署配置（以 mykng 实例为准）。</li>
-<li><strong>Redis</strong>：<code>platform-redis</code>（mykng 6379）用于缓存/会话辅助。</li>
-<li><strong>kb-auth / kb-gateway</strong>：登录与 JWT 校验依赖知识库统一认证（<code>kb-gateway:8090</code>）。</li>
+<li><strong>MySQL</strong>：GR 集群三节点（<code>192.168.31.105:3306, 192.168.31.182:3307, 192.168.31.182:3308</code>，随机负载均衡 + 自动故障转移）存储 <code>kb_ops</code> 库。</li>
+<li><strong>Redis</strong>：<code>platform-redis</code>（6379）缓存/会话辅助。</li>
+<li><strong>kb-auth / kb-gateway</strong>：登录与 JWT 校验（<code>KB_GATEWAY_URL=http://kb-gateway:8080</code>）。</li>
+<li><strong>kb-intelligence</strong>：资产同步数据源（OpenFeign）。</li>
 <li>被依赖/关联系统：</li>
 <li>与 <strong>infra-monitor</strong> 定位互补：kb-ops 偏"运维台账+知识+部署记录+矛盾检测"，infra-monitor 偏"资产总览+凭据+配置+健康巡检"。</li>
-<li>部署记录与 <strong>Woodpecker CI</strong>（woodpecker）变更联动。</li>
-<li>资产数据可被 <strong>kb-intelligence</strong> 提供、由 kb-ops 消费（SyncController）。</li>
+<li>部署记录与 <strong>Woodpecker CI</strong> 变更联动。</li>
+<li>资产数据由 <strong>kb-intelligence</strong> 提供、kb-ops 消费（SyncController）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_18">运维要点</h2>
 <ul>
-<li>启停/发布（铁律：应用层只允许走流水线）：</li>
-<li>触发后端：<code>python woodScript/trigger-pipeline.py kb-ops</code></li>
-<li>触发前端：<code>python woodScript/trigger-pipeline.py kb-ops-web</code></li>
-<li>全量：<code>python woodScript/trigger-pipeline.py all</code></li>
-<li>后端部署目标 compose <code>kb-app</code>（<code>docker-compose.app.yml</code>），健康检查 <code>localhost:8084/kb-ops/actuator/health</code>；前端部署目标 compose <code>kb-web</code>（<code>docker-compose.web.yml</code>），健康检查 <code>localhost:8093/health</code>。</li>
+<li>启停/发布：应用层铁律——只走流水线（见"部署与发布"节）；应急重启 <code>docker restart kb-ops kb-ops-web</code>。</li>
 <li>日志查看：</li>
 <li>容器日志：<code>docker logs -f kb-ops</code> / <code>docker logs -f kb-ops-web</code></li>
 <li>容器日志面板：mykng 的 <code>obs-dozzle</code>（15500）</li>
-<li>结构化日志：后端经 logstash-logback-encoder + logback-kafka-appender 推到 Kafka，可被 Loki/Grafana 检索（链路见 infra-monitor 文档）。</li>
-<li>数据与备份：业务数据在 <code>platform-mysql-1</code>；凭据字段经 AES 加密落库（见下）。备份随 MySQL GR 集群整体策略，重要变更前建议 <code>mysqldump</code>。</li>
-<li>凭据安全：凭据（密码/Token）入库前由 <code>com.kb.common</code> 的加密工具 AES 加密存储，接口返回时按权限脱敏；<strong>所有系统明文账密一律不在文档出现，统一见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>。</li>
+<li>结构化日志：logback-kafka-appender 推 Kafka，可被 Loki/Grafana 检索。</li>
+<li>数据与备份：业务数据在 MySQL GR 集群 <code>kb_ops</code> 库；重要变更前 <code>mysqldump</code>。</li>
+<li>凭据安全：凭据 AES 加密落库、接口脱敏；<strong>所有系统明文账密一律不写入文档，统一见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>。</li>
 <li>常见问题：</li>
-<li>鉴权失败：检查 <code>kb-auth</code>/<code>kb-gateway</code> 是否正常，JWT 由统一认证签发，kb-ops 不单独登录。</li>
+<li>鉴权失败：检查 <code>kb-auth</code>/<code>kb-gateway</code> 是否正常，JWT 由统一认证签发，kb-ops 不单独登录；401 多为 JWT 过期，重新走知识库登录。</li>
 <li>端口冲突：用"端口管理 + 矛盾检测"先行排查，再触发部署。</li>
 <li>依赖解析失败：确认 <code>kb-intelligence</code> 在线，<code>/ops/sync/from-intelligence</code> 才能拉到最新资产。</li>
+<li>数据库连接：<code>application-prod.yml</code> 用 GR 集群 failover URL，compose 里的 <code>MYSQL_HOST/PORT</code> 仅为降级 fallback，排查连库问题时先看容器实际 profile。</li>
+<li>前端 502：<code>kb-ops-web</code> 前端容器独立运行，后端不可用时反代 502——<code>docker logs kb-ops</code> 查后端，多为后端重启中。</li>
+<li>同步后数据重复：<code>/ops/sync/from-intelligence</code> 默认不覆盖已有记录，传 <code>override=true</code> 才更新；重复数据先检查 entityTypes 过滤条件。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_19">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/README 生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（数据表按 <code>kb_ops_init.sql</code> 核对、Controller 前缀按源码核对、部署节按 docker-compose.app/web.yml 实采重写）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 源码 Controller/README 生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

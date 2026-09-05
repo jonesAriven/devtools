@@ -58,7 +58,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>louislam/uptime-kuma:1（容器实采，1.x 线）</td>
+<td>louislam/uptime-kuma:1（容器实采 2026-09-05，1.x 线）</td>
 </tr>
 <tr>
 <td>部署位置</td>
@@ -93,30 +93,277 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <pre><code>浏览器（家庭局域网 / Tailscale）
   → http://192.168.31.182:15001（docker-proxy 直连，无 nginx 层）
   → 容器 obs-uptime-kuma (:3001)
+
+探测出站：Kuma 主动发起 HTTP(s)/TCP 探测 → 公网域名经本机网络出口（注意代理路径）
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Uptime Kuma 是开源的自托管拨测监控，官方能力要点：</p>
 <ul>
-<li><strong>存活监控（18 个 monitor）</strong>：portal 上收录的域名/系统（main / kb / nexus / woodci / vault / note / memory / tokenhub / tools / tools-test / monitor 等）+ 内部服务端口，按 HTTP(s)/TCP/关键字多类型探活</li>
-<li><strong>告警通知</strong>：探活失败触发通知渠道（配置于系统内 Notification），恢复自动通知</li>
-<li><strong>状态页</strong>：可发布公开/私有状态页（当前以内部使用为主）</li>
-<li><strong>证书监控</strong>：HTTPS 域名证书到期提醒（marschat.online 全家桶统一在此盯）</li>
-<li><strong>使用建议</strong>：portal 卡片"在线/离线"是浏览器端即时探测，仅当前会话视角；Uptime Kuma 才是 7×24 权威存活记录，二者不一致时以 Kuma 历史为准</li>
+<li>核心模型：<strong>monitor（监控项）→ heartbeat（心跳）→ notification（通知）</strong>——monitor 按配置间隔对目标探测，逐次产生心跳记录，状态翻转（up/down）时触发已配置的通知渠道</li>
+<li>探测类型：HTTP(s)（状态码/关键字/证书）、TCP 端口、Ping、DNS、Docker 容器状态、Push（被动接收心跳）等十余种</li>
+<li>通知渠道：Telegram、邮件（SMTP）、Webhook、钉钉/飞书类等近百种集成</li>
+<li>状态页：可发布公开/私有状态页，聚合展示多个 monitor 的可用率</li>
+<li>存储：单文件 SQLite，全部配置与心跳历史在 /app/data</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>实例角色</strong>：全系统 7×24 存活哨兵 + 证书到期提醒；观测三层分工里的"告警层"</li>
+<li><strong>数据连接</strong>：</li>
+<li>探测目标：portal 收录的全部公网域名（main / kb / nexus / woodci / vault / note / memory / tokenhub / tools / tools-test / monitor 等）+ 内部服务端口</li>
+<li>无上游存储依赖：SQLite 自包含，数据全在 uptime-kuma-data 卷</li>
+<li><strong>为什么选它</strong>：单容器零依赖、UI 上手快、通知渠道丰富；对"十几个人用的家庭机房"场景，Kuma 的存活+通知粒度刚好，不需要 Prometheus 级别的复杂度</li>
+<li><strong>关键配置思路</strong>：</li>
+<li>monitor 探测间隔与重试次数按"公网域名严、内部端口松"区分</li>
+<li>通知渠道配置在系统内 Notification（渠道凭据不入文档）</li>
+<li>探测目标写公网域名时注意本机 Clash 出海代理会影响探测路径（内网 Debian 7890 端口有代理监听）</li>
+</ul>
+<h3 id="_7">观测三层分工（本实例所处位置）</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>系统</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>告警层</td>
+<td>Uptime Kuma（本篇）</td>
+<td>谁挂了、证书什么时候到期，7×24 主动通知</td>
+</tr>
+<tr>
+<td>定位层</td>
+<td>Grafana + Loki</td>
+<td>挂了之后查日志/趋势，定位原因</td>
+</tr>
+<tr>
+<td>台账层</td>
+<td>infra-monitor（自研）</td>
+<td>资产清单、账密登记、配置漂移</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monitor">monitor 探测类型（官方能力，实例使用的类型加粗）</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>实例用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HTTP(s)</strong></td>
+<td>探测 URL 状态码，可配关键字/证书到期</td>
+<td>公网域名全家桶 + 证书到期提醒</td>
+</tr>
+<tr>
+<td><strong>TCP</strong></td>
+<td>探测端口连通性</td>
+<td>内部服务端口（mysql/redis 等）</td>
+</tr>
+<tr>
+<td><strong>关键字</strong></td>
+<td>探测响应体包含/不包含指定文字</td>
+<td>页面被劫持/报错页误判兜底</td>
+</tr>
+<tr>
+<td>HTTP(s) - 关键字</td>
+<td>状态码+关键字组合</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Ping / DNS / Push / Docker</td>
+<td>其他类型</td>
+<td>实例未使用（能力层备选）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_8">通知机制（官方能力）</h3>
+<ul>
+<li>通知渠道（Notification）在系统内配置一次，可复用到多个 monitor；状态翻转（down→恢复 或 up→故障）即触发</li>
+<li>支持渠道近百种（Telegram/SMTP/Webhook/国内 IM webhook 等）；渠道凭据只存 SQLite，不落文档</li>
+<li>重试与确认：Heartbeats 重试次数达标才判 down，避免单次抖动误报</li>
+</ul>
+<h2 id="_9">部署与发布</h2>
+<h3 id="_10">编排与位置</h3>
+<ul>
+<li>compose 文件：<code>/opt/observability/docker-compose.yml</code>（内网 Debian 192.168.31.182）</li>
+<li>compose project：<code>observability</code>（同项目共 5 容器，<code>docker compose ls</code> 实采确认）</li>
+<li>容器名：<code>obs-uptime-kuma</code>，镜像 <code>louislam/uptime-kuma:1</code></li>
+</ul>
+<h3 id="_11">配置清单（实采）</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>宿主 15001 → 容器 3001</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td>命名卷 observability_uptime-kuma-data → /app/data（SQLite 库：monitor/心跳/通知渠道全部在此）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_12">发布/升级</h3>
+<p>自部署，无流水线。实际操作步骤（SSH 到 192.168.31.182）：</p>
+<ol>
+<li><strong>升级前备份</strong>（SQLite 含全部配置，必做）：
+   - <code>docker compose stop uptime-kuma</code>
+   - 拷贝 /var/lib/docker/volumes/observability_uptime-kuma-data/_data 到安全位置</li>
+<li>改 compose 镜像 tag（1.x 线内跟随，如 1.23.x）</li>
+<li><code>docker compose pull uptime-kuma &amp;&amp; docker compose up -d uptime-kuma</code></li>
+<li>验证：登录后抽查几个 monitor 心跳是否正常入库</li>
+</ol>
+<h3 id="_13">回滚</h3>
+<ul>
+<li>镜像回退：compose 改回旧 tag 后 <code>docker compose up -d uptime-kuma</code></li>
+<li>数据回退：用升级前备份的卷覆盖后重建容器（monitor 配置随之恢复）</li>
+</ul>
+<h2 id="_14">核心功能与使用</h2>
+<h3 id="_15">功能清单</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>什么场景用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>存活监控（18 个 monitor）</td>
+<td>portal 收录域名/系统 + 内部服务端口，HTTP(s)/TCP/关键字多类型探活，心跳历史形成可用率曲线</td>
+</tr>
+<tr>
+<td>告警通知</td>
+<td>探活失败触发通知渠道，恢复自动通知；改配置后先用 Notification 测试按钮验证</td>
+</tr>
+<tr>
+<td>证书监控</td>
+<td>HTTPS 域名证书到期提醒（marschat.online 全家桶统一在此盯）</td>
+</tr>
+<tr>
+<td>状态页</td>
+<td>可发布公开/私有状态页（当前以内部使用为主）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_16">使用原则（重要）</h3>
+<ul>
+<li><strong>portal 卡片"在线/离线"是浏览器端即时探测</strong>，仅当前会话视角</li>
+<li><strong>Uptime Kuma 才是 7×24 权威存活记录</strong>，二者不一致时以 Kuma 历史为准</li>
+</ul>
+<h3 id="_17">典型操作路径</h3>
+<ol>
+<li><strong>新增监控项</strong>：登录（:15001）→ Add New Monitor → 选类型（HTTP(s)/TCP/关键字）→ 填目标与间隔 → 配 Heartbeats 重试次数 → 保存</li>
+<li><strong>接通知渠道</strong>：登录 → Settings/Notifications → 添加渠道 → 逐个 monitor 勾选应用 → 点测试按钮验证链路</li>
+<li><strong>看可用率</strong>：首页 monitor 列表 → 点开单项 → 心跳条与 uptime 百分比 → 定位抖动时间点 → 转 Grafana 查对应时段日志</li>
+<li><strong>证书巡检</strong>：证书类 monitor 列表 → 查看到期天数 → 续期后确认告警解除</li>
+</ol>
+<h2 id="_18">依赖与关联</h2>
 <ul>
 <li>依赖：无外部中间件（SQLite 自包含）</li>
-<li>关联：infra-monitor（自研，台账+配置漂移+账密登记视角）；Grafana（指标/日志可视化）——三层分工：Kuma 管存活告警、Grafana 管趋势定位、infra-monitor 管资产台账</li>
+<li>关联：infra-monitor（自研，台账+配置漂移+账密登记视角）；Grafana+Loki（日志定位）；腾讯云2号上全部子域均在其探活范围内</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_19">运维要点</h2>
+<h3 id="_20">启停 / 备份</h3>
 <ul>
-<li>启停：内网 Debian /opt/observability compose 项目</li>
+<li>启停：内网 Debian /opt/observability compose 项目，<code>docker compose up -d uptime-kuma</code> / <code>stop uptime-kuma</code></li>
 <li>数据与备份：uptime-kuma-data 卷内 SQLite，改 monitor/通知后建议顺手备份该卷；未纳入统一备份体系</li>
 <li>日志：容器日志可由同机 Dozzle（:15888）直查</li>
-<li>常见问题：告警发不出先测 Notification 测试按钮；monitor 探测目标写公网域名时注意本机 Clash 出海代理会影响探测路径（内网 Debian 7890 端口有代理监听）</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h3 id="_21">常见问题</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>告警发不出</td>
+<td>渠道凭据失效或未应用到 monitor</td>
+<td>先点 Notification 测试按钮，再逐 monitor 检查勾选</td>
+</tr>
+<tr>
+<td>探测结果时好时坏</td>
+<td>探测路径经过本机代理（7890）</td>
+<td>确认 monitor 目标的期望路径，必要时调整探测出口</td>
+</tr>
+<tr>
+<td>Kuma 自身挂了没人报警</td>
+<td>无外部拨测兜底</td>
+<td>已知边界：依赖人工发现，整机断电场景告警自身失效</td>
+</tr>
+<tr>
+<td>心跳大量 down 但服务正常</td>
+<td>Kuma 所在网络到目标链路抖动</td>
+<td>对照 Grafana 时段日志 + Tailscale 状态综合判断</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ssh-root19216831182">操作速查（SSH root@192.168.31.182）</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>看状态</td>
+<td><code>docker compose -f /opt/observability/docker-compose.yml ps uptime-kuma</code></td>
+</tr>
+<tr>
+<td>重启</td>
+<td><code>docker compose -f /opt/observability/docker-compose.yml restart uptime-kuma</code></td>
+</tr>
+<tr>
+<td>备份配置</td>
+<td>stop 后拷贝 /var/lib/docker/volumes/observability_uptime-kuma-data/_data</td>
+</tr>
+<tr>
+<td>看容器日志</td>
+<td>同机 Dozzle :15888 选 obs-uptime-kuma</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_22">维护节奏建议</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成；monitor 数量取自 portal 卡片描述 18 个）</li>
+<li>改 monitor / 通知渠道后：顺手备份 data 卷（SQLite 单文件，拷走即可）</li>
+<li>每次新子域上线：同步在 Kuma 加 monitor + 证书监控，保持探活范围与 portal 收录一致</li>
+<li>季度巡检：抽查通知渠道有效性（点测试按钮），防止渠道凭据过期静默失效</li>
+</ul>
+<h3 id="checklist">新系统接入监控 checklist</h3>
+<ol>
+<li>portal 收录新系统时，同步在 Kuma 建 monitor（HTTP(s) 类型，目标写公网域名）</li>
+<li>内部有裸端口服务（不挂域名）的，补 TCP 类型 monitor</li>
+<li>HTTPS 域名一并建证书到期 monitor</li>
+<li>monitor 应用到统一通知渠道，并点测试按钮验证</li>
+<li>回填 portal 卡片描述中的 monitor 数量口径（当前 18 个）</li>
+</ol>
+<h3 id="portal">与 portal 卡片"在线/离线"的关系</h3>
+<ul>
+<li>portal 前端卡片状态是浏览器即时探测：只反映"你此刻的网络视角"，跨网/代理场景会误判</li>
+<li>Kuma 的心跳历史才是权威：间隔探测 + 重试确认 + 7×24 留痕</li>
+<li>排查顺序建议：Kuma 心跳正常 → 问题在用户侧网络；Kuma 也 down → 按告警链路处理</li>
+</ul>
+<h2 id="_23">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（compose 编排/挂载实采核验；三层分工表、FAQ 表整理；monitor 数量沿用 portal 卡片描述 18 个）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

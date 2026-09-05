@@ -66,11 +66,15 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>源码位置</td>
-<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\cosmic-studio\</code>（Gitee <code>git@gitee.com:jonesAriven/cosmic-studio.git</code>）；含 <code>app/</code>（FastAPI）、<code>frontend/</code>（Vue3）、<code>scripts/</code>、<code>docs/</code></td>
+<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\cosmic-studio\</code>（Gitee <code>git@gitee.com:jonesAriven/cosmic-studio.git</code>）；mykng 机 <code>/root/devtools/cosmic-studio</code>；含 <code>app/</code>（FastAPI）、<code>frontend/</code>（Vue3）、<code>scripts/</code>、<code>docs/</code></td>
 </tr>
 <tr>
 <td>CI/CD</td>
 <td>当前手动 <code>docker compose up -d --build</code>（<strong>必须 --build，restart 不更新镜像内代码</strong>）；流水线就绪后接入 Woodpecker</td>
+</tr>
+<tr>
+<td>编排</td>
+<td>mykng 机 <code>/root/devtools/cosmic-studio/docker-compose.yml</code>（材料包镜像 <code>material/composes/cosmic.yml</code>）</td>
 </tr>
 </tbody>
 </table>
@@ -92,9 +96,176 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
        platform-mysql-1 (105:3306 入口) + GR 从节点 (182:3307/3308)
        库：cosmic_active / cosmic_archive / cosmic_studio
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
-<p>前后端分离，能力以 <code>app/</code> 下 FastAPI 路由暴露（前缀 <code>/api</code>，<code>/docs</code> 有全量 Swagger）：</p>
-<h3 id="_5">两库模型</h3>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">总体架构</h3>
+<p>FastAPI（<code>app/</code>）+ Vue3（<code>frontend/</code>）前后端分离，后端三层：</p>
+<pre><code>app/
+├── routers/    # 路由层：auth（/api/auth）、dimension（/api/{dim}，dim=active|archive）、
+│               #          reviews（/api/active）、studio（/api 规则/词库）、chat（/api 对话）
+├── engines/    # 确定性引擎：derive（F/E/EWX/H/J 推导）、linter（12 类门禁检查）、
+│               #              similarity（Jaccard 相似度/预过滤）、spec、vocab_miner（词库挖掘）
+├── services/   # 应用服务：xlsx_import/xlsx_export、json_io、tree、versioning、audit、
+│               #             llm、project_copy
+└── db.py / auth.py / config.py / paging.py
+</code></pre>
+<p>角色权限：<code>users</code> 表 + <code>require_role("viewer")</code> 等依赖注入，接口按角色（viewer 及以上）管控。</p>
+<h3 id="scriptsinit_dbpy">核心数据模型（scripts/init_db.py，三库同构）</h3>
+<p>同一套建表脚本在 <code>cosmic_active</code>（编写库）/ <code>cosmic_archive</code>（归档库）/ <code>cosmic_studio</code>（系统库）三库执行：</p>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projects</code></td>
+<td>度量项目</td>
+</tr>
+<tr>
+<td><code>modules</code></td>
+<td>模块（一/二/三级，业务主键 = project + 层级名）</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td>功能点 FP（挂模块，自动推导 F/E）</td>
+</tr>
+<tr>
+<td><code>sub_processes</code></td>
+<td>子过程（EWX/H/J 数据移动，挂 FP）</td>
+</tr>
+<tr>
+<td><code>screenshots</code></td>
+<td>功能过程代码截图</td>
+</tr>
+<tr>
+<td><code>rule_forbidden_words</code></td>
+<td>禁词表（规则即数据）</td>
+</tr>
+<tr>
+<td><code>rule_pseudo_fields</code></td>
+<td>伪字段黑名单（PII 拦截）</td>
+</tr>
+<tr>
+<td><code>attr_pools</code></td>
+<td>属性池（池化差异化检查依据）</td>
+</tr>
+<tr>
+<td><code>vocab_categories</code> / <code>vocab_terms</code></td>
+<td>词库分类与词条</td>
+</tr>
+<tr>
+<td><code>versions</code></td>
+<td>版本快照（xlsx + sha256，禁覆盖）</td>
+</tr>
+<tr>
+<td><code>import_jobs</code></td>
+<td>导入任务</td>
+</tr>
+<tr>
+<td><code>spec_rules</code></td>
+<td>规格规则</td>
+</tr>
+<tr>
+<td><code>users</code> / <code>app_kv</code> / <code>llm_config</code> / <code>chat_logs</code> / <code>review_items</code></td>
+<td>账号 / 系统键值 / LLM 配置 / 对话日志 / 评审项</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">关键设计决策</h3>
+<ol>
+<li><strong>双库模型</strong>：cosmic_active 全量 API 读写（编写工作库），cosmic_archive 仅人工导入（增量 upsert / 全量覆盖，无自动归档）——编写与归档分离，跨库查重（85%）防止重复需求入库。</li>
+<li><strong>规则即数据</strong>：禁词表 <code>rule_forbidden_words</code>、伪字段黑名单 <code>rule_pseudo_fields</code>、字段池 <code>attr_pools</code> 均为库表数据，评审反哺 = 插一行规则立即全局生效，无需发版。</li>
+<li><strong>确定性引擎优先</strong>：derive/linter/similarity 全部是确定性规则（12 类检查 + Jaccard 相似度预过滤），不依赖 LLM；LLM 仅用于对话/编写辅助，保证门禁结果可复现。</li>
+<li><strong>导入覆盖必须可回滚</strong>：全量覆盖前自动备份整维度 JSON 到 <code>/data/backups/</code>，报告回传备份路径；版本快照（xlsx+sha256）禁覆盖。</li>
+</ol>
+<h3 id="_7">对外接口概览</h3>
+<p>前缀 <code>/api</code>，<code>/docs</code> 有全量 Swagger：</p>
+<ul>
+<li><code>/api/auth</code>：登录与会话（auth.py）</li>
+<li><code>/api/{active|archive}/projects|modules|fps|subs</code>：项目树 CRUD（dimension.py，<code>/api/{dim}</code> 动态前缀）</li>
+<li><code>/api/{dim}/projects/{pid}/derive?fix=</code>、<code>/lint</code>：推导与门禁</li>
+<li><code>/api/{dim}/import/xlsx|json</code>、<code>/projects/{pid}/export/xlsx|json</code>：导入导出矩阵</li>
+<li><code>/api/active/...</code>（reviews.py）：评审项</li>
+<li><code>/api/studio/rules</code>、<code>/api/studio/vocab</code>：规则与词库（studio.py）</li>
+<li><code>/api</code>（chat.py）：LLM 对话；<code>/api/health</code>：健康检查</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<h3 id="_9">编排与位置</h3>
+<ul>
+<li>compose：mykng 机 <code>/root/devtools/cosmic-studio/docker-compose.yml</code>（SSH 实采原文）：</li>
+</ul>
+<pre><code class="language-yaml">services:
+  cosmic-api:
+    build: { context: ., dockerfile: Dockerfile }
+    image: cosmic-studio-api:0.2.0
+    container_name: cosmic-api
+    restart: unless-stopped
+    environment:
+      DB_HOST: 192.168.31.105        # platform-mysql 集群成员（host 网络 3306）
+      DB_PORT: &quot;3306&quot;
+      DB_USER: （账密见 Vaultwarden / infrastructure-map）
+      DB_PASSWORD: （账密见 Vaultwarden / infrastructure-map）
+      DATA_DIR: /data
+    volumes:
+      - /root/devtools/cosmic-studio/data:/data
+    healthcheck:
+      test: [&quot;CMD-SHELL&quot;, &quot;python -c \&quot;import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)\&quot;&quot;]
+      interval: 30s / timeout: 5s / retries: 3 / start_period: 10s
+
+  cosmic-web:
+    build: { context: ., dockerfile: frontend/Dockerfile.web }
+    image: cosmic-studio-web:0.2.0
+    container_name: cosmic-web
+    restart: unless-stopped
+    ports:
+      - &quot;8310:80&quot;
+    depends_on:
+      cosmic-api: { condition: service_started }
+</code></pre>
+<h3 id="_10">配置清单</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>cosmic-web：宿主机 8310 → 容器 80；cosmic-api：容器 8000 仅 compose 内网络，无宿主映射</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td><code>/root/devtools/cosmic-studio/data → /data</code>（DATA_DIR：备份 JSON 等）</td>
+</tr>
+<tr>
+<td>环境（只列名）</td>
+<td><code>DB_HOST</code>/<code>DB_PORT</code>（platform-mysql 集群入口 105:3306）、<code>DB_USER</code>/<code>DB_PASSWORD</code>（见 Vaultwarden / infrastructure-map）、<code>DATA_DIR</code></td>
+</tr>
+<tr>
+<td>健康检查</td>
+<td>cosmic-api 容器内每 30s 自检 <code>http://127.0.0.1:8000/api/health</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">发布/升级</h3>
+<p>当前手动发布（不走 woodScript）：</p>
+<pre><code class="language-bash"># mykng 机上
+cd /root/devtools/cosmic-studio
+docker compose up -d --build    # 必须 --build，restart 不更新镜像内代码
+</code></pre>
+<p>初始化（一次性）：<code>scripts/init_db.py</code>（建库建表 + 种子规则，幂等）；存量迁移 <code>scripts/migrate_from_hermes.py</code>（Hermes SQLite → 三库）。</p>
+<h3 id="_12">回滚</h3>
+<ul>
+<li>镜像回退：改 compose <code>image:</code> tag 到旧版本（0.2.0 → 旧 tag）后 <code>docker compose up -d --force-recreate</code></li>
+<li>覆盖导入回滚：使用导入报告回传的 <code>/data/backups/</code> 备份 JSON，经导入接口恢复</li>
+<li>版本快照：<code>versions</code> 表 xlsx + sha256 可下载还原</li>
+</ul>
+<h2 id="_13">核心功能与使用</h2>
+<h3 id="_14">两库模型</h3>
 <ul>
 <li><strong>cosmic_active（编写库/工作库）</strong>：API 全量读写 + LLM 编写（P1 规划）。</li>
 <li><strong>cosmic_archive（归档库）</strong>：<strong>仅人工导入</strong>（增量 upsert / 全量覆盖），无自动归档。</li>
@@ -109,20 +280,19 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li><code>POST /api/active/projects/{pid}/fps</code>：建 FP（自动推导 F/E + 标准 EW/ERX 子过程）。</li>
 <li><code>POST /api/active/fps/{fid}/subs</code>：建子过程（自动推导 H/J，校验 EWX/分隔符/字段数）。</li>
 </ul>
-<h3 id="_6">推导引擎与质量门禁</h3>
+<h3 id="_15">推导引擎与质量门禁</h3>
 <ul>
 <li><code>POST /api/{dim}/projects/{pid}/derive?fix=</code>：推导检查/修复（F/E/EWX/H/J 五列一致性）。</li>
 <li><code>GET /api/{dim}/projects/{pid}/lint</code>：全量门禁（12 类检查 + 跨库相似度），返回报告。</li>
 <li>12 类检查：F 列格式 / E 列格式 / EWX 规范 / 子过程描述 / 数据组后缀 / 数据属性分隔符与字段数 / 禁词 / 伪字段 PII / 属性池化差异化（重复集合 + Jaccard≥0.85）/ 同需求相似度 65%（E 类豁免）/ 跨库相似度 85%（active↔archive，Jaccard 预过滤）/ 字段池覆盖。</li>
-<li><strong>规则即数据</strong>：禁词表 <code>rule_forbidden_words</code>、伪字段黑名单 <code>rule_pseudo_fields</code>、字段池 <code>attr_pools</code> 均在 cosmic_studio 库，评审反哺 = 插规则行立即全局生效。</li>
 </ul>
-<h3 id="_7">导入导出矩阵</h3>
+<h3 id="_16">导入导出矩阵</h3>
 <ul>
 <li>增量导入：<code>POST /api/{dim}/import/xlsx?mode=incremental&amp;project_id=N</code>（按业务主键 upsert：模块=(project,一/二/三级)，FP=(module,FP名)，命中即整体重写子过程）；JSON 同理 <code>POST /api/{dim}/import/json</code>。</li>
 <li>全量覆盖：<code>mode=overwrite&amp;project_id=N</code> 或 <code>mode=overwrite&amp;confirm=&lt;dimension&gt;</code>（整库，需二次确认）；覆盖前自动备份整维度 JSON 到 <code>/data/backups/</code>，报告回传备份路径。</li>
 <li>导出：<code>GET /api/{dim}/projects/{pid}/export/xlsx</code>（标准 COSMIC xlsx，固定格式：表头 4 行 + 数据第 5 行起，A-C 跨需求合并、D 按模块、E-G+L-M 按 FP、H/I/J/K 每行独立，行高 60，Noto Sans CJK SC）、<code>/export/json</code>。</li>
 </ul>
-<h3 id="_8">版本与系统库</h3>
+<h3 id="_17">版本与系统库</h3>
 <ul>
 <li><code>POST /api/active/projects/{pid}/versions</code>：版本快照（xlsx + sha256，禁覆盖）。</li>
 <li><code>GET /api/studio/rules</code>、<code>/api/studio/vocab</code>：禁词/伪字段/字段池统计、词库查询。</li>
@@ -131,7 +301,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <ul>
 <li>编写库/归档库双视图、项目树编辑、推导修复一键执行、lint 报告可视化、导入导出向导、版本管理。</li>
 </ul>
-<h2 id="_9">依赖与关联</h2>
+<h3 id="_18">典型操作路径</h3>
+<ul>
+<li><strong>新表编写</strong>：登录 <code>http://192.168.31.105:8310/</code> → 编写库视图 → 建项目 → 建模块 → 建 FP/子过程（引擎自动推导补列）→ derive?fix=true 一键修复 → lint 通过。</li>
+<li><strong>存量导入</strong>：前端导入导出向导 → 选维度与 mode（incremental 增量 / overwrite 全量需二次确认）→ 上传 xlsx → 查看导入报告（含备份路径）。</li>
+<li><strong>评审反哺</strong>：lint 报告定位问题 → 归因到禁词/伪字段/字段池 → <code>/api/studio/rules</code> 或前端词库页插规则行 → 立即全局生效。</li>
+<li><strong>归档与查重</strong>：编写库定稿 → 导出 xlsx → 归档库导入 → 新需求 lint 时自动做 active↔archive 跨库 85% 相似度检查。</li>
+</ul>
+<h2 id="_19">依赖与关联</h2>
 <ul>
 <li>数据库：platform-mysql <strong>GR 集群</strong>（105:3306 入口，多主同步 182:3307/3308），库 cosmic_active/cosmic_archive/cosmic_studio。</li>
 <li>初始化：<code>scripts/init_db.py</code>（建库建表 + 种子规则，幂等，需 root 密码见 Vaultwarden/infrastructure-map）；<code>scripts/migrate_from_hermes.py</code>（存量从 Hermes SQLite 迁移）。</li>
@@ -139,20 +316,21 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li><strong>workcheck 工作量管理系统</strong>：同样含 COSMIC 生成/二代工作台（面向研发团队工作量场景，内置规则引擎）；cosmic-studio 是独立的生产系统，强调双库 + 门禁 + 跨库查重，数据模型不同、互补。</li>
 <li>infra-monitor / Dozzle / Grafana：可观测 cosmic-web/cosmic-api 容器。</li>
 </ul>
-<h2 id="_10">运维要点</h2>
+<h2 id="_20">运维要点</h2>
 <ul>
 <li>启停：mykng 上 <code>docker compose up -d --build</code>（<strong>必须 --build</strong>）；<code>deploy-*.sh</code> 见 <code>docs/DEPLOY.md</code>。</li>
 <li>健康检查：<code>curl http://192.168.31.105:8310/api/health</code> → <code>{"status":"ok","db_active":true,"db_archive":true,"db_studio":true}</code>（2026-09-05 实采确认三库连通）。</li>
 <li>日志：<code>docker logs cosmic-web</code> / <code>cosmic-api</code>；<code>obs-dozzle</code>（mykng :15500）实时；Grafana/Loki 聚合。</li>
-<li>数据与备份：三库在 MySQL GR（多副本）；覆盖导入自动备份到 <code>/data/backups/</code>；MySQL 本身建议纳入定期备份体系。</li>
+<li>数据与备份：三库在 MySQL GR（多副本）；覆盖导入自动备份到 <code>/data/backups/</code>（宿主 <code>/root/devtools/cosmic-studio/data</code>）；MySQL 本身建议纳入定期备份体系。</li>
 <li>常见问题：</li>
 <li>改代码不生效：compose 必须 <code>--build</code>，仅 <code>restart</code> 不会更新镜像内代码。</li>
 <li>lint 报错难定位：报告按 12 类分组，优先看 F/E 列格式与 EWX 规范；跨库相似度 85% 多为重复需求，需人工去重或反哺规则。</li>
 <li>导入失败：先确认 <code>mode</code> 与 <code>confirm</code> 参数；覆盖导入会先备份，异常可回滚备份 JSON。</li>
 </ul>
-<h2 id="_11">变更记录</h2>
+<h2 id="_21">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 <code>cosmic-studio/README.md</code> + <code>docs/</code> + 容器实采 docker ps/health 生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计：routers/engines/services 分层、18 张表模型、4 条设计决策、接口概览；新增部署与发布：compose 原文（SSH 实采）/配置清单/回滚方式；使用节补 4 条典型操作路径；凭证改为 Vaultwarden 引用）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于 <code>cosmic-studio/README.md</code> + <code>docs/</code> + 容器实采 docker ps/health 生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

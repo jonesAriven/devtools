@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td><strong>(待确认)</strong> 实采未发现运行/停止态的 phpMyAdmin 或 pma 容器（mykng 与内网 Debian 均无）</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 phpMyAdmin 或 pma 容器（2026-09-05 复核 mykng <code>docker ps -a</code> 仍无）</td>
 </tr>
 <tr>
 <td>端口</td>
@@ -78,13 +78,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+<td>无（自部署，platform 部署目录未定义该服务）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
 <blockquote>
-<p>⚠️ <strong>重要 discrepancy（2026-09-05 实采）</strong>：portal 项目清单登记的公网入口为 <code>https://tools.marschat.online/pma/</code>，但逐一核实后：
+<p>⚠️ <strong>重要 discrepancy（2026-09-05 实采，v2 复核仍成立）</strong>：portal 项目清单登记的公网入口为 <code>https://tools.marschat.online/pma/</code>，但逐一核实后：
 - mykng 与内网 Debian 的 <code>docker ps -a</code> 均无 phpMyAdmin / pma 容器；
 - 腾讯云2号 nginx（<code>/etc/nginx/sites-available/tools.marschat.online</code>）与 mykng nginx（<code>/etc/nginx/conf.d/locations/*</code>）均无 <code>/pma/</code> location；
 - <code>/root/devtools/platform/</code> 部署目录（grep akhq|phpmyadmin|redisinsight|mongo-express）未定义该服务。</p>
@@ -105,48 +105,71 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
       无 /pma/ 段落 → 链路断点，无法抵达任何 phpMyAdmin 实例
 </code></pre>
 <p>预期（若重新部署）后端链路应为：<code>phpMyAdmin → platform-mysql-1:3306（GR Node1）</code>，并建议指向 GR 集群读写/读节点。<strong>(待确认)</strong></p>
-<h2 id="mysql-gr">后端 MySQL GR 集群实况（已实采确认）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>phpMyAdmin 是 PHP 实现的 MySQL/MariaDB Web 管理工具：无本地存储（无状态），通过 PHP mysqli 连接目标 MySQL，提供库表结构浏览、SQL 执行、导入导出、用户权限管理等 DBA 界面；官方以 <code>phpmyadmin/phpmyadmin</code> 镜像分发，经 <code>PMA_HOST</code>/<code>PMA_PORT</code> 等环境变量指向后端数据库。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>架构：MySQL Group Replication，3 节点。</li>
+<li><strong>实例角色（规划）</strong>：作为 MySQL GR 集群的 Web 管理入口，供 DBA/运维做库表浏览与应急 SQL 操作；当前<strong>未部署</strong>，仅存在于 portal 登记表。</li>
+<li><strong>后端实况（已实采确认）</strong>：MySQL Group Replication 3 节点集群——</li>
 <li>Node1：<code>platform-mysql-1</code>（mykng，mysql:8.0，:3306 / 组内通信 :33061）</li>
 <li>Node2：<code>platform-mysql-2</code>（内网 Debian，:3307）</li>
 <li>Node3：<code>platform-mysql-3</code>（内网 Debian，:3308）</li>
-<li>部署脚本：<code>/root/devtools/platform/mysql/</code>（deploy-mysql-cluster.sh）。</li>
-<li>数据：集群承载 <code>tools</code> 库（含 portal 的 <code>portal_system</code> 表）及 KB 等业务的库。</li>
-<li>若面板恢复，连接目标建议为单节点（如 Node1 :3306），或由 phpMyAdmin 通过代理节点访问；GR 多写需注意写入路由。</li>
+<li>部署脚本：<code>/root/devtools/platform/mysql/</code>（deploy-mysql-cluster.sh）；</li>
+<li>集群承载 <code>tools</code> 库（含 portal 的 <code>portal_system</code> 表）及 KB 等业务的库。</li>
+<li><strong>谁读写它</strong>：所有用 MySQL 的服务（KB 体系 kb-*、portal、activecode 等）直连 GR 集群；phpMyAdmin 若恢复部署，仅作为人工管理面接入（连接目标建议单节点如 Node1 :3306；GR 多写需注意写入路由）。</li>
+<li><strong>关键设计约束</strong>：GR 集群多写节点，面板连接单节点时读写路由需谨慎；MySQL 8.0 默认认证插件 caching_sha2_password 需确认 phpMyAdmin 版本兼容，必要时建专用账号。</li>
+</ul>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">当前状态</h3>
+<p><strong>(待确认/未部署)</strong> platform 部署目录与两台宿主机均无该服务定义与容器。</p>
+<h3 id="_9">恢复部署参考（非当前生效，供运维实施用）</h3>
+<ul>
+<li>镜像：<code>phpmyadmin/phpmyadmin</code>（官方）。</li>
+<li>编排建议：在 mykng 以容器/compose 部署，加入与 <code>platform-mysql-1</code> 相同的 docker 网络（如 platform-net）。</li>
+<li>关键环境变量：<code>PMA_HOST=platform-mysql-1</code>、<code>PMA_PORT=3306</code>（值按运维方案定，凭证不落盘）。</li>
+<li>反代链路：mykng nginx 增加 <code>/pma/</code> location（与 minio/meilisearch 同级），再经腾讯云2号 <code>tools.marschat.online</code> 暴露；或仅 Tailscale 暴露。</li>
+<li>发布：手工 <code>docker compose up -d</code>（无流水线）；回滚 = 移除容器，无状态无数据回退需求。</li>
 </ul>
 <h2 id="phpmyadmin">核心功能与使用（能力层面，基于 phpMyAdmin 通用能力）</h2>
+<h3 id="_10">功能清单</h3>
 <ul>
 <li>库表浏览与结构查看：查看 GR 集群中各库、表结构、索引。</li>
 <li>SQL 执行：在 Web 端直接执行查询/管理语句（生产环境慎用，建议走只读节点）。</li>
 <li>数据导入导出：库表级 dump 与恢复（注意集群导出需排除 GTID/复制相关项以免破坏 GR）。</li>
 <li>用户与权限：查看/管理 MySQL 账号（集群账号需与 GR 复制一致，谨慎操作）。</li>
 </ul>
+<h3 id="_11">典型操作路径（部署后的预期用法）</h3>
+<ol>
+<li>打开 <code>https://tools.marschat.online/pma/</code>（或内网/Tailscale 端口）→ 输入 MySQL 账号密码（见 Vaultwarden）登录。</li>
+<li>左侧选库/表 → 浏览数据、查看结构；SQL 标签页执行查询（只读操作优先）。</li>
+<li>导出：选库 → Export → 导出 dump（排除 GTID 相关项）。</li>
+</ol>
 <blockquote>
 <p>具体按钮级操作以实际部署后的面板为准，本文不编造未实装界面的步骤。</p>
 </blockquote>
-<h2 id="_4">依赖与关联</h2>
+<h2 id="_12">依赖与关联</h2>
 <ul>
 <li>依赖：后端 MySQL GR 集群 <code>platform-mysql-1</code>（mykng :3306）、Node2/Node3（内网 Debian :3307/:3308）。</li>
 <li>被依赖/关联系统：DBA/运维人工管理 MySQL 时使用；KB 体系（kb-*）、portal、activecode 等所有用 MySQL 的服务均落在该集群。</li>
 </ul>
-<h2 id="_5">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
-<li>启停方式：<strong>(待确认)</strong> 当前未部署。若要恢复，建议在 mykng 以容器方式部署 phpMyAdmin 并连接到 <code>platform-mysql-1:3306</code>，再在 mykng nginx 增加 <code>/pma/</code> location（或在腾讯云2号增加对应反代）。部署命令以运维实际方案为准。</li>
-<li>部署参考（非当前生效，供恢复用）：phpMyAdmin 官方镜像 <code>phpmyadmin/phpmyadmin</code>，环境变量 <code>PMA_HOST=platform-mysql-1</code>、<code>PMA_PORT=3306</code>，置于 mykng 同一 docker 网络；反代建议放 mykng nginx（与 minio/meilisearch 同级），再经腾讯云2号 <code>tools.marschat.online</code> 暴露。</li>
-<li>日志查看：部署后 <code>docker logs &lt;pma 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>启停：<strong>(待确认)</strong> 当前未部署；若恢复，启停即容器 <code>docker start/stop &lt;pma 容器&gt;</code>。</li>
+<li>日志：部署后 <code>docker logs &lt;pma 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
 <li>数据与备份：phpMyAdmin 本身无状态，数据即后端 MySQL；MySQL 备份以 GR 集群备份策略（见 infra-monitor）为准。</li>
 <li>安全：公网暴露管理面板风险高，建议加访问保护（Basic Auth 或仅 Tailscale 暴露），凭证统一存 Vaultwarden。</li>
 </ul>
-<h2 id="_6">常见问题</h2>
+<h2 id="_14">常见问题</h2>
 <ul>
 <li>公网 <code>/pma/</code> 当前无上游，访问会落到 tools 站点的 302 兜底（跳 /activecode/）或直接无响应——属预期「未部署」表现。</li>
 <li>GR 集群多写节点，phpMyAdmin 连接单节点时需注意读写路由，避免跨节点写入冲突。</li>
 <li>恢复部署时留意 phpMyAdmin 与 MySQL 8.0 的认证插件（caching_sha2_password）兼容性，必要时建专用账号。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_15">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 pma 面板实采未部署、入口待确认，并补充 GR 集群后端实况</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；复核面板仍未部署（docker ps -a 复核），维持 v1 实采结论</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 pma 面板实采未部署、入口待确认，并补充 GR 集群后端实况</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

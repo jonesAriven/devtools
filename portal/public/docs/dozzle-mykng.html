@@ -58,7 +58,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>amir20/dozzle:latest（容器实采）</td>
+<td>amir20/dozzle:latest（容器实采 2026-09-05）</td>
 </tr>
 <tr>
 <td>部署位置</td>
@@ -78,7 +78,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，独立容器运行）</td>
+<td>无（自部署）</td>
 </tr>
 </tbody>
 </table>
@@ -94,27 +94,325 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
   → http://192.168.31.105:15500（docker-proxy 直连）
   → 容器 obs-dozzle (:8080) → 读 docker.sock 容器日志流
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Dozzle 是轻量级 Docker 日志查看器，官方能力要点：</p>
 <ul>
-<li><strong>实时日志流</strong>：kb-gateway/kb-auth/kb-file/kb-knowledge/kb-intelligence、portal-server/portal-web、kb-ops、infra-monitor、workcheck-python、cosmic-api/cosmic-web、memory-panel、woodpecker-server/agent、nexus、platform-*（mysql/redis/mongo/minio/meilisearch/kafka/nacos）、vaultwarden 等，全部一页可达</li>
-<li><strong>搜索/合并视图</strong>：多容器同屏合并（如 kb 五件套联排）排接口链路问题特别顺</li>
-<li><strong>典型场景</strong>：流水线部署后马上盯新容器启动日志确认健康检查为何不过；生产接口报错时实时看 gateway 日志（与 Loki 历史检索互补）</li>
-<li>与 Loki 分工：Dozzle 看实时，Loki（Grafana）查历史跨机</li>
+<li>工作原理：挂载 docker.sock 后直接调用 Docker API 拉取各容器 stdout/stderr 流，浏览器实时呈现——<strong>不存储、不索引、零落盘</strong></li>
+<li>能力：单容器/多容器实时流、多容器合并视图（同屏按时间混排）、日志内搜索、时间范围回看（依赖 Docker 自身保留的日志文件）、日志文件下载</li>
+<li>无数据库、无采集端：单容器 + 一个 sock 挂载即完整可用</li>
+<li>认证可选：默认无认证；官方支持用户/代理级认证，我们实例未启用（靠网络边界保护）</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_6">我们的集成设计</h3>
+<ul>
+<li><strong>实例角色</strong>：主部署机 mykng 全部约 30 个容器的实时日志窗口；与内网 Deb 同款组成"每台 Docker 主机一个 Dozzle"的布局；观测分工里的"即时视角"</li>
+<li><strong>数据连接</strong>：只读 docker.sock → Docker daemon → 本机全部容器日志：</li>
+<li>业务应用：kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence、portal-server / portal-web、kb-ops、infra-monitor、workcheck-python、cosmic-api / cosmic-web、memory-panel</li>
+<li>平台与 CI：woodpecker-server / agent、nexus</li>
+<li>中间件：platform-*（mysql / redis / mongo / minio / meilisearch / kafka / nacos）</li>
+<li>其他：vaultwarden 等</li>
+<li><strong>为什么选它</strong>：mykng 容器密度最高（流水线部署目标机），部署后盯启动日志的频次也最高，一个常驻入口最省事</li>
+<li><strong>关键配置思路</strong>：与内网 Deb 实例不同，本实例是<strong>独立容器</strong>（docker inspect 无 compose project 标签，实采确认），不随任何 compose 项目启停；无认证，靠网络边界保护</li>
+</ul>
+<h3 id="dozzle">三台 Dozzle 布局</h3>
+<table>
+<thead>
+<tr>
+<th>实例</th>
+<th>主机</th>
+<th>入口</th>
+<th>编排</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dozzle (mykng)（本篇）</td>
+<td>192.168.31.105</td>
+<td>:15500</td>
+<td>独立容器（docker run）</td>
+</tr>
+<tr>
+<td>Dozzle (内网 Deb)</td>
+<td>192.168.31.182</td>
+<td>:15888</td>
+<td>observability compose 项目</td>
+</tr>
+<tr>
+<td>Dozzle (腾讯云2号)</td>
+<td>1.117.70.30（Tailscale 侧）</td>
+<td>:15500</td>
+<td>独立部署</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">与其他日志通道的分工</h3>
+<table>
+<thead>
+<tr>
+<th>通道</th>
+<th>看什么</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dozzle（本篇）</td>
+<td>"现在"：实时流</td>
+<td>直连快、无查询语法、不留痕</td>
+</tr>
+<tr>
+<td>Grafana + Loki</td>
+<td>"历史"：可跨机检索</td>
+<td>有标签模型、可回看任意时段</td>
+</tr>
+<tr>
+<td>Woodpecker CI 日志</td>
+<td>"构建/部署"过程输出</td>
+<td>部署问题在 CI 日志，运行问题在 Dozzle</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ssh-docker-logs">与"SSH + docker logs"的对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>SSH + docker logs</th>
+<th>Dozzle（本篇）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>入口成本</td>
+<td>每次开终端、记容器名</td>
+<td>浏览器收藏夹直达</td>
+</tr>
+<tr>
+<td>多容器对比</td>
+<td>多窗口手工切</td>
+<td>合并视图同屏混排</td>
+</tr>
+<tr>
+<td>搜索</td>
+<td>管道 grep</td>
+<td>输入框即时过滤</td>
+</tr>
+<tr>
+<td>导出</td>
+<td>手工 redirect</td>
+<td>内置下载</td>
+</tr>
+<tr>
+<td>权限面</td>
+<td>root SSH 全权</td>
+<td>仅日志读取（sock 只读能力）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_8">典型联动链路（部署验证场景）</h3>
+<pre><code>Woodpecker 流水线完成（构建/部署日志）
+  → 打开本机 Dozzle :15500 看新容器启动输出
+  → 健康检查不过 → 继续在 Dozzle 盯错误行
+  → 需要回看更早/跨机 → 转 Grafana + Loki
+</code></pre>
+<p>这套链路覆盖"部署是否成功"的完整确认闭环，是 mykng 日常发布的标准动作。</p>
+<h2 id="_9">部署与发布</h2>
+<h3 id="_10">编排与位置</h3>
+<ul>
+<li><strong>无 compose 编排</strong>（实采 2026-09-05：容器 labels 无 com.docker.compose.project / config_files，即 <code>docker run</code> 手工启动的独立容器）</li>
+<li>容器名：<code>obs-dozzle</code>，镜像 <code>amir20/dozzle:latest</code></li>
+</ul>
+<h3 id="_11">配置清单（实采）</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>宿主 15500 → 容器 8080</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td>/var/run/docker.sock → /var/run/docker.sock</td>
+</tr>
+</tbody>
+</table>
+<p>无环境变量、无数据卷（无状态）。</p>
+<h3 id="_12">发布/升级</h3>
+<p>自部署，手工管理（独立容器，无 compose）：</p>
+<ol>
+<li><code>docker pull amir20/dozzle:latest</code></li>
+<li><code>docker stop obs-dozzle &amp;&amp; docker rm obs-dozzle</code></li>
+<li>按原参数重新启动：<code>docker run -d --name obs-dozzle -p 15500:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle:latest</code></li>
+</ol>
+<blockquote>
+<p>注意：镜像用 latest，<code>docker pull</code> 后必须重建容器才生效。建议后续纳入 compose 编排以便参数留痕（改进项）。</p>
+</blockquote>
+<h3 id="_13">回滚</h3>
+<ul>
+<li>无状态无数据卷；回退 = 指定旧镜像 tag 重新 run</li>
+<li>误删容器直接按上面参数重建即恢复</li>
+</ul>
+<h2 id="_14">核心功能与使用</h2>
+<h3 id="_15">功能清单</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>什么场景用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>实时日志流</td>
+<td>kb 五件套 / portal / kb-ops / infra-monitor / woodpecker / nexus / platform-* 中间件等全部一页可达</td>
+</tr>
+<tr>
+<td>搜索 / 合并视图</td>
+<td>多容器同屏合并（如 kb 五件套联排）排接口链路问题</td>
+</tr>
+<tr>
+<td>日志导出下载</td>
+<td>现场留档</td>
+</tr>
+<tr>
+<td>时间回看</td>
+<td>回看刚滚过的启动输出</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_16">典型场景（实际用法）</h3>
+<ul>
+<li>流水线部署后马上盯新容器启动日志，确认健康检查为何不过</li>
+<li>生产接口报错时实时看 gateway 日志（与 Loki 历史检索互补）</li>
+<li>中间件（mysql/kafka/nacos 等）异常时快速看容器输出</li>
+</ul>
+<h3 id="_17">典型操作路径</h3>
+<ol>
+<li><strong>部署后盯启动</strong>：Woodpecker 部署完成 → 打开 :15500 → 选中刚发布的服务容器 → 观察启动输出到健康检查通过</li>
+<li><strong>跨服务排链路</strong>：多选 gateway + 对应业务服务 → 合并视图按时间对齐请求日志</li>
+<li><strong>导出现场</strong>：容器页 → 下载日志文件 → 留档</li>
+</ol>
+<h2 id="_18">依赖与关联</h2>
 <ul>
 <li>依赖：Docker daemon</li>
-<li>关联：Dozzle (内网 Deb)（192.168.31.182:15888）、Dozzle (腾讯云2号)（1.117.70.30:15500，Tailscale 侧）；Woodpecker CI 流水线日志看构建/部署，Dozzle 看应用运行时——部署问题在 CI 日志，运行问题在这里</li>
+<li>关联：</li>
+<li>Dozzle (内网 Deb)（192.168.31.182:15888）、Dozzle (腾讯云2号)（1.117.70.30:15500，Tailscale 侧）</li>
+<li>Woodpecker（构建/部署日志——部署问题在 CI 日志，运行问题在这里）</li>
+<li>Grafana+Loki（历史日志，可跨机检索）</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_19">运维要点</h2>
+<h3 id="_20">启停 / 备份</h3>
 <ul>
-<li>启停：<code>docker restart obs-dozzle</code>（单容器，无 compose 编排）——待确认是否已纳入某 compose 项目</li>
-<li>安全：无认证 + docker.sock，保持仅内网/Tailscale 可达，禁止公网反代</li>
+<li>启停：<code>docker restart obs-dozzle</code>（独立容器，无 compose 编排，实采确认）</li>
 <li>数据与备份：无状态，可随时重建</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h3 id="_21">常见问题</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>某容器日志为空</td>
+<td>服务把日志写到文件而非 stdout</td>
+<td>确认日志配置；文件日志去 Loki 查</td>
+</tr>
+<tr>
+<td>升级 latest 后行为变化</td>
+<td>tag 未固定</td>
+<td>固定具体版本 tag 重建</td>
+</tr>
+<tr>
+<td>页面打不开</td>
+<td>容器挂了或访问网络不对</td>
+<td><code>docker restart obs-dozzle</code>；确认内网/Tailscale</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_22">安全红线</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>无认证 + 挂载 docker.sock：<strong>保持仅内网/Tailscale 可达，禁止公网反代</strong></li>
+<li>若需暴露更广，先启用 Dozzle 认证或套反向代理认证层</li>
+</ul>
+<h3 id="ssh-root19216831105">操作速查（SSH root@192.168.31.105）</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>看状态</td>
+<td><code>docker ps --filter name=obs-dozzle</code></td>
+</tr>
+<tr>
+<td>重启</td>
+<td><code>docker restart obs-dozzle</code></td>
+</tr>
+<tr>
+<td>Dozzle 自身日志</td>
+<td><code>docker logs -f obs-dozzle</code>（自己看不了自己）</td>
+</tr>
+<tr>
+<td>确认编排归属</td>
+<td><code>docker inspect obs-dozzle --format '{{index .Config.Labels "com.docker.compose.project"}}'</code>（当前为空）</td>
+</tr>
+<tr>
+<td>确认 sock 挂载</td>
+<td><code>docker inspect obs-dozzle --format '{{range .Mounts}}{{.Source}} {{end}}'</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mykng">mykng 高频查看容器速查（实采容器名）</h3>
+<table>
+<thead>
+<tr>
+<th>容器</th>
+<th>什么时候看</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kb-gateway</td>
+<td>接口报错第一现场（路由/鉴权/上游转发）</td>
+</tr>
+<tr>
+<td>kb-auth / kb-file / kb-knowledge / kb-intelligence</td>
+<td>对应业务域问题，常与 gateway 合并视图联排</td>
+</tr>
+<tr>
+<td>portal-server / portal-web</td>
+<td>portal 本身异常</td>
+</tr>
+<tr>
+<td>woodpecker-server / woodpecker-agent</td>
+<td>部署没生效先看 agent 拉取与执行输出</td>
+</tr>
+<tr>
+<td>platform-mysql / redis / mongo / kafka / nacos</td>
+<td>中间件异常（连接拒绝/内存/磁盘）</td>
+</tr>
+<tr>
+<td>infra-monitor / kb-ops</td>
+<td>自研运维面板服务本身的问题</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_23">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；实采确认无 compose 编排（v1"待确认"落实为独立容器 docker run 部署）；三台 Dozzle 布局表、FAQ 表整理</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

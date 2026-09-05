@@ -72,6 +72,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <td>CI/CD</td>
 <td>独立仓库，<strong>不走 woodScript</strong>；自带 docker compose，手动 <code>docker compose up -d --build</code> 发布（2026-09-05 实采确认容器与挂载）</td>
 </tr>
+<tr>
+<td>编排</td>
+<td><code>/root/workcheck_python/docker-compose.yml</code>（材料包无此文件，SSH 实采）</td>
+</tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口</h2>
@@ -89,14 +93,179 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
   → FastAPI 应用（静态页在 /app/static，API 在 /api 与各路由前缀）
        DB: SQLite（WAL）或 MySQL（由 DATABASE_URL 切换）
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
-<p>后端 <code>app/routes/*</code> 与 <code>app/api/*</code>（COSMIC 原系统 <code>/api</code> 前缀）两大组路由，配对两套前端（<code>static/staff/</code> 员工端、<code>static/admin/</code> 管理端）。</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">总体架构</h3>
+<p>FastAPI 单体应用 + 双静态前端（无 Node 构建链）：</p>
+<pre><code>app/
+├── main.py        # FastAPI 入口：挂载 /static、注册 20 个 routes 路由 + 8 组 /api 路由 + 6 组 cosmic2 路由
+├── models.py      # SQLAlchemy 2.0 ORM 模型（20 张表）
+├── routes/        # 工作量域路由（auth/node/staff/period/work/word/email/compare/function_list/account/history/system_config/menu_permission/mail_config/rbac/llm_config/case_manage/cosmic_config/token_usage）
+├── api/           # COSMIC 域路由（/api 前缀：tasks/cases/rules/prompts/monitor/doc_parse/usage/validator/tools）
+├── cosmic2/       # COSMIC 二代工作台（api/ops/sizing/check/gen/quality 六组路由）
+├── core/ db/ defaults/ utils/   # 核心/数据库/默认配置/工具
+└── static/        # staff/（员工端）、admin/（管理端）、cosmic2/staff/、cosmic2/admin/ 四套页面
+</code></pre>
+<h3 id="appmodelspy20">核心数据模型（app/models.py，20 张表）</h3>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>administrator</code></td>
+<td>账号（admin 字段区分员工 0 / 管理员 1 / 超管 2）</td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td>角色与接口权限点</td>
+</tr>
+<tr>
+<td><code>auth_token</code></td>
+<td>登录令牌</td>
+</tr>
+<tr>
+<td><code>audit_log</code></td>
+<td>审计日志</td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>组织节点树（邮件提醒开关、日报模板、AI 生成开关）</td>
+</tr>
+<tr>
+<td><code>staffinfo</code></td>
+<td>员工信息</td>
+</tr>
+<tr>
+<td><code>dayworkdetail</code></td>
+<td>工作日报明细</td>
+</tr>
+<tr>
+<td><code>workdetail</code> / <code>workcontent</code></td>
+<td>周报工时与内容</td>
+</tr>
+<tr>
+<td><code>periodconfig</code></td>
+<td>填报周期（按周，自动算应出勤天数）</td>
+</tr>
+<tr>
+<td><code>holiday</code></td>
+<td>节假日</td>
+</tr>
+<tr>
+<td><code>functionlist</code> / <code>functionlisthis</code> / <code>functionperiod</code></td>
+<td>功能点清单及历史归档、周期</td>
+</tr>
+<tr>
+<td><code>wordconfig</code></td>
+<td>敏感词配置</td>
+</tr>
+<tr>
+<td><code>system_config</code> / <code>admin_menu_config</code></td>
+<td>系统配置 / 菜单权限</td>
+</tr>
+<tr>
+<td><code>mail_account</code> / <code>mail_account_node</code></td>
+<td>邮件账号及节点关联</td>
+</tr>
+<tr>
+<td><code>user_llm_config</code></td>
+<td>员工个人模型配置（Key 掩码）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">关键设计决策</h3>
+<ol>
+<li><strong>单仓双端 + 静态前端无构建</strong>：员工端与管理端两套页面纯静态托管在 <code>/static</code>（jQuery/layui + Vue3 混用），后端一个 FastAPI 进程承载，部署只需 <code>docker compose up -d --build</code>，无前端构建产物发布环节。</li>
+<li><strong>数据库可切换</strong>：<code>DATABASE_URL</code> 默认 <code>sqlite:///./workcheck.db</code>，可切 MySQL；检索增强用独立的 <code>search_index.db</code>（查重索引，路径由 <code>SEARCH_INDEX_PATH</code> 指定）。</li>
+<li><strong>LLM 配置分层回落</strong>：员工个人模型（<code>user_llm_config</code>）→ 服务端 <code>.env</code> 兜底 Key（<code>DEEPSEEK_API_KEY</code>/<code>DEEPSEEK_BASE_URL</code>/<code>DEEPSEEK_MODEL</code>），共享组件 <code>llm-config-panel.js</code> 提供模型来源/提示词/用量监控入口。</li>
+<li><strong>规则引擎与 LLM 分工</strong>：日报查重（jieba 分词 + 相似度阈值 + 去重索引）、COSMIC 自动审核（规则引擎）、二代工作台质量门禁走确定性规则；LLM 只负责内容生成与功能点抽取，两阶段并行。</li>
+</ol>
+<h3 id="_7">对外接口概览</h3>
+<ul>
+<li>工作量域（<code>app/routes/*</code>，路由无统一前缀，页面 <code>/work</code>、<code>/compare</code>、<code>/case_manage</code>、<code>/history</code> 及各配置页配套接口）：work（日报/周报）、compare（查重）、history（历史导入）、各管理配置。</li>
+<li>COSMIC 域（<code>app/api/*</code>，前缀 <code>/api</code>）：<code>/api/tasks</code>（生成任务）、<code>/api/cases</code>（案例库）、<code>/api/rules</code>（审核规则）、<code>/api/prompts</code>、<code>/api/monitor</code>、<code>/api/doc-parse</code>、<code>/api/usage</code>、<code>/api/validator</code>、<code>/api/tools</code>（均需登录态）。</li>
+<li>COSMIC 二代（<code>app/cosmic2/*</code> 六组路由）：api / ops / sizing / check / gen / quality。</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<h3 id="_9">编排与位置</h3>
+<ul>
+<li>compose：<code>/root/workcheck_python/docker-compose.yml</code>（SSH 实采原文）：</li>
+</ul>
+<pre><code class="language-yaml">services:
+  workcheck-python:
+    build: .
+    container_name: workcheck-python
+    restart: on-failure:5
+    ports:
+      - &quot;8010:8000&quot;
+    environment:
+      - TZ=Asia/Shanghai
+      - SEARCH_INDEX_PATH=/app/search_index.db
+    volumes:
+      - /mnt/shared/workcheck-python/data:/app/data
+    extra_hosts:
+      - &quot;host.docker.internal:host-gateway&quot;
+    networks:
+      - platform-net
+    mem_limit: 256m
+
+networks:
+  platform-net:
+    external: true
+    name: platform-net
+</code></pre>
+<h3 id="_10">配置清单</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>宿主机 8010 → 容器 8000</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td><code>/mnt/shared/workcheck-python/data → /app/data</code>（含 search_index.db、exports/rules/templates）</td>
+</tr>
+<tr>
+<td>网络</td>
+<td>platform-net（external，连全局基础设施）</td>
+</tr>
+<tr>
+<td>资源限制</td>
+<td>mem_limit 256m</td>
+</tr>
+<tr>
+<td>环境变量（只列名）</td>
+<td><code>DATABASE_URL</code>（SQLite/MySQL 切换）、<code>SEARCH_INDEX_PATH</code>、<code>DEEPSEEK_API_KEY</code>/<code>DEEPSEEK_BASE_URL</code>/<code>DEEPSEEK_MODEL</code>（服务端兜底 LLM Key）；compose 自动读取同目录 <code>.env</code>，真实值见 Vaultwarden / infrastructure-map 技能</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">发布/升级</h3>
+<p>不走 woodScript，手动发布：</p>
+<pre><code class="language-bash"># mykng 机上
+cd /root/workcheck_python
+docker compose up -d --build    # 必须 --build，restart 不更新镜像内代码
+</code></pre>
+<h3 id="_12">回滚</h3>
+<ul>
+<li>应用无状态（数据在挂载卷 + DB），回退 = git checkout 旧版本后重新 <code>docker compose up -d --build</code></li>
+<li>查重索引损坏可删除 <code>search_index.db</code> 后经 <code>/compare/rebuildDedupIndex</code> 重建</li>
+</ul>
+<h2 id="_13">核心功能与使用</h2>
 <h3 id="staticstaff-admin0">员工端（<code>static/staff/</code>，账号 <code>admin=0</code>）</h3>
 <ul>
 <li><strong>工作日报</strong>（<code>/work</code> 路由：<code>getWorkTime</code>、<code>saveDayWorkDetail</code>、<code>getDayWorkContent</code>、<code>dayReport</code>、<code>deleteDay*</code>）：按日填报工作内容/工时/请假调休/加班；提交后自动级联生成并更新对应周报；支持 AI 智能生成工作/加班内容（基于员工最近 80 条日报，节点开启 <code>openAiWorkContentSwitch</code> 后生效）。</li>
 <li><strong>COSMIC 生成</strong>（<code>app/api/tasks.py</code> 等）：需求文本 → NLU 解析 → COSMIC 功能点拆分表（E/R/W/X 数据移动、CFP 统计，两阶段并行生成）→ 在线编辑 → 自动审核（规则引擎）→ 历史/文档内查重 → 导出 Excel/Word 需求规格说明书；案例库支持 zip/单独 xlsx 批量导入与进度展示。</li>
 <li><strong>标准一览</strong>：工作日报填写规范查阅。</li>
-<li><strong>📐 COSMIC 度量工作台（二代，<code>static/cosmic2/staff/</code>）</strong>：需求文档上传（docx/pdf，质量预检）→ 异步生成（LLM 抽取 + 规则判定 E/X/R/W，进度可视）→ 三栏复核（原文证据高亮联动/规则建议/一键修复）→ 近似估算/变更对比/成本区间 → 导出 Excel(5 sheet)/Word 正式报告/审计追溯包；支持第三方 Excel 度量表导入检查。</li>
+<li><strong>COSMIC 度量工作台（二代，<code>static/cosmic2/staff/</code>）</strong>：需求文档上传（docx/pdf，质量预检）→ 异步生成（LLM 抽取 + 规则判定 E/X/R/W，进度可视）→ 三栏复核（原文证据高亮联动/规则建议/一键修复）→ 近似估算/变更对比/成本区间 → 导出 Excel(5 sheet)/Word 正式报告/审计追溯包；支持第三方 Excel 度量表导入检查。</li>
 <li>全局入口（共享组件 <code>llm-config-panel.js</code>）：⚙ 模型来源 / 📝 提示词配置 / 📊 模型监控；个人模型未配置时回落服务端 <code>.env</code> 兜底 Key。</li>
 </ul>
 <h3 id="staticadmin-admin1-admin2">管理端（<code>static/admin/</code>，账号 <code>admin=1</code> 限本节点，<code>admin=2</code> 超管全节点）</h3>
@@ -114,20 +283,27 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li>节点维护：组织节点树、邮件提醒开关、日报模板、AI 生成开关。</li>
 <li>员工信息维护：CRUD、Excel 批量导入导出、模板下载。</li>
 <li>敏感词配置、日报重复度阈值（仅超管）、邮件发送配置（仅超管 SMTP）、账号分配（仅超管，关联节点+角色+重置密码）、员工模型配置（仅超管，Key 掩码）、角色管理（仅超管，接口权限点+可见菜单）、审计日志（仅超管）、菜单权限管控（仅超管）。</li>
-<li>🧮 COSMIC 配置中心（二代，<code>static/cosmic2/admin/</code>）：12 个配置页——概览/检查规则(60+条 L1-L4)/动词词典/Prompt 模板/造价基准 CSBMK/估算参数/示例库/金标准回归门禁/治理看板/LLM 网关(路由/降级链/配额/成本)/质量词表/规则包版本。</li>
+<li>COSMIC 配置中心（二代，<code>static/cosmic2/admin/</code>）：12 个配置页——概览/检查规则(60+条 L1-L4)/动词词典/Prompt 模板/造价基准 CSBMK/估算参数/示例库/金标准回归门禁/治理看板/LLM 网关(路由/降级链/配额/成本)/质量词表/规则包版本。</li>
+</ul>
+<h3 id="_14">典型操作路径</h3>
+<ul>
+<li><strong>员工报日报</strong>：登录 <code>https://workcheck.marschat.online/</code> → 员工端 → 工作日报 → 填写当日工作/工时（或点 AI 生成）→ 保存（周报自动级联更新）。</li>
+<li><strong>管理员查重</strong>：管理端 → 工作量自检 → 上传工作量 Excel → 逐项校验结果 → 需要时重建去重索引。</li>
+<li><strong>超管配账号</strong>：管理端 → 账号分配 → 新建账号并关联节点+角色 → 重置密码。</li>
+<li><strong>COSMIC 二代出表</strong>：员工端 → COSMIC 工作台 → 上传需求文档 → 异步生成 → 三栏复核修复 → 导出 Excel/Word 报告。</li>
 </ul>
 <h3 id="administrator-admin">账号与角色（<code>administrator</code> 表，<code>admin</code> 字段区分）</h3>
 <ul>
 <li>员工 <code>0</code> / 管理员 <code>1</code>（限名下节点 <code>node.userId</code>）/ 超级管理员 <code>2</code>（仅内置 <code>admin</code> 账号，全节点，独占账号分配）。</li>
 <li>账号必须关联节点；超管账号不可页面增删改，启动时若缺失自动建默认超级管理员账号（<strong>上线后改密，账密见 Vaultwarden 或 infrastructure-map</strong>）。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_15">依赖与关联</h2>
 <ul>
 <li>存储/中间件：SQLite（WAL，默认）或 MySQL（由 <code>DATABASE_URL</code> 切换）；Elasticsearch（<code>.env</code> 配 <code>ELASTICSEARCH_URL</code>，检索增强，<strong>是否启用待确认</strong>）；LLM（DeepSeek 等 OpenAI 兼容接口，<code>.env</code> 配 <code>DEEPSEEK_*</code>）。</li>
 <li>技术组件：SQLAlchemy 2.0、APScheduler（周期/定时任务）、httpx、openpyxl、python-docx、jieba（查重分词）、Vue3 + Element Plus（登录/框架/COSMIC 页）、jQuery + layui + bootstrap-table（管理页，纯静态无构建）。</li>
 <li>关联系统：与 cosmic-studio 同属 COSMIC 度量领域——本系统内置 COSMIC 生成/二代工作台（面向研发团队工作量场景），cosmic-studio 为独立的生产系统（编写库/归档库/推导引擎/质量门禁，P0）。两者能力互补、数据模型不同。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_16">运维要点</h2>
 <ul>
 <li>启停：mykng 上 <code>docker compose</code> 管理 <code>workcheck-python</code>（端口 8010）；发布须 <code>docker compose up -d --build</code>（restart 不更新镜像内代码）。</li>
 <li>健康检查：<code>curl -s -o /dev/null -w '%{http_code}' http://192.168.31.105:8010/</code> → <code>200</code>（2026-09-05 实采）。</li>
@@ -138,9 +314,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <li>AI 生成不出现：检查节点 <code>openAiWorkContentSwitch</code> 是否开启、员工个人模型来源或服务端 <code>.env</code> 兜底 Key 是否配置。</li>
 <li>查重不准：去重索引可经 <code>/compare/rebuildDedupIndex</code> 重建；阈值由超管在「日报重复度阈值」配置。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_17">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 <code>/root/workcheck_python</code> 源码 <code>main.py</code>/<code>routes/*</code>/<code>api/*</code> + README + 容器实采生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计：目录架构/20 张表模型/4 条设计决策/三组路由概览；新增部署与发布：compose 原文/配置清单/手动发布与回滚；使用节补典型操作路径；路由清单经 SSH 读源码实采）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于 <code>/root/workcheck_python</code> 源码 <code>main.py</code>/<code>routes/*</code>/<code>api/*</code> + README + 容器实采生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

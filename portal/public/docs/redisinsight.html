@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td><strong>(待确认)</strong> 实采未发现运行/停止态的 redisinsight / redis-commander 容器（mykng 与内网 Debian 均无）</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 redisinsight / redis-commander 容器（2026-09-05 复核 mykng <code>docker ps -a</code> 仍无）</td>
 </tr>
 <tr>
 <td>端口</td>
@@ -74,17 +74,17 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>源码位置</td>
-<td>开源组件，官方仓库 https://github.com/redisinsight/redisinsight（自部署）</td>
+<td>开源组件，官方仓库 https://github.com/redis/RedisInsight（自部署）</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+<td>无（自部署，platform 部署目录未定义该服务）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
 <blockquote>
-<p>⚠️ <strong>discrepancy（2026-09-05 实采）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/redis/</code>，但核实后：
+<p>⚠️ <strong>discrepancy（2026-09-05 实采，v2 复核仍成立）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/redis/</code>，但核实后：
 - mykng 与内网 Debian <code>docker ps -a</code> 均无 redisinsight / redis-commander 容器；
 - 腾讯云2号与 mykng nginx 均无 <code>/redis/</code> location；
 - <code>/root/devtools/platform/</code> 部署目录未定义该服务。</p>
@@ -105,45 +105,70 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 后端 Redis 实况：mykng 容器 platform-redis :6379 正常运行（docker ps 确认，redis:7-alpine）
 </code></pre>
 <p>预期（若重新部署）后端链路：<code>RedisInsight → platform-redis:6379</code>。<strong>(待确认)</strong></p>
-<h2 id="redis">后端 Redis 实况（已实采确认）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>RedisInsight 是 Redis 官方（Redis Ltd.）的桌面/容器化 GUI 管理工具：无状态接入任意 Redis 实例，提供键空间浏览、各数据结构（string/hash/list/set/zset/stream 等）可视化编辑、SLOWLOG/内存分析、Pub/Sub 调试与 CLI 终端；官方镜像 <code>redis/redisinsight</code>，Web 服务默认监听单端口，连接信息在界面内配置。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>实例：<code>platform-redis</code>（mykng，镜像 redis:7-alpine），端口 3306→映射 6379（宿主 0.0.0.0:6379）。</li>
-<li>数据卷：命名卷 <code>platform_platform-redis-data</code> → 容器内 <code>/data</code>（RDB/AOF 持久化目录）。</li>
-<li>角色：作为 KB 体系、portal、activecode 等服务的缓存/会话/队列后端。</li>
-<li>若面板恢复，连接目标为 <code>platform-redis:6379</code>（容器内网络）或 <code>192.168.31.105:6379</code>（宿主网络），依部署网络而定；需提供 Redis 密码（见 Vaultwarden）。</li>
+<li><strong>实例角色（规划）</strong>：作为 <code>platform-redis</code> 的可视化运维面板，供运维排查缓存键、观察内存与慢查询；当前<strong>未部署</strong>，仅存在于 portal 登记表。</li>
+<li><strong>后端实况（已实采确认）</strong>：</li>
+<li>实例：<code>platform-redis</code>（mykng，镜像 redis:7-alpine），宿主 0.0.0.0:6379；</li>
+<li>启动参数（platform.yml）：<code>redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru</code>（AOF 持久化 + LRU 淘汰）；</li>
+<li>数据卷：命名卷 <code>platform_platform-redis-data</code> → 容器内 <code>/data</code>；</li>
+<li>角色：KB 体系、portal、activecode 等服务的缓存/会话/队列后端。</li>
+<li><strong>谁读写它</strong>：KB、portal、activecode 等服务经内网 :6379 读写 Redis；RedisInsight 若恢复部署，仅作为人工只读/调试入口接入（连接目标 <code>platform-redis:6379</code> 容器内网络或 <code>192.168.31.105:6379</code> 宿主网络，需 Redis 密码）。</li>
+<li><strong>关键设计约束</strong>：面板建议使用只读/监控账号，避免误操作 FLUSH 清空共享缓存；Redis 7 的 ACL/密码需与 <code>platform-redis</code> 实际配置一致。</li>
 </ul>
-<h2 id="_4">核心功能与使用（能力层面）</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">当前状态</h3>
+<p><strong>(待确认/未部署)</strong> platform 部署目录与两台宿主机均无该服务定义与容器。</p>
+<h3 id="_9">恢复部署参考（非当前生效，供运维实施用）</h3>
 <ul>
-<li>键空间浏览：按前缀查看 key、类型（string/hash/list/set/zset）与值，便于排查缓存。</li>
+<li>镜像：<code>redis/redisinsight</code>（官方）。</li>
+<li>编排建议：在 mykng 以容器/compose 部署，加入与 <code>platform-redis</code> 相同的 docker 网络（如 platform-net）。</li>
+<li>连接：界面内配置 Redis 连接串指向 <code>platform-redis:6379</code>（容器网络）或 <code>192.168.31.105:6379</code>（宿主网络），密码见 Vaultwarden（不落盘）。</li>
+<li>反代链路：mykng nginx 增加 <code>/redis/</code> location，再经腾讯云2号 <code>tools.marschat.online</code> 暴露；或仅 Tailscale 暴露。</li>
+<li>发布：手工 <code>docker compose up -d</code>（无流水线）；回滚 = 移除容器（面板无状态，连接配置可随容器卷保留）。</li>
+</ul>
+<h2 id="_10">核心功能与使用（能力层面）</h2>
+<h3 id="_11">功能清单</h3>
+<ul>
+<li>键空间浏览：按前缀查看 key、类型与值，便于排查缓存。</li>
 <li>数据结构可视化：对各类 Redis 数据结构做图形化展示与编辑。</li>
 <li>慢查询/内存分析：借助 INFO、SLOWLOG 等做容量与性能分析。</li>
 <li>发布订阅调试：在面板内订阅 channel 观察消息。</li>
 </ul>
+<h3 id="_12">典型操作路径（部署后的预期用法）</h3>
+<ol>
+<li>打开面板 → 新增 Redis Connection（host/port/密码）→ 保存连接。</li>
+<li>键空间：按 pattern 搜索 key → 查看类型/TTL/值（排查缓存命中与残留）。</li>
+<li>分析：Workbench/CLI 执行 <code>INFO memory</code>、<code>SLOWLOG GET</code> 评估性能。</li>
+</ol>
 <blockquote>
 <p>具体按钮级操作以实际部署后的面板为准，未实装界面不编造步骤。</p>
 </blockquote>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_13">依赖与关联</h2>
 <ul>
 <li>依赖：后端 Redis <code>platform-redis</code>（mykng :6379）。</li>
 <li>被依赖/关联系统：KB 体系、portal、activecode 等服务以 Redis 作缓存/会话/队列，运维排查时用到本面板（若部署）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_14">运维要点</h2>
 <ul>
-<li>启停方式：<strong>(待确认)</strong> 当前未部署。恢复建议在 mykng 部署 RedisInsight 容器连 <code>platform-redis:6379</code>，并在 mykng 或腾讯云2号 nginx 增加 <code>/redis/</code> 反代。</li>
-<li>部署参考（非当前生效，供恢复用）：RedisInsight 官方镜像 <code>redis/redisinsight</code>，置于 mykng 同网络，环境变量配置 Redis 连接串与密码；反代建议放 mykng nginx，再经腾讯云2号 <code>tools.marschat.online</code> 暴露。</li>
-<li>日志查看：部署后 <code>docker logs &lt;redisinsight 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
-<li>数据与备份：面板无状态，数据即后端 Redis；Redis 持久化（AOF/RDB）以容器卷 <code>platform_platform-redis-data</code> → <code>/data</code> 为准。</li>
+<li>启停：<strong>(待确认)</strong> 当前未部署；若恢复，启停即容器 <code>docker start/stop &lt;redisinsight 容器&gt;</code>。</li>
+<li>日志：部署后 <code>docker logs &lt;redisinsight 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>数据与备份：面板无状态，数据即后端 Redis；Redis 持久化（AOF）以容器卷 <code>platform_platform-redis-data</code> → <code>/data</code> 为准（platform.yml 已开 appendonly）。</li>
 <li>安全：公网暴露面板风险较高，建议加访问保护或仅 Tailscale 暴露；凭证存 Vaultwarden。</li>
 </ul>
-<h2 id="_7">常见问题</h2>
+<h2 id="_15">常见问题</h2>
 <ul>
 <li>公网 <code>/redis/</code> 当前无上游，属「未部署」预期表现。</li>
-<li>连 Redis 建议用只读/监控账号，避免面板误操作 FLUSH 清空缓存。</li>
+<li>连 Redis 建议用只读/监控账号，避免面板误操作 FLUSH 清空共享缓存。</li>
 <li>恢复部署时 Redis 7 的 ACL/密码需与 <code>platform-redis</code> 实际配置一致。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+<h2 id="_16">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 redisinsight 面板实采未部署、入口待确认，并补充 Redis 后端实况</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；复核面板仍未部署（docker ps -a 复核），维持 v1 实采结论；补充 platform-redis 启动参数（AOF/LRU）实况</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 redisinsight 面板实采未部署、入口待确认，并补充 Redis 后端实况</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

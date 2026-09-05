@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="qdrant">Qdrant 向量库</h1>
 <blockquote>
-<p>开源向量数据库，作为 RAG（检索增强生成）管线的向量检索后端，存储文本向量的集合（Collection）并提供相似度检索，配合 bge-small-zh-v1.5 embedding 模型服务使用。当前仅内网可达，不对外暴露。</p>
+<p>开源向量数据库，作为 RAG（检索增强生成）管线的向量检索后端，存储文本向量的集合（Collection）并提供相似度检索，配合同机 rag-embedding（bge-small-zh-v1.5）embedding 模型服务使用。当前仅内网可达，不对外暴露。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -78,7 +78,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>运行模式</td>
-<td>RUN_MODE=production；时区 Asia/Shanghai</td>
+<td>RUN_MODE=production；时区 Asia/Shanghai；重启策略 unless-stopped</td>
 </tr>
 <tr>
 <td>源码位置</td>
@@ -105,63 +105,123 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <blockquote>
 <p>注：Qdrant 仅在内网 Debian 上运行，未做公网暴露。Dashboard（:6333/dashboard）实测返回 200，可访问。调用方（RAG 管线/embedding 服务）均在同一内网或经 Tailscale 访问。embedding 服务 <code>rag-embedding</code> 与 <code>rag-qdrant</code> 同机部署，降低向量化→入库的网络开销。</p>
 </blockquote>
-<h2 id="docker-inspect2026-09-05">实采配置快照（docker inspect，2026-09-05）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Qdrant 是 Rust 实现的向量数据库：数据模型为 Collection → Point（向量 + payload），支持 HNSW 索引、多种距离度量（cosine/欧氏/点积）与 payload 过滤检索；提供 HTTP（:6333）与 gRPC（:6334）两套 API，并自带 Web Dashboard。单节点部署时全部数据（向量、索引、payload）自管于存储目录，无需外部依赖。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>启动：容器入口 <code>./entrypoint.sh</code>，运行模式 <code>RUN_MODE=production</code>，时区 <code>TZ=Asia/Shanghai</code>。</li>
-<li>数据目录：bind <code>/var/lib/qdrant-storage</code> → <code>/qdrant/storage</code>（向量与索引持久化）。</li>
-<li>配套 embedding 服务 <code>rag-embedding</code>（同机）：</li>
-<li>镜像 <code>rag-embedding:bge-small-zh-v1.5</code>，启动 <code>gunicorn -w 1 -b 0.0.0.0:8081 --timeout 600 server:app</code>；</li>
-<li>模型 <code>MODEL_NAME=BAAI/bge-small-zh-v1.5</code>，缓存 <code>MODEL_CACHE=/app/models</code>（bind <code>/mnt/shared/temp/rag-data/models</code>）；</li>
-<li>出网经 HTTP 代理 <code>172.17.0.1:7890</code>（模型首次拉取用），<code>no_proxy</code> 覆盖内网网段；</li>
-<li>运行时 Python 3.11。</li>
-<li>Dashboard 探活：<code>:6333/dashboard</code> 返回 200。</li>
+<li><strong>实例角色</strong>：<code>rag-qdrant</code> 是 RAG 管线的语义检索底座，存知识库文本块经 embedding 后的向量（及来源 payload），承担「先检索后生成」中的检索环节。</li>
+<li><strong>谁读写它</strong>：</li>
+<li>写：RAG 入库管线调用同机 <code>rag-embedding</code>（:8081）把文本块向量化后 upsert 进 Collection；</li>
+<li>读：RAG 查询管线把用户问题向量化后做 Top-K 相似度检索，检索结果交给生成环节；相关 RAG 管线运行于 kb-knowledge / kb-intelligence 等服务（具体服务边界待确认）。</li>
+<li><strong>配套 embedding</strong>：<code>rag-embedding</code> 镜像 <code>rag-embedding:bge-small-zh-v1.5</code>（gunicorn 单 worker，:8081，超时 600s），模型 <code>BAAI/bge-small-zh-v1.5</code>（向量维度 512），模型缓存 bind <code>/mnt/shared/temp/rag-data/models</code> → <code>/app/models</code>；出网经代理 <code>172.17.0.1:7890</code>（仅模型首次拉取用），<code>no_proxy</code> 覆盖内网。二者同机部署，形成「向量化—入库—检索」闭环。</li>
+<li><strong>为什么选它</strong>：单二进制、资源占用小、带 Dashboard 便于调试，REST + gRPC 双协议够用；与 MeiliSearch 分工——MeiliSearch 做关键词全文检索、Qdrant 做语义向量检索，RAG 常二者融合（hybrid）提升召回。</li>
+<li><strong>关键配置思路</strong>：</li>
+<li>数据 bind 挂载 <code>/var/lib/qdrant-storage</code> → <code>/qdrant/storage</code>，便于直接备份宿主目录；</li>
+<li><code>RUN_MODE=production</code>、<code>TZ=Asia/Shanghai</code>；重启策略 <code>unless-stopped</code> 保活；</li>
+<li>集合维度必须与 embedding 模型一致（bge-small-zh-v1.5 = 512），换模型需重建集合并全量重向量化。</li>
 </ul>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">编排与位置</h3>
 <ul>
-<li>向量集合（Collection）管理：创建集合、配置向量维度与距离度量（如 cosine），在 Dashboard 或 API 中查看点（Point）数量与集合列表。</li>
-<li>相似度检索：给定查询向量，返回 Top-K 最相近的文本块，是 RAG「先检索后生成」的关键环节。</li>
-<li>配套 embedding：文本→向量由同机 <code>rag-embedding</code>（bge-small-zh-v1.5）完成，默认维度 512；写入/查询 Qdrant 前需经该 embedding 服务统一向量化，保证维度与语义一致。</li>
-<li>过滤与 payload：可在向量检索时附加 payload 过滤（如按知识库 ID、文档来源过滤），具体过滤字段由 RAG 业务定义。</li>
-<li>批量与点操作：支持批量 upsert、按 ID 获取/删除点，适合知识库增量更新。</li>
+<li><strong>无 compose 编排</strong>（2026-09-05 实采 docker inspect 确认：容器无 com.docker.compose.<em> 标签，宿主机未检索到含 rag-qdrant 的 compose/yml/启动脚本）——<code>rag-qdrant</code> 与 <code>rag-embedding</code> 均为 <code>docker run</code> 手工启动，配置靠重启策略 <code>unless-stopped</code> 保活。</em><em>所属 compose project：无（待确认是否有离线部署脚本未入库）</em>*。</li>
 </ul>
-<h2 id="api">客户端/API 调用示例（组件通用用法）</h2>
+<h3 id="docker-inspect">配置清单（docker inspect 实采）</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>容器名</td>
+<td><code>rag-qdrant</code></td>
+</tr>
+<tr>
+<td>镜像</td>
+<td><code>qdrant/qdrant:latest</code></td>
+</tr>
+<tr>
+<td>端口映射</td>
+<td>宿主 6333 → 6333（HTTP/Dashboard）、6334 → 6334（gRPC）</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td>bind <code>/var/lib/qdrant-storage</code> → <code>/qdrant/storage</code>（数据）；bind <code>/etc/localtime</code> → <code>/etc/localtime</code>（时区）</td>
+</tr>
+<tr>
+<td>环境变量</td>
+<td><code>RUN_MODE=production</code>、<code>TZ=Asia/Shanghai</code></td>
+</tr>
+<tr>
+<td>网络</td>
+<td>bridge</td>
+</tr>
+<tr>
+<td>重启策略</td>
+<td><code>unless-stopped</code></td>
+</tr>
+<tr>
+<td>配套容器</td>
+<td><code>rag-embedding</code>：端口 8081，bind <code>/mnt/shared/temp/rag-data/models</code> → <code>/app/models</code>，ENV <code>MODEL_NAME=BAAI/bge-small-zh-v1.5</code>、<code>MODEL_CACHE=/app/models</code>，HTTP 代理 <code>172.17.0.1:7890</code>（首次拉模型用）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_9">发布/升级</h3>
 <ul>
-<li>健康检查：<code>curl http://192.168.31.182:6333/health</code> 返回 <code>{"status":"ok"}</code>。</li>
-<li>列出集合：<code>curl http://192.168.31.182:6333/collections -H "Api-Key: &lt;KEY&gt;"</code>（若启用密钥）。</li>
-<li>Dashboard：浏览器打开 <code>http://192.168.31.182:6333/dashboard</code>（内网/Tailscale）。</li>
-<li>检索：通过 embedding 服务 <code>http://192.168.31.182:8081</code> 取得查询向量后，POST <code>/collections/&lt;name&gt;/points/search</code>。</li>
+<li>自部署，无流水线。重建/升级步骤：确认数据目录已备份 → <code>docker stop rag-qdrant &amp;&amp; docker rm rag-qdrant</code> → 按上表参数 <code>docker run</code> 重建（<strong>建议先把当前 run 参数固化为 compose 文件入库，避免下次重建参数漂移，待确认</strong>）。</li>
+<li>升级耦合提醒：镜像为 latest，升级会与 embedding 维度/距离配置耦合，建议锁定大版本并与 <code>rag-embedding</code> 模型维度（512）保持一致；升级前确认现有 Collection 的维度与距离函数不受破坏性变更影响。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_10">回滚</h3>
 <ul>
-<li>依赖：宿主内网 Debian 的 docker 引擎与本地存储目录 <code>/var/lib/qdrant-storage</code>；embedding 向量化依赖同机 <code>rag-embedding</code> 服务（bge-small-zh-v1.5，:8081）。</li>
+<li>镜像回退：用旧镜像 ID 重新 <code>docker run</code>（latest 无版本锚点，建议升级前 <code>docker tag</code> 留存）。</li>
+<li>数据回退：还原宿主目录 <code>/var/lib/qdrant-storage</code> 快照；向量索引可由 embedding 服务重新全量重建，一般可从源头恢复。</li>
+</ul>
+<h2 id="_11">核心功能与使用</h2>
+<h3 id="_12">功能清单</h3>
+<ul>
+<li><strong>向量集合管理</strong>：创建 Collection、配置向量维度与距离度量（如 cosine），Dashboard/API 查看点数量与集合列表。</li>
+<li><strong>相似度检索</strong>：给定查询向量返回 Top-K 最相近文本块，是 RAG「先检索后生成」的关键环节。</li>
+<li><strong>payload 过滤</strong>：检索时附加过滤条件（如按知识库 ID、文档来源），具体字段由 RAG 业务定义。</li>
+<li><strong>批量与点操作</strong>：批量 upsert、按 ID 获取/删除点，适合知识库增量更新。</li>
+<li><strong>配套向量化</strong>：文本→向量统一经同机 <code>rag-embedding</code>（:8081），保证维度与语义一致。</li>
+</ul>
+<h3 id="_13">典型操作路径</h3>
+<ol>
+<li><strong>Dashboard 查看</strong>：浏览器打开 <code>http://192.168.31.182:6333/dashboard</code>（内网/Tailscale）→ 查看 Collections、Point 数量与基础统计。</li>
+<li><strong>健康探测</strong>：<code>curl http://192.168.31.182:6333/health</code> → <code>{"status":"ok"}</code>。</li>
+<li><strong>列集合（若启用密钥）</strong>：<code>curl http://192.168.31.182:6333/collections -H "Api-Key: &lt;KEY&gt;"</code>。</li>
+<li><strong>检索联调</strong>：先 <code>POST http://192.168.31.182:8081</code>（embedding 服务）取查询向量 → 再 <code>POST /collections/&lt;name&gt;/points/search</code> 检索 Top-K。</li>
+</ol>
+<h2 id="_14">依赖与关联</h2>
+<ul>
+<li>依赖：宿主内网 Debian 的 docker 引擎与本地存储目录 <code>/var/lib/qdrant-storage</code>；embedding 向量化依赖同机 <code>rag-embedding</code>（bge-small-zh-v1.5，:8081）。</li>
 <li>被依赖/关联系统：</li>
 <li>RAG 知识库管线（kb-knowledge / kb-intelligence 等相关服务）通过内网 :6333 读写向量；</li>
 <li><code>rag-embedding</code> 与 <code>rag-qdrant</code> 同机部署，形成「向量化—入库—检索」闭环；</li>
 <li>与 MeiliSearch 互为补充：MeiliSearch 做关键词全文检索，Qdrant 做语义向量检索，RAG 常二者融合（hybrid）以提升召回。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_15">运维要点</h2>
 <ul>
-<li>启停方式：在内网 Debian 上以 docker 运行（容器 <code>rag-qdrant</code>）。具体 compose/启动命令以该机部署脚本为准（未逐一实采启动文件，待确认完整命令）。</li>
-<li>日志查看：<code>docker logs rag-qdrant</code>（持续 <code>docker logs -f rag-qdrant</code>）；obs-dozzle（内网 Deb :15888）按容器名检索。</li>
-<li>数据与备份：数据目录 bind 挂载 <code>/var/lib/qdrant-storage</code> → 容器内 <code>/qdrant/storage</code>。备份对该目录做快照/同步（是否纳入统一备份以 infra-monitor 策略为准，待确认）。向量索引可由 embedding 服务重新全量重建，故一般可从源头恢复。</li>
-<li>可观测性：容器日志入 Loki（内网 Deb promtail），可在 Grafana（内网 Deb :15300）检索；Dashboard 自带基础统计。</li>
-<li>安全：仅内网/Tailscale 可达，天然不暴露公网；若启用 API Key，凭证存 Vaultwarden。公网不可直接连，跨网访问必须走 Tailscale。</li>
+<li>启停：<code>docker start/stop rag-qdrant</code>；容器无编排文件，<code>unless-stopped</code> 保活，宿主机重启后 Docker 自动拉起。</li>
+<li>日志：<code>docker logs -f rag-qdrant</code>；obs-dozzle（内网 Deb :15888）按容器名检索。</li>
+<li>数据与备份：bind 目录 <code>/var/lib/qdrant-storage</code>，备份直接对该目录做快照/同步（是否纳入统一备份以 infra-monitor 策略为准，待确认）；向量索引可由 embedding 服务重新全量重建。</li>
+<li>可观测性：容器日志入 Loki（内网 Deb promtail），Grafana（内网 Deb :15300）可检索；Dashboard 自带基础统计。</li>
+<li>安全：仅内网/Tailscale 可达，天然不暴露公网；若启用 API Key，凭证存 Vaultwarden；跨网访问必须走 Tailscale。</li>
 </ul>
-<h2 id="_7">版本与兼容性</h2>
-<ul>
-<li>镜像为 <code>qdrant/qdrant:latest</code>（非固定版本），升级会与 embedding 维度/距离配置耦合，建议锁定大版本并与 <code>rag-embedding</code> 的模型维度（bge-small-zh-v1.5 = 512）保持一致。</li>
-<li>升级前确认现有 Collection 的向量维度与距离函数不被破坏性变更影响。</li>
-</ul>
-<h2 id="_8">常见问题</h2>
+<h2 id="_16">常见问题</h2>
 <ul>
 <li>embedding 维度必须与集合创建时声明的一致（bge-small-zh-v1.5 为 512），否则写入/检索报维度不匹配。</li>
-<li>仅内网可达，跨网访问需走 Tailscale；公网不可直接连。</li>
+<li>容器为手工 <code>docker run</code> 启动、无编排文件，重建前先 <code>docker inspect</code> 留档参数，避免配置丢失。</li>
 <li>向量库与 embedding 服务务必同模型版本，换模型需重建集合并重新向量化全量语料。</li>
 <li>embedding 服务首次需经代理拉取模型权重（172.17.0.1:7890），离线环境需预置 <code>/app/models</code>。</li>
 </ul>
-<h2 id="_9">变更记录</h2>
+<h2 id="_17">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；实采确认无 compose 编排（docker run 手工启动），部署节改写为 docker run 参数清单</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="nacos">Nacos 服务中心</h1>
 <blockquote>
-<p>服务注册与配置中心，承载 mykng 上所有 Spring Boot 微服务（kb-* 五件套、portal-server、kb-ops、infra-monitor、active-manager 等）的服务发现与配置管理，是 devtools 微服务体系的注册中枢。</p>
+<p>服务注册与发现中心（开源 Alibaba Nacos v2.4.3），承载 mykng 上 kb-* 五个 Spring Cloud 微服务的注册寻址，是 devtools 微服务体系的服务治理中枢。platform 基础设施层组件，随 platform compose 持久运行。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,15 +58,15 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>nacos/nacos-server:v2.4.3（portal 卡片写 2.3.x 已过期，以实采为准）</td>
+<td>nacos/nacos-server:<strong>v2.4.3</strong>（docker inspect 实采；portal 卡片写 2.3.x 已过期）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng（192.168.31.105）容器 <code>platform-nacos</code></td>
+<td>mykng（192.168.31.105）容器 <code>platform-nacos</code>，compose project <code>platform</code>，standalone 模式</td>
 </tr>
 <tr>
 <td>端口</td>
-<td>8848（控制台/OpenAPI）、9848（gRPC 客户端，v2 必需）</td>
+<td>8848（控制台/OpenAPI）、9848（gRPC 客户端，v2 必需，= 8848+1000 偏移）</td>
 </tr>
 <tr>
 <td>源码位置</td>
@@ -74,49 +74,149 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（platform 层自部署，随 <code>python woodScript/trigger-pipeline.py platform</code> 一并拉起）</td>
+<td>无（platform 层基础设施，不归应用流水线管；首次安装/重启走 <code>platform/start-platform.sh</code> 手动执行）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口</h2>
 <ul>
 <li>公网：<code>https://kb.marschat.online/nacos/</code></li>
-<li>内网：<code>http://192.168.31.105:8848/nacos/</code> 或 <code>http://192.168.31.105/nacos/</code></li>
+<li>内网：<code>http://192.168.31.105:8848/nacos/</code></li>
 <li>Tailscale：<code>http://100.93.36.113:8848/nacos/</code></li>
 <li>控制台账密：见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</li>
+<li>就绪探针：<code>/nacos/v1/console/health/readiness</code>（compose healthcheck 用）</li>
 </ul>
 <h2 id="_3">全链路</h2>
-<pre><code>浏览器 → https://kb.marschat.online/nacos/
-  → 腾讯云2号 nginx (443, TLS 终止) → http://100.93.36.113:80
-  → mykng nginx /nacos/ → proxy_pass http://127.0.0.1:8848/nacos/
+<pre><code>浏览器（控制台）:
+https://kb.marschat.online/nacos/ → 腾讯云2号 nginx(443, TLS 终止)
+  → http://100.93.36.113:80 → mykng nginx /nacos/ → proxy_pass http://127.0.0.1:8848/nacos/
   → 容器 platform-nacos (:8848)
+
+微服务客户端（注册/发现）:
+kb-* 容器 → platform-net 网络 → platform-nacos:8848 (HTTP) + :9848 (gRPC)
+（客户端直连内网，不经 nginx、不经公网）
 </code></pre>
 <blockquote>
-<p>注意：该链路只覆盖 8848 控制台/OpenAPI；微服务客户端走 gRPC 9848 端口直连内网/Tailscale，不经 nginx。</p>
+<p>注意：上述 nginx 链路只覆盖 8848 控制台/OpenAPI；微服务客户端的 gRPC 9848 直连内网，防火墙只开 8848 会导致客户端注册失败。</p>
 </blockquote>
-<h2 id="_4">核心功能与使用</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Nacos 是 Alibaba 开源的服务注册发现与配置管理中心。v2 的关键特性：客户端经 <strong>gRPC 长连接</strong>（9848，由 8848+1000 偏移规则得出）注册/订阅，比 v1 的 HTTP 轮询更实时、推送更快；支持 standalone/集群两种部署，元数据可存内嵌 Derby 或外部 MySQL；认证体系支持 Token + identity 双校验。</p>
+<p>本实例三件套的角色分工：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>角色</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform-nacos</code></td>
+<td>注册中心主服务（standalone，持久运行）</td>
+</tr>
+<tr>
+<td><code>nacos-init</code></td>
+<td>一次性用户初始化容器（幂等插入默认用户，跑完即退）</td>
+</tr>
+<tr>
+<td><code>platform-net</code> 网络</td>
+<td>注册中心与全部 kb-* 服务容器的互通层（各应用 compose 以 external 引入）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li><strong>服务注册与发现</strong>：kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence 等微服务启动后自动注册，Spring Cloud LoadBalancer 按服务名寻址</li>
-<li><strong>配置中心</strong>：各服务 <code>bootstrap.yml</code> 指向 Nacos 拉取配置；改配置后可对订阅服务下发刷新（配合 <code>@RefreshScope</code>）</li>
-<li><strong>命名空间/分组</strong>：dev 与 prod 环境隔离（按各服务实际接入情况确认，控制台可见）</li>
-<li><strong>控制台</strong>：服务列表（实例健康状态）、配置编辑、监听查询</li>
+<li><strong>实例角色</strong>：standalone 单实例注册中心（<strong>当前仅用服务发现，未启用配置中心</strong>——各服务无 bootstrap.yml、无 spring.config.import，配置全部走本地 application*.yml；配置中心能力保留，如需启用见"使用"节）。</li>
+<li><strong>存储</strong>：<strong>内嵌 Derby</strong>（非 MySQL）——compose 未注入任何 <code>SPRING_DATASOURCE_*</code> 变量，数据落卷 <code>platform-nacos-data</code>（容器 <code>/home/nacos/data/derby-data</code>）。Derby 内核心表：<code>users</code>（控制台账号）、<code>roles</code>（角色）、<code>config_info</code>（配置中心数据）、<code>tenant_info</code>（namespace）、<code>instance</code> 相关表（服务实例元数据）。v1 文档"依赖 platform-mysql"的说法有误，已修正；若未来升级为 MySQL 存储，只需注入 <code>SPRING_DATASOURCE_PLATFORM=mysql</code> + 连接串变量并重建。</li>
+<li><strong>认证</strong>：<code>NACOS_AUTH_ENABLE=true</code>（客户端与服务端经 <code>NACOS_AUTH_TOKEN</code> / identity key-value 校验，值为密级见 Vaultwarden）。</li>
+<li><strong>用户初始化</strong>：v2.4.3 standalone 不会自动建默认用户（Derby schema 只建表不插数据）——compose 里 <code>nacos-init</code> 一次性容器在 Nacos 启动前跑 <code>platform/nacos/init-nacos.sh</code>，向 Derby <code>users</code> 表幂等插入默认用户（标记文件 <code>.nacos-user-initialized</code> + SELECT 双重检查），<code>platform-nacos</code> 依赖其 <code>service_completed_successfully</code> 后才启动。首次启动 Derby 尚未建 schema 时脚本会跳过，Nacos 建库后需再跑一次该容器。</li>
+<li><strong>namespace/group 组织</strong>：全部服务统一使用默认 namespace <code>public</code> + 默认 group <code>DEFAULT_GROUP</code>（各服务 application.yml 中 <code>spring.cloud.nacos.discovery.namespace/group</code> 的环境变量默认值，实例上未做环境分 namespace——环境差异由 <code>SPRING_PROFILES_ACTIVE=prod</code> + 各自 application-prod.yml 承担，而非 Nacos 侧隔离）。</li>
+<li><strong>注册发现链路</strong>（源码实采）：</li>
+<li>五个微服务（<code>kb-gateway</code>、<code>kb-auth</code>、<code>kb-file</code>、<code>kb-knowledge</code>、<code>kb-intelligence</code>）经 <code>spring-cloud-starter-alibaba-nacos-discovery</code> 启动注册，服务名 = <code>spring.application.name</code>（即 kb-gateway 等）。</li>
+<li>服务地址经 compose 环境变量下发：<code>NACOS_HOST=platform-nacos</code>、<code>NACOS_PORT=8848</code>、<code>NACOS_USERNAME/PASSWORD</code>（值见 mykng <code>.env</code> / Vaultwarden）。</li>
+<li><strong>kb-gateway 路由全部用 <code>lb://服务名</code></strong>（如 <code>uri: lb://kb-auth</code>、<code>lb://kb-file</code>、<code>lb://kb-knowledge</code>、<code>lb://kb-intelligence</code>），经 Spring Cloud LoadBalancer 从 Nacos 按服务名寻址——模块注册即上线、下线即自动摘除，网关零配置拔插；路由统一上下文 <code>${KB_CONTEXT:/kb}</code> + <code>StripPrefix</code> 去前缀，Swagger 文档路由（<code>/v3/api-docs</code>）也走同一机制。</li>
+<li>不接入的服务：<code>kb-ops</code>、<code>portal-server</code>、<code>infra-monitor</code>（compose 无 NACOS_* 环境变量、源码无 nacos 依赖，v1 文档"kb-ops/infra-monitor/portal-server 同样接入"的说法不成立，已修正）。</li>
+<li><strong>为什么选它</strong>：与 Spring Cloud Alibaba 生态原生集成（lb:// 零代码路由）、standalone+Derby 零外部依赖、资源占用小（mem_limit 384m）。</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">编排与位置</h3>
 <ul>
-<li>依赖：platform-mysql（持久化，GR 集群内）</li>
-<li>被依赖：mykng 全部 Spring Boot 微服务（注册+配置）；kb-ops、infra-monitor、portal-server 同样接入</li>
-<li>关联：Spring Boot 3.x 接入用 Nacos 2.x client；gRPC 双端口（8848+9848 偏移 +1000）是 v2 特性，防火墙只开 8848 会导致客户端注册失败</li>
+<li>compose 文件：<code>/root/devtools/platform/docker-compose.platform.yml</code>（本地源码 <code>D:\huliang\java\ideaworkspace\devtools\platform\docker-compose.platform.yml</code>），compose project <code>platform</code>，网络 <code>platform-net</code>（bridge；mykng/应用层各 compose 以 external 引入）。</li>
+<li>启动：<code>bash platform/start-platform.sh</code> 或 <code>docker compose -p platform -f platform/docker-compose.platform.yml up -d</code>（platform 层整体，不归流水线，持久运行）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h3 id="docker-inspect">配置清单（docker inspect 实采）</h3>
 <ul>
-<li>启停：platform 层 compose 管理；<code>docker restart platform-nacos</code> 应急（重启不影响已注册客户端的本地缓存，恢复后自动重连）</li>
-<li>日志：<code>docker logs platform-nacos</code>；容器级日志也可在 Dozzle (mykng) 中查看</li>
-<li>数据备份：配置数据在 MySQL tools/platform 库中，随 MySQL GR 集群三副本容灾</li>
-<li>常见问题：客户端连不上多因 9848 端口未放行；控制台登录密码遗忘需重置（见 Vaultwarden）</li>
+<li>容器 <code>platform-nacos</code>：镜像 <code>nacos/nacos-server:v2.4.3</code>，<code>restart: unless-stopped</code>，<code>mem_limit: 384m</code>。</li>
+<li>端口映射：<code>8848:8848</code>、<code>9848:9848</code>。</li>
+<li>卷挂载：</li>
+<li>named volume <code>platform_platform-nacos-data</code> → <code>/home/nacos/data</code>（Derby 数据）</li>
+<li>named volume <code>platform_platform-nacos-logs</code> → <code>/home/nacos/logs</code></li>
+<li>关键环境变量（只列名与用途）：</li>
+<li><code>MODE=standalone</code>、<code>PREFER_HOST_MODE=hostname</code></li>
+<li><code>JVM_XMS=128m / JVM_XMX=256m / JVM_XMN=64m</code>（JVM 内存限制）</li>
+<li><code>NACOS_AUTH_ENABLE=true</code>、<code>NACOS_AUTH_TOKEN</code>、<code>NACOS_AUTH_IDENTITY_KEY/VALUE</code>（鉴权三件套，值见 Vaultwarden）</li>
+<li>一次性容器 <code>nacos-init</code>：同镜像，<code>entrypoint: bash /init-nacos.sh</code>，挂载同一数据卷 + <code>./nacos/init-nacos.sh</code>（只读），<code>restart: no</code>。</li>
+<li>健康检查：<code>curl -f http://localhost:8848/nacos/v1/console/health/readiness</code>（10s 间隔，重试 10 次）。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h3 id="_9">发布/升级</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成；版本按容器实采修正为 v2.4.3）</li>
+<li>platform 层无流水线。升级：改 compose 中镜像 tag → <code>docker compose -p platform -f platform/docker-compose.platform.yml up -d platform-nacos</code> 重建（Derby 数据在卷中保留；跨大版本升级前先备份 <code>platform-nacos-data</code> 卷）。</li>
+<li>nacos-init 容器每次 platform 启动都会重跑（幂等，已有用户自动跳过）。</li>
+</ul>
+<h3 id="_10">回滚</h3>
+<ul>
+<li>镜像回退：compose 改回旧 tag 重建即可。</li>
+<li>数据回退：恢复 <code>platform-nacos-data</code> 卷备份（停容器 → 回放卷 → 重启）。</li>
+</ul>
+<h2 id="_11">核心功能与使用</h2>
+<h3 id="_12">功能清单</h3>
+<ul>
+<li><strong>服务注册与发现</strong>（当前实际使用）：kb-* 五微服务启动自动注册，网关 <code>lb://</code> 按名寻址。</li>
+<li><strong>实例健康管理</strong>：gRPC 长连接心跳，实例掉线自动摘除，控制台可见健康状态。</li>
+<li><strong>配置中心</strong>（能力保留，当前未接入）：可经 <code>spring.config.import: nacos:</code> 接入，改配置配合 <code>@RefreshScope</code> 下发刷新。</li>
+<li><strong>控制台</strong>：服务列表（实例数/健康状态）、配置编辑、监听查询。</li>
+</ul>
+<h3 id="_13">典型操作路径</h3>
+<ol>
+<li><strong>看注册了哪些服务</strong>：控制台登录（账密见 Vaultwarden）→ 服务管理 → 服务列表 → 点开服务看实例与健康状态。正常应有 kb-gateway/kb-auth/kb-file/kb-knowledge/kb-intelligence 五个服务。</li>
+<li><strong>排查某服务没注册</strong>：先看容器日志 <code>docker logs -f &lt;服务&gt;</code> 是否有 nacos 连接报错 → 确认 compose 注入了 <code>NACOS_HOST=platform-nacos</code> + 账密 → 确认容器在 <code>platform-net</code> 网络 → 确认 9848 端口可达（v2 gRPC）。</li>
+<li><strong>手动摘除/上线实例</strong>：控制台服务详情 → 下线/上线按钮（临时流量摘除用，正式变更走流水线重启）。</li>
+<li><strong>临时重启</strong>：<code>docker restart platform-nacos</code>（客户端本地缓存服务列表，重启期间已建立的调用不断，恢复后自动重连）。</li>
+<li><strong>启用配置中心</strong>（当前未接入，如需启用）：服务加 <code>spring-cloud-starter-alibaba-nacos-config</code> 依赖 → <code>spring.config.import: nacos:&lt;dataId&gt;</code> 指向配置 → 控制台"配置管理"发布 → 配合 <code>@RefreshScope</code> 热刷新（dataId/group 按 <code>public</code>/<code>DEFAULT_GROUP</code> 约定，与现有发现配置保持一致）。</li>
+</ol>
+<h2 id="_14">依赖与关联</h2>
+<ul>
+<li>依赖：</li>
+<li><strong>无外部数据库</strong>（内嵌 Derby，数据在 <code>platform-nacos-data</code> 卷）——v1 所述 MySQL 依赖不成立。</li>
+<li><strong>platform-net 网络</strong>：被注册服务容器经此网络直连。</li>
+<li>被依赖/关联系统：</li>
+<li><strong>mykng 五微服务</strong>（kb-gateway/kb-auth/kb-file/kb-knowledge/kb-intelligence）：注册 + 被网关 lb:// 寻址。</li>
+<li><strong>kb-gateway</strong>：全部路由依赖服务名解析，Nacos 不可用则网关路由失效（下游服务直连不受影响）。</li>
+<li>不接入：kb-ops、portal-server、infra-monitor（各自独立端口直连，不经 Nacos）。</li>
+</ul>
+<h2 id="_15">运维要点</h2>
+<ul>
+<li>启停：platform 层 compose 管理；应急 <code>docker restart platform-nacos</code>（standalone 单点，重启期间网关新路由解析受影响，已缓存的路由不受影响）。</li>
+<li>nacos-init 容器排障：<code>docker logs nacos-init</code>——首次启动会提示 Derby 不存在，platform 整体起来后再 <code>docker start nacos-init</code> 补一次即可。</li>
+<li>日志：<code>docker logs -f platform-nacos</code>；落盘日志在宿主机 <code>platform_platform-nacos-logs</code> 卷（容器 <code>/home/nacos/logs</code>，含 <code>nacos.log</code>/<code>naming-*.log</code>）；容器级日志也可在 Dozzle（mykng 15500）查看。</li>
+<li>数据备份：Derby 数据在 <code>platform-nacos-data</code> 卷——重要变更前：
+  <code>bash
+  docker run --rm -v platform_platform-nacos-data:/data -v $(pwd):/bak alpine \
+    tar czf /bak/nacos-data-$(date +%F).tgz -C /data .</code>
+  （服务注册表可自动恢复，备份重点保用户/权限/配置数据。）</li>
+<li>凭据安全：控制台账号、<code>NACOS_AUTH_TOKEN</code> 等均为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>，文档不写明文。</li>
+<li>常见问题：</li>
+<li>客户端连不上/注册失败：v2 客户端需要 gRPC 9848（8848+1000），防火墙/安全组只放行 8848 时注册必失败；Tailscale 节点访问控制台 8848 即可，无需 9848。</li>
+<li>控制台无法登录：v2.4.3 standalone 不自带默认用户，确认 nacos-init 容器日志（首次启动 Derby 未建 schema 时会提示 Nacos 起完后再跑一次）。</li>
+<li>网关 503/找不到服务：控制台确认目标服务已注册且健康；确认网关与目标服务同在 platform-net 可达。</li>
+<li>服务下线后仍被调用：客户端本地缓存有刷新周期，等几秒或重启网关。</li>
+<li>鉴权报错 403：<code>NACOS_AUTH_TOKEN</code>/identity key-value 三件套在 server 与 client 两侧必须一致——.env 改动后需同时重建 <code>platform-nacos</code> 与全部 kb-* 容器。</li>
+</ul>
+<h2 id="_16">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计节：standalone+Derby 存储、nacos-init 用户初始化、namespace/group=public/DEFAULT_GROUP、五微服务 lb:// 注册链路按源码实采；修正 v1 两处不实——存储非 MySQL、kb-ops/infra-monitor/portal-server 未接入；部署节按 platform compose + docker inspect 实采重写）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成；版本按容器实采修正为 v2.4.3）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

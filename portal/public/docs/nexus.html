@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="nexus">Nexus 私服（公网入口）</h1>
 <blockquote>
-<p>Sonatype Nexus Repository Manager 3 自建制品仓库，统一代理 Maven / npm / PyPI / Docker 等源，作为 devtools 全部构建的依赖中枢与缓存加速层。本篇从<strong>公网域名入口</strong>视角描述；同一实例的内网直连用法见 <code>nexus-lan.md</code>。</p>
+<p>Sonatype Nexus Repository Manager 3 自建制品仓库，统一代理 Maven / npm / PyPI / Docker / apt / conda / NuGet 等源，作为 devtools 全部构建的依赖中枢与缓存加速层。本篇从<strong>公网域名入口</strong>视角描述；同一实例的内网直连用法见 <code>nexus-lan.md</code>。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,23 +58,23 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>Nexus Repository Manager <strong>3.91.1</strong>（<code>sonatype/nexus3:3.91.1</code>）</td>
+<td>Nexus Repository Manager <strong>3.91.1</strong>（<code>sonatype/nexus3:3.91.1</code>，docker inspect 实采）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>主机 mykng（192.168.31.105），容器 <code>nexus</code>，端口 <code>8081-8083</code>（8081=UI/REST+Maven/npm/PyPI，8082/8083=Docker registry）</td>
+<td>主机 mykng（192.168.31.105），容器 <code>nexus</code>（bridge 网络），端口 <code>8081-8083</code>（8081=UI/REST+Maven/npm/PyPI，8082/8083=Docker registry connector）</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>开源组件，官方仓库 github.com/sonatype-nexus-community；本实例配置见 mykng 上 <code>/root</code> 下 nexus 数据卷（容器挂载）</td>
+<td>开源组件，官方仓库 github.com/sonatype/nexus-public；本实例数据在 mykng <code>/root/nexus/data</code>（容器挂载 <code>/nexus-data</code>）</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（基础设施层，自部署；首次安装/重启走手工 <code>docker</code>，不归应用流水线管）</td>
+<td>无（基础设施层，自部署手工管理；不归应用流水线管）</td>
 </tr>
 <tr>
 <td>技术栈</td>
-<td>Java（Nexus OSS 3）、OrientDB/D blob 存储、REST API v1</td>
+<td>Java（Nexus OSS 3）、OrientDB 元数据 + blob 存储、REST API v1</td>
 </tr>
 </tbody>
 </table>
@@ -94,43 +94,148 @@ Docker registry (push/pull):
 Docker 客户端 → 腾讯云2号 nginx → upstream nexus_backend_docker (mykng nexus :8083)
 （内网机也可直连 192.168.31.105:8082/8083，见 nexus-lan.md）
 </code></pre>
-<h2 id="_4">核心功能与使用</h2>
-<p>Nexus 作为"单一依赖源"，对外暴露若干仓库（repo），本实例实际配置与 infra-monitor 资产台账中的缓存策略一致：</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>Nexus Repository 3 是 Sonatype 开源的通用制品仓库，核心能力：<strong>hosted（自托管发布）/ proxy（代理回源并缓存）/ group（聚合多仓库为单一入口）</strong> 三种仓库类型 × 多格式（maven2/npm/pypi/docker/apt/conda/nuget...），配合 ACL、清理策略与 REST API。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li><strong>Maven（maven-public / maven-releases / maven-snapshots）</strong>：</li>
-<li><code>maven-public</code> 为 group 仓库（聚合 releases + snapshots + 代理中央仓库），是 Maven 构建的统一 <code>mirror</code>/<code>repository</code>。</li>
-<li>应用项目（如 kb-ops、infra-monitor）的 <code>pom.xml</code> 将 <code>repositories</code>/<code>pluginRepositories</code> 与 <code>distributionManagement</code> 全部指向 <code>https://nexus.marschat.online/repository/maven-public/</code>（releases/snapshots），<strong>强制走 Nexus，禁用其他公网源</strong>。</li>
-<li><strong>npm（npm-public）</strong>：group 仓库（代理 npmjs + hosted），前端 pnpm 构建的 registry 指向 <code>192.168.31.105:8081/repository/npm-public/</code>（见 woodpecker 文档 <code>env.sh</code> 的 <code>NEXUS_NPM_REGISTRY</code>）。</li>
-<li><strong>PyPI（pypi）</strong>：代理仓库，供 Python 构建/依赖安装。</li>
-<li><strong>Docker（docker group，8082/8083）</strong>：托管/代理基础镜像，供内网 <code>docker pull</code> 加速（具体仓库名见控制台）。</li>
-<li><strong>缓存策略</strong>（与本实例一致）：<code>negativeCache</code> 关闭（避免临时失败被缓存为不存在）、<code>contentMaxAge=525600</code>（制品缓存 365 天，制品不可变）、<code>metadataMaxAge=1440</code>（版本列表每天刷新）。</li>
-<li><strong>缓存预热</strong>：<code>/home/liangzi/tools/nexus-warmup.sh</code>（腾讯云2号）每周日 03:30 执行，覆盖 npm(Top250+80 包)/maven(33)/pypi(47)/docker(22 个基础镜像)，日志 <code>/var/log/nexus-warmup.log</code>；实测 react 6.8MB 首次 19s → 缓存后 0.08s（约 237× 提速）。</li>
+<li><strong>实例角色</strong>：devtools 全栈的"单一依赖源"——所有 Maven/npm/PyPI/Docker 构建只认 Nexus，公网源一律收敛为代理缓存；同时承担内部制品（releases/snapshots/hosted）的发布归档。</li>
+<li><strong>数据布局</strong>：Nexus 3 的持久化分两层——OrientDB 元数据（仓库/权限/任务配置）+ blob 存储（制品二进制），本实例统一放在 <code>/nexus-data</code>（宿主机 <code>/root/nexus/data</code>），无外部分数据库依赖，备份即拷目录。</li>
+<li><strong>访问控制</strong>：匿名账号仅开放只读（拉取/状态探测），发布与管理操作需实名账号；各构建端的发布凭证见 Vaultwarden。</li>
+<li><strong>代理链设计</strong>（REST <code>/service/rest/v1/repositories</code> 实采，23 个仓库，按格式分组）：</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>group（构建端唯一 URL）</th>
+<th>hosted（内部发布）</th>
+<th>proxy（回源缓存）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>maven2</td>
+<td><code>maven-public</code></td>
+<td>maven-releases、maven-snapshots</td>
+<td>maven-central（官方中央源）、maven-aliyun（阿里云）</td>
+</tr>
+<tr>
+<td>npm</td>
+<td><code>npm-public</code></td>
+<td>npm-hosted</td>
+<td>npm-proxy、npm-mirror（npmjs 回源，双源互备）</td>
+</tr>
+<tr>
+<td>pypi</td>
+<td><code>pypi-public</code></td>
+<td>pypi-hosted</td>
+<td>pypi-proxy、pypi-aliyun、pypi-tuna（三源互备）</td>
+</tr>
+<tr>
+<td>docker</td>
+<td><code>docker-public</code>（8082/8083 connector）</td>
+<td>docker-hosted</td>
+<td>docker-daocloud、docker-hub-direct（Docker Hub 回源）</td>
+</tr>
+<tr>
+<td>nuget</td>
+<td><code>nuget-group</code></td>
+<td>nuget-hosted</td>
+<td>nuget.org-proxy</td>
+</tr>
+<tr>
+<td>apt / conda</td>
+<td>—（单代理直用）</td>
+<td>—</td>
+<td>apt-proxy、conda-proxy</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>业务项目（kb-ops/infra-monitor/portal/mykng）的 <code>pom.xml</code> 将 <code>repositories</code>/<code>pluginRepositories</code> 与 <code>distributionManagement</code> 全部指向 <code>https://nexus.marschat.online/repository/maven-public/</code>（releases/snapshots），<strong>强制走 Nexus，禁用其他公网源</strong>。</li>
+<li>前端 pnpm 构建 registry 统一指 <code>npm-public</code>（见 woodpecker <code>env.sh</code> 的 <code>NEXUS_NPM_REGISTRY</code>）。</li>
+<li><strong>为什么这样聚合</strong>：group 仓库让构建端只配置一个 URL，内部命中 hosted、未命中逐级落到 proxy 并缓存——多代理源（central+aliyun、npmjs+tuna+aliyun、daocloud+hub-direct）互为容错，任一上游抖动不断供。</li>
+<li><strong>缓存策略</strong>：<code>negativeCache</code> 关闭（避免上游临时失败被缓存为"不存在"）、<code>contentMaxAge=525600</code>（制品缓存 365 天，制品不可变）、<code>metadataMaxAge=1440</code>（版本列表每天刷新）。</li>
+<li><strong>双入口设计</strong>（为什么内网+公网两个入口，详见 nexus-lan.md）：同一实例同时暴露公网域名（外部/移动场景）与内网直连（高频构建场景），内网流量不绕公网带宽。</li>
+<li><strong>缓存预热</strong>：<code>/home/liangzi/tools/nexus-warmup.sh</code>（腾讯云2号）每周日 03:30 cron 执行，覆盖 npm（Top250+80 包）/maven（33）/pypi（47）/docker（22 个基础镜像），日志 <code>/var/log/nexus-warmup.log</code>；脚本经各仓库下载 API 逐包请求触发缓存（幂等，已缓存仅元数据刷新）；实测 react 6.8MB 首次 19s → 缓存后 0.08s（约 237× 提速）。</li>
+</ul>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">编排与位置</h3>
+<ul>
+<li>容器 <code>nexus</code>（docker inspect 实采）：镜像 <code>sonatype/nexus3:3.91.1</code>，<strong>bridge 网络</strong>（独立于 platform-net），<code>restart: unless-stopped</code>。</li>
+<li>单容器自部署（无 compose project 编排，<code>docker run</code>/手工管理）。</li>
+</ul>
+<h3 id="_9">配置清单</h3>
+<ul>
+<li>端口映射：<code>8081:8081</code>（UI/REST + Maven/npm/PyPI）、<code>8082:8082</code>、<code>8083:8083</code>（Docker registry connector）。</li>
+<li>卷挂载（宿主→容器）：<code>/root/nexus/data</code> → <code>/nexus-data</code>（全部 blob 存储与元数据，唯一持久卷）。</li>
+<li>关键配置：管理员账密（密级，见 Vaultwarden）；仓库/代理/缓存策略经 Web 控制台或 REST API 维护，持久化在 <code>/nexus-data</code>。</li>
+<li>出口回源：拉取公网源（google/github/docker/pypi）经 mykng Clash Meta <code>:7890</code> 代理（见 infra-monitor 代理链路配置）。</li>
+</ul>
+<h3 id="_10">发布/升级</h3>
+<ul>
+<li>无流水线；升级时替换镜像 tag（如 <code>sonatype/nexus3:3.91.1</code> → 新版本）重建容器，数据卷保留。</li>
+<li><strong>升级注意</strong>：Nexus 3 不能跨大版本直接跳（OrientDB schema 迁移有顺序要求），需按官方升级路径逐版本过渡；升级前必须完整备份 <code>/root/nexus/data</code>。</li>
+<li>仓库配置变更在 Web 控制台操作（Repository → 各仓库的 proxy URL / group 成员 / 缓存策略），持久化在数据卷中，重建容器不丢失。</li>
+</ul>
+<h3 id="_11">回滚</h3>
+<ul>
+<li>镜像回退：改回旧 tag 重建容器即可，<code>/root/nexus/data</code> 不动。</li>
+<li>数据回退：<code>/nexus-data</code> 目录整体备份（建议停写后 tar，即 <code>docker stop nexus</code> → tar → start），异常时停容器回放目录再启动。</li>
+</ul>
+<h2 id="_12">核心功能与使用</h2>
+<h3 id="_13">功能清单</h3>
+<ul>
+<li><strong>依赖统一代理</strong>：Maven/npm/PyPI/Docker 全走 Nexus——构建可复现、不依赖各机器外网质量。</li>
+<li><strong>内部包托管</strong>：<code>npm-hosted</code>/<code>pypi-hosted</code>/<code>maven-releases</code>/<code>maven-snapshots</code>/<code>docker-hosted</code>/<code>nuget-hosted</code> 发布内部制品。</li>
+<li><strong>缓存加速</strong>：365 天制品缓存 + 每周预热——CI 构建近乎本地速度（react 实测 19s → 0.08s）。</li>
+<li><strong>多源容错聚合</strong>：group 内多 proxy 互备（如 pypi 三源、npm 双源），任一上游抖动不断供。</li>
+<li><strong>Docker 镜像加速</strong>：内网 <code>docker pull</code> 基础镜像走 docker-public——不挤公网带宽、不受 Hub 限流。</li>
+<li><strong>REST API</strong>：<code>/service/rest/v1/...</code> 查询仓库/组件/状态——脚本化巡检用（warmup 脚本即基于 API 探测）。</li>
+</ul>
+<h3 id="_14">典型操作路径</h3>
+<ol>
+<li><strong>查/改仓库配置</strong>：登录 <code>https://nexus.marschat.online</code> 控制台 → 左侧齿轮（Server administration）→ Repositories → 点开仓库编辑 proxy URL/缓存策略/group 成员。</li>
+<li><strong>看缓存命中</strong>：控制台 Browse 菜单 → 选仓库 → 按路径浏览已缓存制品；或 Search 按格式/名称检索组件。</li>
+<li><strong>验证服务状态</strong>：<code>curl http://192.168.31.105:8081/service/rest/v1/status</code>（匿名可探）；列仓库 <code>curl .../service/rest/v1/repositories</code>。</li>
+<li><strong>构建端接入</strong>：Maven 改 <code>pom.xml</code>/<code>settings.xml</code> 指向 <code>maven-public</code>；npm 设 registry=<code>npm-public</code>；pip 用 <code>-i</code> 指 <code>pypi-public</code>；docker 配 <code>daemon.json</code>（各端内网直连细节见 nexus-lan.md）。</li>
+<li><strong>发布内部制品</strong>：<code>mvn deploy</code> / <code>npm publish</code> / <code>docker push</code> 指向对应 hosted 仓库（凭证见 Vaultwarden）。</li>
+<li><strong>查缓存预热结果</strong>：腾讯云2号 <code>tail /var/log/nexus-warmup.log</code>（每周日 03:30 运行后查看各格式预热包数与耗时）。</li>
+</ol>
+<h2 id="_15">依赖与关联</h2>
 <ul>
 <li>依赖：</li>
-<li><strong>出口代理</strong>：拉取公网源（google/github/docker/pypi）经各机 Clash Meta <code>:7890</code> 代理（见 infra-monitor 代理链路配置）。</li>
-<li><strong>存储卷</strong>：Nexus 数据卷（blob + 元数据）挂在 mykng 本地，建议纳入备份。</li>
+<li><strong>出口代理</strong>：回源公网（google/github/docker/pypi）经各机 Clash Meta <code>:7890</code>（见 infra-monitor 代理链路配置）。</li>
+<li><strong>存储卷</strong>：mykng <code>/root/nexus/data</code>（blob + 元数据），唯一持久化位置，务必纳入备份。</li>
 <li><strong>腾讯云2号 nginx</strong>：公网 HTTPS 终止与反代（nexus_backend / nexus_backend_docker）。</li>
 <li>被依赖/关联系统：</li>
 <li><strong>全部 Maven/npm 构建</strong>：kb-ops、infra-monitor、portal、mykng 等 <code>pom.xml</code>/<code>package.json</code> 指向本 Nexus。</li>
 <li><strong>Woodpecker CI</strong>：CI 容器内编译直接消费 Nexus 私服。</li>
 <li><strong>Docker 镜像拉取</strong>：内网机器经 8082/8083 拉基础镜像（见 nexus-lan.md）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_16">运维要点</h2>
 <ul>
-<li>启停：<code>docker start/stop/restart nexus</code>（基础设施层，手工管理，不归应用流水线）。</li>
-<li>日志：<code>docker logs -f nexus</code>；Nexus 自身 <code>sonatype-work/nexus3/log/</code> 在容器内数据卷。</li>
-<li>数据与备份：blob 存储与元数据在 mykng 本地数据卷，建议定期备份；缓存预热日志在腾讯云2号 <code>/var/log/nexus-warmup.log</code>。</li>
+<li>启停：<code>docker start/stop/restart nexus</code>（基础设施层，手工管理，不归应用流水线）。注意 Nexus 3 启动需 1~2 分钟才能就绪，探活以 <code>/service/rest/v1/status</code> 返回 200 为准。</li>
+<li>日志：<code>docker logs -f nexus</code>；Nexus 自身日志在宿主机 <code>/root/nexus/data/log/karaf.log</code>（滚动）。</li>
+<li>数据与备份：<code>/root/nexus/data</code> 整目录（blob + OrientDB 元数据）定期备份；冷备方式：<code>docker stop nexus</code> → <code>tar czf nexus-data-$(date +%F).tgz -C /root/nexus data</code> → <code>docker start nexus</code>。缓存预热日志在腾讯云2号 <code>/var/log/nexus-warmup.log</code>。</li>
+<li>存储清理：代理缓存的旧版本组件会持续膨胀——控制台可按仓库建 Cleanup Policies（按组件最后下载时间/版本数），再配 Tasks → "Admin - Cleanup repositories" + "Admin - Repair - Rebuild blob store list" 定期执行（当前实例策略以控制台为准，未见独立配置文件）。</li>
+<li>常用 REST（匿名或带凭证，凭证见 Vaultwarden）：</li>
+<li><code>GET /service/rest/v1/status</code> — 健康探针</li>
+<li><code>GET /service/rest/v1/repositories</code> — 仓库清单（含 format/type）</li>
+<li><code>GET /service/rest/v1/search?repository=maven-public&amp;name=&lt;组件名&gt;</code> — 查缓存是否命中</li>
+<li><code>GET /service/rest/v1/security/users</code> — 用户管理（需管理员权限）</li>
 <li>凭据安全：Nexus 管理员账号与发布账号为密级，<strong>一律见 Vaultwarden（vault.marschat.online）或 infrastructure-map 技能</strong>；Maven/npm 发布用的 <code>settings.xml</code>/<code>_authToken</code> 亦不得明文入文档。</li>
 <li>常见问题：</li>
 <li>公网拉取慢：先确认缓存预热是否覆盖该包；未覆盖的首次拉取会经代理回源。</li>
 <li><code>negativeCache</code> 误伤：若曾回源失败被缓存，清对应仓库 negative cache 或等 <code>metadataMaxAge</code> 过期。</li>
 <li>Docker 推送 443/8083 不通：确认客户端 <code>daemon.json</code> 已配置 insecure-registry 或走 nginx TLS（见 nexus-lan.md）。</li>
+<li>某上游源失效：group 内多个 proxy 互备，控制台停用坏源即可，构建端无需改动。</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_17">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 腾讯云2号 nginx 配置 + 源码/infra-monitor 缓存策略生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计节：hosted/proxy/group 代理链按 REST API 实采 23 个仓库重写；部署节按 docker inspect 实采补 <code>/root/nexus/data</code> 卷挂载与 bridge 网络）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps + 腾讯云2号 nginx 配置 + infra-monitor 缓存策略生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

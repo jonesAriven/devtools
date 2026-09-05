@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="debian">内网 Debian 主机</h1>
 <blockquote>
-<p>内网 Debian 主机（192.168.31.182 / Tailscale 100.105.196.63 / 主机名 MiWiFi-RD15-srv）的 Cockpit 管理入口 + 主机角色总览。这台机器承担"第二机房"角色：可观测性栈（Kuma/Grafana/Loki/Dozzle/Promtail）、向量与 embedding（Qdrant/BGE）、激活码生产（activecode）、FRP 管理端（frp-manager）、MySQL GR 集群 Node2/Node3。</p>
+<p>内网 Debian 主机（192.168.31.182 / Tailscale 100.105.196.63 / 主机名 MiWiFi-RD15-srv）的主机管理入口 + 角色总览。这台机器承担"第二机房"角色：可观测性栈（Kuma/Grafana/Loki/Dozzle/Promtail）、向量与 embedding（Qdrant/BGE）、激活码生产（activecode）、FRP 管理端（frp-manager）、MySQL GR 集群 Node2/Node3。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,11 +58,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>系统</td>
-<td>Debian（Cockpit + Docker）</td>
+<td>Debian（Docker；Cockpit 已装但当前未运行，见下）</td>
 </tr>
 <tr>
 <td>管理入口</td>
-<td>Cockpit 宿主服务，端口 15090（实探 http 可访问）</td>
+<td>SSH（主）；Cockpit :15090 当前 socket failed、无监听（2026-09-05 实采修正）</td>
 </tr>
 <tr>
 <td>SSH</td>
@@ -77,14 +77,23 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <h2 id="_2">访问入口</h2>
 <ul>
 <li>公网：—</li>
-<li>Cockpit 内网：<code>http://192.168.31.182:15090</code></li>
-<li>Cockpit Tailscale：<code>http://100.105.196.63:15090</code></li>
+<li>Cockpit 内网：<code>http://192.168.31.182:15090</code> —— <strong>当前不可用</strong>：实采 cockpit.socket 为 failed 状态、15090 无监听、curl 返回 000；修复需 <code>systemctl restart cockpit.socket</code> 并排查 drop-in 配置（待处理）</li>
+<li>Cockpit Tailscale：<code>http://100.105.196.63:15090</code>（同上，随服务状态恢复）</li>
+<li>SSH：<code>root@192.168.31.182</code>（当前唯一稳定管理通道）</li>
 <li>账密：Linux 系统账号，见 Vaultwarden 或 infrastructure-map 技能</li>
 </ul>
 <h2 id="_3">全链路</h2>
-<pre><code>浏览器（家庭局域网 / Tailscale）→ http://192.168.31.182:15090 → 宿主 Cockpit
+<pre><code>管理：本地终端 → ssh root@192.168.31.182 → 宿主
+观测：浏览器（家庭局域网 / Tailscale）→ Grafana :15300 / Kuma :15001 / Dozzle :15888 → 对应容器
+业务：tools.marschat.online（公网）→ 腾讯云2号反代 → Tailscale → 本机 :18080 activecode
 </code></pre>
-<h2 id="2026-09-05">本机容器清单（实采 2026-09-05）</h2>
+<h2 id="_4">系统设计（主机角色）</h2>
+<h3 id="_5">定位</h3>
+<ul>
+<li><strong>第二机房</strong>：与主部署机 mykng 互为备份面——观测栈整体迁出 mykng（mykng 挂了监控不陪葬）、MySQL GR 副本、向量/激活码等旁路业务</li>
+<li>机房网络位置：家庭内网 192.168.31.x 段；Tailscale IP 100.105.196.63；公网流量只能经腾讯云2号反代进来</li>
+</ul>
+<h3 id="11-2026-09-05">容器矩阵（11 个，实采 2026-09-05）</h3>
 <table>
 <thead>
 <tr>
@@ -163,27 +172,325 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 </tbody>
 </table>
-<h2 id="_4">核心功能与使用</h2>
+<h3 id="_6">关键设计决策</h3>
 <ul>
-<li><strong>Cockpit</strong>：资源水位、systemd 服务、Web 终端、存储/网络——与 mykng Cockpit 用法一致</li>
-<li><strong>观测中枢</strong>：Grafana（:15300）/ Loki（:15100）/ Kuma（:15001）/ Dozzle（:15888）全在这台，跨机排查从这台进</li>
-<li><strong>数据面</strong>：MySQL GR Node2/3（deploy-mysql-cluster.sh 统一重启三节点）；Qdrant 向量存储 /var/lib/qdrant-storage 落盘</li>
-<li><strong>业务面</strong>：激活码生产实例（18080，公网 tools.marschat.online 直达本机 Tailscale IP 100.105.196.63:18080，链路为 腾讯云2号 → 内网Deb，是少数绕过 mykng 的业务链路）</li>
+<li><strong>观测栈独立成 compose 项目放这台</strong>：监控与被监控对象故障域隔离——mykng 整机故障不影响 Kuma 告警与 Grafana 查询能力</li>
+<li><strong>本机 9090 是 clash-meta 代理端口</strong>（实采确认），与 Cockpit 无关；探测公网域名的出站路径受其影响</li>
+<li><strong>激活码链路独立</strong>：腾讯云2号 → 本机 Tailscale IP（100.105.196.63:18080），是少数绕过 mykng 的业务链路，mykng 停机不影响 tools.marschat.online</li>
+<li><strong>MySQL GR 多副本</strong>：Node2/Node3 在本机，与 mykng 对端互备，单机故障不丢数据</li>
 </ul>
-<h2 id="_5">依赖与关联</h2>
+<h3 id="_7">端口分配总表（实采）</h3>
+<table>
+<thead>
+<tr>
+<th>端口</th>
+<th>归属</th>
+<th>暴露范围</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15001</td>
+<td>obs-uptime-kuma</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>15090</td>
+<td>Cockpit（当前 failed）</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>15100</td>
+<td>obs-loki</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>15300</td>
+<td>obs-grafana</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>15888</td>
+<td>obs-dozzle</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>18080</td>
+<td>activecode</td>
+<td>公网（经腾讯云2号反代 + Tailscale 隧道）</td>
+</tr>
+<tr>
+<td>18082</td>
+<td>frp-manager</td>
+<td>内网 + Tailscale</td>
+</tr>
+<tr>
+<td>8081</td>
+<td>rag-embedding</td>
+<td>内网</td>
+</tr>
+<tr>
+<td>6333/6334</td>
+<td>rag-qdrant</td>
+<td>内网</td>
+</tr>
+<tr>
+<td>3307/3308</td>
+<td>platform-mysql-2/3</td>
+<td>内网（GR 集群）</td>
+</tr>
+<tr>
+<td>9090</td>
+<td>clash-meta（宿主进程，非容器）</td>
+<td>本机</td>
+</tr>
+<tr>
+<td>7890</td>
+<td>Clash 代理端口</td>
+<td>内网（影响 Kuma 探测路径）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ssh-root19216831182">命令速查（SSH root@192.168.31.182）</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>列 compose 项目</td>
+<td><code>docker compose ls</code></td>
+</tr>
+<tr>
+<td>观测栈状态</td>
+<td><code>docker compose -f /opt/observability/docker-compose.yml ps</code></td>
+</tr>
+<tr>
+<td>全容器列表</td>
+<td><code>docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}'</code></td>
+</tr>
+<tr>
+<td>重建某容器</td>
+<td><code>docker compose -f &lt;compose路径&gt; up -d &lt;服务名&gt;</code></td>
+</tr>
+<tr>
+<td>修 Cockpit</td>
+<td><code>systemctl restart cockpit.socket</code>（失败查 <code>journalctl -u cockpit.socket</code>）</td>
+</tr>
+<tr>
+<td>看 journal</td>
+<td><code>journalctl -f</code>（同时可被本机 promtail 送 Loki）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_8">备份矩阵</h3>
+<table>
+<thead>
+<tr>
+<th>数据</th>
+<th>位置</th>
+<th>备份现状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MySQL（GR Node2/3）</td>
+<td>platform-mysql-2/3 容器</td>
+<td>GR 多副本天然冗余</td>
+</tr>
+<tr>
+<td>Qdrant 向量</td>
+<td>/var/lib/qdrant-storage 落盘</td>
+<td>未纳入统一备份</td>
+</tr>
+<tr>
+<td>Kuma 配置</td>
+<td>observability_uptime-kuma-data 卷</td>
+<td>未纳入统一备份（改配置后手工备份）</td>
+</tr>
+<tr>
+<td>Grafana 看板</td>
+<td>observability_grafana-data 卷 + provisioning 目录</td>
+<td>provisioning 有文件副本，手工看板未备份</td>
+</tr>
+<tr>
+<td>Loki 日志</td>
+<td>observability_loki-data 卷</td>
+<td>可丢失数据，不备份</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mykng">与 mykng 的分工对照</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>mykng（主部署机）</th>
+<th>本机（第二机房）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>业务主体</td>
+<td>kb 五件套 / portal / cosmic 等</td>
+<td>激活码 / 向量 / FRP 管理端</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>MySQL GR Node1</td>
+<td>MySQL GR Node2/3（副本）</td>
+</tr>
+<tr>
+<td>观测栈</td>
+<td>只跑采集（promtail + dozzle）</td>
+<td>全套（Kuma/Grafana/Loki/Dozzle/Promtail）</td>
+</tr>
+<tr>
+<td>公网暴露</td>
+<td>无直连（经腾讯云2号反代）</td>
+<td>同左，另有 tools 域名直达激活码</td>
+</tr>
+<tr>
+<td>故障影响</td>
+<td>主业务不可用</td>
+<td>观测告警仍在（Kuma 在此），激活码不受影响</td>
+</tr>
+</tbody>
+</table>
+<h3 id="runbook">新服务上机 runbook</h3>
+<ol>
+<li>确定归属：观测类进 /opt/observability；业务类按现有惯例建独立 compose 目录</li>
+<li>写 compose（端口避开上表已占用端口），<code>docker compose up -d</code></li>
+<li>日志出口：stdout 交 promtail 采集；确认 Dozzle 能看到</li>
+<li>监控：Kuma 加 monitor（公网域名/内部端口）</li>
+<li>portal 收录：卡片入口 + 描述同步</li>
+<li>凭证登记 Vaultwarden，不落文档</li>
+</ol>
+<h2 id="compose-docker-compose-ls">部署与发布（compose 清单，实采 docker compose ls）</h2>
+<table>
+<thead>
+<tr>
+<th>compose 项目</th>
+<th>compose 文件绝对路径</th>
+<th>容器</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>observability（5）</td>
+<td>/opt/observability/docker-compose.yml</td>
+<td>obs-promtail / obs-loki / obs-grafana / obs-uptime-kuma / obs-dozzle</td>
+</tr>
+<tr>
+<td>activecode（1）</td>
+<td>/root/devtools/active-manager/activation-code-server/docker-compose.yml</td>
+<td>activecode</td>
+</tr>
+<tr>
+<td>hive-compose（1）</td>
+<td>/home/root01/hive-compose/docker-compose.yml</td>
+<td>hive-metastore</td>
+</tr>
+<tr>
+<td>rag-embedding（1）</td>
+<td>/home/root01/rag-embedding/docker-compose.yml</td>
+<td>rag-embedding</td>
+</tr>
+</tbody>
+</table>
 <ul>
-<li>关联：腾讯云2号（tools 域名反代到本机）；mykng（MySQL GR 对端、Loki 接收本机及全集群日志）</li>
-<li>备份：MySQL 数据随 GR 多副本；Qdrant/Kuma/Grafana 数据卷未纳入统一备份体系</li>
+<li>frp-manager、rag-qdrant、platform-mysql-2/3 未在上述四个项目中（独立容器或项目归属待确认）</li>
+<li>发布方式：全部自部署无流水线；升级走"改 compose tag → <code>docker compose pull &amp;&amp; docker compose up -d</code>"标准动作</li>
+<li>回滚：compose tag 回退重建；MySQL 数据随 GR 多副本兜底</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>什么场景用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>观测中枢</td>
+<td>Grafana（:15300）/ Loki（:15100）/ Kuma（:15001）/ Dozzle（:15888）全在这台，跨机排查从这台进</td>
+</tr>
+<tr>
+<td>数据面</td>
+<td>MySQL GR Node2/3（deploy-mysql-cluster.sh 统一重启三节点）；Qdrant 向量存储 /var/lib/qdrant-storage 落盘</td>
+</tr>
+<tr>
+<td>业务面</td>
+<td>激活码生产实例（18080，公网 tools.marschat.online 直达本机）</td>
+</tr>
+<tr>
+<td>宿主管理</td>
+<td>Cockpit 恢复后用法与 mykng Cockpit 一致（资源水位/服务/Web 终端/存储网络）；当前以 SSH 为准</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">典型操作路径</h3>
+<ol>
+<li><strong>跨机查日志</strong>：打开 Grafana :15300 → Explore → Loki → 按标签查任意主机日志</li>
+<li><strong>查本机容器实时日志</strong>：打开 Dozzle :15888 → 选容器</li>
+<li><strong>重启观测栈</strong>：<code>ssh root@192.168.31.182 "cd /opt/observability &amp;&amp; docker compose up -d"</code></li>
+<li><strong>MySQL GR 运维</strong>：SSH 进本机 → 跑 deploy-mysql-cluster.sh 统一管理三节点</li>
+<li><strong>Cockpit 修复</strong>（待处理）：SSH → <code>systemctl restart cockpit.socket</code> → 失败则 <code>journalctl -u cockpit.socket</code> 排查 drop-in 配置</li>
+</ol>
+<h2 id="_12">依赖与关联</h2>
 <ul>
-<li>compose 项目：/opt/observability/docker-compose.yml（观测栈）、activecode/frp-manager 独立 compose</li>
-<li>日志：本机容器用本机 Dozzle；journal 由本机 promtail 送 Loki</li>
-<li>常见问题：Tailscale 掉线会导致 tools.marschat.online（激活码）公网不可用，Kuma 会第一时间告警</li>
+<li>关联：</li>
+<li>腾讯云2号（tools 域名反代到本机）</li>
+<li>mykng（MySQL GR 对端、Loki 接收本机及全集群日志）</li>
+<li>备份：MySQL 数据随 GR 多副本；Qdrant/Kuma/Grafana/Loki 数据卷未纳入统一备份体系</li>
 </ul>
-<h2 id="_7">变更记录</h2>
+<h2 id="_13">运维要点</h2>
+<h3 id="compose">compose 与日志</h3>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
+<li>compose 项目：/opt/observability（观测栈）、activecode / hive-compose / rag-embedding 各自独立（路径见上表）</li>
+<li>日志：本机容器用本机 Dozzle；journal 与 /var/log 由本机 obs-promtail 送 Loki</li>
+</ul>
+<h3 id="_14">常见问题</h3>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cockpit 打不开</td>
+<td>cockpit.socket failed（2026-09-05 实采）</td>
+<td>restart socket；失败查 journalctl 与 drop-in（待处理）</td>
+</tr>
+<tr>
+<td>tools.marschat.online 公网不可用</td>
+<td>Tailscale 掉线</td>
+<td>Kuma 会第一时间告警；恢复 Tailscale 即恢复</td>
+</tr>
+<tr>
+<td>观测栈整体失联</td>
+<td>本机断电/断网</td>
+<td>已知边界：Kuma 也在本机，整机故障时告警自身失效，依赖人工发现</td>
+</tr>
+<tr>
+<td>MySQL 单节点异常</td>
+<td>GR 节点故障</td>
+<td>用 deploy-mysql-cluster.sh 统一重启，勿单点操作</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_15">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；实采修正：Cockpit 当前 socket failed 入口不可用（v1 记录的"可访问"失效）；确认四个 compose 项目绝对路径；确认本机 9090 为 clash-meta</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

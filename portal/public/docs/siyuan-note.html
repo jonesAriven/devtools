@@ -41,7 +41,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="_1">思源笔记</h1>
 <blockquote>
-<p>自托管的 SiYuan 笔记系统，用于个人笔记与知识块管理（Go + Electron + Vue 技术栈），数据私有、可离线优先。</p>
+<p>自托管的 SiYuan 笔记系统，用于个人笔记与知识块管理
+（Go + Electron + Vue 技术栈），数据私有、可离线优先。</p>
+<p><strong>当前 mykng 侧服务未运行（2026-09-05 实采），
+本文按「预期部署形态 + 开源能力」记录，恢复部署后需回填实采。</strong></p>
 </blockquote>
 <h2 id="_2">基本信息</h2>
 <table>
@@ -62,11 +65,15 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td>应运行于 mykng（材料包：note.marschat.online → mykng:6806）；<strong>实采（2026-09-05）mykng 上 6806 无监听、docker ps/docker ps -a 均无 siyuan/note 容器，当前疑似未运行/已停止</strong> (待确认运行态)</td>
+<td>预期运行于 mykng（反代链路：note.marschat.online → mykng:6806）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td><strong>实采（2026-09-05）mykng 上 6806 无监听、docker ps/-a 均无 siyuan/note 容器、docker images 无 siyuan 镜像，当前未部署/已移除</strong> (待确认运行态与去向)</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>开源 <code>siyuan-note/siyuan</code>（Go + Electron + Vue）；自托管部署，本地无构建仓库</td>
+<td>开源 siyuan-note/siyuan（Go + Electron + Vue）；自托管部署，本地无构建仓库</td>
 </tr>
 <tr>
 <td>CI/CD</td>
@@ -76,8 +83,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </table>
 <h2 id="_3">访问入口</h2>
 <ul>
-<li>公网：<code>https://note.marschat.online</code>（腾讯云2号 nginx 终止 TLS 443）</li>
-<li>内网：<code>http://192.168.31.105:6806</code>（mykng，当前不可达——服务未监听）</li>
+<li>公网：<code>https://note.marschat.online</code></li>
+<li>腾讯云2号 nginx 终止 TLS 443，反代配置仍在</li>
+<li>内网：<code>http://192.168.31.105:6806</code></li>
+<li>mykng，<strong>当前不可达——服务未监听</strong></li>
 <li>Tailscale：<code>http://100.93.36.113:6806</code>（同未监听）</li>
 </ul>
 <h2 id="_4">全链路</h2>
@@ -85,39 +94,132 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
        → http://100.93.36.113:6806  (mykng SiYuan, 端口 6806)
 </code></pre>
 <blockquote>
-<p>链路配置依据：材料包第 5 节 <code>note.marschat.online → http://100.93.36.113:6806</code>。
-<strong>实采告警</strong>：2026-09-05 在 mykng 上 <code>ss -tlnp | grep 6806</code> 无结果，<code>docker ps -a</code> 无 siyuan/note 相关容器——公网域名虽已配置反代，但后端当前未运行，访问会 502/超时。重启后需确认容器名/服务与 6806 端口映射是否仍匹配。</p>
+<p>链路配置依据：材料包 <code>note.marschat.online → http://100.93.36.113:6806</code>；
+腾讯云2号 nginx 侧反代配置存在。</p>
+<p><strong>实采告警（2026-09-05）</strong>：
+- mykng 上 <code>ss -tlnp | grep 6806</code> 无结果。
+- <code>docker ps -a</code> 无 siyuan/note 容器，<code>docker images</code> 无 siyuan 镜像。
+- <code>/root/devtools/note/</code> 目录只有 markdown 笔记文件
+  （docker命令大全.md / git常用命令.md / new.js），并非 SiYuan 工作空间。
+- 公网域名虽配置反代，但后端当前未运行，访问会 502/超时。</p>
 </blockquote>
-<h2 id="_5">核心功能与使用</h2>
+<h2 id="_5">系统设计</h2>
+<h3 id="_6">组件架构（官方能力要点）</h3>
+<p>SiYuan 是开源（AGPL）隐私优先的块级笔记系统：</p>
 <ul>
-<li>个人知识库/笔记：块级（block）编辑模型，支持双向链接、关系图、SQL 式查询、 Markdown/公众号导出等。</li>
-<li>自托管优势：数据落在本机（mykng），不依赖商业云服务，适合存放私密/长期笔记。</li>
+<li><strong>块级（block）编辑模型</strong></li>
+<li>一切内容皆块，支持双向链接、关系图/反链面板。</li>
+<li>SQL 式块查询、属性与标签体系。</li>
+<li><strong>技术栈</strong></li>
+<li>Go 内核（HTTP 服务，默认端口 6806，自带访问鉴权）。</li>
+<li>Electron 桌面端 + Vue 前端。</li>
+<li>服务端模式（docker 自托管）提供 Web 访问。</li>
+<li><strong>数据形态</strong></li>
+<li>工作空间目录（.siyuan）内以 JSON 文件 + assets 附件存储。</li>
+<li>天然适合文件级备份与同步。</li>
+<li><strong>导出能力</strong>：Markdown、PDF、图片、公众号排版导出等。</li>
+</ul>
+<h3 id="_7">我们的集成设计（预期角色）</h3>
+<ul>
+<li><strong>实例角色</strong></li>
+<li>mykng 上 docker 自托管服务端。</li>
+<li>作为个人/小范围私密笔记与项目知识沉淀库，公网经 <code>note.marschat.online</code> 随处访问。</li>
+<li><strong>与哪些系统连接</strong></li>
+<li>上游：腾讯云2号 nginx。</li>
+<li>数据完全本地（工作空间卷），不依赖商业云。</li>
+<li>与记忆提炼面板（memory.marschat.online）同属知识类但独立——SiYuan 为人工笔记，memory-panel 为自动提炼。</li>
+<li><strong>为什么选它</strong></li>
+<li>块级 + 双链适合长期知识沉淀。</li>
+<li>数据落本机文件，隐私与可迁移性好。</li>
+<li><strong>关键配置思路</strong>（恢复部署时参考）</li>
+<li>docker 镜像 <code>siyuan</code>（官方 b3log/siyuan 系）映射 6806。</li>
+<li>工作空间目录挂载到宿主卷持久化。</li>
+<li>首次启动设置访问口令（入 Vaultwarden）。</li>
+</ul>
+<h2 id="_8">部署与发布</h2>
+<ul>
+<li>编排与位置</li>
+<li><strong>当前无部署</strong>（无容器/镜像/compose）。</li>
+<li>mykng devtools 目录下的 compose 清单中未见 siyuan 相关文件 (待确认历史部署方式)。</li>
+<li>配置清单（恢复部署时预期）</li>
+<li>端口映射：<code>6806:6806</code>。<ul>
+<li>与 nginx 反代目标一致，改端口需同步腾讯云2号 nginx upstream。</li>
+</ul>
+</li>
+<li>卷挂载：宿主工作空间目录 → 容器 <code>/root/Documents/SiYuan</code>。<ul>
+<li>官方镜像约定路径，具体以恢复部署时为准 (待确认)。</li>
+</ul>
+</li>
+<li>环境变量：<code>TZ</code>、访问鉴权 token 等（官方镜像支持）。</li>
+<li>发布/升级</li>
+<li>无流水线。</li>
+<li>docker pull 新镜像 + 重建容器（保留工作空间卷）。</li>
+<li>回滚</li>
+<li>镜像回退旧 tag 重建。</li>
+<li>工作空间为文件存储，数据不随容器销毁。</li>
+</ul>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
+<ul>
+<li>个人知识库/笔记：块级编辑、双向链接、关系图、SQL 式查询、Markdown/公众号导出。</li>
+<li>自托管优势：数据落 mykng 本机，不依赖商业云，适合私密/长期笔记。</li>
 <li>典型场景：日常笔记、项目知识沉淀、资料归档；通过 <code>note.marschat.online</code> 随处访问。</li>
 </ul>
+<h3 id="_11">典型操作路径</h3>
+<p>（按 SiYuan 通用能力，服务恢复后按实际界面校准）</p>
+<ol>
+<li><strong>日常记录</strong>
+   - 登录 <code>https://note.marschat.online</code> → 新建文档 → 块级编辑（<code>/</code> 呼出块菜单）。</li>
+<li><strong>知识串联</strong>
+   - <code>[[</code> 建双向链接 → 反链面板查看引用关系 → 关系图浏览知识网络。</li>
+<li><strong>检索</strong>
+   - 全局搜索（支持 SQL 式块查询语法）定位历史笔记。</li>
+</ol>
 <blockquote>
-<p>UI 具体操作未经实测（服务当前未运行），按 SiYuan 通用能力描述；如启用后需补充本地功能细节。</p>
+<p>服务当前未运行，以上按开源通用能力描述；
+恢复部署后需补录本实例实际配置（容器名/卷路径/版本）。</p>
 </blockquote>
-<h2 id="_6">依赖与关联</h2>
+<h2 id="_12">依赖与关联</h2>
 <ul>
-<li>依赖：mykng 宿主/容器运行时；SiYuan 工作空间数据目录（路径未实采）(待确认)；可选对象存储/图床（未实采）。</li>
-<li>被依赖/关联系统：经腾讯云2号 nginx <code>note.marschat.online</code> 对外；与「记忆提炼面板」(memory.marschat.online) 同属知识类，但二者独立（SiYuan 为人工笔记，memory-panel 为自动提炼）。</li>
+<li>依赖（预期）</li>
+<li>mykng 容器运行时。</li>
+<li>SiYuan 工作空间数据目录（宿主路径未实采）(待确认)。</li>
+<li>可选对象存储/图床（未实采）。</li>
+<li>被依赖/关联系统</li>
+<li>经腾讯云2号 nginx <code>note.marschat.online</code> 对外。</li>
+<li>与记忆提炼面板（memory.marschat.online）同属知识类但相互独立。</li>
 </ul>
-<h2 id="_7">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
-<li>启停方式：<strong>当前运行态待确认</strong>。SiYuan 自托管常见为 Docker（<code>siyuan</code> 镜像，映射 6806）。建议排查：</li>
-<li><code>docker ps -a | grep -i siyuan</code> 确认容器是否存在/退出。</li>
-<li>若容器已删，需按原部署（镜像/卷）重建并映射 6806。</li>
-<li>具体 compose/启停文件未实采 (待确认)。</li>
-<li>日志查看：<code>docker logs &lt;siyuan容器&gt;</code>；或 SiYuan 工作空间日志（未实采）。</li>
+<li>启停方式</li>
+<li><strong>当前无服务可启停</strong>。</li>
+<li>恢复部署建议：<ul>
+<li><code>docker ps -a | grep -i siyuan</code> 确认历史容器。</li>
+<li>若容器已删，按「部署与发布」节配置重建并映射 6806。</li>
+<li>验证公网域名可达。</li>
+</ul>
+</li>
+<li>日志查看</li>
+<li><code>docker logs &lt;siyuan容器&gt;</code>。</li>
+<li>工作空间内另有应用日志（恢复后补录）。</li>
 <li>数据与备份</li>
-<li>工作空间数据（笔记库）路径未实采 (待确认)，建议确认是否纳入 mykng 数据备份体系——笔记属高价值私密数据，丢失不可逆。</li>
+<li>工作空间数据（笔记库）路径未实采 (待确认)。</li>
+<li><strong>笔记属高价值私密数据，丢失不可逆</strong>，恢复部署后务必纳入 mykng 数据备份体系。</li>
 <li>常见问题</li>
-<li>公网 502/打不开：多为 mykng 侧 SiYuan 未运行（与本次实采一致）。先确认 6806 是否监听再查 nginx。</li>
-<li>首次启动需设置访问口令（SiYuan 自带鉴权），口令应入 Vaultwarden，勿明文。</li>
+<li>公网 502/打不开：<ul>
+<li>多为 mykng 侧 SiYuan 未运行（与 2026-09-05 实采一致）。</li>
+<li>先确认 6806 监听，再查腾讯云2号 nginx upstream。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+</li>
+<li>首次启动需设置访问口令（SiYuan 自带鉴权），口令入 Vaultwarden，勿明文。</li>
+<li>若确认永久弃用：建议同步删除腾讯云2号 nginx 的 note.marschat.online 反代配置，避免死链。</li>
+</ul>
+<h2 id="_14">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于材料包链路 + mykng SSH 实采「6806 未监听/无容器」生成；显著标注当前服务疑似未运行，需确认）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>补开源 SiYuan 架构与预期集成设计、恢复部署参考配置。</li>
+<li>强化实采告警（无容器/无镜像/6806 未监听/devtools note 目录非工作空间）。</li>
+<li>2026-09-05 v1 首次生成（标注服务疑似未运行）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

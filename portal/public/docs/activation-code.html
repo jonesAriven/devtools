@@ -41,7 +41,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="_1">激活码服务</h1>
 <blockquote>
-<p>自研的软件授权（激活码）管理服务：管理员在后台生成带 RSA 签名的激活码，客户端软件内嵌验证库离线校验激活码有效性/过期/设备绑定，并记录激活流水。分为「生成/管理后台」与「客户端验证库」两部分，本篇为服务端（生成与管理）。</p>
+<p>自研的软件授权（激活码）管理服务：管理员（或扫码自助）生成带 RSA 签名的激活码，客户端软件内嵌验证库离线校验激活码有效性/过期/设备绑定，并记录激活流水。分为「生成/管理后台」与「客户端验证库」两部分，本篇为服务端（生成与管理）。</p>
 </blockquote>
 <h2 id="_2">基本信息</h2>
 <table>
@@ -58,7 +58,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>Spring Boot（Java）；镜像 <code>activecode:latest</code>（实采 <code>docker inspect</code>）；测试环境为 Spring Boot 3.4 + Java 21（portal 表 tools-test 条目）</td>
+<td>Spring Boot（Java）+ MyBatis-Plus；镜像 <code>activecode:latest</code>（实采 <code>docker inspect</code>）</td>
 </tr>
 <tr>
 <td>部署位置</td>
@@ -66,80 +66,219 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>源码位置</td>
-<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server\</code>（仓库 <code>active-manager</code>，与前端静态页、验证库同仓）</td>
+<td>本地 <code>D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server\</code>（仓库 <code>active-manager</code>，与验证库、设计文档同仓）</td>
 </tr>
 <tr>
 <td>CI/CD</td>
 <td>Woodpecker 流水线项目 <code>active-manager</code>（woodScript <code>deploy-active-manager.sh</code> 部署到内网 Debian activecode compose，健康检查 <code>localhost:18080/activecode/login.html</code>）</td>
+</tr>
+<tr>
+<td>编排</td>
+<td>compose project：<code>activecode</code>（材料包镜像 <code>material/composes/activecode.yml</code>）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_3">访问入口</h2>
 <ul>
 <li>公网（生产）：<code>https://tools.marschat.online/activecode/login.html</code>（腾讯云2号 nginx <code>tools.marschat.online</code> → <code>http://100.105.196.63:18080</code>）</li>
-<li>公网（测试）：<code>https://tools-test.marschat.online/</code>（portal 表里 tools-test 条目，对应 mykng 上 portal-server 8087 的激活码测试环境，Spring Boot 3.4 + Java 21）</li>
 <li>内网：<code>http://192.168.31.182:18080/activecode/login.html</code>（内网 Debian 直连）</li>
 <li>Tailscale：<code>http://100.105.196.63:18080/activecode/login.html</code></li>
-<li>管理后台页面：<code>/activecode/main.html</code>（登录后）、<code>/activecode/index.html</code>、<code>/activecode/downloads.html</code>（二维码工具下载页）；登录页 <code>/activecode/login.html</code></li>
+<li>页面：登录页 <code>/activecode/login.html</code>；管理后台 <code>/activecode/main.html</code>（登录后）；自助激活页 <code>/activecode/index.html?sn=&lt;序列号&gt;</code>（扫码进入，自动填充序列号）；下载页 <code>/activecode/downloads.html</code></li>
 </ul>
 <h2 id="_4">全链路（生产）</h2>
-<pre><code>管理员浏览器
-  → https://tools.marschat.online/activecode/login.html (腾讯云2号 nginx :443)
+<pre><code>管理员/终端用户浏览器
+  → https://tools.marschat.online/activecode/... (腾讯云2号 nginx :443)
   → http://100.105.196.63:18080 (内网 Debian activecode 容器)
-       /activecode/login.html 等静态页由后端 PageController 从 classpath 读取返回
-       /activecode/api/*        由 Spring Boot 接口处理
+       /activecode/*.html       静态页由 PageController 从 classpath 读取返回
+       /activecode/api/*        Spring Boot 接口处理
+  → MySQL（GR 集群 tools 库，多主机 failover URL）
 </code></pre>
-<blockquote>
-<p>测试环境链路：<code>tools-test.marschat.online</code> → mykng nginx :80 → <code>127.0.0.1:8087</code>（portal-server 容器内的激活码测试模块）。</p>
-</blockquote>
-<h2 id="_5">核心功能与使用</h2>
-<p>服务端由 4 个 Controller 组成（前缀 <code>/activecode/api</code>）：</p>
-<h3 id="authcontrolleractivecodeapiauth">AuthController（<code>/activecode/api/auth</code>）</h3>
+<h2 id="_5">系统设计</h2>
+<h3 id="_6">总体架构</h3>
+<p>active-manager 仓库按「三大工程」分层（docs/v2/design.md）：</p>
+<pre><code>工具软件层（QRCodeTool 等，可多个语言实现）
+   ↓ 加密序列号（上行） / 激活码（下行）
+activation-code-verifier（客户端验证工具层，见 activation-verifier.md）
+   ↓ POST /activation/generate、/verify
+activation-code-server（本服务，服务端层）
+   ↓
+MySQL（activation_record / activation_log / admin_user / sys_config）
+</code></pre>
+<p>服务端内部：Controller（4 个）→ Service（ActivationService）→ Mapper（MyBatis-Plus）；CryptoUtil 承担加解密，RsaKeyConfig 加载 <code>rsa_keys/private_key.pem</code> 与 <code>public_key.pem</code>（RSA 2048）；AuthInterceptor 做 /api/* 会话拦截。</p>
+<h3 id="_7">核心数据模型</h3>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin_user</code></td>
+<td>管理员账号（SHA-256 + 随机盐哈希口令；首次启动为空表时自动建内置默认管理员）</td>
+</tr>
+<tr>
+<td><code>activation_record</code></td>
+<td>激活码生成记录（序列号、激活码、设备别名、状态）</td>
+</tr>
+<tr>
+<td><code>activation_log</code></td>
+<td>激活流水（recordId/serialNumber/eventType/deviceId/时间）</td>
+</tr>
+<tr>
+<td><code>sys_config</code></td>
+<td>系统配置（默认有效期、版本校验策略等键值对）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_8">关键设计决策</h3>
+<ol>
+<li><strong>RSA 签名激活码</strong>：<code>激活码 = Base64URL(payload) + "." + Base64URL(signature)</code>，payload = 序列号|设备ID|过期时间戳(毫秒)，SHA256withRSA 私钥签名。无私钥不可伪造、不可篡改，设备 ID 嵌入 payload 实现绑定。</li>
+<li><strong>唯一序列号 4 段加密格式</strong>：明文 = 初始序列号|设备ID|机器码|应用版本，逐字节 XOR 0x5A → Base64。第 4 段 appVersion 由客户端经 <code>LaunchWithProtection</code> 传入，服务端生成激活码前按 <code>version-check</code>（mode: none/required/minimum）校验版本，控制哪些客户端版本可领码。</li>
+<li><strong>离线优先 + 自助扫码双路径</strong>：客户端验签只依赖内置公钥，断网可激活；同时提供扫码自助路径——序列号弹窗二维码指向 <code>tools.marschat.online/activecode/index.html?sn=xxx</code>，扫码自动填充序列号即可生成激活码，免去人工传话。</li>
+<li><strong>版本号单点维护</strong>：工具项目 CMakeLists.txt → version.h → LaunchWithProtection 参数 → verifier 静态字段，verifier 库自身不持有版本定义，改版本只动一处。</li>
+</ol>
+<h3 id="_9">对外接口概览</h3>
+<p>服务端 4 个 Controller（前缀 <code>/activecode/api</code>）：</p>
 <ul>
-<li><code>POST /auth/login</code>、<code>/auth/logout</code>、<code>GET /auth/session</code>、<code>POST /auth/change-password</code>：管理员会话登录（基于 HttpSession，SHA-256 + 随机盐哈希口令）。</li>
-<li>首次启动若 <code>admin</code> 表为空，自动创建内置默认管理员账号（初始凭据见源码初始化逻辑，<strong>上线后务必改密，账密统一见 Vaultwarden 或 infrastructure-map 技能</strong>）。</li>
+<li>AuthController <code>/auth</code>：login / logout / session / change-password（HttpSession 会话，SHA-256 + 随机盐哈希口令；首次启动 <code>admin_user</code> 空表时自动建内置默认管理员）</li>
+<li>ActivationController <code>/activation</code>（核心，明细）：</li>
+<li><code>POST /generate</code>：解密客户端序列号（XOR 0x5A + Base64 → 4 段明文）→ 校验第 4 段 appVersion（version-check 策略）→ 以「序列号 + 过期时间戳」RSA 私钥签名生成激活码 → 记录落库</li>
+<li><code>POST /verify</code>：激活码在线校验（验证库离线验签的在线版，回写激活流水）</li>
+<li><code>GET /list</code>：激活码记录查询（keyword/status 分页）</li>
+<li><code>GET /logs</code>：激活流水（按 recordId/serialNumber/eventType/deviceId/时间区间）</li>
+<li><code>GET /parse-code</code>、<code>/parse-serial</code>：解析激活码/序列号明文（排查"过期/设备不匹配"专用）</li>
+<li><code>DELETE /{id}</code>、<code>DELETE /batch</code>（≤100 条）：单条/批量删除记录</li>
+<li><code>PUT /{id}/alias</code>：修改设备别名（管理识别用）</li>
+<li><code>GET/PUT /config/default-expire</code>：默认有效期（默认 43200 分钟 = 30 天）</li>
+<li><code>GET/PUT /config/version-check</code>：版本校验配置（enabled + mode: none/required/minimum）</li>
+<li>DownloadController <code>/download</code>：<code>GET /list</code>（扫描挂载目录 .exe 按修改时间倒序，含大小）、<code>GET /{filename}.exe</code>（带路径遍历防护）</li>
+<li>PageController：login/main/index/downloads 四类静态页（classpath 读取）；未登录访问 main.html 自动 302 跳登录页</li>
 </ul>
-<h3 id="activationcontrolleractivecodeapiactivation">ActivationController（<code>/activecode/api/activation</code>）—— 核心</h3>
+<h2 id="_10">部署与发布</h2>
+<h3 id="_11">编排与位置</h3>
 <ul>
-<li><code>POST /generate</code>：根据唯一序列号（软件初始序列号 + 机器码加密串）生成激活码（序列号 + 过期时间戳的 RSA 签名加密串）。每条生成记录落库。</li>
-<li><code>POST /verify</code>：激活码在线校验接口（客户端可调用，等价于离线验证库的在线版）。</li>
-<li><code>GET /list</code>：激活码记录查询（按 keyword/status 分页）。</li>
-<li><code>GET /logs</code>：激活流水查询（按 recordId/serialNumber/eventType/deviceId/时间区间）。</li>
-<li><code>GET /parse-code</code>、<code>/parse-serial</code>：解析激活码 / 序列号中的明文信息（调试/排查用）。</li>
-<li><code>DELETE /{id}</code>、<code>DELETE /batch</code>：单条/批量（≤100）删除记录。</li>
-<li><code>PUT /{id}/alias</code>：修改设备别名（便于管理识别）。</li>
-<li><code>GET/PUT /config/default-expire</code>：默认有效期配置（默认 43200 分钟 = 30 天）。</li>
-<li><code>GET/PUT /version-check</code>：版本校验配置（控制客户端激活时是否校验软件版本）。</li>
+<li>compose project：<code>activecode</code>（内网 Debian 192.168.31.182）；compose 原文（材料包 <code>material/composes/activecode.yml</code>）：</li>
 </ul>
-<h3 id="downloadcontrolleractivecodeapidownload">DownloadController（<code>/activecode/api/download</code>）</h3>
+<pre><code class="language-yaml">services:
+  activation-code-server:
+    build: .
+    image: activecode:latest
+    container_name: activecode
+    restart: on-failure:5
+    ports:
+      - &quot;18080:8080&quot;
+    extra_hosts:
+      - &quot;host.docker.internal:host-gateway&quot;
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=kafka-log
+      - SPRING_DATASOURCE_URL=jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/tools?...（GR 多主机 failover URL，完整串见 compose）
+      - SPRING_DATASOURCE_USERNAME=（账密见 Vaultwarden / infrastructure-map）
+      - SPRING_DATASOURCE_PASSWORD=（账密见 Vaultwarden / infrastructure-map）
+    volumes:
+      - &quot;/mnt/shared/www/download/QRCodeTools:/app/downloads:ro&quot;
+    networks:
+      - activecode-net
+</code></pre>
+<h3 id="_12">配置清单</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端口映射</td>
+<td>宿主机 18080 → 容器 8080</td>
+</tr>
+<tr>
+<td>卷挂载</td>
+<td><code>/mnt/shared/www/download/QRCodeTools → /app/downloads</code>（只读，QRCodeTools exe 分发目录；Windows 本地开发对应 <code>D:\huliang\java\ideaworkspace\www\download\QRCodeTools</code>）</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>MySQL GR 集群 <code>tools</code> 库（105:3306 / 182:3307 / 182:3308 failover URL，<code>loadBalanceStrategy=random</code> + <code>failOverReadOnly=false</code>）</td>
+</tr>
+<tr>
+<td>RSA 密钥</td>
+<td><code>rsa_keys/private_key.pem</code>、<code>public_key.pem</code>（classpath；私钥严禁外泄/入库）</td>
+</tr>
+<tr>
+<td>版本校验</td>
+<td><code>version-check.enabled</code> / <code>mode</code>（none/required/minimum）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_13">发布/升级</h3>
+<p>走 Woodpecker 流水线（推荐）：</p>
+<pre><code class="language-bash">python woodScript/trigger-pipeline.py active-manager --wait
+</code></pre>
+<p>链路：CI 构建 → drone-ssh 到内网 Debian → 执行 <code>deploy-active-manager.sh</code> 重建 activecode 容器 → 健康检查 <code>localhost:18080/activecode/login.html</code> 返回 200。</p>
+<p>手动部署（docs/v2/deploy.md，流水线不可用时兜底）：</p>
+<pre><code class="language-bash"># 1. 本地打包
+cd D:\huliang\java\ideaworkspace\devtools\active-manager\activation-code-server
+mvn clean package -DskipTests
+# 产物：target/activation-code-server-1.0.0.jar
+
+# 2. 上传 JAR + Dockerfile 到内网 Debian（凭据见 Vaultwarden / infrastructure-map）
+scp target/activation-code-server-1.0.0.jar &lt;user&gt;@192.168.31.182:~/
+scp Dockerfile &lt;user&gt;@192.168.31.182:~/
+
+# 3. 远程构建镜像并经 compose 重建
+ssh &lt;user&gt;@192.168.31.182
+cd ~ &amp;&amp; docker build -t activecode .
+docker compose -p activecode up -d --force-recreate
+</code></pre>
+<h3 id="_14">回滚</h3>
 <ul>
-<li><code>GET /list</code>：扫描挂载目录 <code>/app/downloads</code>（→ <code>/mnt/shared/www/download/QRCodeTools</code>）下的 <code>.exe</code>，按修改时间倒序列出可下载版本（含大小）。</li>
-<li><code>GET /{filename}.exe</code>：带路径遍历防护的文件下载（二维码工具等客户端分发）。</li>
+<li>镜像回退：保留旧 JAR 重新 <code>docker build -t activecode:&lt;旧tag&gt; .</code>，compose 中 image 指向旧 tag 后 <code>docker compose -p activecode up -d --force-recreate</code></li>
+<li>数据在 MySQL GR（多副本），应用本身无状态，重建容器即完成回滚</li>
+<li>RSA 密钥对不可随意回滚：私钥换回旧版会使新签激活码在已更新公钥的客户端上验签失败</li>
 </ul>
-<h3 id="pagecontroller">PageController（静态页）</h3>
+<h2 id="_15">核心功能与使用</h2>
+<h3 id="_16">功能清单</h3>
 <ul>
-<li>提供 <code>/activecode/login.html</code>、<code>main.html</code>、<code>index.html</code>、<code>downloads.html</code>；未登录访问 <code>main.html</code> 自动 302 跳登录页。</li>
+<li><strong>激活码生成</strong>：管理员后台或用户扫码自助，凭客户端上报的加密序列号生成 RSA 签名激活码，全量落库。</li>
+<li><strong>激活流水与审计</strong>：每次校验/激活事件（eventType/deviceId/时间）记录，可按序列号、事件类型、时间区间检索。</li>
+<li><strong>策略配置</strong>：默认有效期（默认 43200 分钟 = 30 天）、版本校验策略（控制哪些客户端版本可领码），后台在线改。</li>
+<li><strong>客户端分发</strong>：扫描挂载目录列出 QRCodeTools 等 exe 版本并提供下载。</li>
+<li><strong>调试工具</strong>：parse-code / parse-serial 解析激活码与序列号明文，排查"过期/设备不匹配"类问题。</li>
 </ul>
-<h2 id="_6">依赖与关联</h2>
+<h3 id="_17">典型操作路径</h3>
 <ul>
-<li>数据库：MySQL（业务库，连接信息见 Vaultwarden / infrastructure-map；服务内使用连接池，记录表 <code>activation_record</code>、<code>activation_log</code>、<code>admin_user</code> 等）。</li>
+<li><strong>管理员发码</strong>：登录 <code>/activecode/login.html</code> → 进入 <code>main.html</code> 后台 → 粘贴用户提供的序列号（或生成记录里选）→ 生成激活码 → 回传给用户。</li>
+<li><strong>用户扫码自助</strong>：客户端弹窗显示序列号 + 二维码 → 手机扫码打开 <code>index.html?sn=xxx</code>（自动填充）→ 点"生成激活码" → 复制回客户端粘贴激活。</li>
+<li><strong>流水排查</strong>：后台按 keyword/status 查激活记录；或调 <code>GET /activecode/api/activation/logs</code> 按设备/时间过滤；先用 <code>/parse-code</code> 判断过期还是设备不匹配。</li>
+<li><strong>客户端分发</strong>：把新版 exe 放到 <code>/mnt/shared/www/download/QRCodeTools</code> → 下载页 <code>/activecode/downloads.html</code> 自动按修改时间倒序列出。</li>
+</ul>
+<h2 id="_18">依赖与关联</h2>
+<ul>
+<li>数据库：MySQL GR 集群 <code>tools</code> 库（连接信息见 Vaultwarden / infrastructure-map 技能）。</li>
 <li>关联系统：</li>
 <li><strong>激活码使用页面 / 验证库（activation-verifier）</strong>：客户端内嵌的验证 SDK，离线用 RSA 公钥验签，与服务端 <code>/generate</code> 生成的激活码一一对应。本服务是「发证机关」，对端是「验票终端」。</li>
-<li>客户端软件（如二维码工具 QRCodeTools）：拿到激活码后在本地调用验证库完成激活，相关 exe 由本服务 <code>/download</code> 分发。</li>
+<li>客户端软件（如二维码工具 QRCodeTool）：<code>LaunchWithProtection</code> 启动即进入验证流程，相关 exe 由本服务 <code>/download</code> 分发。</li>
 </ul>
-<h2 id="_7">运维要点</h2>
+<h2 id="_19">运维要点</h2>
 <ul>
-<li>启停：内网 Debian 上 <code>docker compose</code> 管理 <code>activecode</code> 容器；升级走 Woodpecker <code>active-manager</code> 流水线（<code>deploy-active-manager.sh</code>）。</li>
+<li>启停：内网 Debian 上 <code>docker compose -p activecode up -d / down / logs -f</code>（compose project 名 activecode）。</li>
 <li>健康检查：<code>curl -s -o /dev/null -w '%{http_code}' http://192.168.31.182:18080/activecode/login.html</code> → <code>200</code>（2026-09-05 实采确认）。</li>
 <li>日志：<code>docker logs activecode</code>；内网 Debian 侧 <code>obs-dozzle</code>（:15888）实时日志，Grafana/Loki 聚合。</li>
-<li>数据与备份：激活码记录与流水在 MySQL；默认管理员账号 <code>admin</code> 在 <code>admin_user</code> 表，改密后请同步更新 Vaultwarden。</li>
+<li>数据与备份：激活码记录与流水在 MySQL GR（多副本）；默认管理员账号在 <code>admin_user</code> 表，改密后请同步更新 Vaultwarden。</li>
+<li>数据库连接：<code>application-prod.yml</code> 使用 GR 集群多主机 failover URL（105:3306 / 182:3307 / 182:3308，<code>loadBalanceStrategy=random</code> + <code>failOverReadOnly=false</code> + <code>retriesAllDown=3</code>），单节点故障自动切换，无需改配置。</li>
 <li>常见问题：</li>
 <li>默认密码风险：首次部署的默认管理员账号必须改密（账密见 Vaultwarden 或 infrastructure-map 技能），否则任何人可进入后台生成激活码。</li>
-<li>客户端激活失败：先 <code>/parse-code</code> 看激活码是否过期或设备不匹配；再核对 <code>/version-check</code> 配置是否拦截了当前客户端版本。</li>
+<li>客户端激活失败：先 <code>/parse-code</code> 看激活码是否过期或设备不匹配；再核对 <code>/version-check</code> 配置是否拦截了当前客户端版本（第 4 段 appVersion 校验）。</li>
+<li>生成激活码报序列号无效：核对客户端序列号是否完整复制（4 段密文，XOR 0x5A + Base64 编码，服务端按 <code>|</code> 切分 4 段）。</li>
+<li>下载列表为空：挂载目录 <code>/mnt/shared/www/download/QRCodeTools</code> 不存在或为空时返回空列表，检查挂载。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+<h2 id="_20">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采 docker ps/inspect + 本地 <code>activation-code-server</code> 源码 Controller + 腾讯云2号 nginx 配置生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度（新增系统设计：三大工程架构/4 表模型/RSA 签名与 4 段序列号机制/扫码自助链路；新增部署与发布：compose 原文/配置清单/流水线与回滚；使用节补扫码自助与流水排查路径；凭证改为 Vaultwarden 引用）</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采 docker ps/inspect + 本地 <code>activation-code-server</code> 源码 Controller + 腾讯云2号 nginx 配置生成）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

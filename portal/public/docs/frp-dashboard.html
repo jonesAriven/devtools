@@ -41,7 +41,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="frp">FRP 仪表盘</h1>
 <blockquote>
-<p>内网穿透体系的「服务端状态看板 + 集中管理」双组件：阿里云 frps 服务端仪表盘（7500）查看穿透运行态，内网 Debian 上的 frp-manager 集中管理代理/隧道配置。</p>
+<p>内网穿透体系的「服务端状态看板 + 集中管理」双组件：
+阿里云 frps 服务端仪表盘（7500）查看穿透运行态，
+内网 Debian 上的自研 frp-manager 集中管理服务端/客户端/隧道配置并生成配置文件。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -58,100 +60,272 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>版本</td>
-<td>frps 服务端及管理端版本未实采（dashboard 需登录，未取到版本号）(待确认)</td>
+<td>frps 服务端版本未实采，dashboard 需登录未取到版本号 (待确认)</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>frp-manager 自研 <code>frp-manager:1.0.0</code>（Java 21 / Spring Boot，容器内 JDK 21.0.11 实采）</td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>FRP 服务端 + 仪表盘：阿里云主机 120.26.66.182（Tailscale 100.89.102.74），仪表盘端口 7500；frp-manager：内网 Debian 192.168.31.182（Tailscale 100.105.196.63）容器 <code>frp-manager:1.0.0</code>，端口 18082</td>
+<td>FRP 服务端 + 仪表盘：阿里云主机 120.26.66.182（Tailscale 100.89.102.74），仪表盘端口 7500</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>frp-manager：内网 Debian 192.168.31.182（Tailscale 100.105.196.63）容器 <code>frp-manager</code>，端口 18082</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>frp-manager 为自研/自选镜像 <code>frp-manager:1.0.0</code>（Java 21 / Spring Boot，JDK 21.0.11），镜像构建源未在工作区找到 (待确认)；FRP 本体为开源 fatedier/frp</td>
+<td>frp-manager 自研：本地 <code>D:\huliang\java\ideaworkspace\devtools\myfrp\</code></td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>同 mykng <code>/root/devtools/myfrp/</code>，经 gitee devtools 仓库同步</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>FRP 本体为开源 fatedier/frp</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署）</td>
+<td>无流水线（仓库内置 <code>ci/deploy.sh</code> 目标机脚本 + docker compose 自部署）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口</h2>
 <ul>
-<li>公网（仪表盘）：<code>http://120.26.66.182:7500</code>（直连 IP:端口，非 443；访问需 dashboard 登录凭据，实测得 401 Unauthorized）</li>
+<li>公网（仪表盘）：<code>http://120.26.66.182:7500</code></li>
+<li>直连 IP:端口，非 443；需 dashboard 登录凭据（实测 401 鉴权生效）</li>
 <li>内网 / Tailscale（仪表盘）：<code>http://100.89.102.74:7500</code></li>
-<li>内网（frp-manager 管理端）：<code>http://192.168.31.182:18082</code>（HTTP，根路径返回 404，需具体子路径/登录）</li>
-<li>公网域名：无（仅直连 IP；frp-manager 不暴露公网）</li>
+<li>内网（frp-manager 管理端）：<code>http://192.168.31.182:18082/frp_manager</code></li>
+<li>context-path 为 <code>/frp_manager</code>，根路径 404 属正常</li>
+<li>公网域名：无（均直连 IP；frp-manager 不暴露公网）</li>
 </ul>
 <blockquote>
-<p>注：FRP 仪表盘与 frp-manager 均未走腾讯云2号 nginx 反代，属于「接入/穿透」侧独立组件，与 marschat.online 公网入口是两套并行通道。</p>
+<p>FRP 仪表盘与 frp-manager 均不走腾讯云2号 nginx 反代，
+属于「接入/穿透」侧独立组件，与 marschat.online 公网入口是两套并行通道。</p>
 </blockquote>
 <h2 id="_3">全链路</h2>
 <pre><code>[FRP 仪表盘]
 浏览器 → 阿里云 120.26.66.182:7500 (frps dashboard，401 鉴权)
 
 [frp-manager 管理端]
-浏览器 → 内网 Deb 192.168.31.182:18082 (frp-manager 容器, Java/Spring Boot)
+浏览器 → 内网 Deb 192.168.31.182:18082/frp_manager
+       → frp-manager 容器 (Spring Boot + 内嵌 Vue3)
 </code></pre>
-<h2 id="frp_1">背景：FRP 与内网穿透</h2>
-<p>FRP（Fast Reverse Proxy）是一套开源内网穿透工具，由 <strong>frps（服务端）</strong> 与 <strong>frpc（客户端）</strong> 组成：</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>FRP（Fast Reverse Proxy）由 <strong>frps（服务端）</strong> 与 <strong>frpc（客户端）</strong> 组成：</p>
 <ul>
-<li><strong>frps</strong> 部署在有公网 IP 的机器（本例：阿里云 120.26.66.182），作为中转/出口；其内置 <strong>Dashboard</strong> 在独立端口（本例 7500）提供 Web 状态查看，需单独的用户名/密码鉴权。</li>
-<li><strong>frpc</strong> 部署在需要被暴露的内网机器，把本地端口「注册」到 frps；外部流量经 frps 公网端口转发回 frpc 所在内网服务。</li>
-<li>典型用途：在家/出差访问家里内网的设备与自托管服务，而无需为每台设备申请公网 IP 或开端口。</li>
+<li><strong>frps</strong>：部署在有公网 IP 的阿里云主机，作为中转/出口。</li>
+<li>内置 Dashboard（本例 7500）提供 Web 状态查看，需单独的用户名/密码鉴权。</li>
+<li><strong>frpc</strong>：部署在需要被暴露的内网机器。</li>
+<li>把本地端口「注册」到 frps；外部流量经 frps 公网端口转发回内网服务。</li>
+<li>典型用途：在家/出差访问内网设备与自托管服务，无需为每台设备申请公网 IP。</li>
 </ul>
-<p>本套部署把「出口/看板」放在阿里云、「配置管理」放在内网 Debian，形成「穿透出口 + 集中管控」的分工。</p>
-<h2 id="_4">本套部署拓扑（实采）</h2>
+<p>本套部署把「穿透出口 + 看板」放阿里云、「配置管理」放内网 Debian，形成分工：</p>
 <ul>
-<li><strong>阿里云 120.26.66.182（Tailscale 100.89.102.74）</strong></li>
-<li>frps 服务端 + Dashboard 7500。</li>
-<li>实采：从 mykng 探测 <code>120.26.66.182:7500</code> 返回 401（鉴权生效，服务在线）；探测默认 bind 端口 <code>:7000</code> 返回 000（不可达，疑似防火墙仅放行 7500 或 bind 端口不同）(待确认)。</li>
-<li><strong>内网 Debian 192.168.31.182（Tailscale 100.105.196.63）</strong></li>
-<li>容器 <code>frp-manager:1.0.0</code>（Java 21 / Spring Boot），端口 18082，挂载极简（仅 <code>/etc/localtime</code>）。</li>
-<li>实采：根路径返回 404，容器进程存活，属 HTTP 管理界面（需具体子路径或登录后访问）。</li>
+<li><strong>阿里云 frps</strong>：承接所有隧道注册与流量转发；7500 仪表盘看服务端运行态（客户端连接数、代理列表、流量统计）。</li>
+<li><strong>frp-manager（自研）</strong>：集中登记 frps 服务端、frpc 客户端、隧道三元数据，生成 frps.ini / frpc.toml / frpc.ini 配置文本，替代手工编辑配置文件。</li>
 </ul>
-<p>两者关系（基于实采推断）：frp-manager 是集中配置/管理 FRP 代理与隧道的控制台；其下发的代理配置最终注册到阿里云 frps，由 7500 仪表盘查看服务端侧运行态。<strong>具体联动/下发机制未实采，标记为 (待确认)。</strong></p>
-<h2 id="_5">核心功能与使用</h2>
+<h3 id="frp-manager">frp-manager 技术栈与模块划分</h3>
 <ul>
-<li>FRP 仪表盘（7500）</li>
-<li>查看 frps 服务端状态：运行时间、版本、客户端连接数、各代理流量统计。</li>
-<li>查看已建立的代理/隧道列表（TCP/UDP/HTTP/HTTPS 等类型）、对应客户端、最近流量。</li>
-<li>运维排障入口：确认某条内网穿透隧道是否在线、流量是否异常、客户端是否掉线。</li>
-<li>frp-manager（18082）</li>
-<li>集中维护 FRP 代理/隧道配置（自研/自选 Java 管理端），通常用于避免手工编辑 frps 配置文件。</li>
-<li>面向「需要把内网服务暴露到阿里云公网出口」的场景。</li>
+<li>后端：Spring Boot（Java 21）+ MyBatis-Plus + Spring Security + JWT（登录态 24h 过期）。</li>
+<li>包结构 <code>com.frp.manager</code> 下：config / controller / dto / entity / mapper / security / service / util。</li>
+<li>前端：Vue3 + Vite（<code>frontend/</code>）。</li>
+<li>构建产物拷入后端 <code>src/main/resources/static</code>，随 JAR 一起发布（单 JAR 前后端一体）。</li>
+<li>存储：MySQL GR 集群（3 节点随机负载均衡 + 自动故障转移）。</li>
+<li>库名 <code>frp_manager</code>。</li>
+<li>连接节点：192.168.31.105:3306 / 192.168.31.182:3307 / 192.168.31.182:3308（账密见 Vaultwarden）。</li>
 </ul>
+<h3 id="4">核心数据模型（4 张关键表）</h3>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frp_server</code></td>
+<td>frps 服务端登记：名称、host、bind_port（默认 7000）、token、dashboard 端口/账密、vhost_http_port</td>
+</tr>
+<tr>
+<td><code>frp_client</code></td>
+<td>frpc 客户端登记：名称、所属 server_id、config_format（toml/ini，决定生成新/旧版配置格式）</td>
+</tr>
+<tr>
+<td><code>frp_tunnel</code></td>
+<td>隧道登记：名称、类型（tcp/udp 等）、local_ip/local_port、remote_port、use_encryption/use_compression、status（0=停用，生成配置时跳过）</td>
+</tr>
+<tr>
+<td><code>sys_user</code></td>
+<td>管理端登录用户（JWT 认证），含逻辑删除字段 deleted</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">关键设计决策</h3>
+<ol>
+<li><strong>配置生成器集中化</strong>
+   - <code>ConfigGenerator</code> 统一生成三种配置。
+   - frps.ini：汇总所有隧道 remote_port 为 <code>allow_ports</code> 白名单。
+   - frpc.toml：frp ≥ 0.52 新格式；frpc.ini：旧版兼容，按客户端 config_format 自动选择。
+   - 隧道 status=0 自动剔除，不进配置。</li>
+<li><strong>生成而非直推</strong>
+   - DeployController 只返回配置文本（预览/生成接口），<strong>不做 SSH 自动下发</strong>。
+   - 管理员复制配置到对应服务器后重启 frp 进程，避免管理端直连生产主机的安全面。</li>
+<li><strong>逻辑删除 + 统一审计字段</strong>
+   - MyBatis-Plus 全局逻辑删除（deleted 字段）。
+   - MyMetaObjectHandler 自动填充创建/更新时间。</li>
+</ol>
+<h3 id="_7">对外接口概览</h3>
+<table>
+<thead>
+<tr>
+<th>路由前缀</th>
+<th>Controller</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/auth</code></td>
+<td>AuthController</td>
+<td>登录、JWT 签发</td>
+</tr>
+<tr>
+<td><code>/api/servers</code></td>
+<td>ServerController</td>
+<td>frps 服务端 CRUD</td>
+</tr>
+<tr>
+<td><code>/api/clients</code></td>
+<td>ClientController</td>
+<td>frpc 客户端 CRUD</td>
+</tr>
+<tr>
+<td><code>/api/tunnels</code></td>
+<td>TunnelController</td>
+<td>隧道 CRUD</td>
+</tr>
+<tr>
+<td><code>/api/deploy</code></td>
+<td>DeployController</td>
+<td>frps/frpc 配置预览与生成（<code>/preview/frps/{id}</code>、<code>/preview/frpc/{id}</code>、<code>/all</code> 批量生成）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_8">部署与发布</h2>
+<h3 id="frps-1202666182">frps + 仪表盘（阿里云 120.26.66.182）</h3>
+<ul>
+<li>部署方式</li>
+<li>阿里云主机上的 frps 进程/服务托管（systemd 或裸进程未实采）(待确认)。</li>
+<li>配置文件即 frp-manager 生成的 frps.ini（含 dashboard_port 7500）。</li>
+<li>端口</li>
+<li>7500（仪表盘）。</li>
+<li>bind 端口 7000 从 mykng 探测不可达，疑似防火墙仅放行 7500 或 bind 端口不同 (待确认)。</li>
+<li>日志</li>
+<li>frp-manager 生成的 frps.ini 固定写 <code>log_file = /var/log/frps/frps.log</code>、level info。</li>
+</ul>
+<h3 id="frp-manager-debian-19216831182">frp-manager（内网 Debian 192.168.31.182）</h3>
+<ul>
+<li>编排与位置</li>
+<li>compose 文件：<code>/home/root01/frp-manager/docker-compose.yml</code>（compose project：frp-manager）。</li>
+<li>容器：<code>frp-manager</code>；镜像：<code>frp-manager:1.0.0</code>（<code>build: .</code> 本地构建）。</li>
+<li>另 <code>/home/root01/frp-manager-build/</code> 为构建工作目录（含 Dockerfile 与 target/）。</li>
+<li>配置清单</li>
+<li>端口映射：<code>18082:18082</code>（与 Spring Boot <code>server.port</code> 一致）。</li>
+<li>卷挂载：仅 <code>/etc/localtime</code>（时区同步），应用无状态——全部数据在 MySQL GR 集群。</li>
+<li>环境变量：<code>TZ=Asia/Shanghai</code>。</li>
+<li>应用配置（数据源、JWT secret、初始管理员）打包在 JAR 内 <code>application.yml</code>，账密类凭证见 Vaultwarden，不在本文落盘。</li>
+<li>发布/升级（实际方式，两条路径）
+  1. <strong>脚本部署</strong>（仓库内置）：<ul>
+<li>目标机执行 <code>bash ci/deploy.sh &lt;commit_sha&gt; &lt;branch&gt;</code>。</li>
+<li>克隆/重置 gitee devtools 仓库到 <code>/root/devtools</code>。</li>
+<li><code>frontend</code> 下 <code>npm ci &amp;&amp; npm run build</code>，拷 dist 到后端 static。</li>
+<li><code>docker compose build --no-cache</code>。</li>
+<li><code>docker compose up -d --force-recreate</code>。</li>
+<li>8 轮健康检查（<code>http://localhost:18082</code>）。
+  2. <strong>手工部署</strong>（Deb 当前实际形态）：</li>
+<li>上传新 jar 到 <code>/home/root01/frp-manager/</code>。</li>
+<li><code>docker compose build --no-cache &amp;&amp; docker compose up -d --force-recreate</code>。</li>
+</ul>
+</li>
+<li>回滚</li>
+<li>目录内保留 <code>frp-manager-1.0.0.jar.bak</code>，换回旧 jar 后 compose 重建即可。</li>
+<li>数据层无状态，无数据回滚问题。</li>
+</ul>
+<h2 id="_9">核心功能与使用</h2>
+<h3 id="_10">功能清单</h3>
+<ul>
+<li>FRP 仪表盘（7500，frps 自带）</li>
+<li>查看 frps 运行时间、版本、客户端连接数、各代理流量统计。</li>
+<li>查看已建立的代理/隧道列表（TCP/UDP/HTTP/HTTPS）、对应客户端、最近流量。</li>
+<li>排障入口：确认某条穿透隧道是否在线、流量是否异常、客户端是否掉线。</li>
+<li>frp-manager（18082/frp_manager，自研）</li>
+<li><strong>服务端管理</strong>：登记/维护阿里云 frps 的 bind 端口、token、dashboard、vhost 配置。</li>
+<li><strong>客户端管理</strong>：登记各内网 frpc 及其配置格式（toml/ini）。</li>
+<li><strong>隧道管理</strong>：登记 local→remote 端口映射，可开关加密/压缩、启用/停用。</li>
+<li><strong>配置生成</strong>：一键预览/生成 frps.ini 与 frpc 配置文本，复制到目标主机生效；批量生成走 <code>/api/deploy/all</code>。</li>
+</ul>
+<h3 id="_11">典型操作路径</h3>
+<ol>
+<li><strong>查看穿透状态</strong>
+   - 登录 frps 仪表盘 <code>http://120.26.66.182:7500</code>（账密见 Vaultwarden）。
+   - 首页看流量/连接数 → Proxies 页看各隧道在线状态。</li>
+<li><strong>新增一条穿透隧道</strong>
+   - 登录 frp-manager <code>http://192.168.31.182:18082/frp_manager</code>（管理员账密见 Vaultwarden）。
+   - 隧道管理 → 新建（填类型/本机 IP:端口/远程端口）→ 启用。
+   - 部署页生成 frpc 配置 → 复制到对应内网机的 frpc 配置并重启 frpc。
+   - 仪表盘确认代理上线。</li>
+<li><strong>修改 frps 全局配置</strong>
+   - frp-manager 服务端管理改参数 → 部署页生成 frps.ini。
+   - 复制覆盖阿里云 frps 配置 → 重启 frps → 仪表盘验证。</li>
+</ol>
 <blockquote>
-<p>具体 UI 操作细节（按钮/表单）未经实测，按能力层面描述；如需逐项步骤，建议登录后补录。</p>
+<p>UI 按钮/表单细节按源码路由归纳，未逐页实测；字段语义以源码 entity 为准。</p>
 </blockquote>
-<h2 id="_6">依赖与关联</h2>
+<h2 id="_12">依赖与关联</h2>
 <ul>
-<li>依赖：阿里云主机的公网 IP 与带宽（穿透出口）；内网 Deb 的容器运行时（frp-manager）。</li>
-<li>被依赖/关联系统：所有经此穿透暴露的内网服务。与腾讯云2号 nginx 入口（marschat.online）是<strong>两套并行的对外暴露通道</strong>，互不重叠，分工为「公网子域反代」 vs 「任意内网服务穿透」。</li>
+<li>依赖</li>
+<li>阿里云主机公网 IP 与带宽（穿透出口）。</li>
+<li>内网 Deb 容器运行时（frp-manager）。</li>
+<li>MySQL GR 集群（frp_manager 库，3 节点）。</li>
+<li>被依赖/关联系统</li>
+<li>所有经此穿透暴露的内网服务。</li>
+<li>与腾讯云2号 nginx 入口（marschat.online）是<strong>两套并行的对外暴露通道</strong>，分工为「公网子域反代」vs「任意内网服务穿透」。</li>
 </ul>
-<h2 id="_7">运维要点</h2>
+<h2 id="_13">运维要点</h2>
 <ul>
 <li>启停方式</li>
-<li>阿里云 frps：由阿里云主机上的 frps 进程/服务托管（启动方式未实采）(待确认)。</li>
-<li>frp-manager：<code>docker</code>（容器 <code>frp-manager:1.0.0</code>，端口 18082，restart 策略见 compose）— 具体 compose/启停命令未实采 (待确认)。</li>
+<li>frp-manager：<code>cd /home/root01/frp-manager &amp;&amp; docker compose up -d</code>（restart 策略 <code>unless-stopped</code>）。</li>
+<li>阿里云 frps：进程托管方式未实采 (待确认)。</li>
 <li>日志查看</li>
-<li>frp-manager：<code>docker logs frp-manager</code>。</li>
-<li>阿里云 frps 日志路径未实采 (待确认)。</li>
+<li><code>docker logs frp-manager</code>。</li>
+<li>frps 日志 <code>/var/log/frps/frps.log</code>（阿里云侧）。</li>
 <li>数据与备份</li>
-<li>frp-manager 容器挂载极简（仅 <code>/etc/localtime</code>），配置大概率落在容器内部卷或数据库，备份现状未实采 (待确认)。</li>
-<li>FRP 代理配置（frps 侧）的备份/版本管理未实采 (待确认)；建议将 frps 配置与 frp-manager 数据纳入备份。</li>
+<li>frp-manager 数据全在 MySQL <code>frp_manager</code> 库（随 MySQL GR 集群备份体系）。</li>
+<li>容器本身无状态。</li>
 <li>常见问题</li>
-<li>访问 7500 返回 401：属正常，需 dashboard 用户名/密码（账密见 Vaultwarden 或 infrastructure-map 技能）。</li>
-<li>从 mykng 探测阿里云 7000（默认 bind 端口）不可达（返回 000），疑似防火墙仅放行 7500 或 bind 端口不同 (待确认)。</li>
-<li>frp-manager 根路径 404：管理界面需登录或具体子路径，属正常。</li>
+<li>访问 7500 返回 401：正常，需 dashboard 账密（见 Vaultwarden）。</li>
+<li>frp-manager 根路径 404：正常，入口是 <code>/frp_manager</code> context-path。</li>
+<li>生成的配置不生效：DeployController 只生成文本不下发，需人工复制到目标主机并重启 frp 进程。</li>
+<li>从内网探测阿里云 7000 不可达：疑似防火墙策略或 bind 端口非默认 (待确认)。</li>
 </ul>
-<h2 id="_8">安全要点</h2>
+<h2 id="_14">安全要点</h2>
 <ul>
-<li>frps Dashboard 必须设强口令（已生效，返回 401）；口令入 Vaultwarden，勿明文。</li>
-<li>穿透会直接把内网服务暴露到公网，隧道权限（谁可建、暴露到哪个端口）需最小化管理，避免误暴露高风险服务。</li>
-<li>frp-manager 仅内网可达、不暴露公网，符合「管理面收敛到内网」的惯例。</li>
+<li>frps Dashboard 必须设强口令（已生效 401）；口令入 Vaultwarden，勿明文。</li>
+<li>frps.ini 中的 token 与 dashboard 账密经 frp-manager 数据库管理，泄露可被任意 frpc 注册隧道，需最小化知悉。</li>
+<li>穿透直接把内网服务暴露到公网，隧道（谁可建、暴露哪个端口）需最小化管理；frp-manager 仅内网可达、不暴露公网。</li>
+<li>application.yml 内含明文数据源/JWT 凭证，建议后续改为环境变量注入并轮换 (待确认)。</li>
 </ul>
-<h2 id="_9">变更记录</h2>
+<h2 id="_15">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 SSH 实采 + 材料包生成）</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>确认 frp-manager 自研源码（myfrp 工程）、4 表数据模型、配置生成机制。</li>
+<li>Deb 侧 compose 实采路径与 ci/deploy.sh 发布方式；修正入口 context-path。</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

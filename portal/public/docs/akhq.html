@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>部署位置</td>
-<td><strong>(待确认)</strong> 实采未发现运行/停止态的 akhq 容器（mykng 与内网 Debian 均无）</td>
+<td><strong>(待确认)</strong> 实采未发现运行/停止态的 akhq 容器（2026-09-05 复核 mykng <code>docker ps -a</code> 仍无）</td>
 </tr>
 <tr>
 <td>端口</td>
@@ -78,13 +78,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，实采 platform 部署目录未定义该服务）</td>
+<td>无（自部署，platform 部署目录未定义该服务）</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_2">访问入口 —— 实采结论：当前不可用，待确认</h2>
 <blockquote>
-<p>⚠️ <strong>discrepancy（2026-09-05 实采）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/akhq/</code>，且早期材料（infra-materials 第 5 节）记录「<code>/akhq/ → http://100.93.36.113:8080/</code>」。但逐一核实后：
+<p>⚠️ <strong>discrepancy（2026-09-05 实采，v2 复核仍成立）</strong>：portal 登记公网入口 <code>https://tools.marschat.online/akhq/</code>，且早期材料（infra-materials 第 5 节）记录「<code>/akhq/ → http://100.93.36.113:8080/</code>」。但逐一核实后：
 - mykng 与内网 Debian <code>docker ps -a</code> 均无 akhq 容器；
 - 腾讯云2号 <code>tools.marschat.online</code> 当前配置<strong>已无 <code>/akhq/</code> 段落</strong>，现行配置为：
   - <code>/activecode/</code> → http://100.105.196.63:18080
@@ -108,48 +108,74 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 后端 Kafka 实况：mykng 容器 platform-kafka apache/kafka:3.7.1 :9092 正常运行（Up 13 days, healthy）
 </code></pre>
 <p>预期（若重新部署）后端链路：<code>AKHQ → platform-kafka:9092</code>（bootstrap-server）。<strong>(待确认)</strong></p>
-<h2 id="kafka">后端 Kafka 实况（已实采确认）</h2>
+<h2 id="_4">系统设计</h2>
+<h3 id="_5">组件架构</h3>
+<p>AKHQ（原 KafkaHQ）是开源 Kafka 集群管理面板：通过 bootstrap-servers 接入 Kafka 集群（支持 SASL/SSL），提供 Topic 管理、Consumer Group 位移与 lag 监控、消息浏览（支持按格式反序列化）、Schema Registry/ACL 管理等能力；单容器部署无状态，配置以 application 配置（<code>akhq.kafka.&lt;id&gt;.bootstrap.servers</code> 等）或环境变量注入。</p>
+<h3 id="_6">我们的集成设计</h3>
 <ul>
-<li>实例：<code>platform-kafka</code>（mykng，镜像 apache/kafka:3.7.1），宿主映射 0.0.0.0:9092-&gt;9092（健康状态 healthy，已运行 13 天）。</li>
-<li>数据卷：</li>
-<li><code>platform_platform-kafka-data</code> → 容器内 <code>/var/lib/kafka/data</code>（消息数据）</li>
-<li>匿名卷 → <code>/mnt/shared/config</code>（配置）</li>
-<li>匿名卷 → <code>/etc/kafka/secrets</code>（密钥）</li>
-<li>角色：作为使用 Kafka 做异步消息/事件流的服务后端。</li>
-<li>若面板恢复，bootstrap-server 指向 <code>platform-kafka:9092</code>（容器内网络）或 <code>192.168.31.105:9092</code>（宿主网络）。</li>
+<li><strong>实例角色（规划）</strong>：作为 <code>platform-kafka</code> 的可视化运维面板，供运维查 Topic、盯消费组 lag、排查消息堆积；当前<strong>未部署</strong>，仅存在于 portal 登记表。</li>
+<li><strong>后端实况（已实采确认）</strong>：</li>
+<li>实例：<code>platform-kafka</code>（mykng，镜像 apache/kafka:3.7.1），宿主 0.0.0.0:9092（healthy，KRaft 模式单节点 controller+broker）；</li>
+<li>启动参数（platform.yml）：<code>KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://192.168.31.105:9092</code>（对外广播宿主 IP）、自动建 topic 开启、日志保留 72h / 1GiB、offsets 副本因子 1；</li>
+<li>数据卷：命名卷 <code>platform_platform-kafka-data</code> → <code>/var/lib/kafka/data</code>（另 config/secrets 匿名卷）；</li>
+<li>现有替代面板：compose 中已定义 <code>platform-kafka-ui</code>（provectuslabs/kafka-ui，宿主 19092→8080，连 <code>platform-kafka:9092</code>，调试用）——<strong>当前已有 Kafka UI 可用，AKHQ 属于 portal 表遗留登记项</strong>。</li>
+<li>角色：作为使用 Kafka 做异步消息/事件流的服务后端（供 platform 各业务使用）。</li>
+<li><strong>谁读写它</strong>：使用 Kafka 的业务服务经 <code>192.168.31.105:9092</code>（advertised listener）生产/消费；AKHQ 若恢复部署，仅作为人工管理面接入（bootstrap-server 指向 <code>platform-kafka:9092</code> 容器网络或 <code>192.168.31.105:9092</code> 宿主网络）。</li>
+<li><strong>关键设计约束</strong>：Kafka 客户端经 advertised listener <code>192.168.31.105:9092</code> 回连，面板部署位置需保证可达该地址；mykng :8080 已被 codexclaw（python 进程）占用，AKHQ 重部署须换端口。</li>
 </ul>
-<h2 id="_4">核心功能与使用（能力层面）</h2>
+<h2 id="_7">部署与发布</h2>
+<h3 id="_8">当前状态</h3>
+<p><strong>(待确认/未部署)</strong> platform 部署目录与两台宿主机均无该服务定义与容器。注意 platform.yml 中已有 <code>platform-kafka-ui</code>（provectuslabs/kafka-ui，宿主 19092）作为调试面板，Kafka 运维观测当前以它为准。</p>
+<h3 id="_9">恢复部署参考（非当前生效，供运维实施用）</h3>
+<ul>
+<li>镜像：AKHQ 官方镜像（tchiotludo/akhq）。</li>
+<li>编排建议：在 mykng 以容器/compose 部署，加入 platform-net。</li>
+<li>关键配置：<code>akhq.kafka.&lt;id&gt;.bootstrap.servers=platform-kafka:9092</code>（或环境变量等价形式）；如启用 SASL/SSL 需对应凭证（见 Vaultwarden，不落盘）。</li>
+<li>端口：<strong>避开 mykng :8080（已被 codexclaw 占用）</strong>，可另起端口（如 :8085）再反代。</li>
+<li>反代链路：mykng nginx 增加 <code>/akhq/</code> location，再经腾讯云2号 <code>tools.marschat.online</code> 暴露；或仅 Tailscale 暴露。</li>
+<li>发布：手工 <code>docker compose up -d</code>（无流水线）；回滚 = 移除容器，面板无状态无数据回退需求。</li>
+</ul>
+<h2 id="_10">核心功能与使用（能力层面）</h2>
+<h3 id="_11">功能清单</h3>
 <ul>
 <li>Topic 管理：查看/创建 Topic、分区数与副本配置、查看 Topic 内消息样例。</li>
-<li>消费组监控：查看 Consumer Group 的位移（offset）与消费滞后（lag），定位堆积。</li>
+<li>消费组监控：查看 Consumer Group 位移（offset）与消费滞后（lag），定位堆积。</li>
 <li>分区与 broker 视图：查看 broker 状态、分区 leader/follower 分布。</li>
-<li>ACL/配置：在启用安全时为运维提供配置入口。</li>
+<li>数据/Schema：消息内容浏览（反序列化）、Schema Registry 与 ACL 管理入口（启用时）。</li>
 </ul>
+<h3 id="_12">典型操作路径（部署后的预期用法）</h3>
+<ol>
+<li>打开 <code>https://tools.marschat.online/akhq/</code>（或内网端口）→ 进入 cluster 视图。</li>
+<li>Topics：按名筛选 → 查看 partition/offset → Data 标签浏览消息样例。</li>
+<li>Groups：查 Consumer Group lag，定位堆积的消费组。</li>
+<li>当前替代方案：Kafka 运维观测走 <code>platform-kafka-ui</code>（内网 <code>http://192.168.31.105:19092</code>）。</li>
+</ol>
 <blockquote>
 <p>具体按钮级操作以实际部署后的面板为准，未实装界面不编造步骤。</p>
 </blockquote>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_13">依赖与关联</h2>
 <ul>
 <li>依赖：后端 Kafka <code>platform-kafka</code>（mykng :9092）；如启用 SASL/SSL 还需对应凭证。</li>
-<li>被依赖/关联系统：使用 Kafka 做异步消息/事件流的服务运维排查时用到本面板（若部署）。</li>
+<li>被依赖/关联系统：使用 Kafka 做异步消息/事件流的服务运维排查时用到本面板（若部署）；同类替代 <code>platform-kafka-ui</code> 已随 platform 栈部署。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_14">运维要点</h2>
 <ul>
-<li>启停方式：<strong>(待确认)</strong> 当前未部署。恢复建议在 mykng 部署 AKHQ 容器连 <code>platform-kafka:9092</code>（bootstrap-server），并在 mykng 或腾讯云2号 nginx 增加 <code>/akhq/</code> 反代（注意与现有 <code>/codexclaw/ → :8080</code> 区分端口，避免冲突）。</li>
-<li>部署参考（非当前生效，供恢复用）：AKHQ 官方镜像，配置 <code>akhq.kafka.[id].bootstrap.servers=platform-kafka:9092</code>；反代建议放 mykng nginx（避免占用 :8080，可另起端口如 :8085 再经腾讯云2号 <code>tools.marschat.online/akhq/</code> 暴露）。</li>
-<li>日志查看：部署后 <code>docker logs &lt;akhq 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
-<li>数据与备份：面板无状态，数据即后端 Kafka；Kafka 数据卷 <code>platform_platform-kafka-data</code> → <code>/var/lib/kafka/data</code>（另含 config/secrets 卷）。</li>
+<li>启停：<strong>(待确认)</strong> 当前未部署；若恢复，启停即容器 <code>docker start/stop &lt;akhq 容器&gt;</code>。</li>
+<li>日志：部署后 <code>docker logs &lt;akhq 容器&gt;</code>；obs-dozzle（mykng :15500）。</li>
+<li>数据与备份：面板无状态，数据即后端 Kafka；Kafka 数据卷 <code>platform_platform-kafka-data</code> → <code>/var/lib/kafka/data</code>（消息保留 72h/1GiB，见 platform.yml），备份以 infra-monitor 策略为准。</li>
 <li>安全：公网暴露面板风险较高，建议加访问保护或仅 Tailscale 暴露；凭证存 Vaultwarden。</li>
 </ul>
-<h2 id="_7">常见问题</h2>
+<h2 id="_15">常见问题</h2>
 <ul>
 <li>公网 <code>/akhq/</code> 当前无上游，属「未部署」预期表现；勿与 <code>/codexclaw/</code>（mykng :8080 python 进程）混淆，二者不是同一服务。</li>
-<li>部署 AKHQ 时 bootstrap-server 指向 <code>platform-kafka:9092</code>（容器内网络）或 <code>192.168.31.105:9092</code>（宿主网络），依部署网络而定。</li>
+<li>部署 AKHQ 时 bootstrap-server 指向 <code>platform-kafka:9092</code>（容器内网络）或 <code>192.168.31.105:9092</code>（宿主网络/advertised listener），依部署网络而定。</li>
 <li>注意端口冲突：现行 <code>/codexclaw/</code> 已占用 mykng :8080，AKHQ 重新部署应避免复用 :8080。</li>
+<li>Kafka 客户端/面板必须可达 advertised listener <code>192.168.31.105:9092</code>，否则元数据拉取失败。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+<h2 id="_16">变更记录</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 akhq 面板实采未部署、材料记录的 :8080 上游已变更为 codexclaw（python 进程），入口待确认，并补充 Kafka 后端实况</li>
+<li>2026-09-05 v2 补全设计/部署/使用三维度；复核面板仍未部署（docker ps -a 复核），维持 v1 实采结论；补充 platform-kafka 启动参数（KRaft/advertised listener/保留策略）与 platform-kafka-ui 替代面板实况</li>
+<li>2026-09-05 v1 首次生成（portal 文档补全任务，AI 基于实采+源码生成）；标注 akhq 面板实采未部署、材料记录的 :8080 上游已变更为 codexclaw（python 进程），入口待确认，并补充 Kafka 后端实况</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>

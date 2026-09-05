@@ -41,7 +41,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <main>
 <h1 id="tokenhub">令狐 TokenHub 控制台</h1>
 <blockquote>
-<p>自托管令牌/授权管理类控制台（Next.js 前端 + 自研后端），为内部「令狐」相关令牌发放与管控提供 Web 界面。</p>
+<p>自托管 AI 网关 / 令牌管理控制台（开源 TokenHub：自研后端二进制 + Next.js 前端），
+为内部「令狐」相关令牌发放与管控提供 Web 界面，
+部署于 mykng 宿主 systemd 服务。</p>
 </blockquote>
 <h2 id="_1">基本信息</h2>
 <table>
@@ -54,23 +56,35 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <tbody>
 <tr>
 <td>分类</td>
-<td>自研 Web 系统 / 工具</td>
+<td>自研 Web 系统 / 工具（AI 网关 / 令牌管理）</td>
 </tr>
 <tr>
 <td>版本</td>
-<td>发布版本 0.7.0（进程 cwd 路径 <code>releases/0.7.0/frontend</code>）；前端 Next.js <code>next-server v16.2.9</code></td>
+<td>发布版本 0.7.0（<code>releases/0.7.0</code>）；前端 Next.js <code>next-server v16.2.9</code></td>
 </tr>
 <tr>
 <td>部署位置</td>
-<td>mykng 宿主进程（<strong>非 Docker</strong>），运行用户 <code>tokenhub</code>；启动脚本 <code>/opt/tokenhub/current/bin/tokenhub-run</code>；监听端口 13000</td>
+<td>mykng（192.168.31.105）宿主 <strong>systemd 服务</strong> <code>tokenhub.service</code>（非 Docker）</td>
+</tr>
+<tr>
+<td>部署位置</td>
+<td>运行用户/组 <code>tokenhub</code>，监听端口 13000</td>
 </tr>
 <tr>
 <td>源码位置</td>
-<td>服务器 <code>/opt/tokenhub/</code>（release 目录 <code>releases/0.7.0</code>）；本地 devtools 工作区未见对应仓库 (待确认是否纳入版本库)</td>
+<td>服务器 <code>/opt/tokenhub/</code>（release 目录 <code>releases/0.7.0</code>，<code>current</code> 软链指向）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>上游为开源项目（systemd 单元 Documentation 标注 github.com/astaxie/TokenHub，本环境无法访问 GitHub，细节待确认）</td>
+</tr>
+<tr>
+<td>源码位置</td>
+<td>本地 devtools 工作区未见对应仓库 (待确认是否纳入版本库)</td>
 </tr>
 <tr>
 <td>CI/CD</td>
-<td>无（自部署，由 <code>tokenhub-run</code> 脚本拉起）</td>
+<td>无流水线（systemd 托管 + releases 目录发布）</td>
 </tr>
 </tbody>
 </table>
@@ -84,55 +98,195 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <pre><code>浏览器 → 腾讯云2号 nginx (:443, 域名 tokenhub.marschat.online)
        → http://100.93.36.113:13000  (mykng 宿主 tokenhub 进程)
 </code></pre>
-<h2 id="mykng2026-09-05">实采进程结构（mykng，2026-09-05）</h2>
-<p><code>ss -tlnp | grep 13000</code> 与 <code>ps -ef</code> 实采：</p>
+<h2 id="_4">系统设计</h2>
+<h3 id="tokenhub_1">组件架构（开源 TokenHub）</h3>
 <ul>
-<li><code>bash /opt/tokenhub/current/bin/tokenhub-run</code>（PID 3521202，8月27日启动，父进程 1 → 疑似开机自启）</li>
-<li><code>/opt/tokenhub/current/bin/tokenhub</code>（PID 3522096，后端主进程，累计 CPU ~5.5h）</li>
-<li><code>next-server (v16.2.9)</code>（PID 3522097，前端，cwd = <code>/opt/tokenhub/releases/0.7.0/frontend</code>）</li>
-<li>监听：<code>0.0.0.0:13000</code>（<code>next-server</code> 占用，队列 511）</li>
+<li>TokenHub 为开源 AI 网关类项目（systemd 单元 Description：<strong>TokenHub AI Gateway</strong>）。</li>
+<li>采用「后端自研二进制 <code>tokenhub</code> + 前端 Next.js」前后端分离架构。</li>
+<li>二者经同一 13000 端口对外（Next.js 承接 HTTP 并代理/复用后端 API）。</li>
 </ul>
-<p>由此可判定：</p>
+<p>实采进程结构（mykng，2026-09-05）：</p>
 <ul>
-<li>采用「前端（Next.js）+ 后端（自研二进制 <code>tokenhub</code>）」前后端分离架构，二者经同一 13000 端口对外（Next.js 很可能代理/复用后端 API）。</li>
-<li>以 <code>releases/&lt;ver&gt;/</code> 目录 + <code>current</code> 软链管理版本（结构推断，待确认），当前 <code>current → 0.7.0</code>。</li>
+<li><code>bash /opt/tokenhub/current/bin/tokenhub-run</code>（父进程 1，systemd 拉起）</li>
+<li><code>/opt/tokenhub/current/bin/tokenhub</code>（后端主进程）</li>
+<li><code>next-server (v16.2.9)</code>（前端，cwd = <code>/opt/tokenhub/releases/0.7.0/frontend</code>）</li>
+<li>监听：<code>0.0.0.0:13000</code>（next-server 占用，队列 511）</li>
 </ul>
-<h2 id="_4">核心功能与使用</h2>
+<h3 id="_5">我们的集成设计</h3>
 <ul>
-<li>令牌/授权控制台：面向内部「令狐」体系的令牌发放、查看与管控（具体业务字段与操作流未经源码/文档实测，按架构推断描述）。</li>
-<li>架构：后端自研二进制 <code>tokenhub</code> 提供 API，Next.js 前端（<code>releases/0.7.0/frontend</code>）提供管理界面，统一经 13000 端口对外。</li>
+<li><strong>实例角色</strong></li>
+<li>mykng 上以 systemd 常驻服务运行。</li>
+<li>作为内部「令狐」体系令牌/授权的集中管理面；公网经腾讯云2号 nginx 反代。</li>
+<li><strong>与哪些系统连接</strong></li>
+<li>上游：腾讯云2号 nginx。</li>
+<li>下游：使用「令狐」令牌的服务（具体消费方未实采）(待确认)。</li>
+<li>后端存储位置未实采；systemd 单元 <code>ReadWritePaths</code> 含 <code>/var/lib/tokenhub</code>，推断数据目录在 <code>/var/lib/tokenhub</code> (待确认)。</li>
+<li><strong>为什么选它</strong></li>
+<li>开源成品 + 独立二进制发布，无需容器编排即可宿主部署。</li>
+<li>运维面收敛为一个 systemd 单元。</li>
+<li><strong>关键配置思路</strong></li>
+<li>配置经 <code>EnvironmentFile=/etc/tokenhub/tokenhub.env</code> 注入（变量含凭证，见 Vaultwarden，本文不落盘）。</li>
+<li>systemd 沙箱加固：<code>NoNewPrivileges</code> / <code>PrivateDevices</code> / <code>PrivateTmp</code> / <code>ProtectHome</code> / <code>ProtectSystem=strict</code>。</li>
+<li>仅 <code>/opt/tokenhub</code> 与 <code>/var/lib/tokenhub</code> 可写（ReadWritePaths）。</li>
+<li><code>Restart=always</code> + <code>RestartSec=5</code> 崩溃自动拉起；<code>LimitNOFILE=65535</code>。</li>
+</ul>
+<h3 id="systemd-etcsystemdsystemtokenhubservice">systemd 单元关键字段（实采 /etc/systemd/system/tokenhub.service）</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Description</td>
+<td>TokenHub AI Gateway</td>
+<td>项目定位</td>
+</tr>
+<tr>
+<td>User/Group</td>
+<td>tokenhub</td>
+<td>专用低权限用户</td>
+</tr>
+<tr>
+<td>EnvironmentFile</td>
+<td>/etc/tokenhub/tokenhub.env</td>
+<td>配置与凭证注入</td>
+</tr>
+<tr>
+<td>WorkingDirectory</td>
+<td>/opt/tokenhub/current</td>
+<td>跟随软链</td>
+</tr>
+<tr>
+<td>ExecStart</td>
+<td>/opt/tokenhub/current/bin/tokenhub-run</td>
+<td>启动脚本</td>
+</tr>
+<tr>
+<td>Restart / RestartSec</td>
+<td>always / 5</td>
+<td>崩溃自愈</td>
+</tr>
+<tr>
+<td>KillMode</td>
+<td>control-group</td>
+<td>停止时整组杀掉</td>
+</tr>
+<tr>
+<td>UMask</td>
+<td>0077</td>
+<td>文件权限收敛</td>
+</tr>
+<tr>
+<td>ProtectSystem</td>
+<td>strict</td>
+<td>文件系统只读加固</td>
+</tr>
+<tr>
+<td>ReadWritePaths</td>
+<td>/opt/tokenhub /var/lib/tokenhub</td>
+<td>仅这两个目录可写</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">对外接口概览</h3>
+<ul>
+<li>Web 管理界面（Next.js SSR）+ 后端 API（统一 13000 端口）。</li>
+<li>具体路由分组未实采（无源码/在线文档），避免编造 (待确认)。</li>
+</ul>
+<h2 id="_7">部署与发布</h2>
+<ul>
+<li>编排与位置</li>
+<li><strong>非 Docker，systemd 单元</strong>：<code>/etc/systemd/system/tokenhub.service</code>。</li>
+<li>程序目录：<code>/opt/tokenhub/</code>，结构为 <code>releases/&lt;ver&gt;/</code> + <code>current</code> 软链。</li>
+<li>当前 <code>current → /opt/tokenhub/releases/0.7.0</code>（2026-08-27 上线）。</li>
+<li>目录由 tokenhub 用户管理（<code>.tokenhub-managed-directory</code> 标记）。</li>
+<li>配置清单</li>
+<li>端口：13000（<code>0.0.0.0</code> 监听，next-server 进程持有）。</li>
+<li>卷/目录：<code>/opt/tokenhub</code>（程序，只读为主）、<code>/var/lib/tokenhub</code>（可写数据，推断）(待确认)。</li>
+<li>环境变量：<code>/etc/tokenhub/tokenhub.env</code>（变量名/值不落盘，属凭证类）。</li>
+<li>运行身份：<code>User=tokenhub</code> / <code>Group=tokenhub</code>，UMask 0077。</li>
+<li>发布/升级（releases + 软链模式，实际操作步骤）
+  1. 新版本放置到 <code>/opt/tokenhub/releases/&lt;new_ver&gt;/</code>（含 <code>bin/</code> 与 <code>frontend/</code>）。
+  2. <code>ln -sfn /opt/tokenhub/releases/&lt;new_ver&gt; /opt/tokenhub/current</code> 切换软链。
+  3. <code>systemctl restart tokenhub</code>（KillMode=control-group 会整组停止旧进程）。
+  4. 验证：<code>ss -tlnp | grep 13000</code> 与公网域名探活。</li>
+<li>回滚</li>
+<li>把 <code>current</code> 软链切回旧版本目录 → <code>systemctl restart tokenhub</code>。</li>
+<li><code>releases/</code> 下旧版本保留即可即时回退。</li>
+</ul>
+<h2 id="_8">核心功能与使用</h2>
+<h3 id="_9">功能清单</h3>
+<ul>
+<li>令牌/授权控制台：面向内部「令狐」体系的令牌发放、查看与管控。</li>
+<li>具体业务字段与操作流未经源码/文档实测，按架构与定位描述。</li>
+<li>AI 网关能力：作为 TokenHub（AI Gateway），推断承担 AI 调用的令牌签发/配额/代理职能 (待确认)。</li>
 <li>典型场景：需要集中管理某类访问令牌/授权凭证时通过此控制台操作。</li>
 </ul>
+<h3 id="_10">典型操作路径</h3>
+<ol>
+<li><strong>访问控制台</strong>
+   - 浏览器打开 <code>https://tokenhub.marschat.online</code>（或内网 <code>http://192.168.31.105:13000</code>）。
+   - 登录（账密见 Vaultwarden）。</li>
+<li><strong>服务异常排查</strong>
+   - <code>systemctl status tokenhub</code> 看运行态。
+   - <code>journalctl -u tokenhub -n 100</code> 看日志。
+   - <code>ss -tlnp | grep 13000</code> 确认监听。</li>
+</ol>
 <blockquote>
-<p>具体功能菜单、令牌类型、权限模型未实采（无源码/在线文档），避免编造按钮级步骤；如需精确功能清单，建议登录后补录或接入版本库。</p>
+<p>具体功能菜单、令牌类型、权限模型未实采（GitHub 不可达、无本地源码），
+避免编造按钮级步骤；如需精确功能清单，建议登录后补录或接入版本库。</p>
 </blockquote>
-<h2 id="_5">依赖与关联</h2>
+<h2 id="_11">依赖与关联</h2>
 <ul>
-<li>依赖：mykng 宿主运行环境（Node/Next 运行时，由 <code>tokenhub-run</code> 托管）；可能的后端存储（数据库/缓存）未实采 (待确认)。</li>
-<li>被依赖/关联系统：使用「令狐」令牌的下游服务（具体消费方未实采）(待确认)；与腾讯云2号 nginx 反代关联（域名 → 13000）。</li>
+<li>依赖</li>
+<li>mykng 宿主运行环境（Node/Next 运行时，由 <code>tokenhub-run</code> 托管）。</li>
+<li><code>/etc/tokenhub/tokenhub.env</code> 配置。</li>
+<li>后端存储（推断 <code>/var/lib/tokenhub</code>，未实采）(待确认)。</li>
+<li>被依赖/关联系统</li>
+<li>使用「令狐」令牌的下游服务（具体消费方未实采）(待确认)。</li>
+<li>与腾讯云2号 nginx 反代关联（域名 → 13000）。</li>
 </ul>
-<h2 id="_6">运维要点</h2>
+<h2 id="_12">运维要点</h2>
 <ul>
 <li>启停方式</li>
-<li>启动：<code>/opt/tokenhub/current/bin/tokenhub-run</code>（由 init/systemd 或手动拉起，父进程为 1，疑似开机自启）。</li>
-<li>停止/重启：结束 <code>tokenhub</code>（PID 3522096）与 <code>next-server</code>（PID 3522097）后重新执行 <code>tokenhub-run</code>（具体 systemd 单元未实采）(待确认)。</li>
-<li>日志查看：进程标准输出经 <code>tokenhub-run</code> 托管，日志落盘位置未实采 (待确认)；可用 <code>obs-dozzle</code> 或在 mykng 查进程输出。</li>
-<li>数据与备份：令牌/授权数据后端存储位置未实采 (待确认)；建议确认是否纳入备份体系（令牌属高敏感数据）。</li>
-<li>版本与升级（结构推断）</li>
-<li>新版本以 <code>releases/&lt;ver&gt;/</code> 形式放置于 <code>/opt/tokenhub/</code>，由 <code>current</code> 软链指向当前版本；升级即切换软链后重启 <code>tokenhub-run</code>（具体回滚步骤待确认）。</li>
+<li><code>systemctl start|stop|restart|status tokenhub</code>（标准 systemd 管理，勿手工 kill 进程组）。</li>
+<li>修改配置后：编辑 <code>/etc/tokenhub/tokenhub.env</code> → <code>systemctl restart tokenhub</code>。</li>
+<li>日志查看</li>
+<li><code>journalctl -u tokenhub -f</code>（Type=simple，标准输出进 journal）。</li>
+<li>数据与备份</li>
+<li>确认 <code>/var/lib/tokenhub</code> 数据内容与备份策略 (待确认)。</li>
+<li>令牌属高敏感数据，务必纳入备份与受控访问。</li>
+<li>版本与升级：见「部署与发布」节 releases + 软链流程。</li>
 <li>常见问题</li>
-<li>该服务为宿主进程而非容器，故 <strong>不在 <code>docker ps</code> 列表内</strong>，排障时用 <code>ss -tlnp | grep 13000</code> 与 <code>ps -ef | grep tokenhub</code> 定位。</li>
-<li>13000 端口被 <code>next-server</code> 占用而非后端二进制，是因为前端进程对外承接 HTTP；后端二进制可能监听同端口或仅进程内通信（细节待确认）。</li>
-<li>若需重启且不敢误杀：先 <code>ps -ef | grep tokenhub</code> 确认三个进程 PID，再按「后端→前端」顺序停止、用 <code>tokenhub-run</code> 拉起。</li>
+<li>该服务是宿主进程而非容器，<strong>不在 <code>docker ps</code> 列表内</strong>。<ul>
+<li>排障用 <code>systemctl</code> / <code>journalctl</code> / <code>ss -tlnp | grep 13000</code>。</li>
 </ul>
-<h2 id="_7">安全要点</h2>
-<ul>
-<li>令牌管理类系统属高敏感面，访问口令/API 密钥应入 Vaultwarden，勿明文。</li>
-<li>公网经腾讯云2号反代，建议确认是否启用了访问控制（登录态/来源限制）。</li>
+</li>
+<li>13000 端口由 next-server 持有：前端进程对外承接 HTTP，后端二进制经其代理/复用（细节待确认）。</li>
+<li>systemd 单元带 <code>ProtectSystem=strict</code>：<ul>
+<li>服务进程无法写 <code>/opt/tokenhub</code>、<code>/var/lib/tokenhub</code> 之外路径。</li>
+<li>若升级后报权限错误，先检查 ReadWritePaths。</li>
 </ul>
-<h2 id="_8">变更记录</h2>
+</li>
+</ul>
+<h2 id="_13">安全要点</h2>
 <ul>
-<li>2026-09-05 首次生成（portal 文档补全任务，AI 基于 mykng SSH 实采进程结构 + 材料包生成）</li>
+<li>令牌管理类系统属高敏感面：</li>
+<li><code>tokenhub.env</code> 与 <code>/var/lib/tokenhub</code> 权限 0077 UMask 已收敛。</li>
+<li>访问口令/API 密钥入 Vaultwarden，勿明文。</li>
+<li>公网经腾讯云2号反代，建议确认是否启用访问控制（登录态/来源限制）(待确认)。</li>
+<li>systemd 沙箱（NoNewPrivileges/ProtectSystem）为纵深防御，修改单元时保留。</li>
+</ul>
+<h2 id="_14">变更记录</h2>
+<ul>
+<li>2026-09-05 v2 补全设计/部署/使用三维度</li>
+<li>实采 systemd 单元全文（TokenHub AI Gateway 定位、EnvironmentFile、沙箱加固）。</li>
+<li>明确 releases+软链发布/回滚流程与 /var/lib/tokenhub 数据目录推断。</li>
+<li>2026-09-05 v1 首次生成（基于进程结构实采）</li>
 </ul>
 </main>
 <footer>devtools 项目文档 · 生成于 2026-09-05 · AI 基于实采+源码生成</footer>
