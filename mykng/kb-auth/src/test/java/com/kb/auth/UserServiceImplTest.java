@@ -3,7 +3,7 @@ package com.kb.auth;
 import com.kb.auth.entity.User;
 import com.kb.auth.mapper.UserMapper;
 import com.kb.auth.service.impl.UserServiceImpl;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

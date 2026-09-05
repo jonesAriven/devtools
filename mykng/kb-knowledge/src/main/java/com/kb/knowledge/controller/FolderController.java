@@ -1,6 +1,6 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.folder.FolderCreateRequest;
 import com.kb.knowledge.dto.folder.FolderMoveRequest;
 import com.kb.knowledge.dto.folder.FolderSortRequest;

@@ -1,6 +1,6 @@
 package com.kb.knowledge;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.knowledge.dto.folder.FolderCreateRequest;
 import com.kb.knowledge.dto.folder.FolderMoveRequest;
 import com.kb.knowledge.dto.folder.FolderSortRequest;

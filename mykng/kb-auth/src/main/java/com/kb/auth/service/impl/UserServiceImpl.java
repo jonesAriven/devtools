@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kb.auth.entity.User;
 import com.kb.auth.mapper.UserMapper;
 import com.kb.auth.service.UserService;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

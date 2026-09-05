@@ -1,6 +1,6 @@
 package com.kb.intelligence.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.intelligence.dto.request.ImportByPathRequest;
 import com.kb.intelligence.service.KnowledgeEngine;
 import lombok.RequiredArgsConstructor;

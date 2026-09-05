@@ -1,7 +1,7 @@
 package com.kb.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.gateway.config.KbGatewayProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;

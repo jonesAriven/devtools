@@ -1,6 +1,6 @@
 package com.kb.knowledge.service;
 
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 
 import java.util.List;
 import java.util.Map;

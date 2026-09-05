@@ -1,6 +1,6 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.tag.TagBindRequest;
 import com.kb.knowledge.entity.Tag;
 import com.kb.knowledge.service.TagService;

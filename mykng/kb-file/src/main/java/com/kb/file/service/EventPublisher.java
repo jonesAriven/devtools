@@ -1,7 +1,7 @@
 package com.kb.file.service;
 
-import com.kb.common.event.EventBus;
-import com.kb.common.event.KbEvent;
+import com.marschat.common.event.EventBus;
+import com.marschat.common.event.AppEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ public class EventPublisher {
         payload.put("userId", userId);
         payload.put("name", name);
         payload.put("content", content);
-        publish(KbEvent.FILE_PARSED, fileId, payload);
+        publish(AppEvent.FILE_PARSED, fileId, payload);
     }
 
     /**
@@ -44,7 +44,7 @@ public class EventPublisher {
         Map<String, Object> payload = new HashMap<>();
         payload.put("fileId", fileId);
         payload.put("userId", userId);
-        publish(KbEvent.FILE_DELETED, fileId, payload);
+        publish(AppEvent.FILE_DELETED, fileId, payload);
     }
 
     /**
@@ -55,7 +55,7 @@ public class EventPublisher {
         payload.put("fileId", fileId);
         payload.put("userId", userId);
         payload.put("content", content);
-        publish(KbEvent.FILE_REPARSE, fileId, payload);
+        publish(AppEvent.FILE_REPARSE, fileId, payload);
     }
 
     /**
@@ -65,7 +65,7 @@ public class EventPublisher {
         Map<String, Object> payload = new HashMap<>();
         payload.put("fileId", fileId);
         payload.put("userId", userId);
-        publish(KbEvent.FILE_PERMANENT_DELETED, fileId, payload);
+        publish(AppEvent.FILE_PERMANENT_DELETED, fileId, payload);
     }
 
     /**
@@ -75,14 +75,14 @@ public class EventPublisher {
         Map<String, Object> payload = new HashMap<>();
         payload.put("userId", userId);
         payload.put("count", count);
-        publish(KbEvent.FILE_TRASH_EMPTIED, null, payload);
+        publish(AppEvent.FILE_TRASH_EMPTIED, null, payload);
     }
 
     /**
      * 统一发布方法
      */
     private void publish(String eventType, Long entityId, Map<String, Object> payload) {
-        KbEvent event = new KbEvent(eventType, entityId, payload, "kb-file");
+        AppEvent event = new AppEvent(eventType, entityId, payload, "kb-file");
         eventBus.publish(event);
     }
 }

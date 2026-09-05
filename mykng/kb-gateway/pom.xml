@@ -18,8 +18,8 @@
     <dependencies>
         <!-- 内部公共模块（仅复用 Result；其 servlet 相关类不会被网关扫描加载） -->
         <dependency>
-            <groupId>com.kb</groupId>
-            <artifactId>kb-common</artifactId>
+            <groupId>com.marschat</groupId>
+            <artifactId>common-core</artifactId>
         </dependency>
 
         <!-- Nacos 服务发现（M2: 可拔插架构基础） -->

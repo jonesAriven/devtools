@@ -1,6 +1,6 @@
 package com.kb.knowledge.feign;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.feign.dto.FileDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;

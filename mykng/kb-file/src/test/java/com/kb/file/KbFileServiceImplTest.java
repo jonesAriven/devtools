@@ -2,8 +2,8 @@ package com.kb.file;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.exception.BusinessException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.page.PageResult;
 import com.kb.file.dto.file.FileMergeRequest;
 import com.kb.file.dto.file.FileMoveRequest;
 import com.kb.file.entity.FileChunk;

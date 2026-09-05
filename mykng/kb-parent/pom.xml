@@ -34,7 +34,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <meilisearch.version>0.14.2</meilisearch.version>
         <minio.version>8.5.9</minio.version>
-        <kb-common.version>1.2.0</kb-common.version>
+        <common-core.version>1.1.0</common-core.version>
         <!-- M6: springdoc-openapi 统一版本管理 -->
         <springdoc.version>2.5.0</springdoc.version>
 
@@ -52,9 +52,8 @@
         <failsafe-report.dir>${test-output.dir}/integration/java/failsafe-reports</failsafe-report.dir>
     </properties>
 
-    <!-- 子模块（M1 重构：kb-common 加回 reactor：保证 logback 配置与依赖同步（Nexus 旧 pom 缺 kafka-appender 依赖曾致启动崩溃）） -->
+    <!-- 子模块（M1 重构：kb-common 已删除，公共类/事件/工具类统一由 com.marschat:common-core 提供；logback 配置与依赖同步） -->
     <modules>
-        <module>../kb-common</module>
         <module>../kb-gateway</module>
         <module>../kb-auth</module>
         <module>../kb-file</module>
@@ -85,9 +84,9 @@
 
             <!-- 内部模块 -->
             <dependency>
-                <groupId>com.kb</groupId>
-                <artifactId>kb-common</artifactId>
-                <version>${kb-common.version}</version>
+                <groupId>com.marschat</groupId>
+                <artifactId>common-core</artifactId>
+                <version>${common-core.version}</version>
             </dependency>
 
             <!-- MyBatis-Plus -->

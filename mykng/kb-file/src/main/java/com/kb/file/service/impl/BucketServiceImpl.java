@@ -1,7 +1,7 @@
 package com.kb.file.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.file.entity.Bucket;
 import com.kb.file.entity.KbFile;
 import com.kb.file.mapper.BucketMapper;

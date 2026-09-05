@@ -13,8 +13,8 @@ import com.kb.auth.mapper.RefreshTokenMapper;
 import com.kb.auth.mapper.UserMapper;
 import com.kb.auth.security.JwtTokenProvider;
 import com.kb.auth.service.AuthService;
-import com.kb.common.event.KbEvent;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.event.AppEvent;
+import com.marschat.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -147,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private void publishEvent(String event, Long userId, Map<String, Object> payload) {
         try {
-            KbEvent kbEvent = new KbEvent(event, userId, payload);
+            AppEvent kbEvent = new AppEvent(event, userId, payload);
             kbEvent.setSource("kb-auth");
             redisTemplate.convertAndSend(EVENT_CHANNEL, objectMapper.writeValueAsString(kbEvent));
         } catch (Exception e) {

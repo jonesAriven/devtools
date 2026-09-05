@@ -1,6 +1,6 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.space.SpaceCreateRequest;
 import com.kb.knowledge.dto.space.SpaceUpdateRequest;
 import com.kb.knowledge.entity.Space;

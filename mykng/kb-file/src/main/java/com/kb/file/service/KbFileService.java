@@ -1,6 +1,6 @@
 package com.kb.file.service;
 
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 import com.kb.file.dto.file.FileMergeRequest;
 import com.kb.file.dto.file.FileMoveRequest;
 import com.kb.file.entity.KbFile;

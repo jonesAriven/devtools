@@ -1,7 +1,7 @@
 package com.kb.intelligence.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.intelligence.dto.request.KnowledgeSearchRequest;
 import com.kb.intelligence.dto.response.*;
 import com.kb.intelligence.service.KnowledgeQueryService;

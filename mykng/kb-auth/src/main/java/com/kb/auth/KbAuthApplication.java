@@ -1,8 +1,8 @@
 package com.kb.auth;
 
-import com.kb.common.event.KbEventAutoConfig;
-import com.kb.common.exception.GlobalExceptionHandler;
-import com.kb.common.trace.TraceIdAutoConfig;
+import com.marschat.common.event.EventAutoConfig;
+import com.marschat.common.exception.GlobalExceptionHandler;
+import com.marschat.common.trace.TraceIdAutoConfig;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @SpringBootApplication
 @MapperScan("com.kb.auth.mapper")
-@Import({GlobalExceptionHandler.class, TraceIdAutoConfig.class, KbEventAutoConfig.class})
+@Import({GlobalExceptionHandler.class, TraceIdAutoConfig.class, EventAutoConfig.class})
 @EnableAsync
 @EnableDiscoveryClient
 public class KbAuthApplication {

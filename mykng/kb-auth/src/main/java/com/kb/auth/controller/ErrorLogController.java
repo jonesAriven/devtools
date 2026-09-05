@@ -1,7 +1,7 @@
 package com.kb.auth.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.auth.entity.ErrorLog;
 import com.kb.auth.entity.User;
 import com.kb.auth.mapper.UserMapper;

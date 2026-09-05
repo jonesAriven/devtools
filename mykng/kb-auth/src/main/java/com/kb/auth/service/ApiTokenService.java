@@ -3,7 +3,7 @@ package com.kb.auth.service;
 import com.kb.auth.dto.ApiTokenRequest;
 import com.kb.auth.dto.ApiTokenResponse;
 import com.kb.auth.entity.ApiToken;
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 
 import java.util.List;
 

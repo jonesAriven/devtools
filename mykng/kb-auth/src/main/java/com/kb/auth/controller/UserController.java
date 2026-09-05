@@ -3,7 +3,7 @@ package com.kb.auth.controller;
 import com.kb.auth.entity.User;
 import com.kb.auth.service.UserService;
 import com.kb.auth.util.SecurityUtils;
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

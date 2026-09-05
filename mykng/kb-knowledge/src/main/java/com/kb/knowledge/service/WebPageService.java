@@ -1,6 +1,6 @@
 package com.kb.knowledge.service;
 
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 import com.kb.knowledge.dto.web.WebCollectRequest;
 import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.WebPage;

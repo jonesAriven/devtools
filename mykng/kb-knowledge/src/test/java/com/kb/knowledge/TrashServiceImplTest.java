@@ -1,9 +1,9 @@
 package com.kb.knowledge;
 
-import com.kb.common.exception.BusinessException;
-import com.kb.common.exception.NoPermissionException;
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.exception.NoPermissionException;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.entity.Doc;
 import com.kb.knowledge.entity.WebPage;
 import com.kb.knowledge.feign.FileClient;

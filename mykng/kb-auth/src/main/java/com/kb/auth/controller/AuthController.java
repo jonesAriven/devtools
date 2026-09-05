@@ -7,7 +7,7 @@ import com.kb.auth.entity.User;
 import com.kb.auth.service.AuthService;
 import com.kb.auth.service.UserService;
 import com.kb.auth.util.SecurityUtils;
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

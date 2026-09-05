@@ -1,7 +1,7 @@
 package com.kb.knowledge;
 
-import com.kb.common.exception.BusinessException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.page.PageResult;
 import com.kb.knowledge.dto.doc.DocCreateRequest;
 import com.kb.knowledge.dto.doc.DocUpdateRequest;
 import com.kb.knowledge.entity.Doc;

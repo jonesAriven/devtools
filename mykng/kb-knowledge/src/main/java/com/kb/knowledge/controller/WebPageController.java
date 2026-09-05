@@ -1,7 +1,7 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.web.WebCollectRequest;
 import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.WebPage;

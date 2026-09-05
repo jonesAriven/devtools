@@ -2,7 +2,7 @@ package com.kb.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 import com.kb.auth.entity.OperationLog;
 import com.kb.auth.mapper.OperationLogMapper;
 import com.kb.auth.service.OperationLogService;

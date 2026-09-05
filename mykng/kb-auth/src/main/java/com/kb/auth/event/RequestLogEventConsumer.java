@@ -2,8 +2,8 @@ package com.kb.auth.event;
 
 import com.kb.auth.entity.RequestLog;
 import com.kb.auth.service.RequestLogService;
-import com.kb.common.event.AbstractEventConsumer;
-import com.kb.common.event.KbEvent;
+import com.marschat.common.event.AbstractEventConsumer;
+import com.marschat.common.event.AppEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,12 +25,12 @@ public class RequestLogEventConsumer extends AbstractEventConsumer {
 
     @Override
     public String getStream() {
-        return KbEvent.STREAM_REQUEST_LOGS;
+        return AppEvent.STREAM_REQUEST_LOGS;
     }
 
     @Override
     public String getGroup() {
-        return KbEvent.GROUP_REQUEST_LOG;
+        return AppEvent.GROUP_REQUEST_LOG;
     }
 
     @Override
@@ -39,8 +39,8 @@ public class RequestLogEventConsumer extends AbstractEventConsumer {
     }
 
     @Override
-    public void handleEvent(KbEvent event) {
-        if (!KbEvent.REQUEST_LOG.equals(event.getEvent())) {
+    public void handleEvent(AppEvent event) {
+        if (!AppEvent.REQUEST_LOG.equals(event.getEvent())) {
             return;
         }
 

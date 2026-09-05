@@ -2,8 +2,8 @@ package com.kb.knowledge;
 
 import cn.hutool.http.HttpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.exception.BusinessException;
-import com.kb.common.page.PageResult;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.page.PageResult;
 import com.kb.knowledge.dto.web.WebCollectRequest;
 import com.kb.knowledge.dto.web.WebMoveRequest;
 import com.kb.knowledge.entity.ResourceTag;

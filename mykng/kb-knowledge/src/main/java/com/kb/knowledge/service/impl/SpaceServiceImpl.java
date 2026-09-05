@@ -1,7 +1,7 @@
 package com.kb.knowledge.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.knowledge.dto.space.SpaceCreateRequest;
 import com.kb.knowledge.dto.space.SpaceUpdateRequest;
 import com.kb.knowledge.entity.Space;

@@ -1,7 +1,7 @@
 package com.kb.file.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.file.dto.file.FileContentUpdateRequest;
 import com.kb.file.dto.file.FileMergeRequest;
 import com.kb.file.dto.file.FileMoveRequest;

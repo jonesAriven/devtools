@@ -11,7 +11,7 @@ import com.kb.auth.mapper.RefreshTokenMapper;
 import com.kb.auth.mapper.UserMapper;
 import com.kb.auth.security.JwtTokenProvider;
 import com.kb.auth.service.impl.AuthServiceImpl;
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.share.ShareCreateRequest;
 import com.kb.knowledge.entity.Share;
 import com.kb.knowledge.service.ShareService;

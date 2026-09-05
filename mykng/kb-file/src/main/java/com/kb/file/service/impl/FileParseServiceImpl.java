@@ -1,6 +1,6 @@
 package com.kb.file.service.impl;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.file.entity.KbFile;
 import com.kb.file.mapper.KbFileMapper;
 import com.kb.file.mongo.doc.FileContent;

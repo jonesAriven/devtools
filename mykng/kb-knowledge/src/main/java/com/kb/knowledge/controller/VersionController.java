@@ -1,6 +1,6 @@
 package com.kb.knowledge.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.service.VersionService;
 import lombok.RequiredArgsConstructor;

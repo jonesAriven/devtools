@@ -1,6 +1,6 @@
 package com.kb.knowledge;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.knowledge.dto.tag.TagBindRequest;
 import com.kb.knowledge.entity.ResourceTag;
 import com.kb.knowledge.entity.Tag;

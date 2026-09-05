@@ -1,6 +1,6 @@
 package com.kb.auth.service;
 
-import com.kb.common.page.PageResult;
+import com.marschat.common.page.PageResult;
 import com.kb.auth.entity.OperationLog;
 
 /**

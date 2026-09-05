@@ -17,8 +17,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.kb</groupId>
-            <artifactId>kb-common</artifactId>
+            <groupId>com.marschat</groupId>
+            <artifactId>common-core</artifactId>
         </dependency>
 
         <!-- Nacos 服务发现（M2: 可拔插架构基础） -->

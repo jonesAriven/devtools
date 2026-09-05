@@ -1,6 +1,6 @@
 package com.kb.file;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.file.entity.Bucket;
 import com.kb.file.mapper.BucketMapper;
 import com.kb.file.mapper.KbFileMapper;

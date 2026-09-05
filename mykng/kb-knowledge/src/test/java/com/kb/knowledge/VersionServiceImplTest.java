@@ -1,6 +1,6 @@
 package com.kb.knowledge;
 
-import com.kb.common.exception.BusinessException;
+import com.marschat.common.exception.BusinessException;
 import com.kb.knowledge.entity.Version;
 import com.kb.knowledge.mapper.VersionMapper;
 import com.kb.knowledge.mongo.doc.DocContent;

@@ -1,6 +1,6 @@
 package com.kb.file.controller;
 
-import com.kb.common.result.Result;
+import com.marschat.common.result.Result;
 import com.kb.file.entity.Bucket;
 import com.kb.file.service.BucketService;
 import lombok.RequiredArgsConstructor;

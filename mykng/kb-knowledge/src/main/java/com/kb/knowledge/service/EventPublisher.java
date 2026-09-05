@@ -1,7 +1,7 @@
 package com.kb.knowledge.service;
 
-import com.kb.common.event.EventBus;
-import com.kb.common.event.KbEvent;
+import com.marschat.common.event.EventBus;
+import com.marschat.common.event.AppEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class EventPublisher {
         payload.put("detail", detail);
 
         String eventType = resourceType + "." + action.toLowerCase();
-        KbEvent event = new KbEvent(eventType, resourceId, payload, "kb-knowledge");
+        AppEvent event = new AppEvent(eventType, resourceId, payload, "kb-knowledge");
         eventBus.publish(event);
     }
 }

@@ -1,8 +1,8 @@
 package com.kb.knowledge.event;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.kb.common.event.AbstractEventConsumer;
-import com.kb.common.event.KbEvent;
+import com.marschat.common.event.AbstractEventConsumer;
+import com.marschat.common.event.AppEvent;
 import com.kb.knowledge.entity.Share;
 import com.kb.knowledge.mapper.ShareMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +31,12 @@ public class IndexEventListener extends AbstractEventConsumer {
 
     @Override
     public String getStream() {
-        return KbEvent.STREAM_FILE_EVENTS;
+        return AppEvent.STREAM_FILE_EVENTS;
     }
 
     @Override
     public String getGroup() {
-        return KbEvent.GROUP_KNOWLEDGE;
+        return AppEvent.GROUP_KNOWLEDGE;
     }
 
     @Override
@@ -45,15 +45,15 @@ public class IndexEventListener extends AbstractEventConsumer {
     }
 
     @Override
-    public void handleEvent(KbEvent event) {
+    public void handleEvent(AppEvent event) {
         log.info("处理跨服务事件: {} entityId={}", event.getEvent(), event.getEntityId());
 
         switch (event.getEvent()) {
-            case KbEvent.FILE_PARSED -> handleFileParsed(event);
-            case KbEvent.FILE_DELETED -> handleFileDeleted(event);
-            case KbEvent.FILE_PERMANENT_DELETED -> handleFilePermanentDeleted(event);
-            case KbEvent.FILE_TRASH_EMPTIED -> handleFileTrashEmptied(event);
-            case KbEvent.FILE_REPARSE -> handleFileReparse(event);
+            case AppEvent.FILE_PARSED -> handleFileParsed(event);
+            case AppEvent.FILE_DELETED -> handleFileDeleted(event);
+            case AppEvent.FILE_PERMANENT_DELETED -> handleFilePermanentDeleted(event);
+            case AppEvent.FILE_TRASH_EMPTIED -> handleFileTrashEmptied(event);
+            case AppEvent.FILE_REPARSE -> handleFileReparse(event);
             default -> log.debug("忽略非相关事件: {}", event.getEvent());
         }
     }
@@ -62,7 +62,7 @@ public class IndexEventListener extends AbstractEventConsumer {
      * 文件解析完成事件
      * kb-file 解析完成后通知，kb-knowledge 可用于关联笔记等一致性维护
      */
-    private void handleFileParsed(KbEvent event) {
+    private void handleFileParsed(AppEvent event) {
         log.info("处理文件解析完成事件 fileId={}", event.getEntityId());
         // 文件索引由 kb-file 自身维护（kb_files 索引），此处仅记录日志
     }
@@ -71,7 +71,7 @@ public class IndexEventListener extends AbstractEventConsumer {
      * 文件删除事件（逻辑删除）
      * 文件被删除时，需标记关联的分享为失效
      */
-    private void handleFileDeleted(KbEvent event) {
+    private void handleFileDeleted(AppEvent event) {
         markSharesInvalid(event.getEntityId());
     }
 
@@ -79,7 +79,7 @@ public class IndexEventListener extends AbstractEventConsumer {
      * 文件永久删除事件（M4 新增）
      * 文件被永久删除时，标记关联的分享为失效
      */
-    private void handleFilePermanentDeleted(KbEvent event) {
+    private void handleFilePermanentDeleted(AppEvent event) {
         markSharesInvalid(event.getEntityId());
     }
 
@@ -87,7 +87,7 @@ public class IndexEventListener extends AbstractEventConsumer {
      * 回收站清空事件（M4 新增）
      * 批量标记该用户所有文件类型的分享为失效
      */
-    private void handleFileTrashEmptied(KbEvent event) {
+    private void handleFileTrashEmptied(AppEvent event) {
         if (event.getPayload() == null) {
             return;
         }
@@ -109,7 +109,7 @@ public class IndexEventListener extends AbstractEventConsumer {
     /**
      * 文件重新解析事件
      */
-    private void handleFileReparse(KbEvent event) {
+    private void handleFileReparse(AppEvent event) {
         log.info("处理文件重新解析事件 fileId={}", event.getEntityId());
     }
 

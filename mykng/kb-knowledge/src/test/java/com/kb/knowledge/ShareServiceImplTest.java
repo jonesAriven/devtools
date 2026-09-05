@@ -1,9 +1,9 @@
 package com.kb.knowledge;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.kb.common.exception.BusinessException;
-import com.kb.common.page.PageResult;
-import com.kb.common.result.Result;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.page.PageResult;
+import com.marschat.common.result.Result;
 import com.kb.knowledge.dto.share.ShareCreateRequest;
 import com.kb.knowledge.entity.*;
 import com.kb.knowledge.feign.FileClient;
