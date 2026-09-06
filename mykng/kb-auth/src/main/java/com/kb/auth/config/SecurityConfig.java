@@ -27,9 +27,12 @@ import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jwtDecoder = jwtDecoder;
     }
 
     /**
@@ -47,6 +50,8 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/jwks", "/.well-known/openid-configuration",
                         "/.well-known/oauth-authorization-server").permitAll()
                 .anyRequest().authenticated())
+            // userinfo 端点需要资源服务器能力验 RS256 Bearer token
+            .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .csrf(AbstractHttpConfigurer::disable)
             .apply(authorizationServerConfigurer);

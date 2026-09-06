@@ -54,6 +54,12 @@ public class AuthorizationServerConfig {
         return new NimbusJwtEncoder(jwkSource);
     }
 
+    /** 资源服务器侧验 RS256 token 用（userinfo 等端点） */
+    @Bean
+    public org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+        return org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    }
+
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().issuer(issuer).build();
