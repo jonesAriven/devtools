@@ -42,7 +42,11 @@ public class SecurityConfig {
         authorizationServerConfigurer.oidc(org.springframework.security.config.Customizer.withDefaults());
         http
             .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .authorizeHttpRequests(auth -> auth
+                // 发现/公钥端点必须匿名可读，否则客户端拿不到 JWKS
+                .requestMatchers("/oauth2/jwks", "/.well-known/openid-configuration",
+                        "/.well-known/oauth-authorization-server").permitAll()
+                .anyRequest().authenticated())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .csrf(AbstractHttpConfigurer::disable)
             .apply(authorizationServerConfigurer);
