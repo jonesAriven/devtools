@@ -1,0 +1,69 @@
+version: "3.8"
+
+# 管理面板 UI 四件套（2026-09-06 portal 面板走查补齐）
+# 仅暴露 LAN/Tailscale，不开公网（卡片 url_public=NULL）
+# 用法: docker compose -f docker-compose.adminui.yml up -d
+networks:
+  platform-net:
+    external: true
+
+services:
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    container_name: adminui-pma
+    restart: unless-stopped
+    ports:
+      - "8096:80"
+    environment:
+      PMA_HOST: host.docker.internal
+      PMA_PORT: "3306"
+      PMA_ARBITRARY: "0"
+      UPLOAD_LIMIT: 512M
+      MEM_LIMIT: 256m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 320m
+    networks:
+      - platform-net
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: adminui-redis
+    restart: unless-stopped
+    ports:
+      - "8097:8081"
+    environment:
+      REDIS_HOSTS: local:platform-redis:6379
+    mem_limit: 256m
+    networks:
+      - platform-net
+
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    container_name: adminui-mongo
+    restart: unless-stopped
+    ports:
+      - "8098:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: platform-mongo
+      ME_CONFIG_MONGODB_PORT: "27017"
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: "Hwx@1120930"
+    mem_limit: 256m
+    networks:
+      - platform-net
+
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: adminui-akhq
+    restart: unless-stopped
+    ports:
+      - "8099:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: platform-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: platform-kafka:9092
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    mem_limit: 768m
+    networks:
+      - platform-net
