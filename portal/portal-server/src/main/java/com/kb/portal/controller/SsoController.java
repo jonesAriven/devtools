@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.http.HttpHeaders;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -97,7 +96,7 @@ public class SsoController {
     // ---------- 用户管理代理（仅 admin）----------
 
     @GetMapping("/admin/users")
-    public Result<String> listUsers(@RequestParam(required = false) String realmId, HttpServletRequest request) {
+    public Result<JsonNode> listUsers(@RequestParam(required = false) String realmId, HttpServletRequest request) {
         requireAdmin(request);
         String qs = realmId == null ? "" : "?realmId=" + URLEncoder.encode(realmId, StandardCharsets.UTF_8);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
@@ -106,7 +105,7 @@ public class SsoController {
     }
 
     @PostMapping("/admin/users")
-    public Result<String> createUser(@RequestBody String body, HttpServletRequest request) {
+    public Result<JsonNode> createUser(@RequestBody String body, HttpServletRequest request) {
         requireAdmin(request);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
                 (Long) request.getAttribute("userId"), "POST", "/admin/users", body);
@@ -114,7 +113,7 @@ public class SsoController {
     }
 
     @PutMapping("/admin/users/{userId}")
-    public Result<String> updateUser(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
+    public Result<JsonNode> updateUser(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
         requireAdmin(request);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
                 (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId, body);
@@ -122,7 +121,7 @@ public class SsoController {
     }
 
     @DeleteMapping("/admin/users/{userId}")
-    public Result<String> deleteUser(@PathVariable Long userId, HttpServletRequest request) {
+    public Result<JsonNode> deleteUser(@PathVariable Long userId, HttpServletRequest request) {
         requireAdmin(request);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
                 (Long) request.getAttribute("userId"), "DELETE", "/admin/users/" + userId, null);
@@ -130,7 +129,7 @@ public class SsoController {
     }
 
     @PutMapping("/admin/users/{userId}/password")
-    public Result<String> resetPassword(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
+    public Result<JsonNode> resetPassword(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
         requireAdmin(request);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
                 (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId + "/password", body);
@@ -143,25 +142,24 @@ public class SsoController {
         }
     }
 
-    private Result<String> toResult(AuthCenterService.ProxyResult r) {
-        if (r.status() == 200) {
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            Result ok = Result.ok(r.body());
-            return ok;
-        }
-        throw new com.marschat.common.exception.BusinessException(r.status() == 401 ? 401 : 500,
-                extractMessage(r.body()));
-    }
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    private String extractMessage(String body) {
+    /** 解包 auth-center 的 Result：200 取内层 data 节点，否则抛业务异常 */
+    @SuppressWarnings("unchecked")
+    private Result<JsonNode> toResult(AuthCenterService.ProxyResult r) {
         try {
-            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
-            if (node.has("message")) {
-                return node.get("message").asText();
+            JsonNode node = MAPPER.readTree(r.body() == null ? "{}" : r.body());
+            if (r.status() == 200 && node.path("code").asInt() == 200) {
+                return Result.ok(node.get("data"));
             }
-        } catch (Exception ignored) {
+            throw new com.marschat.common.exception.BusinessException(
+                    node.path("code").asInt(500),
+                    node.path("message").asText("统一认证中心返回错误"));
+        } catch (com.marschat.common.exception.BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new com.marschat.common.exception.BusinessException(502, "统一认证中心响应解析失败");
         }
-        return "统一认证中心返回错误";
     }
 
     private String normalizeOrigin(String redirect) {
