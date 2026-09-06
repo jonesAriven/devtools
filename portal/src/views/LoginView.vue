@@ -15,7 +15,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
-            placeholder="请输入账号"
+            placeholder="用户名"
             size="large"
             :prefix-icon="User"
           />
@@ -24,7 +24,7 @@
           <el-input
             v-model="loginForm.password"
             type="password"
-            placeholder="请输入密码"
+            placeholder="密码"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -64,7 +64,7 @@ const loginForm = reactive({
 })
 
 const rules: FormRules = {
-  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 

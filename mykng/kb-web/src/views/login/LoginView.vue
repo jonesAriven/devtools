@@ -18,7 +18,7 @@
           <el-input
             v-model="loginForm.username"
             placeholder="用户名"
-            prefix-icon="User"
+            :prefix-icon="User"
           />
         </el-form-item>
         <el-form-item prop="password">
@@ -26,7 +26,7 @@
             v-model="loginForm.password"
             type="password"
             placeholder="密码"
-            prefix-icon="Lock"
+            :prefix-icon="Lock"
             show-password
           />
         </el-form-item>
@@ -48,6 +48,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
+import { User, Lock } from '@element-plus/icons-vue'
 import { useAuth } from '@/composables/useAuth'
 
 const loginFormRef = ref<FormInstance>()
