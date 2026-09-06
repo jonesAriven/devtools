@@ -181,6 +181,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             """);
 
         seedOidcClient();
+        ensureAdminRole();
 
         createTableIfNotExists("sys_error_log", """
             CREATE TABLE IF NOT EXISTS sys_error_log (
@@ -237,6 +238,21 @@ public class DatabaseInitializer implements CommandLineRunner {
             log.debug("表 {} 已就绪", tableName);
         } catch (Exception e) {
             log.warn("创建表 {} 失败: {}", tableName, e.getMessage());
+        }
+    }
+
+    /** 兜底引导：全库没有任何 admin 时，把 username=admin 的账号提升为 admin（幂等） */
+    private void ensureAdminRole() {
+        try {
+            Integer adminCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user WHERE role = 'admin' AND deleted = 0", Integer.class);
+            if (adminCount == null || adminCount == 0) {
+                jdbcTemplate.update(
+                    "UPDATE user SET role = 'admin' WHERE username = 'admin' AND deleted = 0");
+                log.info("已将内置 admin 账号引导为管理员角色");
+            }
+        } catch (Exception e) {
+            log.warn("admin 角色引导失败: {}", e.getMessage());
         }
     }
 
