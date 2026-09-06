@@ -1,5 +1,12 @@
+packages:
+  - '.'
 allowBuilds:
-  '@parcel/watcher': set this to true or false
-  es5-ext: set this to true or false
-  esbuild: set this to true or false
-  vue-demi: set this to true or false
+  '@parcel/watcher': true
+  es5-ext: true
+  esbuild: true
+  vue-demi: true
+onlyBuiltDependencies:
+  - esbuild
+  - "@parcel/watcher"
+  - es5-ext
+  - vue-demi
