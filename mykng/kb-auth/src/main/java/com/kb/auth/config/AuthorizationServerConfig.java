@@ -59,6 +59,26 @@ public class AuthorizationServerConfig {
         return AuthorizationServerSettings.builder().issuer(issuer).build();
     }
 
+    /** 客户端注册走 JDBC（DatabaseInitializer 建表并播种 marschat-portal） */
+    @Bean
+    public org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository registeredClientRepository(org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
+        return new org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService authorizationService(
+            org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+            org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository clients) {
+        return new org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService(jdbcTemplate, clients);
+    }
+
+    @Bean
+    public org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService authorizationConsentService(
+            org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+            org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository clients) {
+        return new org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService(jdbcTemplate, clients);
+    }
+
     /** OIDC access token 注入业务 claims：uid/username/realm/role */
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
