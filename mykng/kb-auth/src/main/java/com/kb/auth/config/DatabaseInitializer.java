@@ -113,6 +113,8 @@ public class DatabaseInitializer implements CommandLineRunner {
                 "ALTER TABLE user ADD COLUMN realm_id VARCHAR(50) DEFAULT 'kb' COMMENT '账号所属realm(账号池)'");
         addColumnIfNotExists("user", "role",
                 "ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT 'user' COMMENT '角色 admin/user'");
+        addColumnIfNotExists("oauth2_registered_client", "client_secret_expires_at",
+                "ALTER TABLE oauth2_registered_client ADD COLUMN client_secret_expires_at TIMESTAMP DEFAULT NULL");
 
         // Spring Authorization Server JDBC 表（官方 schema）
         createTableIfNotExists("oauth2_registered_client", """
@@ -121,6 +123,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 client_id VARCHAR(100) NOT NULL,
                 client_id_issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 client_secret VARCHAR(200) DEFAULT NULL,
+                client_secret_expires_at TIMESTAMP DEFAULT NULL,
                 client_name VARCHAR(200) DEFAULT NULL,
                 client_authentication_methods VARCHAR(1000) DEFAULT NULL,
                 authorization_grant_types VARCHAR(1000) DEFAULT NULL,
