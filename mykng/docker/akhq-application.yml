@@ -1,0 +1,8 @@
+akhq:
+  connections:
+    platform-kafka:
+      properties:
+        bootstrap.servers: "platform-kafka:9092"
+  server:
+    access-log:
+      enabled: false

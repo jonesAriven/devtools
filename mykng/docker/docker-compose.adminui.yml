@@ -45,7 +45,7 @@ services:
     ports:
       - "8098:8081"
     environment:
-      ME_CONFIG_MONGODB_SERVER: platform-mongo
+      ME_CONFIG_MONGODB_URL: mongodb://platform-mongo:27017/
       ME_CONFIG_MONGODB_PORT: "27017"
       ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
       ME_CONFIG_BASICAUTH_USERNAME: admin
@@ -64,6 +64,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: platform-kafka
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: platform-kafka:9092
       JAVA_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - ./akhq-application.yml:/app/application.yml:ro
     mem_limit: 768m
     networks:
       - platform-net
