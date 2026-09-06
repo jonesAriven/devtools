@@ -4,15 +4,26 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+
+import java.util.UUID;
 
 @Slf4j
 @Configuration
 public class DatabaseInitializer implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
-    public DatabaseInitializer(JdbcTemplate jdbcTemplate) {
+    public DatabaseInitializer(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         this.jdbcTemplate = jdbcTemplate;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -86,13 +97,90 @@ public class DatabaseInitializer implements CommandLineRunner {
                 email VARCHAR(100) COMMENT '邮箱',
                 avatar VARCHAR(500) COMMENT '头像',
                 status INT DEFAULT 1 COMMENT '状态 1-启用 0-禁用',
+                realm_id VARCHAR(50) DEFAULT 'kb' COMMENT '账号所属realm(账号池)',
+                role VARCHAR(20) DEFAULT 'user' COMMENT '角色 admin/user',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 deleted INT DEFAULT 0,
                 UNIQUE INDEX uk_username (username),
-                INDEX idx_email (email)
+                INDEX idx_email (email),
+                INDEX idx_realm (realm_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表'
             """);
+
+        // 存量库补列（幂等：已存在则报错吞掉）
+        addColumnIfNotExists("user", "realm_id",
+                "ALTER TABLE user ADD COLUMN realm_id VARCHAR(50) DEFAULT 'kb' COMMENT '账号所属realm(账号池)'");
+        addColumnIfNotExists("user", "role",
+                "ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT 'user' COMMENT '角色 admin/user'");
+
+        // Spring Authorization Server JDBC 表（官方 schema）
+        createTableIfNotExists("oauth2_registered_client", """
+            CREATE TABLE IF NOT EXISTS oauth2_registered_client (
+                id VARCHAR(100) PRIMARY KEY,
+                client_id VARCHAR(100) NOT NULL,
+                client_id_issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                client_secret VARCHAR(200) DEFAULT NULL,
+                client_name VARCHAR(200) DEFAULT NULL,
+                client_authentication_methods VARCHAR(1000) DEFAULT NULL,
+                authorization_grant_types VARCHAR(1000) DEFAULT NULL,
+                redirect_uris VARCHAR(1000) DEFAULT NULL,
+                post_logout_redirect_uris VARCHAR(1000) DEFAULT NULL,
+                scopes VARCHAR(1000) DEFAULT NULL,
+                client_settings VARCHAR(2000) NOT NULL,
+                token_settings VARCHAR(2000) NOT NULL,
+                UNIQUE INDEX uk_client_id (client_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OIDC客户端注册表'
+            """);
+        createTableIfNotExists("oauth2_authorization", """
+            CREATE TABLE IF NOT EXISTS oauth2_authorization (
+                id VARCHAR(100) PRIMARY KEY,
+                registered_client_id VARCHAR(200) NOT NULL,
+                principal_name VARCHAR(200) NOT NULL,
+                authorization_grant_type VARCHAR(100) NOT NULL,
+                authorized_scopes VARCHAR(1000) DEFAULT NULL,
+                attributes TEXT DEFAULT NULL,
+                state VARCHAR(500) DEFAULT NULL,
+                authorization_code_value TEXT DEFAULT NULL,
+                authorization_code_issued_at TIMESTAMP DEFAULT NULL,
+                authorization_code_expires_at TIMESTAMP DEFAULT NULL,
+                authorization_code_metadata TEXT DEFAULT NULL,
+                access_token_value TEXT DEFAULT NULL,
+                access_token_issued_at TIMESTAMP DEFAULT NULL,
+                access_token_expires_at TIMESTAMP DEFAULT NULL,
+                access_token_metadata TEXT DEFAULT NULL,
+                access_token_type VARCHAR(100) DEFAULT NULL,
+                access_token_scopes VARCHAR(1000) DEFAULT NULL,
+                oidc_id_token_value TEXT DEFAULT NULL,
+                oidc_id_token_issued_at TIMESTAMP DEFAULT NULL,
+                oidc_id_token_expires_at TIMESTAMP DEFAULT NULL,
+                oidc_id_token_metadata TEXT DEFAULT NULL,
+                refresh_token_value TEXT DEFAULT NULL,
+                refresh_token_issued_at TIMESTAMP DEFAULT NULL,
+                refresh_token_expires_at TIMESTAMP DEFAULT NULL,
+                refresh_token_metadata TEXT DEFAULT NULL,
+                user_code_value TEXT DEFAULT NULL,
+                user_code_issued_at TIMESTAMP DEFAULT NULL,
+                user_code_expires_at TIMESTAMP DEFAULT NULL,
+                user_code_metadata TEXT DEFAULT NULL,
+                device_code_value TEXT DEFAULT NULL,
+                device_code_issued_at TIMESTAMP DEFAULT NULL,
+                device_code_expires_at TIMESTAMP DEFAULT NULL,
+                device_code_metadata TEXT DEFAULT NULL,
+                INDEX idx_registered_client_id (registered_client_id),
+                INDEX idx_principal_name (principal_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OIDC授权记录表'
+            """);
+        createTableIfNotExists("oauth2_authorization_consent", """
+            CREATE TABLE IF NOT EXISTS oauth2_authorization_consent (
+                registered_client_id VARCHAR(200) NOT NULL,
+                principal_name VARCHAR(200) NOT NULL,
+                authorities VARCHAR(1000) NOT NULL,
+                PRIMARY KEY (registered_client_id, principal_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OIDC授权同意表'
+            """);
+
+        seedOidcClient();
 
         createTableIfNotExists("sys_error_log", """
             CREATE TABLE IF NOT EXISTS sys_error_log (
@@ -149,6 +237,49 @@ public class DatabaseInitializer implements CommandLineRunner {
             log.debug("表 {} 已就绪", tableName);
         } catch (Exception e) {
             log.warn("创建表 {} 失败: {}", tableName, e.getMessage());
+        }
+    }
+
+    private void addColumnIfNotExists(String tableName, String columnName, String alterSql) {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() " +
+                "AND TABLE_NAME = ? AND COLUMN_NAME = ?", Integer.class, tableName, columnName);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute(alterSql);
+                log.info("表 {} 补列 {} 完成", tableName, columnName);
+            }
+        } catch (Exception e) {
+            log.warn("表 {} 补列 {} 失败: {}", tableName, columnName, e.getMessage());
+        }
+    }
+
+    /** 种子 OIDC 客户端（幂等，client_id 唯一索引兜底） */
+    private void seedOidcClient() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM oauth2_registered_client WHERE client_id = 'marschat-portal'", Integer.class);
+            if (count != null && count > 0) {
+                return;
+            }
+            RegisteredClient portal = RegisteredClient.withId(java.util.UUID.randomUUID().toString())
+                .clientId("marschat-portal")
+                .clientSecret(passwordEncoder.encode("portal-secret-2026"))
+                .clientName("MarsChat Portal")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri("http://localhost:5173/auth/callback")
+                .redirectUri("https://main.marschat.online/portal/auth/callback")
+                .redirectUri("http://192.168.31.105:8087/auth/callback")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .build();
+            new JdbcRegisteredClientRepository(jdbcTemplate).save(portal);
+            log.info("种子 OIDC 客户端 marschat-portal 已就绪");
+        } catch (Exception e) {
+            log.warn("种子 OIDC 客户端失败: {}", e.getMessage());
         }
     }
 }

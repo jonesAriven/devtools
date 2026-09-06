@@ -28,6 +28,12 @@ public class User {
 
     private Integer status;
 
+    /** 账号所属 realm（账号池）：同 realm 内应用可 SSO，跨 realm 隔离 */
+    private String realmId;
+
+    /** 角色：admin / user */
+    private String role;
+
     @TableLogic
     private Integer deleted;
 

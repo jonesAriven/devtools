@@ -29,11 +29,16 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
-# JWT 配置
+# JWT 配置（legacy 直登接口用，RS256 过渡期保留）
 jwt:
   secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
   access-token-expiration: 900000      # 15 分钟
   refresh-token-expiration: 604800000  # 7 天
+
+# 统一认证中心（auth-center Phase 1）：OIDC issuer 必须与客户端实际访问地址一致
+marschat:
+  auth:
+    issuer: ${AUTH_ISSUER:http://kb-auth:8085}
 
 # AES-256-GCM 加密密钥（32字节 Base64），用于 API Token 加密存储
 crypto:
