@@ -10,6 +10,9 @@ source woodScript/lib-build.sh
 
 setup_pnpm kb-ops/kb-ops-web
 
+echo ">>> [0/3] SPA 配置一致性门禁 (vite ↔ env ↔ deploy nginx) <<<"
+bash woodScript/check-spa-config.sh kb-ops-web
+
 echo ">>> [1/3] pnpm build kb-ops-web <<<"
 cd kb-ops/kb-ops-web
 pnpm install --frozen-lockfile

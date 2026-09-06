@@ -10,6 +10,9 @@ source woodScript/lib-build.sh
 
 setup_pnpm infra-monitor/infra-monitor-web
 
+echo ">>> [0/3] SPA 配置一致性门禁 (vite ↔ env ↔ deploy nginx) <<<"
+bash woodScript/check-spa-config.sh infra-monitor-web
+
 echo ">>> [1/3] pnpm build infra-monitor-web <<<"
 cd infra-monitor/infra-monitor-web
 pnpm install --frozen-lockfile

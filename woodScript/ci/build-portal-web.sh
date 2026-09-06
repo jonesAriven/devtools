@@ -10,6 +10,9 @@ source woodScript/lib-build.sh
 
 setup_pnpm portal
 
+echo ">>> [0/3] SPA 配置一致性门禁 (vite ↔ env ↔ deploy nginx) <<<"
+bash woodScript/check-spa-config.sh portal-web
+
 echo ">>> [1/3] pnpm build portal-web <<<"
 cd portal
 pnpm install --frozen-lockfile
