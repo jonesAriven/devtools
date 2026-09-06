@@ -480,3 +480,72 @@ wait_port_release() {
     fi
   fi
 }
+
+# ====== 渲染 SPA nginx 配置（统一模板，消除多份 deploy 脚本复制粘贴）======
+# 用法: render_spa_nginx <out_conf> <base> <api_prefix> <backend_upstream>
+#   base:            不带尾斜杠，如 /ops
+#   api_prefix:      不带尾斜杠，如 /ops-api
+#   backend_upstream: 带尾斜杠，如 http://172.17.0.1:8084/kb-ops/
+# 已内置：双 location（assets 缺失即 404，杜绝 SPA fallback 吞资源）、
+#        无尾斜杠 301、/health 真校验（index.html 缺失返 503）、
+#        静态资源 30d immutable 缓存、代理头（X-Forwarded-Proto/http1.1/超时）、server_tokens off
+render_spa_nginx() {
+  local out="$1" base="$2" api="$3" backend="$4"
+  local base_slash="${base}/"
+  local api_slash="${api}/"
+  cat > "${out}" <<NGINXEOF
+server {
+    listen 80;
+    server_name _;
+    server_tokens off;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+    gzip_min_length 1k;
+    gzip_vary on;
+
+    location /health {
+        access_log off;
+        default_type application/json;
+        if (!-f /usr/share/nginx/html${base_slash}index.html) {
+            return 503 '{"status":"degraded","reason":"index.html missing"}';
+        }
+        return 200 '{"status":"ok"}';
+    }
+
+    location = ${base} {
+        return 301 ${base_slash};
+    }
+
+    location ${base_slash}assets/ {
+        alias /usr/share/nginx/html${base_slash}assets/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files \$uri =404;
+    }
+
+    location ${base_slash} {
+        alias /usr/share/nginx/html${base_slash};
+        index index.html;
+        try_files \$uri \$uri/ ${base_slash}index.html;
+    }
+
+    location ${api_slash} {
+        proxy_pass ${backend};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+
+    location = / {
+        return 302 ${base_slash};
+    }
+}
+NGINXEOF
+  log_ok "nginx.conf 渲染完成: ${out} (base=${base}, api=${api})"
+}
