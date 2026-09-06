@@ -34,9 +34,11 @@ vite_fallback() {
   grep -oE "VITE_CONTEXT_PATH[[:space:]]*\|\|[[:space:]]*'[^']+'" "$1" 2>/dev/null \
     | head -1 | grep -oE "'[^']+'" | tr -d "'"
 }
-# 从 deploy 脚本 render_spa_nginx 行提取 base($4)/api($6)
+# 从 deploy 脚本 render_spa_nginx 行提取 base($4)/api($6)/backend($8)/auth_backend($10)
 deploy_base() { grep -h 'render_spa_nginx ' "$1" 2>/dev/null | head -1 | awk -F'"' '{print $4}'; }
 deploy_api()  { grep -h 'render_spa_nginx ' "$1" 2>/dev/null | head -1 | awk -F'"' '{print $6}'; }
+deploy_backend() { grep -h 'render_spa_nginx ' "$1" 2>/dev/null | head -1 | awk -F'"' '{print $8}'; }
+deploy_auth() { grep -h 'render_spa_nginx ' "$1" 2>/dev/null | head -1 | awk -F'"' '{print $10}'; }
 
 # ---------- kb-ops-web (/ops + /ops-api) ----------
 check_kb_ops_web() {
@@ -52,6 +54,8 @@ check_kb_ops_web() {
   eq "vite ctx 代码fallback"   "$CTX" "$(vite_fallback "$VITE")"
   eq "deploy nginx base"      "$CTX" "$(deploy_base "$DEPLOY")"
   eq "deploy nginx api"       "$API" "$(deploy_api "$DEPLOY")"
+  # auth 分流门禁：kb-ops 后端只验签不签发（无登录端点），认证必须走 gateway
+  eq "deploy auth 分流(gateway)" "http://172.17.0.1:8090" "$(deploy_auth "$DEPLOY")"
 }
 
 # ---------- infra-monitor-web (/infra + /infra/api) ----------
@@ -84,6 +88,9 @@ check_portal_web() {
     "$(grep -E '^[[:space:]]*base:' "$VITE" 2>/dev/null | head -1 | grep -oE "'/[^']*'" | tr -d "'")"
   eq "deploy nginx base" "$CTX" "$(deploy_base "$DEPLOY")"
   eq "deploy nginx api"  "$API" "$(deploy_api "$DEPLOY")"
+  # portal 后端 controller 自带 /api 前缀（/api/auth、/api/sys），
+  # backend 尾段必须是 /portal/api/ —— 曾因少 /api 段导致全站 API 404（2026-09-06 回归修复）
+  eq "deploy backend 尾段" "http://172.17.0.1:8087/portal/api/" "$(deploy_backend "$DEPLOY")"
 }
 
 # ---------- 主入口 ----------

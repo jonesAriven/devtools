@@ -54,7 +54,10 @@ touch "${DEPLOY_BASE}/portal-web/dist/.keep"
 # 前端 base=/portal/、API base=/portal/api ；此前 nginx 只配 location / + /api/
 # 导致 /portal/assets 回退成 text/html(SPA 不挂载) 且 /portal/api 无代理(登录 404)
 NGINX_CONF="${DEPLOY_BASE}/portal-web/nginx.conf"
-render_spa_nginx "${NGINX_CONF}" "/portal" "/portal/api" "http://172.17.0.1:8087/portal/"
+# portal 后端 controller 自带 /api 前缀（/api/auth、/api/sys），
+# backend 尾段必须为 /portal/api/：/portal/api/auth/login → 后端 /portal/api/auth/login
+# （曾因传 .../portal/ 剥掉 /api 段导致全站 API 404 —— 2026-09-06 修复）
+render_spa_nginx "${NGINX_CONF}" "/portal" "/portal/api" "http://172.17.0.1:8087/portal/api/"
 
 # ====== Step 4: 停止旧服务 ======
 log_step 4 5 "停止旧服务"

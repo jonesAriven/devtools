@@ -482,17 +482,78 @@ wait_port_release() {
 }
 
 # ====== 渲染 SPA nginx 配置（统一模板，消除多份 deploy 脚本复制粘贴）======
-# 用法: render_spa_nginx <out_conf> <base> <api_prefix> <backend_upstream>
+# 用法: render_spa_nginx <out_conf> <base> <api_prefix> <backend_upstream> [auth_backend]
 #   base:            不带尾斜杠，如 /ops
 #   api_prefix:      不带尾斜杠，如 /ops-api
 #   backend_upstream: 带尾斜杠，如 http://172.17.0.1:8084/kb-ops/
+#                    ⚠️ 尾段语义 = 剥掉 api_prefix 后拼接的路径。
+#                    portal 后端 controller 自带 /api 前缀，须传 .../portal/api/
+#   auth_backend(可选): 统一认证中心(gateway)上游，如 http://172.17.0.1:8090。
+#                    传入时为 ${api}/{login,logout,refresh,me} 渲染精确 location，
+#                    转发到 ${auth_backend}/kb/api/auth/*。适用于"只验签不签发"的
+#                    后端消费方（如 kb-ops：自身无登录端点，JWT 由 kb-auth 经 gateway 签发）
 # 已内置：双 location（assets 缺失即 404，杜绝 SPA fallback 吞资源）、
 #        无尾斜杠 301、/health 真校验（index.html 缺失返 503）、
 #        静态资源 30d immutable 缓存、代理头（X-Forwarded-Proto/http1.1/超时）、server_tokens off
 render_spa_nginx() {
-  local out="$1" base="$2" api="$3" backend="$4"
+  local out="$1" base="$2" api="$3" backend="$4" auth_backend="${5:-}"
   local base_slash="${base}/"
   local api_slash="${api}/"
+  # 认证端点精确分流块（空参数则不渲染；= 精确匹配优先于 ${api}/ 前缀匹配，业务代理不受影响）
+  local auth_block=""
+  if [ -n "${auth_backend}" ]; then
+    auth_block=$(cat <<'AUTHEOF'
+    # ===== 统一认证端点分流（精确匹配，登录/登出/刷新/me 走认证中心）=====
+    location = AUTH_API/login {
+        proxy_pass AUTH_BACKEND/kb/api/auth/login;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+    location = AUTH_API/logout {
+        proxy_pass AUTH_BACKEND/kb/api/auth/logout;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+    location = AUTH_API/refresh {
+        proxy_pass AUTH_BACKEND/kb/api/auth/refresh;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+    location = AUTH_API/me {
+        proxy_pass AUTH_BACKEND/kb/api/auth/me;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+    # ===== 认证分流结束 =====
+AUTHEOF
+)
+    auth_block="${auth_block//AUTH_API/${api}}"
+    auth_block="${auth_block//AUTH_BACKEND/${auth_backend}}"
+  fi
   cat > "${out}" <<NGINXEOF
 server {
     listen 80;
@@ -541,11 +602,11 @@ server {
         proxy_read_timeout 30s;
         proxy_send_timeout 30s;
     }
-
+${auth_block}
     location = / {
         return 302 ${base_slash};
     }
 }
 NGINXEOF
-  log_ok "nginx.conf 渲染完成: ${out} (base=${base}, api=${api})"
+  log_ok "nginx.conf 渲染完成: ${out} (base=${base}, api=${api}, auth=${auth_backend:-none})"
 }
