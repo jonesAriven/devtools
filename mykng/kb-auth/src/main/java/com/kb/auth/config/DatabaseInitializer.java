@@ -273,30 +273,40 @@ public class DatabaseInitializer implements CommandLineRunner {
         }
     }
 
-    /** 种子 OIDC 客户端（幂等，client_id 唯一索引兜底） */
+    /** 种子 OIDC 客户端（幂等，client_id 唯一索引兜底）；已存在时补齐回调白名单 */
     private void seedOidcClient() {
+        java.util.List<String> requiredRedirects = java.util.List.of(
+                "http://localhost:5173/auth/callback",
+                "https://main.marschat.online/portal/auth/callback",
+                "http://192.168.31.105:8095/portal/auth/callback");
         try {
-            Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM oauth2_registered_client WHERE client_id = 'marschat-portal'", Integer.class);
-            if (count != null && count > 0) {
-                return;
+            JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbcTemplate);
+            RegisteredClient existing = repository.findByClientId("marschat-portal");
+            if (existing == null) {
+                RegisteredClient portal = RegisteredClient.withId(UUID.randomUUID().toString())
+                        .clientId("marschat-portal")
+                        .clientSecret(passwordEncoder.encode("portal-secret-2026"))
+                        .clientName("MarsChat Portal")
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .redirectUris(r -> r.addAll(requiredRedirects))
+                        .scope(OidcScopes.OPENID)
+                        .scope(OidcScopes.PROFILE)
+                        .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                        .build();
+                repository.save(portal);
+                log.info("种子 OIDC 客户端 marschat-portal 已就绪");
+            } else if (!existing.getRedirectUris().containsAll(requiredRedirects)) {
+                RegisteredClient updated = RegisteredClient.from(existing)
+                        .redirectUris(r -> {
+                            r.clear();
+                            r.addAll(requiredRedirects);
+                        })
+                        .build();
+                repository.save(updated);
+                log.info("已更新 marschat-portal 回调白名单: {}", requiredRedirects);
             }
-            RegisteredClient portal = RegisteredClient.withId(java.util.UUID.randomUUID().toString())
-                .clientId("marschat-portal")
-                .clientSecret(passwordEncoder.encode("portal-secret-2026"))
-                .clientName("MarsChat Portal")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://localhost:5173/auth/callback")
-                .redirectUri("https://main.marschat.online/portal/auth/callback")
-                .redirectUri("http://192.168.31.105:8087/auth/callback")
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
-                .build();
-            new JdbcRegisteredClientRepository(jdbcTemplate).save(portal);
-            log.info("种子 OIDC 客户端 marschat-portal 已就绪");
         } catch (Exception e) {
             log.warn("种子 OIDC 客户端失败: {}", e.getMessage());
         }

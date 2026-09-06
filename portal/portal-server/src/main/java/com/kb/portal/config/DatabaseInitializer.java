@@ -57,8 +57,24 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private void initAdminUser() {
         try {
+            // auth-center Phase 2：sys_user 补 role 列（幂等）
+            Integer roleCol = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'role'", Integer.class);
+            if (roleCol == null || roleCol == 0) {
+                jdbcTemplate.execute("ALTER TABLE sys_user ADD COLUMN role VARCHAR(20) DEFAULT 'user' COMMENT '角色 admin/user'");
+                log.info("sys_user 补列 role 完成");
+            }
+
             Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND username = 'admin'", Integer.class);
             if (count != null && count > 0) {
+                // 全库无 admin 角色时引导内置 admin（幂等，防管理功能死锁）
+                Integer adminCount = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND role = 'admin'", Integer.class);
+                if (adminCount == null || adminCount == 0) {
+                    jdbcTemplate.update("UPDATE sys_user SET role = 'admin' WHERE username = 'admin' AND deleted = 0");
+                    log.info("已将内置 admin 账号引导为管理员角色");
+                }
                 log.info("admin 用户已存在，跳过初始化");
                 return;
             }
@@ -66,8 +82,8 @@ public class DatabaseInitializer implements CommandLineRunner {
             log.info("初始化 admin 默认用户...");
             String encodedPassword = BCrypt.hashpw("admin123", BCrypt.gensalt());
             jdbcTemplate.update(
-                    "INSERT INTO sys_user (username, password, nickname, status) VALUES (?, ?, ?, ?)",
-                    "admin", encodedPassword, "管理员", 1
+                    "INSERT INTO sys_user (username, password, nickname, status, role) VALUES (?, ?, ?, ?, ?)",
+                    "admin", encodedPassword, "管理员", 1, "admin"
             );
             log.info("admin 用户初始化完成（默认密码: admin123）");
         } catch (Exception e) {

@@ -4,9 +4,15 @@ import { useUserStore } from '@/stores/user'
 
 const authBaseURL = import.meta.env.DEV ? '/api/auth' : '/portal/api/auth'
 const portalBaseURL = import.meta.env.DEV ? '/api/portal' : '/portal/api/sys'
+const adminBaseURL = import.meta.env.DEV ? '/api/admin' : '/portal/api/admin'
 
 export const authRequest = axios.create({
   baseURL: authBaseURL,
+  timeout: 30000
+})
+
+export const adminRequest = axios.create({
+  baseURL: adminBaseURL,
   timeout: 30000
 })
 
@@ -53,7 +59,9 @@ function addResponseInterceptor(instance: AxiosInstance) {
 
 addTokenInterceptor(authRequest)
 addTokenInterceptor(portalRequest)
+addTokenInterceptor(adminRequest)
 addResponseInterceptor(authRequest)
 addResponseInterceptor(portalRequest)
+addResponseInterceptor(adminRequest)
 
 export default portalRequest

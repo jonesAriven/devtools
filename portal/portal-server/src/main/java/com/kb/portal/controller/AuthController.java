@@ -41,11 +41,13 @@ public class AuthController {
             throw new BusinessException("用户名或密码错误");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(),
+                user.getRole() == null ? "user" : user.getRole());
         LoginResponse response = new LoginResponse(
                 token,
                 user.getUsername(),
-                user.getNickname() != null ? user.getNickname() : user.getUsername()
+                user.getNickname() != null ? user.getNickname() : user.getUsername(),
+                user.getRole() == null ? "user" : user.getRole()
         );
         return Result.ok(response);
     }
@@ -92,7 +94,8 @@ public class AuthController {
                     return Result.ok(new LoginResponse(
                             null,
                             user.getUsername(),
-                            user.getNickname() != null ? user.getNickname() : user.getUsername()
+                            user.getNickname() != null ? user.getNickname() : user.getUsername(),
+                            user.getRole() == null ? "user" : user.getRole()
                     ));
                 }
             }

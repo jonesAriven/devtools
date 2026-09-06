@@ -1,0 +1,188 @@
+package com.kb.portal.controller;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.kb.portal.dto.LoginResponse;
+import com.kb.portal.entity.SysUser;
+import com.kb.portal.mapper.SysUserMapper;
+import com.kb.portal.service.AuthCenterService;
+import com.kb.portal.util.JwtUtil;
+import com.kb.portal.util.PasswordUtil;
+import com.marschat.common.exception.BusinessException;
+import com.marschat.common.result.Result;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.http.HttpHeaders;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * 统一认证（auth-center）SSO 接入 + 用户管理代理。
+ * 登录：浏览器跳 auth-center 授权 → 前端回调页拿 code → 此处换 token/映射账号/发 portal JWT。
+ * 用户管理：前端同源调 /api/admin/users/**，此处以该用户身份代理到 auth-center（RS256 双验签）。
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+public class SsoController {
+
+    private final AuthCenterService authCenterService;
+    private final SysUserMapper sysUserMapper;
+    private final JwtUtil jwtUtil;
+    private final PasswordUtil passwordUtil;
+
+    /** 发起 SSO：302 到 auth-center 授权页。redirect 必须是白名单 origin（防开放重定向） */
+    @GetMapping("/auth/sso/authorize")
+    public void authorize(@RequestParam String redirect, jakarta.servlet.http.HttpServletResponse response) throws Exception {
+        String origin = normalizeOrigin(redirect);
+        response.sendRedirect(authCenterService.buildAuthorizeUrl(origin));
+    }
+
+    /** 授权码换 portal 会话：映射/创建 sys_user，角色与 auth-center 同步 */
+    @PostMapping("/auth/sso/exchange")
+    public Result<LoginResponse> exchange(@RequestBody ExchangeRequest request) {
+        String origin = authCenterService.consumeState(request.getState());
+        if (origin == null) {
+            throw new BusinessException("SSO 状态无效或已过期，请重新登录");
+        }
+        try {
+            JsonNode tokenJson = authCenterService.exchangeCode(request.getCode(), origin);
+            String accessToken = tokenJson.get("access_token").asText();
+            JsonNode claims = authCenterService.parseAccessTokenClaims(accessToken);
+            String username = claims.path("username").asText(null);
+            String role = claims.path("role").asText("user");
+            String nickname = claims.path("username").asText(username);
+            if (username == null || username.isBlank()) {
+                throw new BusinessException("统一认证返回的用户信息不完整");
+            }
+
+            // 账号映射：按 username 找 sys_user，不存在则自动开通；角色跟随 auth-center
+            SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                    .eq(SysUser::getUsername, username).last("LIMIT 1"));
+            if (user == null) {
+                user = new SysUser();
+                user.setUsername(username);
+                user.setPassword(passwordUtil.encode(java.util.UUID.randomUUID().toString()));
+                user.setNickname(nickname);
+                user.setStatus(1);
+                user.setRole(role);
+                sysUserMapper.insert(user);
+                log.info("SSO 自动开通 portal 账号: {} (role={})", username, role);
+            } else {
+                if (!role.equals(user.getRole())) {
+                    user.setRole(role);
+                }
+                if (user.getStatus() == null || user.getStatus() == 0) {
+                    throw new BusinessException("账号已被禁用");
+                }
+                sysUserMapper.updateById(user);
+            }
+
+            authCenterService.storeRefreshToken(user.getId(), tokenJson);
+            String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+            return Result.ok(new LoginResponse(token, user.getUsername(),
+                    user.getNickname() != null ? user.getNickname() : user.getUsername(), user.getRole()));
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("SSO exchange 失败: {}", e.getMessage());
+            throw new BusinessException("统一登录失败，请重试");
+        }
+    }
+
+    // ---------- 用户管理代理（仅 admin）----------
+
+    @GetMapping("/admin/users")
+    public Result<String> listUsers(@RequestParam(required = false) String realmId, HttpServletRequest request) {
+        requireAdmin(request);
+        String qs = realmId == null ? "" : "?realmId=" + URLEncoder.encode(realmId, StandardCharsets.UTF_8);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "GET", "/admin/users" + qs, null);
+        return toResult(r);
+    }
+
+    @PostMapping("/admin/users")
+    public Result<String> createUser(@RequestBody String body, HttpServletRequest request) {
+        requireAdmin(request);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "POST", "/admin/users", body);
+        return toResult(r);
+    }
+
+    @PutMapping("/admin/users/{userId}")
+    public Result<String> updateUser(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
+        requireAdmin(request);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId, body);
+        return toResult(r);
+    }
+
+    @DeleteMapping("/admin/users/{userId}")
+    public Result<String> deleteUser(@PathVariable Long userId, HttpServletRequest request) {
+        requireAdmin(request);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "DELETE", "/admin/users/" + userId, null);
+        return toResult(r);
+    }
+
+    @PutMapping("/admin/users/{userId}/password")
+    public Result<String> resetPassword(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
+        requireAdmin(request);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId + "/password", body);
+        return toResult(r);
+    }
+
+    private void requireAdmin(HttpServletRequest request) {
+        if (!"admin".equals(request.getAttribute("role"))) {
+            throw new BusinessException(403, "需要管理员权限");
+        }
+    }
+
+    private Result<String> toResult(AuthCenterService.ProxyResult r) {
+        if (r.status() == 200) {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Result ok = Result.ok(r.body());
+            return ok;
+        }
+        throw new com.marschat.common.exception.BusinessException(r.status() == 401 ? 401 : 500,
+                extractMessage(r.body()));
+    }
+
+    private String extractMessage(String body) {
+        try {
+            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+            if (node.has("message")) {
+                return node.get("message").asText();
+            }
+        } catch (Exception ignored) {
+        }
+        return "统一认证中心返回错误";
+    }
+
+    private String normalizeOrigin(String redirect) {
+        if (redirect == null) {
+            throw new BusinessException("缺少 redirect 参数");
+        }
+        String trimmed = redirect.trim();
+        if (!(trimmed.equals("https://main.marschat.online")
+                || trimmed.equals("http://192.168.31.105:8095")
+                || trimmed.equals("http://localhost:5173")
+                || trimmed.startsWith("http://localhost:5173/")
+                || trimmed.matches("https?://main\\.marschat\\.online")
+                || trimmed.matches("http://192\\.168\\.31\\.105:8095"))) {
+            throw new BusinessException("不允许的回调地址");
+        }
+        return trimmed.replaceAll("/+$", "");
+    }
+
+    @lombok.Data
+    public static class ExchangeRequest {
+        private String code;
+        private String state;
+    }
+}

@@ -36,3 +36,9 @@ management:
   endpoint:
     health:
       show-details: always
+
+# 统一认证中心（auth-center Phase 2）：SSO 登录 + 用户管理代理
+auth-center:
+  issuer: ${AUTH_CENTER_ISSUER:http://192.168.31.105:8085}
+  client-id: ${AUTH_CENTER_CLIENT_ID:marschat-portal}
+  client-secret: ${AUTH_CENTER_CLIENT_SECRET:portal-secret-2026}

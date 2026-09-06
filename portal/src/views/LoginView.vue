@@ -39,6 +39,13 @@
         >
           {{ loading ? '登录中...' : '登 录' }}
         </el-button>
+        <el-button
+          size="large"
+          class="login-btn sso-btn"
+          @click="handleSsoLogin"
+        >
+          统一认证登录（SSO）
+        </el-button>
       </el-form>
     </div>
   </div>
@@ -84,6 +91,11 @@ async function handleLogin() {
       loading.value = false
     }
   })
+}
+
+function handleSsoLogin() {
+  // 跳 auth-center 授权页（带本站 origin，服务端校验白名单后 302）
+  window.location.href = `/portal/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
 }
 </script>
 

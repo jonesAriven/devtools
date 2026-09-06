@@ -24,9 +24,17 @@ public class JwtUtil {
     }
 
     public String generateToken(Long userId, String username) {
-        return JWT.create()
+        return generateToken(userId, username, null);
+    }
+
+    public String generateToken(Long userId, String username, String role) {
+        JWT jwt = JWT.create()
                 .setPayload("userId", userId)
-                .setPayload("username", username)
+                .setPayload("username", username);
+        if (role != null) {
+            jwt.setPayload("role", role);
+        }
+        return jwt
                 .setExpiresAt(new Date(System.currentTimeMillis() + expireTime))
                 .setIssuedAt(new Date())
                 .sign(signer);
@@ -67,6 +75,15 @@ public class JwtUtil {
         if (jwt != null) {
             Object username = jwt.getPayload("username");
             return username != null ? username.toString() : null;
+        }
+        return null;
+    }
+
+    public String getRole(String token) {
+        JWT jwt = parseToken(token);
+        if (jwt != null) {
+            Object role = jwt.getPayload("role");
+            return role != null ? role.toString() : "user";
         }
         return null;
     }

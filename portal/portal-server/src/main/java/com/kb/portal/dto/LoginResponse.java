@@ -11,9 +11,16 @@ public class LoginResponse {
 
     private String nickname;
 
+    private String role;
+
     public LoginResponse(String accessToken, String username, String nickname) {
+        this(accessToken, username, nickname, null);
+    }
+
+    public LoginResponse(String accessToken, String username, String nickname, String role) {
         this.accessToken = accessToken;
         this.username = username;
         this.nickname = nickname;
+        this.role = role == null ? "user" : role;
     }
 }

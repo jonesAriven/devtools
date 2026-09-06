@@ -20,6 +20,9 @@ public class SysUser {
 
     private Integer status;
 
+    /** 角色：admin / user（SSO 登录时与 auth-center 同步） */
+    private String role;
+
     @TableLogic
     private Integer deleted;
 

@@ -35,6 +35,10 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item v-if="userStore.isAdmin" command="users">
+                <el-icon><UserFilled /></el-icon>
+                用户管理
+              </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 <el-icon><Key /></el-icon>
                 修改密码
@@ -223,7 +227,9 @@ function getCategoryCount(cat: SystemCategory): number {
 }
 
 function handleCommand(command: string) {
-  if (command === 'changePassword') {
+  if (command === 'users') {
+    router.push('/users')
+  } else if (command === 'changePassword') {
     passwordForm.oldPassword = ''
     passwordForm.newPassword = ''
     passwordForm.confirmPassword = ''

@@ -28,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
     private final JwtBlacklistMapper jwtBlacklistMapper;
+    private final org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -42,15 +43,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             try {
-                if (jwtTokenProvider.validateToken(token)) {
-                    String type = jwtTokenProvider.getTokenType(token);
-                    if (!"access".equals(type)) {
-                        sendUnauthorized(response, "无效的Token类型");
+                Long principalId;
+                boolean legacyValid = jwtTokenProvider.validateToken(token)
+                        && "access".equals(jwtTokenProvider.getTokenType(token));
+
+                if (legacyValid) {
+                    // legacy HS256 token（kb-auth 自签）
+                    principalId = jwtTokenProvider.getUserIdFromToken(token);
+                } else {
+                    // OIDC RS256 token（auth-center 签发，claims: uid/username/role）
+                    try {
+                        var jwt = jwtDecoder.decode(token);
+                        String uid = jwt.getClaimAsString("uid");
+                        if (uid == null || uid.isBlank()) {
+                            uid = jwt.getSubject();
+                        }
+                        principalId = Long.parseLong(uid);
+                    } catch (Exception rsError) {
+                        log.debug("RS256 验签失败: {}", rsError.getMessage());
+                        sendUnauthorized(response, "Token无效或已过期");
                         return;
                     }
+                }
 
-                    Long userId = jwtTokenProvider.getUserIdFromToken(token);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(userId));
+                {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(principalId));
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
