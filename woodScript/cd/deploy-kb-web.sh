@@ -41,7 +41,7 @@ log_ok "kb-web dist 已更新 (结构: dist/kb/s/*)"
 
 # ====== Step 3: 同步 compose 文件 & 确保 nginx.conf ======
 log_step 3 5 "环境准备"
-ensure_platform
+# 静态前端不依赖后端平台，无需 ensure_platform（对齐三 web 脚本 2026-09-06 做法）
 
 # 确保目录存在
 mkdir -p "${DEPLOY_BASE}/kb-web/dist"
@@ -60,11 +60,14 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
     gzip_min_length 1k;
 
-    # 健康检查
+    # 健康检查（真校验：index.html 缺失即降级 503）
     location /health {
         access_log off;
+        default_type application/json;
+        if (!-f /usr/share/nginx/html/kb/s/index.html) {
+            return 503 '{"status":"degraded","reason":"index.html missing"}';
+        }
         return 200 '{"status":"ok"}';
-        add_header Content-Type application/json;
     }
 
     # 静态资源（vite base: /kb/s/）
@@ -73,6 +76,20 @@ server {
         expires 30d;
         add_header Cache-Control "public, immutable";
         try_files $uri =404;
+    }
+
+    # 业务/认证 API 代理：前端 baseURL=/kb/api 与网关路径天然一致，整段转发
+    # （此前无此代理，POST /kb/api/auth/login 被 SPA 回退吞成静态 405 —— 2026-09-06 修复）
+    location /kb/api/ {
+        proxy_pass http://172.17.0.1:8090/kb/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
     }
 
     # SPA 路由回退
