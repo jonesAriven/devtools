@@ -35,13 +35,13 @@
         </el-table-column>
         <el-table-column prop="realmId" label="账号池" width="90" />
         <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" :type="row.status === 1 ? 'warning' : 'success'" @click="toggleStatus(row)">
-              {{ row.status === 1 ? '禁用' : '启用' }}
+          <template #default="scope">
+            <el-button size="small" @click="openEdit(scope.row as CenterUser)">编辑</el-button>
+            <el-button size="small" :type="scope.row.status === 1 ? 'warning' : 'success'" @click="toggleStatus(scope.row as CenterUser)">
+              {{ scope.row.status === 1 ? '禁用' : '启用' }}
             </el-button>
-            <el-button size="small" type="primary" plain @click="openResetPwd(row)">重置密码</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button size="small" type="primary" plain @click="openResetPwd(scope.row as CenterUser)">重置密码</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(scope.row as CenterUser)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

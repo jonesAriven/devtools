@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, type LoginRequest } from '@/api/auth'
+import { login as loginApi, ssoExchangeApi, type LoginRequest } from '@/api/auth'
 
 const TOKEN_KEY = 'portal_token'
 const USER_KEY = 'portal_user'
