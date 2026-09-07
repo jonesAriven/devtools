@@ -329,10 +329,12 @@ public class DatabaseInitializer implements CommandLineRunner {
                 java.util.List.of(
                         "https://memory.marschat.online/sso-callback",
                         "http://192.168.31.105:8720/sso-callback"));
+        // TokenHub 是开源项目 astaxie/TokenHub（Go+Next.js），原生支持 generic_oidc 身份源，
+        // 无需改其代码——回调地址是它内置的 /api/admin/auth/oauth/callback
         seedPublicClient(repository, "marschat-tokenhub", "MarsChat TokenHub",
                 java.util.List.of(
-                        "https://tokenhub.marschat.online/sso-callback",
-                        "http://192.168.31.105:13000/sso-callback"));
+                        "https://tokenhub.marschat.online/api/admin/auth/oauth/callback",
+                        "http://192.168.31.105:13000/api/admin/auth/oauth/callback"));
     }
 
     /** 通用 public client 播种（PKCE + rotation + 回调白名单幂等补齐），供 P2 批量与后续新应用复用 */
