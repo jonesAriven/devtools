@@ -27,7 +27,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -51,7 +51,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
       # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
       #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
@@ -100,7 +100,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
       #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
       #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
@@ -134,7 +134,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
       #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
       #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
@@ -171,7 +171,7 @@ services:
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
-      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos123}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       # ⚠️ MYSQL_HOST/MYSQL_PORT 已废弃：application-prod.yml 已改为 GR 集群多主机 failover URL
       #   连接串硬编码: jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/...
       #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效

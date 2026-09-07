@@ -45,7 +45,7 @@ else
   readonly CI_DIR="/mnt/shared/woodScript/cd"
   readonly DEPLOY_BASE="/root/kb-deploy"
   readonly GIT_REPO="/root/devtools"
-  readonly HEALTH_MAX_RETRIES=24
+  readonly HEALTH_MAX_RETRIES=60
   readonly HEALTH_INTERVAL=10
 fi
 

@@ -14,7 +14,7 @@ readonly GIT_REPO="/root/devtools"
 readonly NEXUS_NPM_REGISTRY="http://192.168.31.105:8081/repository/npm-public/"
 
 # ====== 健康检查 ======
-readonly HEALTH_MAX_RETRIES=24
+readonly HEALTH_MAX_RETRIES=60
 readonly HEALTH_INTERVAL=10
 
 # ====== 部署服务器 ======
