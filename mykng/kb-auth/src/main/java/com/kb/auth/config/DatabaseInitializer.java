@@ -320,11 +320,12 @@ public class DatabaseInitializer implements CommandLineRunner {
      * 回调地址按各应用部署 URL 预置，代理/后续接入若需调整走幂等补齐逻辑（containsAll 对比）。
      */
     private void seedP2Clients(JdbcRegisteredClientRepository repository) {
+        // 回调用 .html 后缀：Spring Boot 静态资源映射要求带扩展名，无后缀路由 404
         seedPublicClient(repository, "marschat-activecode", "MarsChat ActiveCode (SPA)",
                 java.util.List.of(
-                        "https://tools.marschat.online/activecode/sso-callback",
-                        "http://192.168.31.182:18080/activecode/sso-callback",
-                        "http://192.168.31.105:18080/activecode/sso-callback"));
+                        "https://tools.marschat.online/activecode/sso-callback.html",
+                        "http://192.168.31.182:18080/activecode/sso-callback.html",
+                        "http://192.168.31.105:18080/activecode/sso-callback.html"));
         seedPublicClient(repository, "marschat-memory", "MarsChat Memory Extract Panel",
                 java.util.List.of(
                         "https://memory.marschat.online/sso-callback",

@@ -14,7 +14,7 @@
 
     var OIDC_ISSUER = 'https://auth.marschat.online';
     var OIDC_CLIENT_ID = 'marschat-activecode';
-    var OIDC_REDIRECT_URI = global.location.origin + '/activecode/sso-callback';
+    var OIDC_REDIRECT_URI = global.location.origin + '/activecode/sso-callback.html';
     var OIDC_SCOPE = 'openid profile';
 
     var STATE_KEY = 'activecode_sso_state';
