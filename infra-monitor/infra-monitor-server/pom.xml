@@ -72,6 +72,12 @@
             <version>0.12.5</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Nimbus JOSE+JWT：OIDC RS256 双验签（SAS JWKS 不带 alg 字段，按 kty=RSA 收取） -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>9.37.3</version>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

@@ -15,11 +15,14 @@ public class JwtUtil {
 
     private final SecretKey key;
     private final long expiration;
+    private final OidcTokenVerifier oidcTokenVerifier;
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
-                   @Value("${jwt.expiration:86400000}") long expiration) {
+                   @Value("${jwt.expiration:86400000}") long expiration,
+                   OidcTokenVerifier oidcTokenVerifier) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiration = expiration;
+        this.oidcTokenVerifier = oidcTokenVerifier;
     }
 
     public String generate(String username) {
@@ -32,16 +35,28 @@ public class JwtUtil {
     }
 
     public String parseUsername(String token) {
+        // 双验签（2026-09-07 统一认证接入）：先 legacy HS256（自签/kb-auth 签发的 access token），
+        // 失败回退 auth-center RS256（OIDC token，claims: uid/username/realm/role，sub=用户主键）
+        Claims claims = tryParseHs256(token);
+        if (claims == null) {
+            claims = oidcTokenVerifier.verify(token);
+        }
+        if (claims == null) {
+            return null;
+        }
+        // 两种 token 均有 username claim（kb-auth legacy 与 OIDC 的 tokenCustomizer 同口径注入）
+        String username = claims.get("username", String.class);
+        return username != null ? username : claims.getSubject();
+    }
+
+    /** legacy HS256 本地验签；失败返回 null（交由 RS256 链路继续） */
+    private Claims tryParseHs256(String token) {
         try {
-            Claims claims = Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            // kb-auth 签发: {sub: "1", username: "admin", type: "access"}
-            // infra-monitor 签发: {sub: "admin"}
-            String username = claims.get("username", String.class);
-            return username != null ? username : claims.getSubject();
         } catch (Exception e) {
             return null;
         }
