@@ -59,7 +59,7 @@ public class OidcTokenVerifier {
             refreshJwks();
             log.info("OIDC JWKS 预热完成: issuer={}, keys={}", issuer, keysByKid.size());
         } catch (Exception e) {
-            log.warn("OIDC JWKS 预热失败（将随首个 OIDC 请求重试）: {}", e.getMessage());
+            log.warn("OIDC JWKS 预热失败（将随首个 OIDC 请求重试）: {}", e.toString(), e);
         }
     }
 
@@ -69,6 +69,7 @@ public class OidcTokenVerifier {
             String kid = extractKid(token);
             RSAPublicKey key = resolveKey(kid);
             if (key == null) {
+                log.warn("OIDC RS256 无可用公钥: kid={}, cachedKeys={}", kid, keysByKid.keySet());
                 return null;
             }
             return Jwts.parser()
@@ -78,7 +79,7 @@ public class OidcTokenVerifier {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (Exception e) {
-            log.debug("OIDC RS256 验签失败: {}", e.getMessage());
+            log.warn("OIDC RS256 验签异常: {}", e.toString());
             return null;
         }
     }
@@ -129,6 +130,9 @@ public class OidcTokenVerifier {
         }
         JWKSet jwkSet = JWKSet.parse(response.body());
         List<com.nimbusds.jose.jwk.JWK> jwks = jwkSet.getKeys();
+        if (jwks == null || jwks.isEmpty()) {
+            throw new IllegalStateException("JWKS 为空");
+        }
         Map<String, RSAPublicKey> map = new HashMap<>();
         for (com.nimbusds.jose.jwk.JWK jwk : jwks) {
             if (jwk instanceof RSAKey rsaKey && JWSAlgorithm.RS256.equals(rsaKey.getAlgorithm())) {
@@ -136,7 +140,7 @@ public class OidcTokenVerifier {
             }
         }
         if (map.isEmpty()) {
-            throw new IllegalStateException("JWKS 中无 RS256 key");
+            throw new IllegalStateException("JWKS 中无 RS256 key（keys=" + jwks.size() + "）");
         }
         this.keysByKid = Map.copyOf(map);
         this.fetchedAt = System.currentTimeMillis();
