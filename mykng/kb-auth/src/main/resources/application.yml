@@ -18,6 +18,25 @@ spring:
         username: ${NACOS_USERNAME:nacos}
         password: ${NACOS_PASSWORD:nacos123}
 
+  # M7: 邮件发送（邮箱验证码 / 忘记密码）。凭证一律走环境变量，禁止硬编码
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          starttls:
+            enable: false
+            required: false
+    default-encoding: UTF-8
+    from: ${MAIL_FROM:no-reply@marschat.online}
+
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:

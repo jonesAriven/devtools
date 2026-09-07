@@ -116,6 +116,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
                 .requestMatchers("/auth/error-log/report").permitAll()
                 .requestMatchers("/token/verify").permitAll()
                 .requestMatchers("/actuator/**").permitAll()

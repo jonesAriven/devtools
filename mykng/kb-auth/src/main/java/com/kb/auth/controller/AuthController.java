@@ -1,8 +1,10 @@
 package com.kb.auth.controller;
 
+import com.kb.auth.dto.ForgotPasswordRequest;
 import com.kb.auth.dto.LoginRequest;
 import com.kb.auth.dto.LoginResponse;
 import com.kb.auth.dto.RefreshRequest;
+import com.kb.auth.dto.ResetPasswordRequest;
 import com.kb.auth.entity.User;
 import com.kb.auth.service.AuthService;
 import com.kb.auth.service.UserService;
@@ -36,6 +38,26 @@ public class AuthController {
     @PostMapping("/refresh")
     public Result<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return Result.ok(authService.refresh(request));
+    }
+
+    /**
+     * 忘记密码：按邮箱发送验证码。
+     * 公开端点（无需登录），防枚举——无论邮箱是否存在均返回 200。
+     */
+    @PostMapping("/forgot-password")
+    public Result<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+        return Result.ok();
+    }
+
+    /**
+     * 重置密码：校验验证码 -> BCrypt 更新密码 -> 踢下线。
+     * 公开端点（无需登录）。
+     */
+    @PostMapping("/reset-password")
+    public Result<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
+        return Result.ok();
     }
 
     @GetMapping("/me")

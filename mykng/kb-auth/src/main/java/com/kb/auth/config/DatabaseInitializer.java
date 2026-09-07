@@ -294,6 +294,11 @@ public class DatabaseInitializer implements CommandLineRunner {
                         .scope(OidcScopes.OPENID)
                         .scope(OidcScopes.PROFILE)
                         .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                        .tokenSettings(org.springframework.security.oauth2.server.authorization.settings.TokenSettings.builder()
+                                .accessTokenTimeToLive(java.time.Duration.ofMinutes(30))
+                                .refreshTokenTimeToLive(java.time.Duration.ofDays(7))
+                                .reuseRefreshTokens(false)
+                                .build())
                         .build();
                 repository.save(portal);
                 log.info("种子 OIDC 客户端 marschat-portal 已就绪");

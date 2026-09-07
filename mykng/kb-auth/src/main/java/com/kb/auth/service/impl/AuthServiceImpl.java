@@ -13,6 +13,8 @@ import com.kb.auth.mapper.RefreshTokenMapper;
 import com.kb.auth.mapper.UserMapper;
 import com.kb.auth.security.JwtTokenProvider;
 import com.kb.auth.service.AuthService;
+import com.kb.auth.service.MailCodeService;
+import com.kb.auth.service.MailService;
 import com.marschat.common.event.AppEvent;
 import com.marschat.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,11 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final MailService mailService;
+    private final MailCodeService mailCodeService;
+
+    /** 忘记密码 / 重置密码 业务类型标识 */
+    private static final String BIZ_RESET_PASSWORD = "RESET_PASSWORD";
 
     private static final String EVENT_CHANNEL = "kb:events";
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -140,6 +147,46 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPassword(null);
         return new LoginResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiration(), user);
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        // 防枚举：始终返回成功。仅当存在该邮箱用户时才真正发码
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, email)
+                .orderByDesc(User::getId)
+                .last("LIMIT 1"));
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            log.warn("忘记密码：邮箱无对应用户或用户邮箱为空，已静默返回 email={}", email);
+            return;
+        }
+        String code = mailCodeService.issue(BIZ_RESET_PASSWORD, email);
+        mailService.sendCode(email, code);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String email, String code, String newPassword) {
+        // 先校验验证码（一次性，失败/锁定均抛异常）；不存在的用户也会在 verify 抛错，不泄露账户是否存在
+        mailCodeService.verify(BIZ_RESET_PASSWORD, email, code);
+
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, email)
+                .orderByDesc(User::getId)
+                .last("LIMIT 1"));
+        if (user == null) {
+            throw new BusinessException("验证码错误或已过期");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+
+        // 踢下线：清空该用户所有 refresh_token 记录
+        refreshTokenMapper.delete(new LambdaQueryWrapper<RefreshToken>()
+                .eq(RefreshToken::getUserId, user.getId()));
+
+        publishEvent("user.password.reset", user.getId(), Map.of("email", email));
+        log.info("密码重置成功 userId={}, email={}", user.getId(), email);
     }
 
     /**
