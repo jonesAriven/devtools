@@ -134,12 +134,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             }
         }
         String username = claims.get("username", String.class);
+        final String finalUserId = userId;
 
         ServerHttpRequest mutated = request.mutate()
                 .headers(h -> {
                     h.remove(HEADER_USER_ID);
                     h.remove(HEADER_USERNAME);
-                    h.set(HEADER_USER_ID, userId);
+                    h.set(HEADER_USER_ID, finalUserId);
                     if (StringUtils.hasText(username)) {
                         h.set(HEADER_USERNAME, username);
                     }

@@ -10,14 +10,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAPublicKeySpec;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
@@ -135,8 +132,7 @@ public class OidcTokenVerifier {
         Map<String, RSAPublicKey> map = new HashMap<>();
         for (com.nimbusds.jose.jwk.JWK jwk : jwks) {
             if (jwk instanceof RSAKey rsaKey && JWSAlgorithm.RS256.equals(rsaKey.getAlgorithm())) {
-                RSAPublicKey spec = toPublicKey(rsaKey);
-                map.put(rsaKey.getKeyID(), spec);
+                map.put(rsaKey.getKeyID(), rsaKey.toRSAPublicKey());
             }
         }
         if (map.isEmpty()) {
@@ -144,13 +140,5 @@ public class OidcTokenVerifier {
         }
         this.keysByKid = Map.copyOf(map);
         this.fetchedAt = System.currentTimeMillis();
-    }
-
-    private RSAPublicKey toPublicKey(RSAKey rsaKey) throws Exception {
-        // nimbus RSAKey 延迟解析公钥需要 provider；直接从 modulus/exponent 构造，避免依赖 JVM 默认 JCA provider 差异
-        BigInteger modulus = rsaKey.getModulus();
-        BigInteger exponent = rsaKey.getPublicExponent();
-        return (RSAPublicKey) KeyFactory.getInstance("RSA")
-                .generatePublic(new RSAPublicKeySpec(modulus, exponent));
     }
 }
