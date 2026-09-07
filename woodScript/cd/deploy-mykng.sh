@@ -42,6 +42,9 @@ git pull origin main || exit 1
 mvn -q -DskipTests package -B -ntp || exit 1
 cp target/auth-center.jar "${DEPLOY_BASE}/jars-mykng/auth-center.jar" || exit 1
 cd - >/dev/null
+# stop legacy kb-auth container to free port 8085 (idempotent)
+docker stop kb-auth 2>/dev/null || true
+docker rm kb-auth 2>/dev/null || true
 
 # ====== Step 1: 验证产物 ======
 log_step 1 6 "验证产物"
@@ -75,11 +78,11 @@ ensure_platform
 
 # ====== Step 4: 停止旧服务(只停5个，不影响其他 ======
 log_step 4 6 "停止旧服务"
-compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}" auth-center
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动新服务"
-compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
+compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}" auth-center
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"
