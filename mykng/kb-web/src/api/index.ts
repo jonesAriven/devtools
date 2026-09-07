@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { R } from '@/types'
-import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens } from '@/utils/token'
+import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOidcToken } from '@/utils/token'
+import { refreshOidcToken } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
@@ -83,6 +84,16 @@ request.interceptors.response.use(
       isRefreshing = true
 
       try {
+        // 双 token 体系分流：OIDC（auth-center RS256）走 SAS 静默续期，legacy 走原 /auth/refresh
+        if (isOidcToken()) {
+          await refreshOidcToken()
+          const newToken = getToken()
+          if (!newToken) throw new Error('OIDC 续期后无 token')
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+          pendingRequests.forEach((cb) => cb(newToken))
+          pendingRequests = []
+          return request(originalRequest)
+        }
         const res = await axios.post(`${ctx}/api/auth/refresh`, { refreshToken })
         const data = res.data as R<{ accessToken: string; refreshToken: string }>
         if (data.code === 0 || data.code === 200) {

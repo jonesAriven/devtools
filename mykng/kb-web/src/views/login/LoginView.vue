@@ -40,6 +40,14 @@
             登 录
           </el-button>
         </el-form-item>
+        <el-divider class="login-divider">
+          <span class="divider-text">或</span>
+        </el-divider>
+        <el-form-item>
+          <el-button class="login-btn sso-btn" @click="handleSsoLogin">
+            统一认证登录（SSO）
+          </el-button>
+        </el-form-item>
       </el-form>
     </div>
   </div>
@@ -50,7 +58,10 @@ import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuth } from '@/composables/useAuth'
+import { useRouter } from 'vue-router'
+import { startSsoLogin } from '@/utils/sso'
 
+const router = useRouter()
 const loginFormRef = ref<FormInstance>()
 const { loading, login } = useAuth()
 
@@ -68,6 +79,12 @@ async function handleLogin() {
   const valid = await loginFormRef.value?.validate().catch(() => false)
   if (!valid) return
   await login(loginForm.username, loginForm.password)
+}
+
+/** auth-center SSO：记录回跳目标后跳授权端点 */
+async function handleSsoLogin() {
+  const redirect = (router.currentRoute.value.query.redirect as string) || '/dashboard'
+  await startSsoLogin(redirect)
 }
 </script>
 
@@ -109,6 +126,20 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+.login-divider {
+  margin: 4px 0 12px;
+
+  .divider-text {
+    font-size: 12px;
+    color: #c0c4cc;
+  }
+}
+
+.sso-btn {
+  color: #409eff;
+  border-color: #b3d8ff;
 }
 
 @media (max-width: 768px) {

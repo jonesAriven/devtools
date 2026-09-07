@@ -12,6 +12,13 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    // auth-center SSO 回调页（OIDC authorization_code + PKCE）
+    path: `/sso-callback`,
+    name: 'SsoCallback',
+    component: () => import('@/views/sso/SsoCallbackView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: `/share/:code`,
     name: 'ShareAccess',
     component: () => import('@/views/share/ShareAccessView.vue'),

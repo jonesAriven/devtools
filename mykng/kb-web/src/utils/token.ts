@@ -1,5 +1,20 @@
 const ACCESS_TOKEN_KEY = 'kb_access_token'
 const REFRESH_TOKEN_KEY = 'kb_refresh_token'
+const TOKEN_KIND_KEY = 'kb_token_kind'
+
+export type TokenKind = 'legacy' | 'oidc'
+
+export function getTokenKind(): TokenKind {
+  return (localStorage.getItem(TOKEN_KIND_KEY) as TokenKind) || 'legacy'
+}
+
+export function setTokenKind(kind: TokenKind): void {
+  localStorage.setItem(TOKEN_KIND_KEY, kind)
+}
+
+export function isOidcToken(): boolean {
+  return getTokenKind() === 'oidc'
+}
 
 export function getToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
@@ -28,4 +43,5 @@ export function removeRefreshToken(): void {
 export function clearTokens(): void {
   removeToken()
   removeRefreshToken()
+  localStorage.removeItem(TOKEN_KIND_KEY)
 }

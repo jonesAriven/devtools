@@ -52,11 +52,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     public static final String HEADER_USERNAME = "X-Username";
     public static final String CLAIM_TYPE = "type";
     public static final String TYPE_ACCESS = "access";
+    public static final String CLAIM_UID = "uid";
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final ObjectMapper objectMapper;
     private final KbGatewayProperties gatewayProperties;
+    private final OidcTokenVerifier oidcTokenVerifier;
 
     private SecretKey key;
 
@@ -103,27 +105,34 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, "未登录或缺少访问令牌", traceId);
         }
 
-        // 5. 校验 token
-        Claims claims;
-        try {
-            claims = Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (JwtException | IllegalArgumentException e) {
-            log.warn("JWT 校验失败: traceId={}, path={}, reason={}", traceId, path, e.getMessage());
+        // 5. 双验签：先 legacy HS256（type=access），失败回退 auth-center RS256（OIDC，issuer+exp 校验）
+        Claims claims = tryParseHs256(token, path, traceId);
+        boolean legacy = claims != null;
+        if (claims == null) {
+            claims = oidcTokenVerifier.verify(token);
+        }
+        if (claims == null) {
+            log.warn("JWT 校验失败(HS256+RS256 均未通过): traceId={}, path={}", traceId, path);
             return unauthorized(exchange, "访问令牌无效或已过期", traceId);
         }
 
-        // 6. 仅允许 access token
-        String tokenType = claims.get(CLAIM_TYPE, String.class);
-        if (!TYPE_ACCESS.equals(tokenType)) {
-            return unauthorized(exchange, "令牌类型错误，请使用访问令牌", traceId);
+        // 6. 仅 legacy token 要求 type=access（OIDC access token 无该 claim）
+        if (legacy) {
+            String tokenType = claims.get(CLAIM_TYPE, String.class);
+            if (!TYPE_ACCESS.equals(tokenType)) {
+                return unauthorized(exchange, "令牌类型错误，请使用访问令牌", traceId);
+            }
         }
 
         // 7. 注入用户信息到下游（先清除客户端伪造的同名头，防越权）
+        // legacy: sub=userId；OIDC: uid claim 为业务用户 id（缺省回退 sub）
         String userId = claims.getSubject();
+        if (!legacy) {
+            String uid = claims.get(CLAIM_UID, String.class);
+            if (StringUtils.hasText(uid)) {
+                userId = uid;
+            }
+        }
         String username = claims.get("username", String.class);
 
         ServerHttpRequest mutated = request.mutate()
@@ -138,6 +147,19 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 .build();
 
         return chain.filter(exchange.mutate().request(mutated).build());
+    }
+
+    /** legacy HS256 本地验签；失败返回 null（交由 RS256 链路继续） */
+    private Claims tryParseHs256(String token, String path, String traceId) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private boolean isWhitelisted(String path) {

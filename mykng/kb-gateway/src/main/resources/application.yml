@@ -137,6 +137,13 @@ kb:
       - ${KB_CONTEXT:/kb}/v3/api-docs/**
       - ${KB_CONTEXT:/kb}/api/*/v3/api-docs/**
       - ${KB_CONTEXT:/kb}/api/*/swagger-ui/**
+
+# auth-center 双验签过渡期（2026-09-07 kb-web OIDC 接入）：
+# token 验签顺序 HS256(legacy) → RS256(OIDC)；jwks-uri 走 compose 内网直连（iss 校验仍用公网 issuer）
+marschat:
+  oidc:
+    issuer: ${OIDC_ISSUER:https://auth.marschat.online}
+    jwks-uri: ${OIDC_JWKS_URI:http://kb-auth:8085/oauth2/jwks}
     # M6: kb.gateway.services 已废弃，路由 uri 改为 lb://服务名 通过 Nacos 服务发现
 
 # M6: springdoc-openapi 网关聚合配置（WebFlux）

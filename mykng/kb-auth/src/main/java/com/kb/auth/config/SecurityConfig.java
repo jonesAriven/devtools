@@ -38,6 +38,7 @@ public class SecurityConfig {
     /**
      * 链1：OIDC 授权服务器端点（/oauth2/authorize、/oauth2/token、/oauth2/jwks、/userinfo…）
      * 浏览器跳转需要会话，未登录跳 /login 表单页。
+     * 2026-09-07 kb-web SPA 接入：public client + PKCE，浏览器直连 /oauth2/token，需放行 CORS。
      */
     @Bean
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -49,9 +50,12 @@ public class SecurityConfig {
                 // 发现/公钥端点必须匿名可读，否则客户端拿不到 JWKS
                 .requestMatchers("/oauth2/jwks", "/.well-known/openid-configuration",
                         "/.well-known/oauth-authorization-server").permitAll()
+                // CORS 预检放行（kb-web SPA 跨域换 token）
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated())
             // userinfo 端点需要资源服务器能力验 RS256 Bearer token
             .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)))
+            .cors(cors -> cors.configurationSource(oidcCorsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .csrf(AbstractHttpConfigurer::disable)
             .apply(authorizationServerConfigurer);
@@ -59,6 +63,24 @@ public class SecurityConfig {
                 new LoginUrlAuthenticationEntryPoint("/login"),
                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)));
         return http.build();
+    }
+
+    /** OIDC 端点 CORS 白名单：kb-web SPA 三环境 origin（公网 / LAN / 本地开发） */
+    @org.springframework.context.annotation.Bean
+    public org.springframework.web.cors.CorsConfigurationSource oidcCorsConfigurationSource() {
+        org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+        config.setAllowedOrigins(java.util.List.of(
+                "https://kb.marschat.online",
+                "http://192.168.31.105",
+                "http://localhost:5173"));
+        config.setAllowedMethods(java.util.List.of("GET", "POST", "OPTIONS"));
+        config.setAllowedHeaders(java.util.List.of("*"));
+        config.setAllowCredentials(false);
+        config.setMaxAge(3600L);
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
+                new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     /**

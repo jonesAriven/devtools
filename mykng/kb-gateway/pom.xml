@@ -72,6 +72,13 @@
             <artifactId>jjwt-jackson</artifactId>
         </dependency>
 
+        <!-- Nimbus JOSE+JWT：解析 OIDC JWKS（RS256 双验签过渡期，与 kb-auth SAS 自带版本同族） -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>9.37.3</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
