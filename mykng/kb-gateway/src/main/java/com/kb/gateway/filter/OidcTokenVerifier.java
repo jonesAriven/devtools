@@ -1,6 +1,5 @@
 package com.kb.gateway.filter;
 
-import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import io.jsonwebtoken.Claims;
@@ -135,7 +134,8 @@ public class OidcTokenVerifier {
         }
         Map<String, RSAPublicKey> map = new HashMap<>();
         for (com.nimbusds.jose.jwk.JWK jwk : jwks) {
-            if (jwk instanceof RSAKey rsaKey && JWSAlgorithm.RS256.equals(rsaKey.getAlgorithm())) {
+            // auth-center（SAS）的 JWKS 未携带 alg 字段（实测仅有 kty/use/kid/n/e），按 kty=RSA 收取
+            if (jwk instanceof RSAKey rsaKey) {
                 map.put(rsaKey.getKeyID(), rsaKey.toRSAPublicKey());
             }
         }
