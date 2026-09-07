@@ -17,7 +17,6 @@ cd ../..
 echo ">>> [2/3] Collect artifacts <<<"
 collect_artifacts mykng \
   mykng/kb-gateway/target/kb-gateway.jar \
-  mykng/kb-auth/target/kb-auth.jar \
   mykng/kb-file/target/kb-file.jar \
   mykng/kb-knowledge/target/kb-knowledge.jar \
   mykng/kb-intelligence/target/kb-intelligence.jar

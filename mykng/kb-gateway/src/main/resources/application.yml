@@ -35,8 +35,8 @@ spring:
       routes:
         # M6: 各服务 Swagger API Docs 路由（必须放在业务路由前面，优先匹配）
         # StripPrefix=3：去掉 /kb/api/{service} 三段，后端收到 /v3/api-docs
-        - id: kb-auth-api-docs
-          uri: lb://kb-auth
+        - id: auth-center-api-docs
+          uri: lb://auth-center
           predicates:
             - Path=${KB_CONTEXT:/kb}/api/auth/v3/api-docs/**,${KB_CONTEXT:/kb}/api/auth/swagger-ui/**
           filters:
@@ -63,8 +63,8 @@ spring:
           filters:
             - StripPrefix=3
 
-        - id: kb-auth
-          uri: lb://kb-auth
+        - id: auth-center
+          uri: lb://auth-center
           predicates:
             - Path=${KB_CONTEXT:/kb}/api/auth/**,${KB_CONTEXT:/kb}/api/user/**,${KB_CONTEXT:/kb}/api/token/**,${KB_CONTEXT:/kb}/api/log/**
           filters:

@@ -187,3 +187,5 @@ mykng/vaultwarden_import.json
 /*密码*.md
 /*密钥*.md
 /*凭据*.md
+.git.broken*/
+*.timestamp-*.mjs

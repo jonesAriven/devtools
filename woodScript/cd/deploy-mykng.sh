@@ -18,7 +18,7 @@ TAR_FILE="${1:?missing param: usage deploy-mykng.sh tar.gz}"
 COMPOSE_PROJECT="kb-app"
 # compose 文件由 sync-ci-scripts 统一同步到 /mnt/shared
 COMPOSE_FILE="/mnt/shared/mykng/docker/docker-compose.app.yml"
-SERVICES=("kb-gateway" "kb-auth" "kb-file" "kb-knowledge" "kb-intelligence")
+SERVICES=("kb-gateway" "kb-file" "kb-knowledge" "kb-intelligence")
 HEALTH_URL="http://localhost:8090/actuator/health"
 APP_NAME="mykng"
 
@@ -26,7 +26,6 @@ APP_NAME="mykng"
 get_jar_name() {
   case "$1" in
     kb-gateway)     echo "kb-gateway.jar" ;;
-    kb-auth)        echo "kb-auth.jar" ;;
     kb-file)        echo "kb-file.jar" ;;
     kb-knowledge)   echo "kb-knowledge.jar" ;;
     kb-intelligence) echo "kb-intelligence.jar" ;;
@@ -35,6 +34,14 @@ get_jar_name() {
 }
 
 log_header "${APP_NAME}" "${TAR_FILE}"
+
+# ====== Step 0.5: auth-center (independent repo fka kb-auth) ======
+log_step 0.5 6 "auth-center: pull & build"
+cd /root/auth-center || exit 1
+git pull origin main || exit 1
+mvn -q -DskipTests package -B -ntp || exit 1
+cp target/auth-center.jar "${DEPLOY_BASE}/jars-mykng/auth-center.jar" || exit 1
+cd - >/dev/null
 
 # ====== Step 1: 验证产物 ======
 log_step 1 6 "验证产物"

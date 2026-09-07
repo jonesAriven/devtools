@@ -1,13 +1,13 @@
 # ============================================================
 # docker-compose.app.yml — 应用层 (mykng 5微服务 + kb-ops)
 # ============================================================
-# 服务: kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence, kb-ops
+# 服务: kb-gateway, auth-center(fka kb-auth), kb-file, kb-knowledge, kb-intelligence, kb-ops
 # 网络: kb-app-net (内部通信), platform-net (外部引入, 连接全局基础设施)
 # 前置: platform 基础设施层已启动 (platform-net 网络存在)
 #
 # 隔离性:
 #   - 无 depends_on, 每个服务可独立部署
-#   - mykng 部署: up -d --force-recreate kb-gateway kb-auth kb-file kb-knowledge kb-intelligence
+#   - mykng 部署: up -d --force-recreate kb-gateway auth-center kb-file kb-knowledge kb-intelligence
 #   - kb-ops 部署: up -d --force-recreate kb-ops
 #   - 互不影响
 # ============================================================
@@ -37,9 +37,10 @@ services:
     mem_limit: 384m
 
   # ========== 认证服务 ==========
-  kb-auth:
-    build: /root/devtools/mykng/kb-auth
-    container_name: kb-auth
+  auth-center:
+    # 2026-09-07 剥离独立仓库：真源 gitee/github jonesAriven/auth-center，服务器克隆 /root/auth-center
+    build: /root/auth-center
+    container_name: auth-center
     restart: on-failure:5
     ports:
       - "8085:8085"
@@ -67,8 +68,14 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - kb-app-net
-      - platform-net
+      kb-app-net:
+        # 别名兜底：gateway/kb-ops/infra-monitor 的 jwks-uri 默认值仍为 http://kb-auth:8085，
+        # 靠此别名平滑迁移，后续逐步清理
+        aliases:
+          - kb-auth
+      platform-net:
+        aliases:
+          - kb-auth
     mem_limit: 384m
 
   # ========== 文件服务 ==========
