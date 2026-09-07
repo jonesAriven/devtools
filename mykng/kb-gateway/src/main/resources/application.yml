@@ -126,6 +126,9 @@ kb:
     whitelist:
       - ${KB_CONTEXT:/kb}/api/auth/login
       - ${KB_CONTEXT:/kb}/api/auth/refresh
+      # auth-center 邮箱验证码/忘记密码（2026-09-07 M7）：必须匿名可达，否则用户无法自助重置
+      - ${KB_CONTEXT:/kb}/api/auth/forgot-password
+      - ${KB_CONTEXT:/kb}/api/auth/reset-password
       - ${KB_CONTEXT:/kb}/api/auth/error-log/report
       - ${KB_CONTEXT:/kb}/api/share/verify/**
       - ${KB_CONTEXT:/kb}/api/share/detail/**
