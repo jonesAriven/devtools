@@ -62,8 +62,8 @@ services:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
-      # auth-center Phase 1: OIDC issuer（浏览器/客户端实际可达的 kb-auth 地址）
-      - AUTH_ISSUER=${AUTH_ISSUER:-https://kb.marschat.online}
+      # auth-center Phase 1: OIDC issuer（浏览器/客户端实际可达的 kb-auth 地址；2026-09-07 L019 独立子域）
+      - AUTH_ISSUER=${AUTH_ISSUER:-https://auth.marschat.online}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -228,8 +228,8 @@ services:
       - MYSQL_DATABASE=tools
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      # auth-center Phase 2: OIDC issuer（浏览器/客户端实际可达地址，与 kb-auth AUTH_ISSUER 一致）
-      - AUTH_CENTER_ISSUER=${AUTH_CENTER_ISSUER:-https://kb.marschat.online}
+      # auth-center Phase 2: OIDC issuer（浏览器/客户端实际可达地址，与 kb-auth AUTH_ISSUER 一致；2026-09-07 L019 独立子域）
+      - AUTH_CENTER_ISSUER=${AUTH_CENTER_ISSUER:-https://auth.marschat.online}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
