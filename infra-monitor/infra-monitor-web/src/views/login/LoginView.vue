@@ -40,6 +40,14 @@
             登 录
           </el-button>
         </el-form-item>
+        <el-form-item>
+          <el-button
+            class="login-btn sso-btn"
+            @click="handleSsoLogin"
+          >
+            统一认证登录（SSO）
+          </el-button>
+        </el-form-item>
       </el-form>
       <div class="login-tip">
         默认账号：admin / admin123
@@ -54,6 +62,7 @@ import { ElMessage, type FormInstance, FormRules } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
+import { startSsoLogin } from '@/utils/sso'
 
 const loginFormRef = ref<FormInstance>()
 const userStore = useUserStore()
@@ -85,6 +94,12 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
+}
+
+/** kb-auth SSO：记录回跳目标后跳授权端点 */
+function handleSsoLogin() {
+  const redirect = (route.query.redirect as string) || '/dashboard'
+  startSsoLogin(redirect)
 }
 </script>
 
@@ -126,6 +141,13 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+.sso-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: #fff;
 }
 
 .login-tip {

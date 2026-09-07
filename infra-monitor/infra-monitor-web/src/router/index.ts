@@ -12,6 +12,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: `/sso-callback`,
+    name: 'SsoCallback',
+    component: () => import('@/views/sso/SsoCallbackView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: ``,
     component: MainLayout,
     meta: { requiresAuth: true },

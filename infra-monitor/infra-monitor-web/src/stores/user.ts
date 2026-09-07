@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '@/utils/request'
-import { setToken, clearTokens, getToken } from '@/utils/token'
+import { setToken, setTokenKind, clearTokens, getToken } from '@/utils/token'
 import router from '@/router'
 
 export interface LoginResponse {
@@ -19,7 +19,15 @@ export const useUserStore = defineStore('user', () => {
     token.value = data.token
     username.value = data.username
     isLoggedIn.value = true
+    setTokenKind('legacy')
     setToken(data.token)
+  }
+
+  /** SSO 登录成功后，用 OIDC claims 中的 username 构建前端会话（infra-monitor 无 /auth/me，免后端查询） */
+  function setOidcSession(usernameVal: string) {
+    token.value = getToken()
+    username.value = usernameVal
+    isLoggedIn.value = true
   }
 
   async function logout() {
@@ -35,6 +43,7 @@ export const useUserStore = defineStore('user', () => {
     username,
     isLoggedIn,
     login,
+    setOidcSession,
     logout,
   }
 })

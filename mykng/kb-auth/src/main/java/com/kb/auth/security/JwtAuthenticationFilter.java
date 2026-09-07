@@ -43,13 +43,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             try {
-                Long principalId;
-                boolean legacyValid = jwtTokenProvider.validateToken(token)
-                        && "access".equals(jwtTokenProvider.getTokenType(token));
+                // 验签路径区分 legacy / OIDC：HS256 本地验签通过即 legacy（kb-auth 自签 token），
+                // 否则视为 auth-center 签发的 RS256 OIDC token（与 gateway JwtAuthFilter 口径一致）。
+                boolean legacy = jwtTokenProvider.validateToken(token);
 
-                if (legacyValid) {
-                    // legacy HS256 token（kb-auth 自签）
-                    principalId = jwtTokenProvider.getUserIdFromToken(token);
+                String principal;
+                if (legacy) {
+                    // legacy HS256 token：仅访问令牌允许通过（OIDC token 无 type claim，不在此校验）
+                    String tokenType = jwtTokenProvider.getTokenType(token);
+                    if (!"access".equals(tokenType)) {
+                        sendUnauthorized(response, "令牌类型错误，请使用访问令牌");
+                        return;
+                    }
+                    principal = String.valueOf(jwtTokenProvider.getUserIdFromToken(token));
                 } else {
                     // OIDC RS256 token（auth-center 签发，claims: uid/username/role）
                     try {
@@ -58,7 +64,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         if (uid == null || uid.isBlank()) {
                             uid = jwt.getSubject();
                         }
-                        principalId = Long.parseLong(uid);
+                        principal = uid;
                     } catch (Exception rsError) {
                         log.debug("RS256 验签失败: {}", rsError.getMessage());
                         sendUnauthorized(response, "Token无效或已过期");
@@ -66,13 +72,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
 
-                {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(principalId));
-
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
+                UserDetails userDetails = userDetailsService.loadUserByUsername(principal);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
                 log.warn("JWT认证失败: {}", e.getMessage());
                 sendUnauthorized(response, "Token无效或已过期");

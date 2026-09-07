@@ -72,7 +72,9 @@ public class SecurityConfig {
         config.setAllowedOrigins(java.util.List.of(
                 "https://kb.marschat.online",
                 "http://192.168.31.105",
-                "http://localhost:5173"));
+                "http://localhost:5173",
+                "https://monitor.marschat.online",
+                "http://localhost:3002"));
         config.setAllowedMethods(java.util.List.of("GET", "POST", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
         config.setAllowCredentials(false);

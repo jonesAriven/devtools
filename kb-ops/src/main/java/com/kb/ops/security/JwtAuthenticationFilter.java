@@ -34,20 +34,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 if (tokenProvider.validateToken(token)) {
                     String type = tokenProvider.getTokenType(token);
-                    if (!"access".equals(type)) {
+                    if (type == null) {
+                        // OIDC RS256 token（auth-center 签发，无 type claim）→ 视为有效
+                        String userId = tokenProvider.getUidFromToken(token);
+                        String username = tokenProvider.getUsernameFromToken(token);
+                        setAuthentication(userId, username == null ? userId : username);
+                    } else if ("access".equals(type)) {
+                        // legacy HS256 token（kb-auth 自签，type=access）
+                        Long userId = tokenProvider.getUserIdFromToken(token);
+                        String username = tokenProvider.getUsernameFromToken(token);
+                        setAuthentication(userId, username == null ? String.valueOf(userId) : username);
+                    } else {
                         sendUnauthorized(response, "无效的Token类型");
                         return;
                     }
-
-                    Long userId = tokenProvider.getUserIdFromToken(token);
-                    String username = tokenProvider.getUsernameFromToken(token);
-
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userId, null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_USER")));
-                    authentication.setDetails(username);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception e) {
                 log.warn("JWT认证失败: {}", e.getMessage());
@@ -57,6 +57,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void setAuthentication(Object principal, String username) {
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        principal, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        authentication.setDetails(username);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     private String resolveToken(HttpServletRequest request) {
