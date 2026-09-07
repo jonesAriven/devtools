@@ -53,9 +53,9 @@
     </properties>
 
     <!-- 子模块（M1 重构：kb-common 已删除，公共类/事件/工具类统一由 com.marschat:common-core 提供；logback 配置与依赖同步） -->
+    <!-- kb-auth 已剥离独立仓库 auth-center（2026-09-07） -->
     <modules>
         <module>../kb-gateway</module>
-        <module>../kb-auth</module>
         <module>../kb-file</module>
         <module>../kb-knowledge</module>
         <module>../kb-intelligence</module>
