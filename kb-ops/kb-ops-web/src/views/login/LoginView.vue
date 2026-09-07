@@ -41,6 +41,17 @@
           </el-button>
         </el-form-item>
       </el-form>
+
+      <!-- SSO 统一认证登录按钮 -->
+      <el-divider content-position="center">或</el-divider>
+      <el-button
+        type="success"
+        class="sso-btn"
+        @click="handleSsoLogin"
+      >
+        <el-icon><Connection /></el-icon>
+        统一认证登录 (SSO)
+      </el-button>
     </div>
   </div>
 </template>
@@ -49,9 +60,10 @@
 import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Connection } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
+import { startSsoLogin } from '@/utils/sso'
 
 const loginFormRef = ref<FormInstance>()
 const userStore = useUserStore()
@@ -82,6 +94,15 @@ async function handleLogin() {
     ElMessage.error(err?.response?.data?.message || err?.message || '登录失败，请检查用户名或密码')
   } finally {
     loading.value = false
+  }
+}
+
+/** SSO 统一认证登录：跳转到 auth-center 授权端点 */
+async function handleSsoLogin() {
+  try {
+    await startSsoLogin(route.query.redirect as string || '/dashboard')
+  } catch (e: any) {
+    ElMessage.error(e?.message || 'SSO 登录发起失败')
   }
 }
 </script>
@@ -123,6 +144,10 @@ async function handleLogin() {
 }
 
 .login-btn {
+  width: 100%;
+}
+
+.sso-btn {
   width: 100%;
 }
 </style>

@@ -11,6 +11,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/login/LoginView.vue'),
     meta: { requiresAuth: false },
   },
+  // SSO 回调路由（无需认证）- 与 kb-web/infra-monitor 保持一致的路径
+  {
+    path: `/sso-callback`,
+    name: 'SsoCallback',
+    component: () => import('@/views/sso/SsoCallbackView.vue'),
+    meta: { requiresAuth: false },
+  },
   {
     path: ``,
     component: MainLayout,
