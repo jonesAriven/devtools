@@ -45,7 +45,7 @@ services:
     ports:
       - "8098:8081"
     environment:
-      ME_CONFIG_MONGODB_URL: mongodb://platform-mongo:27017/
+      ME_CONFIG_MONGODB_URL: mongodb://kb:kb123456@platform-mongo:27017/
       ME_CONFIG_MONGODB_PORT: "27017"
       ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
       ME_CONFIG_BASICAUTH_USERNAME: admin
