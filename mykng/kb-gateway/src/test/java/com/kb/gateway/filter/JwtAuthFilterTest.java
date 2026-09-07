@@ -53,6 +53,9 @@ class JwtAuthFilterTest {
     @Mock
     private GatewayFilterChain chain;
 
+    @Mock
+    private com.kb.gateway.filter.OidcTokenVerifier oidcTokenVerifier;
+
     private KbGatewayProperties properties;
     private JwtAuthFilter jwtAuthFilter;
     private SecretKey key;
@@ -69,7 +72,7 @@ class JwtAuthFilterTest {
                 "/kb/api/share/verify/**",
                 "/kb/api/share/detail/**"
         )));
-        jwtAuthFilter = new JwtAuthFilter(new ObjectMapper(), properties);
+        jwtAuthFilter = new JwtAuthFilter(new ObjectMapper(), properties, oidcTokenVerifier);
         // 手动触发 @PostConstruct 逻辑（单元测试不会被 Spring 调用）
         jwtAuthFilter.init();
         key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
