@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import type { User } from '@/types'
 import { login as loginApi, logout as logoutApi } from '@/api/auth'
 import { getUserProfile } from '@/api/user'
-import { setToken, setRefreshToken, clearTokens, getToken } from '@/utils/token'
+import { setToken, setRefreshToken, clearTokens, getToken, setTokenKind } from '@/utils/token'
 import router from '@/router'
 
 export const useUserStore = defineStore('user', () => {
@@ -19,6 +19,7 @@ export const useUserStore = defineStore('user', () => {
     refreshToken.value = data.refreshToken
     profile.value = data.user
     isLoggedIn.value = true
+    setTokenKind('legacy')
     setToken(data.accessToken)
     setRefreshToken(data.refreshToken)
   }
