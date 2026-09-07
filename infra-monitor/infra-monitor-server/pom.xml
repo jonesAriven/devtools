@@ -86,11 +86,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-            <!-- 公共核心库（独立仓库 com.marschat:common-core） -->
+            <!-- 公共核心库（独立仓库 com.marschat:common-core）；1.0.0 仅旧包名 com.kb.common 且已从 Nexus 清理，1.1.0 起为 com.marschat.common -->
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>common-core</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
         </dependency>
     </dependencies>
 
