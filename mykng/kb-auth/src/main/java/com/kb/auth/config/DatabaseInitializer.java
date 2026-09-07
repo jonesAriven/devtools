@@ -309,8 +309,72 @@ public class DatabaseInitializer implements CommandLineRunner {
             }
             seedKbwebClient(repository);
             seedInframonClient(repository);
+            seedP2Clients(repository);
         } catch (Exception e) {
             log.warn("种子 OIDC 客户端失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * P2 批量播种：activecode / memory（记忆提炼面板）/ tokenhub 三个 public client（PKCE）。
+     * 回调地址按各应用部署 URL 预置，代理/后续接入若需调整走幂等补齐逻辑（containsAll 对比）。
+     */
+    private void seedP2Clients(JdbcRegisteredClientRepository repository) {
+        seedPublicClient(repository, "marschat-activecode", "MarsChat ActiveCode (SPA)",
+                java.util.List.of(
+                        "https://tools.marschat.online/activecode/sso-callback",
+                        "http://192.168.31.182:18080/activecode/sso-callback",
+                        "http://192.168.31.105:18080/activecode/sso-callback"));
+        seedPublicClient(repository, "marschat-memory", "MarsChat Memory Extract Panel",
+                java.util.List.of(
+                        "https://memory.marschat.online/sso-callback",
+                        "http://192.168.31.105:8720/sso-callback"));
+        seedPublicClient(repository, "marschat-tokenhub", "MarsChat TokenHub",
+                java.util.List.of(
+                        "https://tokenhub.marschat.online/sso-callback",
+                        "http://192.168.31.105:13000/sso-callback"));
+    }
+
+    /** 通用 public client 播种（PKCE + rotation + 回调白名单幂等补齐），供 P2 批量与后续新应用复用 */
+    private void seedPublicClient(JdbcRegisteredClientRepository repository,
+                                  String clientId, String clientName,
+                                  java.util.List<String> requiredRedirects) {
+        try {
+            RegisteredClient existing = repository.findByClientId(clientId);
+            if (existing == null) {
+                RegisteredClient client = RegisteredClient.withId(UUID.randomUUID().toString())
+                        .clientId(clientId)
+                        .clientName(clientName)
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .redirectUris(r -> r.addAll(requiredRedirects))
+                        .scope(OidcScopes.OPENID)
+                        .scope(OidcScopes.PROFILE)
+                        .clientSettings(ClientSettings.builder()
+                                .requireAuthorizationConsent(false)
+                                .requireProofKey(true)
+                                .build())
+                        .tokenSettings(org.springframework.security.oauth2.server.authorization.settings.TokenSettings.builder()
+                                .accessTokenTimeToLive(java.time.Duration.ofMinutes(30))
+                                .refreshTokenTimeToLive(java.time.Duration.ofDays(7))
+                                .reuseRefreshTokens(false)
+                                .build())
+                        .build();
+                repository.save(client);
+                log.info("种子 OIDC 客户端 {}（public/PKCE）已就绪", clientId);
+            } else if (!existing.getRedirectUris().containsAll(requiredRedirects)) {
+                RegisteredClient updated = RegisteredClient.from(existing)
+                        .redirectUris(r -> {
+                            r.clear();
+                            r.addAll(requiredRedirects);
+                        })
+                        .build();
+                repository.save(updated);
+                log.info("已更新 {} 回调白名单: {}", clientId, requiredRedirects);
+            }
+        } catch (Exception e) {
+            log.warn("种子 OIDC 客户端 {} 失败: {}", clientId, e.getMessage());
         }
     }
 

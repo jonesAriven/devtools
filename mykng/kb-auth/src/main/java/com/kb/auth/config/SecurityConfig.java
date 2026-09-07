@@ -74,7 +74,14 @@ public class SecurityConfig {
                 "http://192.168.31.105",
                 "http://localhost:5173",
                 "https://monitor.marschat.online",
-                "http://localhost:3002"));
+                "http://localhost:3002",
+                // P2 批量接入（2026-09-07）：activecode / memory / tokenhub
+                "https://tools.marschat.online",
+                "http://192.168.31.182:18080",
+                "https://memory.marschat.online",
+                "http://192.168.31.105:8720",
+                "https://tokenhub.marschat.online",
+                "http://192.168.31.105:13000"));
         config.setAllowedMethods(java.util.List.of("GET", "POST", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
         config.setAllowCredentials(false);
