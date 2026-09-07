@@ -65,6 +65,14 @@ services:
       - REDIS_PORT=6379
       # auth-center Phase 1: OIDC issuer（浏览器/客户端实际可达的 kb-auth 地址；2026-09-07 L019 独立子域）
       - AUTH_ISSUER=${AUTH_ISSUER:-https://auth.marschat.online}
+      # 邮件（忘记密码/邮箱验证码，2026-09-07 M7）：凭证走服务器 .env，不入库
+      - MAIL_HOST=${MAIL_HOST:-smtp.163.com}
+      - MAIL_PORT=${MAIL_PORT:-25}
+      - MAIL_USERNAME=${MAIL_USERNAME:-marschat@163.com}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-marschat@163.com}
+      - MAIL_SSL_ENABLE=${MAIL_SSL_ENABLE:-false}
+      - MAIL_STARTTLS=${MAIL_STARTTLS:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
