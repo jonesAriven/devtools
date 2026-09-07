@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统一认证回调 · 记忆提炼面板</title>
+<style>
+body { font-family: -apple-system, 'Noto Sans SC', sans-serif; background: #0d1117; color: #e6edf3;
+  display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+.card { text-align: center; padding: 40px 32px; background: #161b22; border: 1px solid #30363d; border-radius: 10px; }
+h3 { margin: 16px 0 8px; }
+.err { color: #f85149; word-break: break-all; margin-bottom: 16px; }
+.hint { color: #8b949e; }
+a { color: #58a6ff; }
+.spin { display: inline-block; animation: r 1.2s linear infinite; }
+@keyframes r { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="box"><span class="spin">⏳</span><h3>统一认证登录中…</h3><p class="hint">正在换取访问令牌</p></div>
+</div>
+<script>
+/* 记忆提炼面板 SSO 回调：OIDC authorization_code + PKCE（client=marschat-memory，public）
+   移植自 kb-web src/utils/sso.ts，原生 JS 无构建依赖 */
+const OIDC_ISSUER = 'https://auth.marschat.online';
+const CLIENT_ID = 'marschat-memory';
+const REDIRECT_URI = window.location.origin + '/sso-callback';
+const K_TOKEN = 'mp_access_token', K_REFRESH = 'mp_refresh_token', K_STATE = 'mp_sso_state', K_VERIFIER = 'mp_sso_verifier';
+
+function b64url(bytes) {
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function exchange(code, verifier) {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code', code,
+    redirect_uri: REDIRECT_URI, client_id: CLIENT_ID, code_verifier: verifier,
+  });
+  const res = await fetch(OIDC_ISSUER + '/oauth2/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body,
+  });
+  if (!res.ok) throw new Error('换取令牌失败 HTTP ' + res.status);
+  return res.json();
+}
+
+(async () => {
+  const q = new URLSearchParams(window.location.search);
+  try {
+    if (q.get('error')) throw new Error('统一认证拒绝: ' + (q.get('error_description') || q.get('error')));
+    const code = q.get('code');
+    const verifier = sessionStorage.getItem(K_VERIFIER);
+    if (!code) throw new Error('授权回调缺少 code');
+    if (!verifier || sessionStorage.getItem(K_STATE) !== q.get('state')) throw new Error('state 校验失败，请重新登录');
+    const data = await exchange(code, verifier);
+    localStorage.setItem(K_TOKEN, data.access_token);
+    if (data.refresh_token) localStorage.setItem(K_REFRESH, data.refresh_token);
+    sessionStorage.removeItem(K_STATE); sessionStorage.removeItem(K_VERIFIER);
+    location.replace('/');
+  } catch (e) {
+    document.getElementById('box').innerHTML =
+      '<h3>统一认证登录失败</h3><p class="err"></p><a href="/">返回首页重试</a>';
+    document.querySelector('.err').textContent = e.message || String(e);
+  }
+})();
+</script>
+</body>
+</html>

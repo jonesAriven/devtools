@@ -2,7 +2,7 @@ FROM alpine:latest
 
 RUN apk add --no-cache python3 py3-pip && \
     python3 -m venv /venv && \
-    /venv/bin/pip install --no-cache-dir flask gunicorn
+    /venv/bin/pip install --no-cache-dir "flask" "gunicorn" "pyjwt[crypto]>=2.8.0"
 
 WORKDIR /app
 

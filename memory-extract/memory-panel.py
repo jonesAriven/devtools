@@ -8,11 +8,14 @@ API 和前端一体化，前后端分离。
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, request, render_template, send_from_directory
+import jwt
+from jwt import PyJWKClient
+from flask import Flask, jsonify, request, render_template, send_from_directory, g
 
 app = Flask(__name__)
 
@@ -23,6 +26,40 @@ STATIC_DIR = BASE_DIR / "static"
 TEMPLATE_DIR = BASE_DIR / "templates"
 
 app.config["TEMPLATE_FOLDER"] = str(TEMPLATE_DIR)
+
+# ── auth-center 统一认证（OIDC public client + PKCE，2026-09-07 P2）──
+OIDC_ISSUER = os.environ.get("OIDC_ISSUER", "https://auth.marschat.online")
+OIDC_JWKS_URI = os.environ.get("OIDC_JWKS_URI", f"{OIDC_ISSUER}/oauth2/jwks")
+_JWKS_CLIENT = PyJWKClient(OIDC_JWKS_URI, cache_keys=True, lifespan=600)
+
+# 免验路径：页面壳与回调页由前端自行守卫；/api/* 一律要求有效 Bearer
+PUBLIC_PATH_PREFIXES = ("/static/",)
+PUBLIC_PATHS = {"/", "/sso-callback", "/healthz"}
+
+
+@app.before_request
+def require_oidc_token():
+    path = request.path
+    if path in PUBLIC_PATHS or any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES):
+        return None
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return jsonify({"code": 401, "message": "未登录或缺少访问令牌"}), 401
+    token = auth[7:].strip()
+    try:
+        signing_key = _JWKS_CLIENT.get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            issuer=OIDC_ISSUER,
+            options={"verify_aud": False},
+        )
+        g.username = claims.get("username") or claims.get("sub")
+    except Exception as e:  # 验签/过期/issuer 不符一律 401
+        app.logger.warning("OIDC token 验证失败: %s", e)
+        return jsonify({"code": 401, "message": "访问令牌无效或已过期"}), 401
+    return None
 
 
 def get_db() -> sqlite3.Connection:
@@ -35,6 +72,12 @@ def ts_to_str(ts: float | None) -> str:
     if ts is None or ts == 0:
         return "-"
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+
+
+@app.route("/sso-callback")
+def sso_callback():
+    # 回调页是纯前端逻辑（PKCE code 交换），由 JS 完成
+    return render_template("sso-callback.html")
 
 
 # ── API 路由 ──────────────────────────────────────────────────────────

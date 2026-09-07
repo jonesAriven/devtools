@@ -4,6 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>记忆提炼面板</title>
+<script>
+/* auth-center SSO 守卫 + fetch 自动带 Bearer（client=marschat-memory，PKCE）
+   原生 JS 移植自 kb-web src/utils/sso.ts */
+const OIDC_ISSUER = 'https://auth.marschat.online';
+const SSO_CLIENT_ID = 'marschat-memory';
+const SSO_REDIRECT = window.location.origin + '/sso-callback';
+const MP_TOKEN = 'mp_access_token', MP_REFRESH = 'mp_refresh_token';
+const MP_STATE = 'mp_sso_state', MP_VERIFIER = 'mp_sso_verifier';
+
+function _b64url(bytes) {
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function mpStartSso() {
+  const state = _b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const verifier = _b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = _b64url(new Uint8Array(digest));
+  sessionStorage.setItem(MP_STATE, state);
+  sessionStorage.setItem(MP_VERIFIER, verifier);
+  const p = new URLSearchParams({
+    client_id: SSO_CLIENT_ID, redirect_uri: SSO_REDIRECT, response_type: 'code',
+    scope: 'openid profile', state, code_challenge: challenge, code_challenge_method: 'S256',
+  });
+  location.assign(OIDC_ISSUER + '/oauth2/authorize?' + p.toString());
+}
+(function mpGuard() {
+  if (!localStorage.getItem(MP_TOKEN)) {
+    // 无 token：页面照常渲染壳，API 会 401 → 下方 patch 触发跳转
+  }
+  const _fetch = window.fetch;
+  window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.includes('/api/')) {
+      const token = localStorage.getItem(MP_TOKEN);
+      if (!token) { mpStartSso(); return new Promise(() => {}); }
+      init = init || {};
+      init.headers = Object.assign({}, init.headers, { Authorization: 'Bearer ' + token });
+      const res = await _fetch.call(this, input, init);
+      if (res.status === 401) {
+        localStorage.removeItem(MP_TOKEN); localStorage.removeItem(MP_REFRESH);
+        mpStartSso(); return new Promise(() => {});
+      }
+      return res;
+    }
+    return _fetch.call(this, input, init);
+  };
+})();
+</script>
 <style>
 :root {
   --bg: #0d1117;
