@@ -1379,6 +1379,13 @@ function setAdminExpire(minutes, btn) {
             try {
                 await fetch('/activecode/api/auth/logout', { method: 'POST' });
             } catch (e) {}
+            // 清理 SSO 前端态
+            try {
+                localStorage.removeItem('activecode_oidc_access');
+                localStorage.removeItem('activecode_oidc_refresh');
+                localStorage.removeItem('activecode_oidc_id');
+                localStorage.removeItem('activecode_sso_user');
+            } catch (e) {}
             window.location.href = '/activecode/login.html';
         }
 

@@ -37,7 +37,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/activecode/api/**")
                 .excludePathPatterns(
                         "/activecode/login.html",
+                        "/activecode/sso-callback.html",
                         "/activecode/api/auth/login",
+                        "/activecode/api/auth/sso-login",
                         "/activecode/api/auth/session",
                         "/activecode/api/activation/verify",
                         "/activecode/api/activation/generate",

@@ -32,6 +32,11 @@ public class PageController {
         return readStaticFile("activecode/login.html");
     }
 
+    @GetMapping("/activecode/sso-callback.html")
+    public ResponseEntity<String> ssoCallbackPage() throws IOException {
+        return readStaticFile("activecode/sso-callback.html");
+    }
+
     @GetMapping("/activecode/index.html")
     public ResponseEntity<String> indexPage() throws IOException {
         return readStaticFile("activecode/index.html");

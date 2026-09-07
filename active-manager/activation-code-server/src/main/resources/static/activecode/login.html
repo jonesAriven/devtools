@@ -26,6 +26,11 @@
         .btn-login:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
         .error-msg { color: #dc2626; font-size: 13px; margin-top: 12px; text-align: center; display: none; }
         .error-msg.show { display: block; }
+        .sso-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; color: #9ca3af; font-size: 12px; }
+        .sso-divider::before, .sso-divider::after { content: ''; flex: 1; height: 1px; background: #eceef2; }
+        .btn-sso { width: 100%; padding: 12px; background: #fff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, box-shadow 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-sso:hover { background: #eef2ff; box-shadow: 0 4px 14px rgba(79,70,229,0.18); }
+        .btn-sso:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
         .login-footer { text-align: center; padding: 14px; font-size: 12px; color: #c4c9d4; background: #f9fafb; border-top: 1px solid #f0f1f4; }
     </style>
 </head>
@@ -49,11 +54,29 @@
                 <button type="submit" class="btn-login" id="btnLogin">登 录</button>
                 <div class="error-msg" id="errorMsg"></div>
             </form>
+            <div class="sso-divider">或使用统一认证</div>
+            <button type="button" class="btn-sso" id="btnSso" onclick="startSsoLogin()">
+                <span>🔐</span> 统一认证登录（SSO）
+            </button>
         </div>
         <div class="login-footer">仅限管理员使用 · 如需账号请联系系统管理员</div>
     </div>
 
+    <script src="sso.js"></script>
     <script>
+        function startSsoLogin() {
+            const btn = document.getElementById('btnSso');
+            if (btn) { btn.disabled = true; btn.textContent = '跳转认证中...'; }
+            try {
+                ActiveCodeSSO.startSsoLogin('/activecode/main.html');
+            } catch (err) {
+                if (btn) { btn.disabled = false; btn.textContent = '统一认证登录（SSO）'; }
+                const errorEl = document.getElementById('errorMsg');
+                errorEl.textContent = '发起统一认证失败: ' + (err && err.message ? err.message : err);
+                errorEl.classList.add('show');
+            }
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('btnLogin');

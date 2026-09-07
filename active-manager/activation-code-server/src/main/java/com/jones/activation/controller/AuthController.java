@@ -2,11 +2,15 @@ package com.jones.activation.controller;
 
 import com.jones.activation.entity.AdminUser;
 import com.jones.activation.mapper.AdminUserMapper;
+import com.jones.activation.util.OidcTokenVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -20,9 +24,11 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AdminUserMapper adminUserMapper;
+    private final OidcTokenVerifier oidcVerifier;
 
-    public AuthController(AdminUserMapper adminUserMapper) {
+    public AuthController(AdminUserMapper adminUserMapper, OidcTokenVerifier oidcVerifier) {
         this.adminUserMapper = adminUserMapper;
+        this.oidcVerifier = oidcVerifier;
     }
 
     @PostMapping("/login")
@@ -63,6 +69,73 @@ public class AuthController {
     public Map<String, Object> logout(HttpSession session) {
         session.invalidate();
         return Map.of("success", true);
+    }
+
+    /**
+     * 统一认证（auth-center / kb-auth）SSO 登录桥接。
+     * 前端已完成 OIDC authorization_code + PKCE 流程，此处：服务端用 OidcTokenVerifier 对 RS256
+     * access_token 验签（签名 + issuer + 过期），并校验 token 内用户名与请求用户名一致，通过后才建立
+     * 与「账号密码登录」同口径的 HttpSession（激活码数据无用户隔离，统一以管理员身份进入）。
+     * 不再接受无 token 的纯 username 声明，杜绝伪造管理员会话。
+     */
+    @PostMapping("/sso-login")
+    public Map<String, Object> ssoLogin(@RequestBody Map<String, String> body, HttpSession session, HttpServletResponse response) {
+        String ssoUsername = body.get("username");
+        String accessToken = body.get("access_token");
+
+        if (accessToken == null || accessToken.isBlank()) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "缺少 OIDC access_token");
+        }
+
+        JWTClaimsSet claims = oidcVerifier.verify(accessToken);
+        if (claims == null) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "access_token 验签失败");
+        }
+
+        // SAS access_token 的 sub 即登录用户名；回退 preferred_username
+        String tokenUsername = claims.getSubject();
+        if (tokenUsername == null || tokenUsername.isBlank()) {
+            try {
+                tokenUsername = claims.getStringClaim("preferred_username");
+            } catch (Exception e) {
+                tokenUsername = null;
+            }
+        }
+        if (tokenUsername == null || tokenUsername.isBlank()) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "token 中无用户名声明");
+        }
+        if (ssoUsername == null || ssoUsername.isBlank() || !ssoUsername.equals(tokenUsername)) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            return Map.of("success", false, "message", "username 与 token 不一致");
+        }
+
+        // 优先映射到同名管理员账号；激活码数据无用户隔离，未匹配时回退到既有管理员账号
+        AdminUser user = adminUserMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                        .eq(AdminUser::getUsername, ssoUsername)
+        );
+        if (user == null) {
+            user = adminUserMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                            .last("LIMIT 1")
+            );
+        }
+        if (user == null) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            return Map.of("success", false, "message", "未找到可映射的管理员账号");
+        }
+
+        user.setLastLoginTime(LocalDateTime.now());
+        adminUserMapper.updateById(user);
+
+        session.setAttribute("loginUser", user);
+        session.setAttribute("ssoUser", ssoUsername);
+        log.info("SSO 登录成功: ssoUser={}, mappedAdmin={}, sessionId={}", ssoUsername, user.getUsername(), session.getId());
+
+        return Map.of("success", true, "username", user.getUsername(), "ssoUser", ssoUsername);
     }
 
     @GetMapping("/session")
