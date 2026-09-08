@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+        // 本地开发时指向 marschat-components 源码
+        '@marschat/auth-components': path.resolve(__dirname, '../../../marschat-components/packages/auth-components/src'),
+        '@marschat/frontend-common': path.resolve(__dirname, '../../../marschat-components/packages/frontend-common/src'),
       },
     },
     server: {

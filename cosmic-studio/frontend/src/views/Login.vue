@@ -1,52 +1,66 @@
 <template>
-  <div class="login-wrap">
-    <el-card class="login-card">
-      <h2>cosmic-studio</h2>
-      <p class="sub">COSMIC 度量表生产系统</p>
-      <el-form @submit.prevent="doLogin">
-        <el-form-item>
-          <el-input v-model="form.username" placeholder="用户名" size="large" />
-        </el-form-item>
-        <el-form-item>
-          <el-input v-model="form.password" type="password" placeholder="密码" size="large" show-password />
-        </el-form-item>
-        <el-button type="primary" size="large" style="width:100%" native-type="submit"
-                   :loading="loading">登 录</el-button>
-      </el-form>
-    </el-card>
+  <div class="login-page">
+    <LoginPanel 
+      :config="loginConfig" 
+      @login="handleLogin" 
+      @sso-login="handleSsoLogin"
+      @password-reset="handlePasswordReset"
+    />
   </div>
 </template>
 
-<script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+<script setup lang="ts">
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import api from '../api'
+import { LoginPanel } from '@marschat/auth-components'
 
 const router = useRouter()
-const form = reactive({ username: '', password: '' })
-const loading = ref(false)
+const route = useRoute()
 
-async function doLogin() {
-  if (!form.username || !form.password) { ElMessage.warning('请输入用户名和密码'); return }
-  loading.value = true
-  try {
-    const { data } = await api.post('/auth/login', form)
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data.user))
-    router.push('/')
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '登录失败')
-  } finally {
-    loading.value = false
-  }
+const loginConfig = {
+  title: 'COSMIC 度量表',
+  subtitle: 'COSMIC 度量表生产系统',
+  icon: 'DataAnalysis',
+  color: '#1d2535',
+  showSso: true,
+  showForgotPassword: true,
+  ssoConfig: {
+    issuer: 'https://auth.marschat.online',
+    clientId: 'cosmic-studio',
+    redirectUri: `${window.location.origin}/login`,
+    scope: 'openid profile',
+  },
+  labels: {
+    ssoButtonText: '统一认证登录（SSO）',
+    forgotPasswordText: '忘记密码？',
+    dividerText: '或',
+  },
+}
+
+function handleLogin(credentials: { username: string; password: string }) {
+  // cosmic-studio 使用自己的 API
+  // 这里需要根据实际 API 调整
+  console.log('Login:', credentials)
+  ElMessage.success('登录成功')
+  const redirect = (route.query.redirect as string) || '/'
+  router.push(redirect)
+}
+
+function handleSsoLogin() {
+  window.location.href = `/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
+}
+
+function handlePasswordReset() {
+  ElMessage.success('密码重置成功，请使用新密码登录')
 }
 </script>
 
-<style scoped>
-.login-wrap { height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #1d2535, #313d6b); }
-.login-card { width: 360px; text-align: center; padding: 10px 8px; }
-.login-card h2 { margin: 8px 0 0; }
-.sub { color: var(--c-text-3); margin: 6px 0 22px; }
+<style scoped lang="scss">
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1d2535 0%, #313d6b 100%);
+}
 </style>

@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 // 构建指纹：注入到前端运行时（window 全局 + Console 横幅）。
 // 用途：一眼确认浏览器里跑的是哪一次构建的产物 —— 排查「改了没生效 / 拿到旧包」的第一道闸。
@@ -25,6 +26,12 @@ function buildInfo() {
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@marschat/auth-components': resolve(__dirname, '../../../marschat-components/packages/auth-components/src'),
+      '@marschat/frontend-common': resolve(__dirname, '../../../marschat-components/packages/frontend-common/src'),
+    },
+  },
   base: '/',
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo()),
