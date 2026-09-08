@@ -24,6 +24,8 @@ export interface SystemConfig {
   loginPassword?: string
   status?: number
   sortOrder?: number
+  /** SSO 单点登录 URL（可选，配置后卡片显示 SSO 登录按钮） */
+  ssoUrl?: string
 }
 
 /** 系统登录凭据 */
@@ -45,6 +47,7 @@ export const systems: SystemConfig[] = [
     icon: 'Reading',
     color: '#409eff',
     techStack: 'Spring Boot 3.2 + Vue3 + MySQL + MongoDB + MinIO + MeiliSearch',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=kb-web&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fkb.marschat.online%2Fkb%2Fsso-callback',
     docs: [
       { label: '产品文档', url: 'https://kb.marschat.online/kb/#/dashboard' },
       { label: '部署方案', url: 'https://kb.marschat.online/kb/' },
@@ -60,6 +63,7 @@ export const systems: SystemConfig[] = [
     icon: 'Key',
     color: '#e6a23c',
     techStack: 'Spring Boot 3.4 + Java 21 + MyBatis-Plus + MySQL',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=marschat-activecode&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Ftools.marschat.online%2Factivecode%2Fsso-callback.html',
     docs: [
       { label: '设计文档', url: 'https://tools.marschat.online' },
     ],
@@ -87,14 +91,27 @@ export const systems: SystemConfig[] = [
   },
   {
     id: 'frp-dashboard',
-    name: 'FRP 仪表盘',
-    description: 'FRP 内网穿透管理：隧道监控、客户端管理、配置预览',
+    name: 'TokenHub (FRP 管理平台)',
+    description: 'FRP 内网穿透管理：隧道监控、客户端管理、配置预览、Token 管理',
     category: 'infra',
-    url: 'http://120.26.66.182:7500',
-    healthCheckUrl: 'http://120.26.66.182:7500',
+    url: 'http://192.168.31.105:8310',
+    urlPublic: 'https://frp.marschat.online',
     icon: 'Connection',
     color: '#f56c6c',
-    techStack: 'FRP + Spring Boot + Vue2',
+    techStack: 'Spring Boot 3.4 + Vue3 + MyBatis-Plus + MySQL',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=frp-manager&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Ffrp.marschat.online%2Fsso-callback',
+  },
+  {
+    id: 'infra-monitor',
+    name: 'InfraMonitor 基础设施监控',
+    description: '基础设施监控平台：主机监控、服务状态、配置管理、凭据管理',
+    category: 'infra',
+    url: 'https://monitor.marschat.online/infra/',
+    healthCheckUrl: 'https://monitor.marschat.online/infra/actuator/health',
+    icon: 'Monitor',
+    color: '#409eff',
+    techStack: 'Spring Boot 3.4 + Vue3 + MySQL',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=infra-monitor&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fmonitor.marschat.online%2Finfra%2Fsso-callback',
   },
   {
     id: 'dolphin',
@@ -117,6 +134,7 @@ export const systems: SystemConfig[] = [
     icon: 'SetUp',
     color: '#9c27b0',
     techStack: 'Spring Boot 3.2 + Java 21 + MyBatis-Plus + MySQL + Redis',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=kb-ops&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fkb.marschat.online%2Fops%2Fsso-callback',
     docs: [
       { label: '项目源码', url: 'https://github.com/' },
     ],

@@ -86,6 +86,17 @@
         </template>
       </el-dropdown>
 
+      <!-- SSO 单点登录按钮：仅对支持 SSO 的自研系统显示 -->
+      <el-button
+        v-if="config.ssoUrl"
+        size="small"
+        type="success"
+        @click="handleSsoLogin"
+      >
+        <el-icon><Connection /></el-icon>
+        SSO 登录
+      </el-button>
+
       <el-dropdown
         v-if="showCredentialsBtn"
         trigger="click"
@@ -134,7 +145,8 @@ import {
   User,
   Lock,
   Lightning,
-  View
+  View,
+  Connection
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { h } from 'vue'
@@ -174,6 +186,13 @@ function handleToggleFavorite() {
 
 function openUrl(url: string) {
   window.open(url, '_blank', 'noopener')
+}
+
+/** SSO 单点登录：跳转到目标系统的 SSO 授权端点 */
+function handleSsoLogin() {
+  if (props.config.ssoUrl) {
+    window.open(props.config.ssoUrl, '_blank', 'noopener')
+  }
 }
 
 function download() {
