@@ -1,105 +1,70 @@
 <template>
-  <div class="sso-callback-page">
-    <div class="sso-callback-card">
-      <template v-if="error">
-        <el-icon :size="44" color="#f56c6c"><CircleCloseFilled /></el-icon>
-        <h3>统一认证登录失败</h3>
-        <p class="err">{{ error }}</p>
-        <el-button type="primary" @click="backToLogin">返回登录页</el-button>
-      </template>
-      <template v-else>
-        <el-icon :size="44" color="#409eff" class="spin"><Loading /></el-icon>
-        <h3>统一认证登录中…</h3>
-        <p class="hint">正在换取访问令牌并进入运维管理平台</p>
-      </template>
+  <div class="sso-callback">
+    <div class="loading-container">
+      <el-icon class="loading-icon" :size="48"><Loading /></el-icon>
+      <p>SSO 登录中，请稍候...</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { CircleCloseFilled, Loading } from '@element-plus/icons-vue'
+import { onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
 import { handleSsoCallback, decodeOidcClaims } from '@/utils/sso'
-import { getToken } from '@/utils/token'
 import { useUserStore } from '@/stores/user'
+import { getToken } from '@/utils/token'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
-const error = ref('')
 
 onMounted(async () => {
   try {
-    const query = new URLSearchParams(window.location.search)
-    const target = await handleSsoCallback(query)
-    // 优先取授权服务器 token 里的业务 claims 构建会话
-    const claims = decodeOidcClaims(getToken() || '')
-    userStore.isLoggedIn = true
-    userStore.username = claims.username || 'unknown'
-    userStore.profile = {
-      id: Number(claims.uid || 0),
-      username: claims.username || 'unknown',
-      nickname: claims.username || '用户',
-      email: '',
-      avatar: '',
-      role: claims.role || 'user',
-      createdAt: '',
-      updatedAt: '',
+    const redirect = await handleSsoCallback(new URLSearchParams(window.location.search))
+    
+    // 解析用户信息（使用正确的 token key：kb_ops_access_token）
+    const token = getToken() || ''
+    if (token) {
+      const claims = decodeOidcClaims(token)
+      userStore.setOidcSession(claims.username || claims.sub || 'sso_user', claims)
     }
-    ElMessage.success('统一认证登录成功')
-    router.replace(target)
+    
+    ElMessage.success('SSO 登录成功')
+    router.push(redirect)
   } catch (e: any) {
-    error.value = e?.message || '登录过程出现未知错误'
+    ElMessage.error(e?.message || 'SSO 登录失败')
+    router.push('/login')
   }
 })
-
-function backToLogin() {
-  router.replace('/login')
-}
 </script>
 
 <style scoped lang="scss">
-.sso-callback-page {
+.sso-callback {
   width: 100%;
-  height: 100%;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
 }
 
-.sso-callback-card {
-  width: 90%;
-  max-width: 420px;
-  padding: 40px 28px;
+.loading-container {
   text-align: center;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-
-  h3 {
-    margin: 16px 0 8px;
-    color: #303133;
+  color: #fff;
+  
+  .loading-icon {
+    animation: spin 1.5s linear infinite;
   }
-
-  .err {
-    color: #f56c6c;
-    margin-bottom: 20px;
-    word-break: break-all;
-  }
-
-  .hint {
-    color: #909399;
-    margin-bottom: 12px;
-  }
-
-  .spin {
-    animation: rotate 1.2s linear infinite;
+  
+  p {
+    margin-top: 16px;
+    font-size: 16px;
   }
 }
 
-@keyframes rotate {
+@keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }

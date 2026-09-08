@@ -117,6 +117,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/login", "/auth/refresh").permitAll()
                 .requestMatchers("/auth/forgot-password", "/auth/reset-password").permitAll()
+                // 忘记密码自助页（静态资源，2026-09-07）
+                .requestMatchers("/forgot-password.html").permitAll()
                 .requestMatchers("/auth/error-log/report").permitAll()
                 .requestMatchers("/token/verify").permitAll()
                 .requestMatchers("/actuator/**").permitAll()

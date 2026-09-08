@@ -30,6 +30,9 @@
             show-password
           />
         </el-form-item>
+        <div class="forgot-line">
+          <a class="forgot-link" href="https://auth.marschat.online/forgot-password.html" target="_blank" rel="noopener">忘记密码？</a>
+        </div>
         <el-form-item>
           <el-button
             type="primary"
@@ -126,6 +129,22 @@ async function handleSsoLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+.forgot-line {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 14px;
+}
+
+.forgot-link {
+  font-size: 13px;
+  color: #409eff;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
 }
 
 .login-divider {
