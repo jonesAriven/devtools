@@ -1,4 +1,4 @@
-import { createRequest, createLocalStorageTokenStore } from '@marschat/request'
+import { createRequest, createLocalStorageTokenStore } from '@marschat/frontend-common'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { API_BASE_URL, AUTH_BASE_URL } from '@/config'
@@ -6,9 +6,9 @@ import { isOidcToken, refreshOidcToken } from '@/utils/sso'
 import { getToken, clearTokens } from '@/utils/token'
 
 /**
- * 统一 axios 实例工厂（@marschat/request）。
+ * 统一 axios 实例工厂（@marschat/frontend-common）。
  *
- * 迁移前本文件是全仓最成熟的 request 实现，已上抽为公共包 @marschat/request；
+ * 迁移前本文件是全仓最成熟的 request 实现，已上抽为公共包 @marschat/frontend-common；
  * 此处只保留应用侧差异：baseURL、token 存储 key 前缀、UI 反馈（ElMessage / router）。
  * 行为与迁移前一致：业务实例返回完整 response，auth 实例解包 data.data，
  * 401 走 /refresh 并发队列重放，白名单 /login、/refresh 不弹错、不跳登录。

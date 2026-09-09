@@ -9,3 +9,5 @@ onlyBuiltDependencies:
   - "@parcel/watcher"
 minimumReleaseAgeExclude:
   - '@marschat/request@0.1.0'
+  - '@marschat/auth-components@0.1.0'
+  - '@marschat/frontend-common@0.2.0'

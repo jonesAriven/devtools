@@ -11,6 +11,12 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.39)
+      '@marschat/auth-components':
+        specifier: 0.1.0
+        version: 0.1.0(element-plus@2.14.2)(typescript@5.9.3)
+      '@marschat/frontend-common':
+        specifier: 0.2.0
+        version: 0.2.0(element-plus@2.14.2)(vue@3.5.39)
       axios:
         specifier: ^1.18.1
         version: 1.18.1
@@ -356,6 +362,34 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+    dev: false
+
+  /@marschat/auth-components@0.1.0(element-plus@2.14.2)(typescript@5.9.3):
+    resolution: {integrity: sha512-HNYZiwenEPwPnQvdp4qpZbgiRoVPKBsvTSnZQg5efLtBD6LiDF1TGTkdIyAotWrLZz1qL3vuT4rCTpjDwWHcgw==}
+    peerDependencies:
+      element-plus: ^2.6.1
+    dependencies:
+      '@element-plus/icons-vue': 2.3.2(vue@3.5.39)
+      element-plus: 2.14.2(vue@3.5.39)
+      vue: 3.5.39(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+    dev: false
+
+  /@marschat/frontend-common@0.2.0(element-plus@2.14.2)(vue@3.5.39):
+    resolution: {integrity: sha512-CU6rC8DzyXo2VfZGl6OLTlO1RoDDjAMf33G4cXM0JN3nXP65KpI6YBeb+67PhbnLkyRe2IIMDKeSAk8+Rw1oag==}
+    peerDependencies:
+      element-plus: ^2.6.1
+      vue: ^3.4.21
+    dependencies:
+      '@vueuse/core': 10.11.1(vue@3.5.39)
+      axios: 1.18.1
+      element-plus: 2.14.2(vue@3.5.39)
+      vue: 3.5.39(typescript@5.9.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - debug
+      - supports-color
     dev: false
 
   /@nodelib/fs.scandir@2.1.5:
@@ -737,6 +771,10 @@ packages:
     resolution: {integrity: sha512-gIW7lQLZbue7lRSWEFql49QJJWThrTFFeIMJdp3eH4tKoxm1OvEPg02rm4wCCSHS0cL3/Fizimb35b7k8atwsQ==}
     dev: false
 
+  /@types/web-bluetooth@0.0.20:
+    resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
+    dev: false
+
   /@types/web-bluetooth@0.0.21:
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
     dev: false
@@ -921,6 +959,18 @@ packages:
   /@vue/shared@3.5.39:
     resolution: {integrity: sha512-l1rrBtBfTnmxvtsvdQDXltUUy8S1Y+ZaqdfUzmAnJkTd8Z8rv5v/ytW+TKiqEOWyHPoqtPlNFSs0lhRmYVSHVA==}
 
+  /@vueuse/core@10.11.1(vue@3.5.39):
+    resolution: {integrity: sha512-guoy26JQktXPcz+0n3GukWIy/JDNKti9v6VEMu6kV2sYBsWuGiTU8OWdg+ADfUbHg3/3DlqySDe7JmdHrktiww==}
+    dependencies:
+      '@types/web-bluetooth': 0.0.20
+      '@vueuse/metadata': 10.11.1
+      '@vueuse/shared': 10.11.1(vue@3.5.39)
+      vue-demi: 0.14.10(vue@3.5.39)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - vue
+    dev: false
+
   /@vueuse/core@14.3.0(vue@3.5.39):
     resolution: {integrity: sha512-aHfz47g0ZhMtTVHmIzMVpJy8ePhhOy68GY5bv110+5DVtZ+W7BsOx+m61UNQqfrWyPztIHIanWa3E2tib3NFIw==}
     peerDependencies:
@@ -932,8 +982,21 @@ packages:
       vue: 3.5.39(typescript@5.9.3)
     dev: false
 
+  /@vueuse/metadata@10.11.1:
+    resolution: {integrity: sha512-IGa5FXd003Ug1qAZmyE8wF3sJ81xGLSqTqtQ6jaVfkeZ4i5kS2mwQF61yhVqojRnenVew5PldLyRgvdl4YYuSw==}
+    dev: false
+
   /@vueuse/metadata@14.3.0:
     resolution: {integrity: sha512-BwxmbAzwAVF50+MW57GXOUEV61nFBGnlBvrTqj49PqWJu3uw7hdu72ztXeZ33RdZtDY6kO+bfCAE1PCn88Tktw==}
+    dev: false
+
+  /@vueuse/shared@10.11.1(vue@3.5.39):
+    resolution: {integrity: sha512-LHpC8711VFZlDaYUXEBbFBCQ7GS3dVU9mjOhhMhXP6txTV4EhYQg/KGnQuvt/sPAtoUKq7VVUnL6mVtFoL42sA==}
+    dependencies:
+      vue-demi: 0.14.10(vue@3.5.39)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - vue
     dev: false
 
   /@vueuse/shared@14.3.0(vue@3.5.39):
@@ -1937,6 +2000,21 @@ packages:
 
   /vue-component-type-helpers@3.3.7:
     resolution: {integrity: sha512-Skkhw9agYSgsWqv7bxSOGJZa9SaiJbZVGdXuFWnrzKaQYHnw9qbjD630rw6RyMqDbp54nfLCLw5SZA55if7JLg==}
+    dev: false
+
+  /vue-demi@0.14.10(vue@3.5.39):
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    requiresBuild: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+    dependencies:
+      vue: 3.5.39(typescript@5.9.3)
     dev: false
 
   /vue-router@5.1.0(pinia@3.0.4)(vite@5.4.21)(vue@3.5.39):

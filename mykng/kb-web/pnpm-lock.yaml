@@ -11,6 +11,12 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.38(typescript@5.9.3))
+      '@marschat/auth-components':
+        specifier: 0.1.0
+        version: 0.1.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)
+      '@marschat/frontend-common':
+        specifier: 0.2.0
+        version: 0.2.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))
       '@types/markdown-it':
         specifier: ^14.1.2
         version: 14.1.2
@@ -428,6 +434,17 @@ packages:
 
   '@marijn/find-cluster-break@1.0.3':
     resolution: {integrity: sha512-FY+MKLBoTsLNJF/eLWaOsXGdz6uh3Iu1axjPf6TUq92IYumcTcXWHoS747JARLkcdlJ/Waiaxc5wQfFO8jC6NA==}
+
+  '@marschat/auth-components@0.1.0':
+    resolution: {integrity: sha512-HNYZiwenEPwPnQvdp4qpZbgiRoVPKBsvTSnZQg5efLtBD6LiDF1TGTkdIyAotWrLZz1qL3vuT4rCTpjDwWHcgw==}
+    peerDependencies:
+      element-plus: ^2.6.1
+
+  '@marschat/frontend-common@0.2.0':
+    resolution: {integrity: sha512-CU6rC8DzyXo2VfZGl6OLTlO1RoDDjAMf33G4cXM0JN3nXP65KpI6YBeb+67PhbnLkyRe2IIMDKeSAk8+Rw1oag==}
+    peerDependencies:
+      element-plus: ^2.6.1
+      vue: ^3.4.21
 
   '@mermaid-js/parser@1.2.0':
     resolution: {integrity: sha512-oYPyv8A4As1yH5Bx+04iQEQxXuIQDe0GKCNSRgao6z8AM9jixXIfP0vsppRLvGf+nKIOb9/LdpWA4YuJiVvESA==}
@@ -2532,6 +2549,25 @@ snapshots:
       '@lezer/lr': 1.4.10
 
   '@marijn/find-cluster-break@1.0.3': {}
+
+  '@marschat/auth-components@0.1.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)':
+    dependencies:
+      '@element-plus/icons-vue': 2.3.2(vue@3.5.38(typescript@5.9.3))
+      element-plus: 2.14.1(vue@3.5.38(typescript@5.9.3))
+      vue: 3.5.38(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
+  '@marschat/frontend-common@0.2.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))':
+    dependencies:
+      '@vueuse/core': 10.11.1(vue@3.5.38(typescript@5.9.3))
+      axios: 1.17.0
+      element-plus: 2.14.1(vue@3.5.38(typescript@5.9.3))
+      vue: 3.5.38(typescript@5.9.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - debug
+      - supports-color
 
   '@mermaid-js/parser@1.2.0':
     dependencies:

@@ -11,9 +11,12 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.39(typescript@5.9.3))
-      '@marschat/request':
+      '@marschat/auth-components':
         specifier: 0.1.0
-        version: 0.1.0(axios@1.18.1)
+        version: 0.1.0(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
+      '@marschat/frontend-common':
+        specifier: 0.2.0
+        version: 0.2.0(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
       '@vueuse/core':
         specifier: ^10.9.0
         version: 10.11.1(vue@3.5.39(typescript@5.9.3))
@@ -239,10 +242,16 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@marschat/request@0.1.0':
-    resolution: {integrity: sha512-FdtzaxlUikR9GCryxyjwSpruLvlCFVANmNHuIzU9MzoyfQ80KhjqjJVNYY+gXgRCMQpQ8BW0W4l+YjAR5SPVBg==}
+  '@marschat/auth-components@0.1.0':
+    resolution: {integrity: sha512-HNYZiwenEPwPnQvdp4qpZbgiRoVPKBsvTSnZQg5efLtBD6LiDF1TGTkdIyAotWrLZz1qL3vuT4rCTpjDwWHcgw==}
     peerDependencies:
-      axios: '>=1.6.0'
+      element-plus: ^2.6.1
+
+  '@marschat/frontend-common@0.2.0':
+    resolution: {integrity: sha512-CU6rC8DzyXo2VfZGl6OLTlO1RoDDjAMf33G4cXM0JN3nXP65KpI6YBeb+67PhbnLkyRe2IIMDKeSAk8+Rw1oag==}
+    peerDependencies:
+      element-plus: ^2.6.1
+      vue: ^3.4.21
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1218,9 +1227,24 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@marschat/request@0.1.0(axios@1.18.1)':
+  '@marschat/auth-components@0.1.0(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
     dependencies:
+      '@element-plus/icons-vue': 2.3.2(vue@3.5.39(typescript@5.9.3))
+      element-plus: 2.14.2(vue@3.5.39(typescript@5.9.3))
+      vue: 3.5.39(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
+  '@marschat/frontend-common@0.2.0(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
+    dependencies:
+      '@vueuse/core': 10.11.1(vue@3.5.39(typescript@5.9.3))
       axios: 1.18.1
+      element-plus: 2.14.2(vue@3.5.39(typescript@5.9.3))
+      vue: 3.5.39(typescript@5.9.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - debug
+      - supports-color
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
