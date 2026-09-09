@@ -22,4 +22,4 @@
 | 2026-08-29 | ADR-2026-08-29 · cosmic-studio 系统建设 | - | cross-project | `/root/devtools/cosmic-studio/docs/adr/ADR-2026-08-29-cosmic-studio-system.md` |
 | 2026-09-08 | ADR-2026-09-08 · 统一认证单点登录（auth-center +  | - | cross-project | `/root/devtools/docs/adr/ADR-2026-09-08-统一认证单点登录.md` |
 | 2026-09-08 | ADR-2026-09-08 · 自研应用仓库地图与公共模块关联机制核实固化 | - | cross-project | `/root/hermes-workspace/adr/cross-project/ADR-2026-09-08-repo-map-and-shared-modules.md` |
-| 2026-09-09 | ADR-2026-09-09 · 公共组件发布到 Nexus npm 私服 | 已实施（4 个前端应用全部从私服拉取依赖） | cross-project | `/root/devtools/docs/adr/ADR-2026-09-09-公共组件发布到Nexus私服.md` |
+| 2026-09-09 | ADR-2026-09-09 · 公共组件发布到 Nexus npm 私服 | - | cross-project | `/root/devtools/docs/adr/ADR-2026-09-09-公共组件发布到Nexus私服.md` |
