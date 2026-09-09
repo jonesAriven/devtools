@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   { path: '/login', component: () => import('./views/Login.vue') },
+  { path: '/sso-callback', component: () => import('./views/SsoCallback.vue') },
   {
     path: '/', component: () => import('./Layout.vue'),
     children: [
@@ -22,7 +23,7 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to, from, next) => {
-  if (to.path !== '/login' && !localStorage.getItem('token')) next('/login')
+  if (to.path !== '/login' && to.path !== '/sso-callback' && !localStorage.getItem('token')) next('/login')
   else next()
 })
 

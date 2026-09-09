@@ -9,12 +9,24 @@
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" :prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
         </el-form-item>
+        <div class="forgot-line">
+          <a class="forgot-link" href="https://auth.marschat.online/forgot-password.html" target="_blank" rel="noopener">忘记密码？</a>
+        </div>
         <el-form-item>
           <el-button type="primary" :loading="loading" style="width: 100%" @click="handleLogin">
             登录
           </el-button>
         </el-form-item>
       </el-form>
+      <el-divider>或</el-divider>
+      <el-button
+        type="success"
+        class="sso-btn"
+        @click="handleSsoLogin"
+      >
+        <el-icon><Connection /></el-icon>
+        统一认证登录（SSO）
+      </el-button>
     </div>
   </div>
 </template>
@@ -22,9 +34,10 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Connection } from '@element-plus/icons-vue'
 import { authApi } from '../utils/api'
 import { ElMessage } from 'element-plus'
+import { startSsoLogin } from '../utils/sso'
 
 const router = useRouter()
 const formRef = ref(null)
@@ -44,12 +57,23 @@ const handleLogin = async () => {
     localStorage.setItem('token', res.data.token)
     localStorage.setItem('username', res.data.username)
     localStorage.setItem('role', res.data.role)
+    // 标记为 legacy token
+    localStorage.setItem('frp_token_kind', 'legacy')
     ElMessage.success('登录成功')
     router.push('/')
   } catch (e) {
     // Error handled by interceptor
   } finally {
     loading.value = false
+  }
+}
+
+/** SSO 统一认证登录：跳转到 auth-center 授权端点 */
+async function handleSsoLogin() {
+  try {
+    await startSsoLogin('/')
+  } catch (e) {
+    ElMessage.error(e?.message || 'SSO 登录发起失败')
   }
 }
 </script>
@@ -74,5 +98,21 @@ const handleLogin = async () => {
   margin-bottom: 30px;
   color: #303133;
   font-size: 24px;
+}
+.sso-btn {
+  width: 100%;
+}
+.forgot-line {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 14px;
+}
+.forgot-link {
+  font-size: 13px;
+  color: #409eff;
+  text-decoration: none;
+}
+.forgot-link:hover {
+  text-decoration: underline;
 }
 </style>

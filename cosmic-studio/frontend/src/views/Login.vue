@@ -13,6 +13,7 @@
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { LoginPanel } from '@marschat/auth-components'
+import api, { humanize } from '../api'
 
 const router = useRouter()
 const route = useRoute()
@@ -27,7 +28,7 @@ const loginConfig = {
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
     clientId: 'cosmic-studio',
-    redirectUri: `${window.location.origin}/login`,
+    redirectUri: `${window.location.origin}/sso-callback`,
     scope: 'openid profile',
   },
   labels: {
@@ -37,21 +38,29 @@ const loginConfig = {
   },
 }
 
-function handleLogin(credentials: { username: string; password: string }) {
-  // cosmic-studio 使用自己的 API
-  // 这里需要根据实际 API 调整
-  console.log('Login:', credentials)
-  ElMessage.success('登录成功')
-  const redirect = (route.query.redirect as string) || '/'
-  router.push(redirect)
+async function handleLogin(credentials: { username: string; password: string }) {
+  try {
+    const { data } = await api.post('/auth/login', credentials)
+    localStorage.setItem('token', data.token)
+    localStorage.setItem('user', JSON.stringify(data.user))
+    ElMessage.success('登录成功')
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
+  } catch (err: any) {
+    const detail = err?.response?.data
+    ElMessage.error(humanize(detail) || '登录失败，请检查用户名和密码')
+  }
 }
 
 function handleSsoLogin() {
-  window.location.href = `/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
+  // 跳转到 auth-center OIDC 授权端点
+  const redirect = (route.query.redirect as string) || window.location.origin
+  window.location.href = `/api/auth/sso/authorize?redirect=${encodeURIComponent(redirect)}`
 }
 
 function handlePasswordReset() {
-  ElMessage.success('密码重置成功，请使用新密码登录')
+  // cosmic-studio 后端暂无邮件验证码接口，提示联系管理员
+  ElMessage.info('如需重置密码，请联系系统管理员')
 }
 </script>
 

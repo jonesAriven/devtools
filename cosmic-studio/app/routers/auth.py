@@ -1,11 +1,63 @@
 """认证/用户管理路由。"""
+import base64
+import hashlib
 import json
+import logging
+import os
+import secrets
+import time
+import urllib.parse
+import urllib.request
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .. import config, db
 from ..auth import hash_password, make_token, require_role, verify_password
+
+logger = logging.getLogger(__name__)
+
+# ===== SSO (OIDC authorization_code + PKCE) 配置 =====
+OIDC_ISSUER = os.getenv("OIDC_ISSUER", "https://auth.marschat.online")
+OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "cosmic-studio")
+OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET", "")
+OIDC_REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI", "")  # 运行时从请求推导
+
+
+def _build_redirect_uri(request: Request) -> str:
+    """从请求上下文推导回调地址（避免硬编码域名）。"""
+    if OIDC_REDIRECT_URI:
+        return OIDC_REDIRECT_URI
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.hostname)
+    port = request.url.port
+    if port and port not in (80, 443) and ":" not in host:
+        host = f"{host}:{port}"
+    return f"{scheme}://{host}/sso-callback"
+
+
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode().rstrip("=")
+
+
+def _sha256_b64url(text: str) -> str:
+    digest = hashlib.sha256(text.encode()).digest()
+    return _b64url_encode(digest)
+
+
+def _verify_oidc_token(access_token: str) -> dict | None:
+    """向 auth-center 的 /userinfo 发请求验签，返回 claims 或 None。"""
+    try:
+        url = f"{OIDC_ISSUER}/userinfo"
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {access_token}"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status != 200:
+                return None
+            return json.loads(resp.read())
+    except Exception as e:
+        logger.warning("OIDC /userinfo 验证失败: %s", e)
+        return None
 
 r = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -144,6 +196,120 @@ def _delete_user(uid: int, operator_id: int) -> dict:
 @r.delete("/users/{uid}")
 def delete_user(uid: int, user: dict = Depends(require_role("admin"))):
     return {"deleted": _delete_user(uid, user["id"])}
+
+
+# ===== SSO (OIDC) 路由 =====
+
+class SsoCallbackIn(BaseModel):
+    code: str
+    state: str = ""
+    redirect_uri: str = ""
+
+
+@r.get("/sso/authorize")
+def sso_authorize(request: Request, redirect: str = ""):
+    """发起 OIDC authorization_code + PKCE 流程，重定向到 auth-center。"""
+    verifier = _b64url_encode(secrets.token_bytes(32))
+    challenge = _sha256_b64url(verifier)
+    state = _b64url_encode(secrets.token_bytes(16))
+    callback_uri = _build_redirect_uri(request)
+
+    # 将 verifier/state 存入 app_kv（短期，60秒过期）
+    state_key = f"sso_state:{state}"
+    db.execute(config.DB_STUDIO,
+               "INSERT INTO app_kv (k, v) VALUES (%s, %s) "
+               "ON DUPLICATE KEY UPDATE v=%s",
+               (state_key, json.dumps({"verifier": verifier, "redirect": redirect}),
+                json.dumps({"verifier": verifier, "redirect": redirect})))
+
+    params = urllib.parse.urlencode({
+        "client_id": OIDC_CLIENT_ID,
+        "redirect_uri": callback_uri,
+        "response_type": "code",
+        "scope": "openid profile",
+        "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    })
+    return RedirectResponse(f"{OIDC_ISSUER}/oauth2/authorize?{params}")
+
+
+@r.post("/sso/callback")
+def sso_callback(body: SsoCallbackIn, request: Request):
+    """前端 SSO 回调页用 code+verifier 换 token，后端验签后建立本地会话。"""
+    callback_uri = body.redirect_uri or _build_redirect_uri(request)
+
+    # 从 app_kv 取 verifier
+    state_key = f"sso_state:{body.state}"
+    row = db.query(config.DB_STUDIO, "SELECT v FROM app_kv WHERE k=%s", (state_key,), one=True)
+    if not row:
+        raise HTTPException(400, "SSO state 已过期或不匹配，请重新发起登录")
+    saved = json.loads(row["v"])
+    verifier = saved["verifier"]
+    redirect = saved.get("redirect", "")
+
+    # 清理 state
+    db.execute(config.DB_STUDIO, "DELETE FROM app_kv WHERE k=%s", (state_key,))
+
+    # 向 auth-center 换 token
+    token_data = urllib.parse.urlencode({
+        "grant_type": "authorization_code",
+        "code": body.code,
+        "redirect_uri": callback_uri,
+        "client_id": OIDC_CLIENT_ID,
+        "code_verifier": verifier,
+    })
+    if OIDC_CLIENT_SECRET:
+        token_data += f"&client_secret={urllib.parse.quote(OIDC_CLIENT_SECRET)}"
+
+    try:
+        token_req = urllib.request.Request(
+            f"{OIDC_ISSUER}/oauth2/token",
+            data=token_data.encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(token_req, timeout=10) as resp:
+            tokens = json.loads(resp.read())
+    except Exception as e:
+        raise HTTPException(401, f"换取令牌失败: {e}")
+
+    access_token = tokens.get("access_token", "")
+    if not access_token:
+        raise HTTPException(401, "认证中心未返回 access_token")
+
+    # 验签：通过 /userinfo 获取用户信息
+    claims = _verify_oidc_token(access_token)
+    if not claims:
+        raise HTTPException(401, "access_token 验签失败")
+
+    username = claims.get("preferred_username") or claims.get("sub") or claims.get("name", "")
+    if not username:
+        raise HTTPException(401, "token 中无用户名声明")
+
+    # 映射到本地用户：优先同名，回退到第一个 admin
+    user = db.query(config.DB_STUDIO,
+                    "SELECT * FROM users WHERE username=%s AND enabled=1",
+                    (username,), one=True)
+    if not user:
+        user = db.query(config.DB_STUDIO,
+                       "SELECT * FROM users WHERE role='admin' AND enabled=1 ORDER BY id LIMIT 1",
+                       one=True)
+    if not user:
+        raise HTTPException(403, "未找到可映射的用户账号")
+
+    token = make_token(user)
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "role": user["role"],
+            "display_name": user["display_name"],
+            "menu_perms": _perms_out(user.get("menu_perms")),
+        },
+        "redirect": redirect or "/",
+    }
 
 
 @r.post("/users/bulk-delete")

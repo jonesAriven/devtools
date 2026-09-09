@@ -6,6 +6,12 @@ const routes = [
     name: 'Login',
     component: () => import('../views/Login.vue')
   },
+  // SSO 回调路由（无需认证）
+  {
+    path: '/sso-callback',
+    name: 'SsoCallback',
+    component: () => import('../views/SsoCallback.vue')
+  },
   {
     path: '/',
     component: () => import('../views/Layout.vue'),
@@ -52,7 +58,8 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-  if (to.name !== 'Login' && !token) {
+  // 登录页和 SSO 回调页不需要认证
+  if (to.name !== 'Login' && to.name !== 'SsoCallback' && !token) {
     next('/login')
   } else {
     next()
