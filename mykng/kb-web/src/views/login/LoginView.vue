@@ -1,18 +1,16 @@
 <template>
-  <div class="login-page">
-    <LoginPanel 
-      :config="loginConfig" 
-      @login="handleLogin" 
-      @sso-login="handleSsoLogin"
-      @password-reset="handlePasswordReset"
-    />
-  </div>
+  <LoginPage
+    :config="loginConfig"
+    @login="handleLogin"
+    @sso-login="handleSsoLogin"
+    @password-reset="handlePasswordReset"
+  />
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { LoginPanel } from '@marschat/auth-components'
+import { LoginPage } from '@marschat/auth-components'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
@@ -36,6 +34,15 @@ const loginConfig = {
     forgotPasswordText: '忘记密码？',
     dividerText: '或',
   },
+  brand: {
+    tagline: '企业知识资产 · 检索 / 协作 / 智能问答',
+    highlights: [
+      { icon: 'Search', title: '知识检索', desc: '全文检索，秒级定位文档' },
+      { icon: 'Document', title: '文档协同', desc: '多人协作编辑与版本管理' },
+      { icon: 'ChatDotRound', title: '智能问答', desc: '基于知识库的 AI 问答' },
+    ],
+    gradient: ['#15324d', '#1c6e8c'],
+  },
 }
 
 async function handleLogin(credentials: { username: string; password: string }) {
@@ -57,13 +64,3 @@ function handlePasswordReset() {
   ElMessage.success('密码重置成功，请使用新密码登录')
 }
 </script>
-
-<style scoped lang="scss">
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-</style>

@@ -1,18 +1,14 @@
 <template>
-  <div class="login-page">
-    <LoginPanel 
-      :config="loginConfig" 
-      @login="handleLogin" 
-      @sso-login="handleSsoLogin"
-      @password-reset="handlePasswordReset"
-    />
-  </div>
+  <LoginPage
+    :config="loginConfig"
+    @sso-login="handleSsoLogin"
+    @password-reset="handlePasswordReset"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { LoginPanel } from '@marschat/auth-components'
+import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
 import { startSsoLogin } from '@/utils/sso'
@@ -27,7 +23,7 @@ const loginConfig = {
   icon: 'Setting',
   color: '#409eff',
   showSso: true,
-  showForgotPassword: true,  // 启用集成式忘记密码
+  showForgotPassword: true,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
     clientId: 'marschat-kbops',
@@ -38,10 +34,20 @@ const loginConfig = {
     ssoButtonText: '统一认证登录（SSO）',
     forgotPasswordText: '忘记密码？',
   },
+  // 独立登录：LoginPage 成功后自动提示并跳转
   onLogin: async (credentials: { username: string; password: string }) => {
     await userStore.login(credentials.username, credentials.password)
     const redirect = route.query.redirect as string
     router.push(redirect || '/dashboard')
+  },
+  brand: {
+    tagline: '运维一体化平台 · 监控 / 告警 / 自动化',
+    highlights: [
+      { icon: 'Monitor', title: '服务监控', desc: '实时指标与拓扑可视' },
+      { icon: 'Bell', title: '告警通知', desc: '多通道告警即时触达' },
+      { icon: 'Switch', title: '运维自动化', desc: '编排任务与批处理' },
+    ],
+    gradient: ['#0d2b4e', '#1a5bb8'],
   },
 }
 
@@ -57,14 +63,3 @@ async function handleSsoLogin() {
   }
 }
 </script>
-
-<style scoped lang="scss">
-.login-page {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-}
-</style>

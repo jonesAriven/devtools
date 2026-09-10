@@ -1,18 +1,15 @@
 <template>
-  <div class="login-page">
-    <LoginPanel 
-      :config="loginConfig" 
-      @login="handleLogin" 
-      @sso-login="handleSsoLogin"
-      @password-reset="handlePasswordReset"
-    />
-  </div>
+  <LoginPage
+    :config="loginConfig"
+    @sso-login="handleSsoLogin"
+    @password-reset="handlePasswordReset"
+  />
 </template>
 
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { LoginPanel } from '@marschat/auth-components'
+import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -37,30 +34,28 @@ const loginConfig = {
     forgotPasswordText: '忘记密码？',
     dividerText: '或',
   },
-  // 独立登录回调
+  // 独立登录：LoginPage 会在成功后自动提示并跳转
   onLogin: async (credentials: { username: string; password: string }) => {
     await userStore.login(credentials)
-    ElMessage.success('登录成功')
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   },
-  // SSO 登录回调（可选，默认会跳转到授权端点）
-  onSsoLogin: () => {
-    window.location.href = `/portal/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
+  brand: {
+    tagline: '一个入口，掌控所有内部系统',
+    highlights: [
+      { icon: 'Menu', title: '统一导航', desc: '一个入口直达所有内部系统' },
+      { icon: 'Monitor', title: '状态监控', desc: '实时掌握服务运行状态' },
+      { icon: 'Setting', title: '系统管理', desc: '集中管理工具与配置' },
+    ],
+    gradient: ['#27245e', '#4b3fa8'],
   },
 }
 
 function handlePasswordReset() {
   ElMessage.success('密码重置成功，请使用新密码登录')
 }
-</script>
 
-<style scoped lang="scss">
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+function handleSsoLogin() {
+  window.location.href = `/portal/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
 }
-</style>
+</script>
