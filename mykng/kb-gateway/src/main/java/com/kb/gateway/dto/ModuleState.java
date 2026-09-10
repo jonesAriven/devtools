@@ -12,13 +12,20 @@ package com.kb.gateway.dto;
  *   <tr><th>取值</th><th>判据</th><th>语义</th><th>可用</th></tr>
  *   <tr><td>OK</td><td>在期望集 且 Nacos 有实例</td><td>正常</td><td>是</td></tr>
  *   <tr><td>DOWN</td><td>在期望集 且 实例数为 0，但曾有实例</td><td>运维事件：服务下线/崩溃</td><td>否</td></tr>
- *   <tr><td>MISSING</td><td>在期望集 且 从未注册过实例</td><td>配置漂移：模块名对不上（最危险的一类）</td><td>否</td></tr>
+ *   <tr><td>MISSING</td><td>在期望集 且 本次进程启动以来从未见过该服务（Nacos 列表里也没有）</td><td>配置漂移（模块名对不上），或服务长期未启动</td><td>否</td></tr>
  *   <tr><td>UNEXPECTED</td><td>不在期望集 但 Nacos 有实例</td><td>野模块：注册了但注册表没声明</td><td>是</td></tr>
  *   <tr><td>UNKNOWN</td><td>探活基建本身不可用（Nacos 整体拉取失败/单模块超时）</td><td>无法判定，按可用放行避免误隐藏</td><td>是</td></tr>
  * </table>
  *
  * <p>注意 {@code DOWN} 与 {@code MISSING} 的区分是本枚举的核心价值：前者要运维介入重启，
  * 后者要开发改配置——前端 tooltip 会据此给出不同的排障指引。
+ *
+ * <p><b>⚠️ 已知限制</b>：{@code DOWN} 与 {@code MISSING} 的区分依赖进程内 {@code everSeen} 集合
+ * （即"本次网关启动以来是否见过该服务"）。Nacos 会清理实例数为 0 的服务名，因此一个
+ * <b>真正宕机、且跨过了网关重启</b>的服务同样会被判为 {@code MISSING}——
+ * 此时它只能表达"自本次网关启动后未见注册"，<b>不能据此断言"配置/命名不一致"</b>。
+ * 前端文案因此只陈述可观测事实并列出两种可能，不替运维下结论。
+ * 彻底消除该歧义需持久化 {@code everSeen}，见 ADR Phase 0.5 §12.11「已知限制」。
  */
 public enum ModuleState {
 
@@ -26,7 +33,7 @@ public enum ModuleState {
     OK,
     /** 期望集内、曾有实例、现为 0 —— 服务下线（运维事件） */
     DOWN,
-    /** 期望集内、从未注册过实例 —— 命名/配置漂移（配置事件） */
+    /** 期望集内、本次启动以来从未见过该服务 —— 命名/配置漂移，或服务长期未启动 */
     MISSING,
     /** 期望集外、Nacos 却有实例 —— 未声明的野模块 */
     UNEXPECTED,

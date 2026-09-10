@@ -8,7 +8,7 @@ import { getModuleStatus as getModuleStatusApi } from '@/api/system'
 /**
  * 系统模块状态 Store（M7-2 动态菜单）
  *
- * 后端返回四态状态：OK（可用）/ DOWN（宕机，运维事件）/ MISSING（未注册，配置漂移）/ UNEXPECTED（野模块但可达）。
+ * 后端返回四态状态：OK（可用）/ DOWN（宕机，运维事件）/ MISSING（本次网关启动以来未见过该服务）/ UNEXPECTED（野模块但可达）。
  * 菜单显隐改为「灰显 + 状态点 + 原因 tooltip」，不再静默移除菜单项。
  *
  * 降级策略：拉取失败时默认所有模块可用，避免瞬时故障误隐藏菜单。
@@ -94,7 +94,8 @@ export const useModuleStore = defineStore('module', () => {
   /**
    * 取模块不可用的中文原因，仅不可用时返回非空：
    * - DOWN：服务曾在线、当前实例数为 0 → 运维事件（宕机）
-   * - MISSING：从未注册过实例 → 配置/命名漂移（如模块改名未同步注册表）
+   * - MISSING：本次网关启动以来从未见过该服务 → 可能是配置/命名漂移（如模块改名未同步注册表），
+   *   也可能是服务长期未启动（判据无法区分，见 ADR §12.11 已知限制）
    * - 其他（OK/UNEXPECTED/UNKNOWN）→ 空串
    */
   function getModuleUnavailableReason(name: string): string {
@@ -102,9 +103,13 @@ export const useModuleStore = defineStore('module', () => {
     if (!m) return ''
     switch (m.state) {
       case 'DOWN':
-        return '服务暂时不可用（已下线）'
+        return '服务暂时不可用（实例已全部下线，请检查服务进程）'
       case 'MISSING':
-        return '服务未注册（疑似配置或命名不一致，请联系管理员）'
+        // ⚠️ 不能断言"配置/命名不一致"：MISSING 的判据是"本次网关启动以来从未见过该服务，
+        // 且 Nacos 服务列表中也不存在"。Nacos 会清理掉实例数为 0 的服务名，所以一个真正
+        // 宕机、且跨过了网关重启的服务同样会落到这里（见 ADR §12.11「已知限制」）。
+        // 因此文案只陈述可观测事实 + 列出两种可能，不替运维下结论。
+        return '本次网关启动后未见该服务注册（请确认服务是否已启动，以及注册名/配置是否一致）'
       default:
         return ''
     }
