@@ -46,8 +46,18 @@ PROJECT_MAP = {
     "portal-server": "portal-server",
     "workcheck-python": "workcheck-python",
     "platform": "platform",
+    "auth-center": "auth-center",
     "all": "",
 }
+
+# 各项目对应的 Woodpecker repo_id 与默认分支。
+# 2026-09-11 起 auth-center 有自己的独立流水线（仓库自带 .woodpecker.yml，repo_id=4，分支 main），
+# 不再寄生在 devtools(repo_id=1) 的 mykng 流水线里 —— 见 ADR-2026-09-10 §13.5/§14。
+REPO_MAP = {
+    "auth-center": {"repo_id": 4, "branch": "main"},
+}
+DEFAULT_REPO_ID = REPO_ID          # devtools (repo_id=1)，其余项目都走它
+DEFAULT_BRANCH = "dev"
 
 PROJECT_DISPLAY = {
     "mykng": "知识库(mykng)", "kb-ops": "运维后台(kb-ops)",
@@ -57,6 +67,7 @@ PROJECT_DISPLAY = {
     "portal-web": "门户前端(portal-web)", "portal-server": "门户后端(portal-svr)",
     "workcheck-python": "工作量管理(workcheck)",
     "platform": "平台中间件(platform)",
+    "auth-center": "统一认证中心(auth-center)",
     "all": "全量(all)",
 }
 
@@ -98,7 +109,7 @@ def main():
             sys.exit(1)
 
     project = args[0]
-    branch = "dev"
+    branch = None  # 未显式指定时按项目取默认分支
     note = None
     do_wait = False
 
@@ -121,8 +132,14 @@ def main():
         print(f"  支持项目: {', '.join(PROJECT_MAP.keys())}")
         sys.exit(1)
 
+    # 按 project 解析 repo 与默认分支（auth-center 独立仓库走自己的流水线）
+    repo_conf = REPO_MAP.get(project, {})
+    repo_id = repo_conf.get("repo_id", DEFAULT_REPO_ID)
+    if branch is None:
+        branch = repo_conf.get("branch", DEFAULT_BRANCH)
+
     # 触发流水线
-    result = api_post(f"/api/repos/{REPO_ID}/pipelines", {
+    result = api_post(f"/api/repos/{repo_id}/pipelines", {
         "branch": branch,
         "variables": {"DEPLOY_TARGET": deploy_target}
     })
@@ -141,7 +158,7 @@ def main():
         print(f"  备注:   {note}")
     print(f"  时间:   {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*56}")
-    print(f"  查看:   {get_url()}/repos/{REPO_ID}/pipeline/{pipeline_num}")
+    print(f"  查看:   {get_url()}/repos/{repo_id}/pipeline/{pipeline_num}")
 
     # --wait 模式：触发后自动进入监控
     if do_wait:

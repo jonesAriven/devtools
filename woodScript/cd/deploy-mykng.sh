@@ -6,7 +6,8 @@
 # 示例: bash deploy-mykng.sh mykng-latest.tar.gz
 #
 # 部署的服务: kb-gateway, kb-file, kb-knowledge, kb-intelligence
-#            （+ Step 0.5 独立拉取部署 auth-center，独立仓库 /root/auth-center，非 mykng 模块）
+#            （auth-center 已于 2026-09-11 拆到独立流水线，见 auth-center 仓库 .woodpecker.yml，
+#              ADR-2026-09-10 §13.5/§14）
 # Compose:    docker-compose.app.yml (project: kb-app)
 # 前置条件:   platform 全局基础设施层已启动
 # 隔离性:     只重建这4个服务，不影响kb-ops 和前端容器
@@ -36,24 +37,11 @@ get_jar_name() {
 
 log_header "${APP_NAME}" "${TAR_FILE}"
 
-# ====== Step 0.5: auth-center (independent repo fka kb-auth) ======
-log_step 0.5 6 "auth-center: pull & build"
-cd /root/auth-center || exit 1
-# 远程名容错：服务器上 auth-center 只配了 gitee / github，没有 origin。
-# 原写法 git pull origin main 会直接失败（'origin' does not appear to be a git repository），
-# 配合 || exit 1 会中断整个 mykng 部署。这里自愈式补齐 origin。
-if ! git remote get-url origin >/dev/null 2>&1; then
-  git remote add origin git@gitee.com:jonesAriven/auth-center.git || exit 1
-fi
-git fetch origin -q || exit 1
-git checkout -q main || exit 1
-git reset --hard origin/main || exit 1
-mvn -q -DskipTests package -B -ntp || exit 1
-cp target/auth-center.jar "${DEPLOY_BASE}/jars-mykng/auth-center.jar" || exit 1
-cd - >/dev/null
-# stop legacy kb-auth container to free port 8085 (idempotent)
-docker stop kb-auth 2>/dev/null || true
-docker rm kb-auth 2>/dev/null || true
+# (Step 0.5 已移除) auth-center 于 2026-09-11 拆到独立流水线：
+#   - 流水线定义: auth-center 仓库 .woodpecker.yml（CI 构建产物 + 独立部署 + 8085 健康检查）
+#   - 部署脚本:   auth-center 仓库 scripts/deploy.sh（落在 /mnt/shared/auth-center-build/）
+#   - compose 里 auth-center 的 build context 已改为 /mnt/shared/auth-center-build
+#   mykng 部署不再触碰 auth-center，两边彻底解耦。
 
 # ====== Step 1: 验证产物 ======
 log_step 1 6 "验证产物"
@@ -85,13 +73,15 @@ done
 log_step 3 6 "环境准备"
 ensure_platform
 
-# ====== Step 4: 停止旧服务(只停5个，不影响其他 ======
+# ====== Step 4: 停止旧服务(只停4个，不影响其他 ======
+# 2026-09-11 起 auth-center 已拆到独立流水线（auth-center 仓库自带 .woodpecker.yml），
+# 不再随 mykng 部署（见 ADR-2026-09-10 §13.5/§14）。此处只管 4 个 mykng 服务。
 log_step 4 6 "停止旧服务"
-compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}" auth-center
+compose_stop_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 5: 构建并启动 ======
 log_step 5 6 "构建并启动新服务"
-compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}" auth-center
+compose_up_services "${DEPLOY_BASE}" "${COMPOSE_PROJECT}" "${COMPOSE_FILE}" "${SERVICES[@]}"
 
 # ====== Step 6: 健康检查 & 清理 ======
 log_step 6 6 "健康检查 & 清理"

@@ -253,7 +253,17 @@ def watch_pipeline(pipeline_num=None, interval=15):
 # ==================== 主入口 ====================
 
 def main():
+    global REPO_ID
     args = sys.argv[1:]
+
+    # --repo N: 指定 Woodpecker repo_id（默认 1=devtools；auth-center=4，2026-09-11 独立流水线）
+    if "--repo" in args:
+        idx = args.index("--repo")
+        if idx + 1 >= len(args) or not args[idx + 1].isdigit():
+            print("用法: python check-pipeline.py --repo <repo_id> [编号|--log N|--watch N|--recent N]")
+            sys.exit(1)
+        REPO_ID = int(args[idx + 1])
+        args = args[:idx] + args[idx + 2:]
 
     # --watch: 持续监控
     if "--watch" in args:

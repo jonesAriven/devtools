@@ -7,7 +7,8 @@
 #
 # 隔离性:
 #   - 无 depends_on, 每个服务可独立部署
-#   - mykng 部署: up -d --force-recreate kb-gateway auth-center kb-file kb-knowledge kb-intelligence
+#   - mykng 部署: up -d --force-recreate kb-gateway kb-file kb-knowledge kb-intelligence
+#   - auth-center 部署: 独立流水线（auth-center 仓库 .woodpecker.yml），只重建它自己
 #   - kb-ops 部署: up -d --force-recreate kb-ops
 #   - 互不影响
 # ============================================================
@@ -41,8 +42,11 @@ services:
 
   # ========== 认证服务 ==========
   auth-center:
-    # 2026-09-07 剥离独立仓库：真源 gitee/github jonesAriven/auth-center，服务器克隆 /root/auth-center
-    build: /root/auth-center
+    # 2026-09-07 剥离独立仓库：真源 gitee/github jonesAriven/auth-center
+    # 2026-09-11 起走 auth-center 自己的 Woodpecker 流水线（仓库内 .woodpecker.yml）：
+    #   CI 构建 auth-center-latest.tar.gz -> 解压到 /mnt/shared/auth-center-build -> 本文件 build 此目录。
+    #   服务器不再需要 /root/auth-center git 克隆与本地 mvn。
+    build: /mnt/shared/auth-center-build
     container_name: auth-center
     restart: on-failure:5
     ports:
