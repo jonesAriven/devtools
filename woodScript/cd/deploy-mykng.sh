@@ -38,7 +38,15 @@ log_header "${APP_NAME}" "${TAR_FILE}"
 # ====== Step 0.5: auth-center (independent repo fka kb-auth) ======
 log_step 0.5 6 "auth-center: pull & build"
 cd /root/auth-center || exit 1
-git pull origin main || exit 1
+# 远程名容错：服务器上 auth-center 只配了 gitee / github，没有 origin。
+# 原写法 git pull origin main 会直接失败（'origin' does not appear to be a git repository），
+# 配合 || exit 1 会中断整个 mykng 部署。这里自愈式补齐 origin。
+if ! git remote get-url origin >/dev/null 2>&1; then
+  git remote add origin git@gitee.com:jonesAriven/auth-center.git || exit 1
+fi
+git fetch origin -q || exit 1
+git checkout -q main || exit 1
+git reset --hard origin/main || exit 1
 mvn -q -DskipTests package -B -ntp || exit 1
 cp target/auth-center.jar "${DEPLOY_BASE}/jars-mykng/auth-center.jar" || exit 1
 cd - >/dev/null
