@@ -364,7 +364,7 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: false
 
-  /@marschat/auth-components@0.3.2(element-plus@2.14.2)(typescript@5.9.3)
+  /@marschat/auth-components@0.3.2(element-plus@2.14.2)(typescript@5.9.3):
     resolution: {integrity: sha512-2brTe5c8D88sv1V74NM9NWYPR5BBp5/GUv45R1iR83RRUOxBhVJHDlXgSi5viuJBOQ0/zPMmknan3CUgpYE0ew==}
     peerDependencies:
       element-plus: ^2.6.1
