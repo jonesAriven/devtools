@@ -1,5 +1,9 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { getToken } from '@/utils/token'
@@ -9,22 +13,20 @@ import { setupErrorHandler } from '@/utils/errorReporter'
 
 setupErrorHandler()
 
-// Element Plus 按需导入：仅导入命令式 API 的样式（模板组件由 unplugin-vue-components 自动按需导入）
-import 'element-plus/theme-chalk/el-message.css'
-import 'element-plus/theme-chalk/el-message-box.css'
-import 'element-plus/theme-chalk/el-notification.css'
-import 'element-plus/theme-chalk/el-loading.css'
-// Element Plus 暗黑模式样式
-import 'element-plus/theme-chalk/dark/css-vars.css'
-
 import './styles/index.scss'
 import './styles/mobile.scss'
 import './styles/dark.scss'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+for (const [name, comp] of Object.entries(ElementPlusIconsVue)) {
+  app.component(name, comp)
+}
+
 app.use(pinia)
 app.use(router)
+app.use(ElementPlus)
 app.mount('#app')
 
 // 应用启动时：初始化主题（暗黑/明亮）
