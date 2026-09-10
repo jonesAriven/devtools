@@ -87,6 +87,11 @@ build/
 # ============================================================
 openclaw-work-space/
 openclaw/
+# 嵌套的独立 git 仓库：它们各有自己的 remote，绝不能被 add -A 当 gitlink 塞进主仓
+# 2026-09-10：auto backup 曾把已迁出的 cosmic-studio 子目录反复提交回主仓（6万行）
+/cosmic-studio/
+/marschat-components/
+/ms-tmp/
 
 # ============================================================
 # Trae AI 临时文件
