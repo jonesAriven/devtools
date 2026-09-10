@@ -119,7 +119,7 @@ kb:
     # 统一上下文路径（与 KB_CONTEXT 环境变量一致）
     context-path: ${KB_CONTEXT:/kb}
     jwt:
-      # 与 kb-auth 保持一致的 HMAC-SHA 密钥
+      # 与 auth-center 保持一致的 HMAC-SHA 密钥
       secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
       header: Authorization
     # 鉴权白名单（使用 KB_CONTEXT 变量）
@@ -149,7 +149,7 @@ kb:
 marschat:
   oidc:
     issuer: ${OIDC_ISSUER:https://auth.marschat.online}
-    jwks-uri: ${OIDC_JWKS_URI:http://kb-auth:8085/oauth2/jwks}
+    jwks-uri: ${OIDC_JWKS_URI:http://auth-center:8085/oauth2/jwks}
     # M6: kb.gateway.services 已废弃，路由 uri 改为 lb://服务名 通过 Nacos 服务发现
 
 # M6: springdoc-openapi 网关聚合配置（WebFlux）
@@ -161,7 +161,7 @@ springdoc:
     operations-sorter: alpha
     config-url: ${KB_CONTEXT:/kb}/v3/api-docs/swagger-config
     urls:
-      - name: 认证服务 (kb-auth)
+      - name: 认证服务 (auth-center)
         url: ${KB_CONTEXT:/kb}/api/auth/v3/api-docs
       - name: 文件服务 (kb-file)
         url: ${KB_CONTEXT:/kb}/api/file/v3/api-docs

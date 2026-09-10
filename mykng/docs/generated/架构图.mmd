@@ -4,7 +4,7 @@ graph TD
     User[用户] -->|HTTPS| Gateway[API 网关<br/>kb-gateway:8090]
 
     %% ===== 网关层 ===== %%
-    Gateway -->|lb://| Auth[认证服务<br/>kb-auth:8081]
+    Gateway -->|lb://| Auth[统一认证中心<br/>auth-center:8085]
     Gateway -->|lb://| File[文件服务<br/>kb-file:8082]
     Gateway -->|lb://| Knowledge[知识库服务<br/>kb-knowledge:8083]
     Gateway -->|lb://| Intelligence[知识引擎<br/>kb-intelligence:8086]

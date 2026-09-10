@@ -4,7 +4,7 @@
 MyKNG 知识库平台 — E2E 全量功能测试（多角色视角）
 
 测试范围：
-- 6 个微服务的核心 API（kb-auth/kb-file/kb-knowledge/kb-ops/kb-intelligence/kb-gateway）
+- 6 个微服务的核心 API（auth-center/kb-file/kb-knowledge/kb-ops/kb-intelligence/kb-gateway）
 - 11 个容器健康检查
 - 关键业务流程：登录 → 创建空间 → 创建文件夹 → 创建文档 → 搜索 → 标签 → 分享 → 回收站 → 登出
 
@@ -72,7 +72,7 @@ print("Phase 1: 容器健康检查（11 个容器）")
 print("=" * 70)
 
 CONTAINERS = [
-    "kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-ops", "kb-intelligence",
+    "kb-gateway", "auth-center", "kb-file", "kb-knowledge", "kb-ops", "kb-intelligence",
     "kb-mysql", "kb-mongodb", "kb-redis", "kb-minio", "kb-meilisearch",
 ]
 
@@ -103,70 +103,70 @@ except Exception as e:
     record("网关健康", "/actuator/health", False, str(e))
 
 
-# ============ Phase 2: kb-auth 认证模块 ============
+# ============ Phase 2: auth-center 认证模块 ============
 print("\n" + "=" * 70)
-print("Phase 2: kb-auth 认证模块（12 个接口）")
+print("Phase 2: auth-center 认证模块（12 个接口）")
 print("=" * 70)
 
 # 2.1 登录（正确）
 status, body = http_request("POST", "/auth/login", body={"username": "admin", "password": "admin123"})
 login_ok = status == 200 and body.get("code") == 200
-record("kb-auth", "POST /auth/login（正确密码）", login_ok,
+record("auth-center", "POST /auth/login（正确密码）", login_ok,
        f"status={status}, code={body.get('code')}")
 token = body.get("data", {}).get("accessToken") if login_ok else None
 refresh_token = body.get("data", {}).get("refreshToken") if login_ok else None
-record("kb-auth", "  返回 accessToken", bool(token), f"len={len(token) if token else 0}")
-record("kb-auth", "  返回 refreshToken", bool(refresh_token), f"len={len(refresh_token) if refresh_token else 0}")
+record("auth-center", "  返回 accessToken", bool(token), f"len={len(token) if token else 0}")
+record("auth-center", "  返回 refreshToken", bool(refresh_token), f"len={len(refresh_token) if refresh_token else 0}")
 
 # 2.2 登录（错误密码）- 系统设计为 HTTP 200 + 业务 code 400
 status, body = http_request("POST", "/auth/login", body={"username": "admin", "password": "wrongpass"})
-record("kb-auth", "POST /auth/login（错误密码）",
+record("auth-center", "POST /auth/login（错误密码）",
        status == 200 and body.get("code") in (400, 40001, 401),
        f"status={status}, code={body.get('code')}")
 
 # 2.3 登录（空用户名）- Spring 参数校验返回 HTTP 400，业务校验返回 200+code 400
 status, body = http_request("POST", "/auth/login", body={"username": "", "password": "admin123"})
-record("kb-auth", "POST /auth/login（空用户名）",
+record("auth-center", "POST /auth/login（空用户名）",
        status in (400, 401) or (status == 200 and body.get("code") in (400, 40007)),
        f"status={status}, code={body.get('code')}")
 
 # 2.4 登录（不存在用户）- 系统设计为 HTTP 200 + 业务 code 400
 status, body = http_request("POST", "/auth/login", body={"username": "nonexistent", "password": "x"})
-record("kb-auth", "POST /auth/login（不存在用户）",
+record("auth-center", "POST /auth/login（不存在用户）",
        status == 200 and body.get("code") in (400, 40001, 401),
        f"status={status}, code={body.get('code')}")
 
 # 2.5 无 Token 访问受保护接口
 status, body = http_request("GET", "/space/list")
-record("kb-auth", "GET /space/list（无 Token）", status == 401,
+record("auth-center", "GET /space/list（无 Token）", status == 401,
        f"status={status}, code={body.get('code')}")
 
 # 2.6 无效 Token
 status, body = http_request("GET", "/space/list", token="invalid.token.here")
-record("kb-auth", "GET /space/list（无效 Token）", status == 401,
+record("auth-center", "GET /space/list（无效 Token）", status == 401,
        f"status={status}, code={body.get('code')}")
 
 # 2.7 刷新令牌
 if refresh_token:
     status, body = http_request("POST", "/auth/refresh", body={"refreshToken": refresh_token})
-    record("kb-auth", "POST /auth/refresh", status == 200 and body.get("code") == 200,
+    record("auth-center", "POST /auth/refresh", status == 200 and body.get("code") == 200,
            f"status={status}, code={body.get('code')}")
     if body.get("code") == 200:
         token = body.get("data", {}).get("accessToken") or token
 
 # 2.8 当前用户信息
 status, body = http_request("GET", "/auth/me", token=token)
-record("kb-auth", "GET /auth/me", status == 200, f"status={status}, code={body.get('code')}")
+record("auth-center", "GET /auth/me", status == 200, f"status={status}, code={body.get('code')}")
 
 # 2.9 登出
 status, body = http_request("POST", "/auth/logout", token=token)
-record("kb-auth", "POST /auth/logout", status == 200 or body.get("code") == 200,
+record("auth-center", "POST /auth/logout", status == 200 or body.get("code") == 200,
        f"status={status}, code={body.get('code')}")
 
-# 2.10 登出后再用旧 Token 调用 /auth/me（kb-auth 接口，检查黑名单，应返回 401）
+# 2.10 登出后再用旧 Token 调用 /auth/me（auth-center 接口，检查黑名单，应返回 401）
 status, body = http_request("GET", "/auth/me", token=token)
 logout_blacklist_ok = status == 401
-record("kb-auth", "GET /auth/me（登出后旧 Token，黑名单应生效）", logout_blacklist_ok,
+record("auth-center", "GET /auth/me（登出后旧 Token，黑名单应生效）", logout_blacklist_ok,
        f"status={status}, code={body.get('code')} (黑名单{'生效' if logout_blacklist_ok else '未生效'})")
 
 # 2.11 登出后旧 Token 调用 /space/list（kb-knowledge 接口，kb-gateway 不检查黑名单，已知限制）
@@ -174,7 +174,7 @@ status, body = http_request("GET", "/space/list", token=token)
 gateway_no_blacklist = status == 200  # 网关层面不检查黑名单，预期 200
 record("kb-gateway", "GET /space/list（登出后旧 Token，网关不检查黑名单-已知限制）",
        gateway_no_blacklist,
-       f"status={status}, code={body.get('code')} (kb-gateway 本地验签不查黑名单，仅 kb-auth 接口查)")
+       f"status={status}, code={body.get('code')} (kb-gateway 本地验签不查黑名单，仅 auth-center 接口查)")
 
 # 重新登录获取新 Token
 status, body = http_request("POST", "/auth/login", body={"username": "admin", "password": "admin123"})
@@ -467,7 +467,7 @@ record("kb-gateway", "非白名单 /space/list 拒绝（无 Token）", status ==
 
 # 7.3 路由到各微服务
 for path, expected_module in [
-    ("/auth/me", "kb-auth"),
+    ("/auth/me", "auth-center"),
     ("/space/list", "kb-knowledge"),
     ("/ops/dashboard", "kb-ops"),
     ("/intelligence/machine/stats", "kb-intelligence"),

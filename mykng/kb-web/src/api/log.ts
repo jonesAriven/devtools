@@ -3,7 +3,7 @@ import type { R, OperationLog, PageResult, PageParams } from '@/types'
 
 /**
  * 操作日志 API
- * 操作日志已从 kb-ops 迁移至 kb-auth，由认证服务统一管理用户行为审计
+ * 操作日志已从 kb-ops 迁移至 auth-center，由认证服务统一管理用户行为审计
  */
 
 /** 获取操作日志列表 */

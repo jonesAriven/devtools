@@ -58,7 +58,7 @@ touch "${DEPLOY_BASE}/kb-ops-web/dist/.keep"
 NGINX_CONF="${DEPLOY_BASE}/kb-ops-web/nginx.conf"
 # 业务 API：/ops-api/* → kb-ops 后端（controller 前缀 /ops/xxx，剥前缀后正确命中）
 # 认证分流：/ops-api/{login,logout,refresh,me} → gateway /kb/api/auth/*（kb-ops 只验签不签发，
-# 登录由 kb-auth 处理 —— 后端无登录端点，此前登录 403 死路，2026-09-06 修复）
+# 登录由 auth-center 处理 —— 后端无登录端点，此前登录 403 死路，2026-09-06 修复）
 render_spa_nginx "${NGINX_CONF}" "/ops" "/ops-api" "http://172.17.0.1:8084/kb-ops/" "http://172.17.0.1:8090"
 
 # ====== Step 4: 停止旧服务 ======

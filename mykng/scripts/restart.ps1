@@ -3,7 +3,7 @@
 # ============================================================
 # 用法:
 #   .\scripts\restart.ps1              # 重启所有服务
-#   .\scripts\restart.ps1 kb-auth      # 重启单个服务
+#   .\scripts\restart.ps1 auth-center      # 重启单个服务
 #   .\scripts\restart.ps1 -Help        # 显示帮助
 # ============================================================
 
@@ -39,11 +39,11 @@ mykng 知识库微服务重启脚本 (PowerShell)
 参数:
   service   可选服务名，不指定则重启全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+                kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   .\scripts\restart.ps1
-  .\scripts\restart.ps1 kb-auth
+  .\scripts\restart.ps1 auth-center
 "@
 }
 

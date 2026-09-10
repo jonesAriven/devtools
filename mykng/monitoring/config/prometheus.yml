@@ -102,11 +102,11 @@ scrape_configs:
     scrape_interval: 15s
     metrics_path: '/actuator/prometheus'
     
-  - job_name: 'kb-auth'
+  - job_name: 'auth-center'
     static_configs:
-      - targets: ['host.docker.internal:8089']   # 文件服务的 Actuator 端口
+      - targets: ['host.docker.internal:8085']   # 统一认证中心 Actuator 端口
         labels:
-          service: 'kb-auth'
+          service: 'auth-center'
           group: 'mykng'
     scrape_interval: 15s
     metrics_path: '/actuator/prometheus'

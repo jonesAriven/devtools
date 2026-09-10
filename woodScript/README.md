@@ -64,7 +64,7 @@ python woodScript/trigger-pipeline.py all
 
 | 项目名 | 说明 | 部署服务 |
 |--------|------|----------|
-| `mykng` | 知识库后端 | kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence |
+| `mykng` | 知识库后端 | kb-gateway, auth-center, kb-file, kb-knowledge, kb-intelligence |
 | `kb-ops` | 运维后台 | kb-ops |
 | `kb-ops-web` | 运维前端 | kb-ops-web |
 | `kb-web` | 知识库前端 | kb-web |

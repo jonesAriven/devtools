@@ -101,13 +101,13 @@ modules:
     infra-depends: []
     routes:
       - path: /kb/api/auth/**
-        target: kb-auth
+        target: auth-center
       - path: /kb/api/user/**
-        target: kb-auth
+        target: auth-center
       - path: /kb/api/token/**
-        target: kb-auth
+        target: auth-center
       - path: /kb/api/log/**
-        target: kb-auth
+        target: auth-center
       - path: /kb/api/file/**
         target: kb-file
       - path: /kb/api/bucket/**
@@ -121,16 +121,21 @@ modules:
     description: API 网关：路由转发、JWT 鉴权、限流
     removable: false       # 核心模块，不可剥离
 
-  - name: kb-auth
-    type: service
-    profile: core
+  # auth-center：2026-09-07 从 mykng 剥离为独立仓库（/root/auth-center），2026-09-10 确认
+  # kb-auth 源码目录已删除。由 woodScript/cd/deploy-mykng.sh Step 0.5 独立拉取构建部署，
+  # 不由本文件的 compose profile 编排；compose 网络别名 kb-auth 保留（2026-09-10 拍板），
+  # 旧引用 http://kb-auth:8085 继续兜底到本服务。
+  - name: auth-center
+    type: external         # external=独立仓库部署，非 mykng 仓内模块
+    profile: external
     port: 8085
     host-port: null        # 不映射宿主机端口
     health-path: /actuator/health
     depends-on: []         # 不依赖其他业务服务
     infra-depends: [mysql, redis]
-    database: kb_auth
-    description: 认证授权：登录、JWT、用户管理、API Token、操作日志
+    database: kb_auth      # Phase 1 计划改名 kb_auth → marschat_auth
+    registry-alias: kb-auth   # compose 网络别名，旧引用兜底
+    description: 统一认证中心（SSO/OIDC）：登录、JWT 签发、用户管理、API Token、操作日志
     removable: false
 
   - name: kb-file
@@ -139,7 +144,7 @@ modules:
     port: 8089
     host-port: null
     health-path: /actuator/health
-    depends-on: [kb-auth]
+    depends-on: [auth-center]
     infra-depends: [mysql, redis, minio, meilisearch, mongodb]
     database: kb_file
     description: 文件管理：上传、下载、分片、解析、回收站
@@ -151,7 +156,7 @@ modules:
     port: 8092
     host-port: null
     health-path: /actuator/health
-    depends-on: [kb-auth, kb-file]
+    depends-on: [auth-center, kb-file]
     infra-depends: [mysql, redis, meilisearch, mongodb]
     database: kb_knowledge
     description: 知识管理：文档、文件夹、分享、标签、搜索、版本
@@ -196,8 +201,8 @@ plugins:
     type: service
     removable: false
     enabled-by-default: true
-    module: kb-auth
-    depends-on-modules: [kb-auth]
+    module: auth-center
+    depends-on-modules: [auth-center]
     depends-on-plugins: []
     depends-on-infra: [mysql, redis]
     config-prefix: kb.security.rbac
@@ -212,7 +217,7 @@ plugins:
           menu: 系统管理 / 角色管理
     gateway-routes:
       - path: /kb/api/role/**
-        target: kb-auth
+        target: auth-center
 
   - id: plugin-user-mgmt
     name: 用户管理插件
@@ -221,8 +226,8 @@ plugins:
     type: service
     removable: false
     enabled-by-default: true
-    module: kb-auth
-    depends-on-modules: [kb-auth]
+    module: auth-center
+    depends-on-modules: [auth-center]
     depends-on-plugins: [plugin-rbac]
     depends-on-infra: [mysql, redis]
     config-prefix: kb.user.management
@@ -243,7 +248,7 @@ plugins:
     removable: false
     enabled-by-default: true
     module: kb-gateway
-    depends-on-modules: [kb-gateway, kb-auth]
+    depends-on-modules: [kb-gateway, auth-center]
     depends-on-plugins: []
     depends-on-infra: [redis]
     config-prefix: kb.security
@@ -299,7 +304,7 @@ plugins:
     removable: true
     enabled-by-default: false
     module: kb-knowledge
-    depends-on-modules: [kb-knowledge, kb-auth]
+    depends-on-modules: [kb-knowledge, auth-center]
     depends-on-plugins: []
     depends-on-infra: [mysql, redis]
     config-prefix: kb.comment
@@ -445,7 +450,7 @@ plugins:
     removable: true
     enabled-by-default: false
     module: kb-knowledge
-    depends-on-modules: [kb-knowledge, kb-auth]
+    depends-on-modules: [kb-knowledge, auth-center]
     depends-on-plugins: [plugin-rbac]
     depends-on-infra: []
     config-prefix: kb.verification
@@ -462,8 +467,8 @@ plugins:
     type: service
     removable: true
     enabled-by-default: false
-    module: kb-auth
-    depends-on-modules: [kb-auth]
+    module: auth-center
+    depends-on-modules: [auth-center]
     depends-on-plugins: []
     depends-on-infra: []
     config-prefix: kb.sso
@@ -602,32 +607,32 @@ plugins:
 profile-presets:
   dev-minimal:            # 开发环境最小集（只做认证相关开发）
     description: 仅核心模块（认证 + 网关），内存占用 < 2GB
-    modules: [kb-gateway, kb-auth]
+    modules: [kb-gateway, auth-center]
     infra: [mysql, redis]
     plugins: [plugin-rbac, plugin-user-mgmt, plugin-security]
 
   dev-core:               # 开发环境核心集（认证 + 文件 + 知识）
     description: 核心三服务，内存占用 < 4GB
-    modules: [kb-gateway, kb-auth, kb-file, kb-knowledge]
+    modules: [kb-gateway, auth-center, kb-file, kb-knowledge]
     infra: [mysql, redis, minio, meilisearch, mongodb]
     plugins: [plugin-rbac, plugin-user-mgmt, plugin-security, plugin-chunk-upload,
               plugin-doc-lifecycle, plugin-knowledge-graph, plugin-dark-mode]
 
   dev-full:               # 开发环境全量（含知识引擎）
     description: 全量模块，内存占用 < 6GB
-    modules: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence, kb-web]
+    modules: [kb-gateway, auth-center, kb-file, kb-knowledge, kb-intelligence, kb-web]
     infra: [mysql, redis, minio, meilisearch, mongodb]
     plugins: all           # all=启用所有 enabled-by-default=true 的插件
 
   test:                   # 测试环境（全量）
     description: 测试环境全量启动
-    modules: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence, kb-web]
+    modules: [kb-gateway, auth-center, kb-file, kb-knowledge, kb-intelligence, kb-web]
     infra: [mysql, redis, minio, meilisearch, mongodb]
     plugins: all
 
   prod:                   # 生产环境（全量 + 智能化）
     description: 生产环境全量启动 + AI 能力
-    modules: [kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence, kb-web]
+    modules: [kb-gateway, auth-center, kb-file, kb-knowledge, kb-intelligence, kb-web]
     infra: [mysql, redis, minio, meilisearch, mongodb]
     plugins: all
 

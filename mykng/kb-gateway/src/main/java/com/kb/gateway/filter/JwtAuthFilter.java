@@ -36,11 +36,11 @@ import java.util.List;
  * <ol>
  *   <li>放行 OPTIONS 预检、白名单路径、非受管路径；</li>
  *   <li>从 {@code Authorization: Bearer xxx} 提取 access token；</li>
- *   <li>用 jjwt 本地验签 + 校验过期 + 校验 type=access（不回调 kb-auth，保证高性能）；</li>
+ *   <li>用 jjwt 本地验签 + 校验过期 + 校验 type=access（不回调 auth-center，保证高性能）；</li>
  *   <li>校验通过：移除客户端伪造的 {@code X-User-Id}，注入真实的 userId / username 到下游；</li>
  *   <li>校验失败：返回 401 统一 JSON（携带 traceId）。</li>
  * </ol>
- * Authorization 头保留转发，便于 kb-auth 自身的 Spring Security 对其受保护端点二次校验。
+ * Authorization 头保留转发，便于 auth-center 自身的 Spring Security 对其受保护端点二次校验。
  */
 @Slf4j
 @Component

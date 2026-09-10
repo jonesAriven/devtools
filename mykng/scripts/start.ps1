@@ -3,7 +3,7 @@
 # ============================================================
 # 用法:
 #   .\scripts\start.ps1              # 启动所有服务
-#   .\scripts\start.ps1 kb-auth      # 启动单个服务
+#   .\scripts\start.ps1 auth-center      # 启动单个服务
 #   .\scripts\start.ps1 -Help        # 显示帮助
 # ============================================================
 
@@ -39,11 +39,11 @@ mykng 知识库微服务启动脚本 (PowerShell)
 参数:
   service   可选服务名，不指定则启动全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+                kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   .\scripts\start.ps1
-  .\scripts\start.ps1 kb-auth
+  .\scripts\start.ps1 auth-center
 "@
 }
 

@@ -109,8 +109,8 @@ def main():
         print(f"  ✗ 登录失败: {e}")
         return
 
-    # ===== 2. kb-auth 服务（11 个接口）=====
-    print("\n[2/6] 测试 kb-auth 服务（11 接口）...")
+    # ===== 2. auth-center 服务（11 个接口）=====
+    print("\n[2/6] 测试 auth-center 服务（11 接口）...")
     test_api("auth", "用户登录", "POST", "/kb/api/auth/login", body=login_body, no_auth=True)
     test_api("auth", "用户登录-错误密码", "POST", "/kb/api/auth/login", body='{"username":"admin","password":"wrong"}', no_auth=True, expect=401)
     test_api("auth", "用户登出", "POST", "/kb/api/auth/logout", token=token)

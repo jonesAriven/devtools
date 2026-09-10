@@ -13,7 +13,7 @@ export const useModuleStore = defineStore('module', () => {
   /** 已知模块名常量，方便调用方使用 */
   const MODULE_NAMES = {
     GATEWAY: 'kb-gateway',
-    AUTH: 'kb-auth',
+    AUTH: 'auth-center',
     FILE: 'kb-file',
     KNOWLEDGE: 'kb-knowledge',
     INTELLIGENCE: 'kb-intelligence',

@@ -25,7 +25,7 @@ crypto:
 
 kb:
   feign:
-    auth-url: ${KB_AUTH_HOST:http://kb-auth:8081}
+    auth-url: ${KB_AUTH_HOST:http://auth-center:8081}   # 环境变量名保留 KB_AUTH_HOST 以兼容 compose env；默认值指向 auth-center
 
 logging:
   level:

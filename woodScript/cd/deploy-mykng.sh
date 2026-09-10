@@ -1,14 +1,15 @@
 #!/bin/bash
 # ============================================================
-# deploy-mykng.sh - mykng 知识库微服务部署 (5个Java微服务)
+# deploy-mykng.sh - mykng 知识库微服务部署 (4个Java微服务)
 # ============================================================
 # 用法: bash deploy-mykng.sh <tar.gz文件名>
 # 示例: bash deploy-mykng.sh mykng-latest.tar.gz
 #
-# 部署的服务: kb-gateway, kb-auth, kb-file, kb-knowledge, kb-intelligence
+# 部署的服务: kb-gateway, kb-file, kb-knowledge, kb-intelligence
+#            （+ Step 0.5 独立拉取部署 auth-center，独立仓库 /root/auth-center，非 mykng 模块）
 # Compose:    docker-compose.app.yml (project: kb-app)
 # 前置条件:   platform 全局基础设施层已启动
-# 隔离性:     只重建这5个服务，不影响kb-ops 和前端容器
+# 隔离性:     只重建这4个服务，不影响kb-ops 和前端容器
 # ============================================================
 set -euo pipefail
 source /mnt/shared/woodScript/lib-deploy.sh

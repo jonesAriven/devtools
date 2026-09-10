@@ -491,7 +491,7 @@ wait_port_release() {
 #   auth_backend(可选): 统一认证中心(gateway)上游，如 http://172.17.0.1:8090。
 #                    传入时为 ${api}/{login,logout,refresh,me} 渲染精确 location，
 #                    转发到 ${auth_backend}/kb/api/auth/*。适用于"只验签不签发"的
-#                    后端消费方（如 kb-ops：自身无登录端点，JWT 由 kb-auth 经 gateway 签发）
+#                    后端消费方（如 kb-ops：自身无登录端点，JWT 由 auth-center 经 gateway 签发）
 # 已内置：双 location（assets 缺失即 404，杜绝 SPA fallback 吞资源）、
 #        无尾斜杠 301、/health 真校验（index.html 缺失返 503）、
 #        静态资源 30d immutable 缓存、代理头（X-Forwarded-Proto/http1.1/超时）、server_tokens off

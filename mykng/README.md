@@ -32,7 +32,7 @@ bash scripts/health-check.sh
 | 服务 | 端口 | 职责 |
 |------|------|------|
 | kb-gateway | 8090 | API网关（路由/JWT鉴权/限流） |
-| kb-auth | 8081 | 认证服务（JWT/用户/API Token/操作日志） |
+| auth-center | 8085 | 统一认证中心（SSO/OIDC/JWT/用户/API Token/操作日志，独立仓库部署） |
 | kb-file | 8082 | 文件服务（MinIO/分块上传/解析） |
 | kb-knowledge | 8083 | 知识服务（文档/搜索/分享/版本） |
 | kb-intelligence | 8086 | 智能服务（知识导入/解析/渲染） |
@@ -40,12 +40,10 @@ bash scripts/health-check.sh
 ## 项目结构
 ```
 mykng/
-├── kb-auth/            # 认证微服务（含操作日志）
 ├── kb-file/            # 文件微服务
 ├── kb-knowledge/       # 知识微服务
 ├── kb-intelligence/    # 智能微服务
 ├── kb-gateway/         # API网关
-├── kb-common/          # 公共模块
 ├── docs/               # 项目文档
 ├── init-sql/           # 数据库初始化脚本
 ├── sql/                # 版本化迁移脚本（Flyway）

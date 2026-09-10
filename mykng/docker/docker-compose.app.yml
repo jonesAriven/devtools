@@ -1,7 +1,7 @@
 # ============================================================
 # docker-compose.app.yml — 应用层 (mykng 5微服务 + kb-ops)
 # ============================================================
-# 服务: kb-gateway, auth-center(fka kb-auth), kb-file, kb-knowledge, kb-intelligence, kb-ops
+# 服务: kb-gateway, auth-center, kb-file, kb-knowledge, kb-intelligence, kb-ops
 # 网络: kb-app-net (内部通信), platform-net (外部引入, 连接全局基础设施)
 # 前置: platform 基础设施层已启动 (platform-net 网络存在)
 #
@@ -63,7 +63,7 @@ services:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
-      # auth-center Phase 1: OIDC issuer（浏览器/客户端实际可达的 kb-auth 地址；2026-09-07 L019 独立子域）
+      # auth-center Phase 1: OIDC issuer（浏览器/客户端实际可达的认证中心地址；2026-09-07 L019 独立子域）
       - AUTH_ISSUER=${AUTH_ISSUER:-https://auth.marschat.online}
       # 邮件（忘记密码/邮箱验证码，2026-09-07 M7）：凭证走服务器 .env，不入库
       - MAIL_HOST=${MAIL_HOST:-smtp.163.com}
@@ -77,8 +77,8 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       kb-app-net:
-        # 别名兜底：gateway/kb-ops/infra-monitor 的 jwks-uri 默认值仍为 http://kb-auth:8085，
-        # 靠此别名平滑迁移，后续逐步清理
+        # 别名兜底：kb-auth 为历史服务名（源码 2026-09-10 已清除），保留此 compose 网络别名
+        # 兼容仍写 http://kb-auth:8085 的旧引用（2026-09-10 拍板保留）
         aliases:
           - kb-auth
       platform-net:
@@ -243,7 +243,7 @@ services:
       - MYSQL_DATABASE=tools
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
-      # auth-center Phase 2: OIDC issuer（浏览器/客户端实际可达地址，与 kb-auth AUTH_ISSUER 一致；2026-09-07 L019 独立子域）
+      # auth-center Phase 2: OIDC issuer（浏览器/客户端实际可达地址，与 auth-center AUTH_ISSUER 一致；2026-09-07 L019 独立子域）
       - AUTH_CENTER_ISSUER=${AUTH_CENTER_ISSUER:-https://auth.marschat.online}
     extra_hosts:
       - "host.docker.internal:host-gateway"

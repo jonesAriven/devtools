@@ -48,13 +48,13 @@ step() { echo -e "${BLUE}[STEP ]${NC} $1"; }
 
 # 服务到数据库的映射
 declare -A SVC_DB_MAP=(
-    [kb-auth]="kb_auth"
+    [auth-center]="kb_auth"
     [kb-file]="kb_file"
     [kb-knowledge]="kb_knowledge"
     [kb-intelligence]="kb_intelligence"
 )
 
-ALL_SERVICES="kb-gateway kb-auth kb-file kb-knowledge kb-intelligence"
+ALL_SERVICES="kb-gateway auth-center kb-file kb-knowledge kb-intelligence"
 
 # ---------- 帮助 ----------
 show_help() {
@@ -66,12 +66,12 @@ mykng 知识库微服务回滚脚本
   bash scripts/rollback.sh all
 
 参数:
-  service   服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence / all
+  service   服务名: kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence / all
   tag       可选镜像 tag（默认使用上一 timestamp 版本）
 
 示例:
   bash scripts/rollback.sh kb-intelligence
-  bash scripts/rollback.sh kb-auth 20260628_103000
+  bash scripts/rollback.sh auth-center 20260628_103000
   bash scripts/rollback.sh all
 EOF
 }
@@ -184,7 +184,7 @@ case "$SERVICE" in
     all)
         rollback_all
         ;;
-    kb-gateway|kb-auth|kb-file|kb-knowledge|kb-intelligence)
+    kb-gateway|auth-center|kb-file|kb-knowledge|kb-intelligence)
         rollback_one "$SERVICE" "$TAG"
         ;;
     *)

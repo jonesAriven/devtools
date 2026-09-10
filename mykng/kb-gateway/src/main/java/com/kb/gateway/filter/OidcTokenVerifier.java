@@ -26,8 +26,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * <p>
  * 设计要点：
  * <ul>
- *   <li>JWKS 从 auth-center 拉取（compose 内网直连 kb-auth，绕过公网回环），内存缓存 TTL 10 分钟；</li>
- *   <li>启动预热一次，失败不阻断启动（kb-auth 未就绪时首次请求再拉）；</li>
+ *   <li>JWKS 从 auth-center 拉取（compose 内网直连 auth-center，绕过公网回环），内存缓存 TTL 10 分钟；</li>
+ *   <li>启动预热一次，失败不阻断启动（auth-center 未就绪时首次请求再拉）；</li>
  *   <li>按 kid 匹配公钥，keyId 缺失时回退单 key 场景；</li>
  *   <li>验签同时校验 issuer 与过期；legacy HS256 token 仍由 JwtAuthFilter 用本地密钥先验。</li>
  * </ul>
@@ -41,7 +41,7 @@ public class OidcTokenVerifier {
     @Value("${marschat.oidc.issuer:https://auth.marschat.online}")
     private String issuer;
 
-    @Value("${marschat.oidc.jwks-uri:http://kb-auth:8085/oauth2/jwks}")
+    @Value("${marschat.oidc.jwks-uri:http://auth-center:8085/oauth2/jwks}")
     private String jwksUri;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();

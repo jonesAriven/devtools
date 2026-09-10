@@ -93,7 +93,7 @@
                 style="width: 140px"
                 @change="handleSearch"
               >
-                <el-option label="kb-auth" value="kb-auth" />
+                <el-option label="auth-center" value="auth-center" />
                 <el-option label="kb-file" value="kb-file" />
                 <el-option label="kb-knowledge" value="kb-knowledge" />
                 <el-option label="kb-intelligence" value="kb-intelligence" />

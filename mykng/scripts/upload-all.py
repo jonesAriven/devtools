@@ -19,11 +19,6 @@ FILES = [
      f"{REMOTE_BASE}/kb-knowledge/src/test/java/com/kb/knowledge/DocServiceImplTest.java"),
     (r"kb-knowledge\src\test\java\com\kb\knowledge\FolderServiceImplTest.java",
      f"{REMOTE_BASE}/kb-knowledge/src/test/java/com/kb/knowledge/FolderServiceImplTest.java"),
-    # 3. kb-auth 集成测试代码
-    (r"kb-auth\src\test\java\com\kb\auth\AuthIT.java",
-     f"{REMOTE_BASE}/kb-auth/src/test/java/com/kb/auth/AuthIT.java"),
-    (r"kb-auth\src\test\java\com\kb\auth\CucumberIT.java",
-     f"{REMOTE_BASE}/kb-auth/src/test/java/com/kb/auth/CucumberIT.java"),
     # 4. DocServiceImpl 主源码（确认同步）
     (r"kb-knowledge\src\main\java\com\kb\knowledge\service\impl\DocServiceImpl.java",
      f"{REMOTE_BASE}/kb-knowledge/src/main/java/com/kb/knowledge/service/impl/DocServiceImpl.java"),

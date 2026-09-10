@@ -4,7 +4,7 @@
 # ============================================================
 # 用法:
 #   bash scripts/restart.sh              # 重启所有服务
-#   bash scripts/restart.sh kb-auth      # 重启单个服务
+#   bash scripts/restart.sh auth-center      # 重启单个服务
 #   bash scripts/restart.sh -help        # 显示帮助
 # ============================================================
 
@@ -39,11 +39,11 @@ mykng 知识库微服务重启脚本
 参数:
   service   可选服务名，不指定则重启全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+                kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   bash scripts/restart.sh
-  bash scripts/restart.sh kb-auth
+  bash scripts/restart.sh auth-center
 EOF
 }
 

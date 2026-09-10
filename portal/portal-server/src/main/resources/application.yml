@@ -26,7 +26,6 @@ mybatis-plus:
 logging:
   level:
     com.kb.portal: debug
-    com.kb.common: debug
 
 management:
   endpoints:

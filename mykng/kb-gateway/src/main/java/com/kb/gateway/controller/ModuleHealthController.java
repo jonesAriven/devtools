@@ -34,7 +34,7 @@ public class ModuleHealthController {
 
     /** 已知的模块列表（与 module-registry.yml 保持一致） */
     private static final List<String> KNOWN_MODULES = List.of(
-            "kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence"
+            "kb-gateway", "auth-center", "kb-file", "kb-knowledge", "kb-intelligence"
     );
 
     private final DiscoveryClient discoveryClient;

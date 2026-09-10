@@ -28,7 +28,7 @@ public class KbGatewayProperties {
 
     @Data
     public static class Jwt {
-        /** 与 kb-auth 一致的 HMAC 密钥 */
+        /** 与 auth-center 一致的 HMAC 密钥 */
         private String secret;
         /** 携带 token 的请求头名称 */
         private String header = "Authorization";

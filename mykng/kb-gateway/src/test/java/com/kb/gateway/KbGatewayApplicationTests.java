@@ -14,7 +14,7 @@ import java.util.Date;
 /**
  * 网关鉴权与白名单行为测试（Reactive WebTestClient，下游服务未启动）。
  * <p>
- * 下游 kb-auth/kb-knowledge 等未运行，因此路由命中的请求会在鉴权通过后因连接下游失败而返回 5xx；
+ * 下游 auth-center/kb-knowledge 等未运行，因此路由命中的请求会在鉴权通过后因连接下游失败而返回 5xx；
  * 本测试通过 "是否 401" 来判定 JwtAuthFilter 的放行/拦截逻辑。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

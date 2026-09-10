@@ -3,7 +3,7 @@
 """L4 API 全量测试 + PRD 15 路由对照测试 - 基于 接口规范清单_v1.md v2.2
 
 测试范围：
-1. 原 v2 测试的 92 个 API 用例（kb-auth/kb-file/kb-knowledge/kb-ops 8 个已有 Controller）
+1. 原 v2 测试的 92 个 API 用例（auth-center/kb-file/kb-knowledge/kb-ops 8 个已有 Controller）
 2. 新增 20 个 API 用例：Port(5) + Credential(5) + Domain(5) + Dependency(5)
 3. 新增 15 个 PRD 路由对照测试（PRD 5.1 节 15 个 SPA 路由）
 
@@ -167,7 +167,7 @@ def main():
     ctx = {"ts": ts, "token": token, "refreshToken": refresh_token}
 
     # ---------- v2 原有 92 个 API 用例 ----------
-    print("\n----- kb-auth (11) -----")
+    print("\n----- auth-center (11) -----")
     test_auth(ctx)
 
     print("\n----- kb-file (12) -----")
@@ -215,43 +215,43 @@ def main():
     write_report(ts)
 
 
-# ============================ kb-auth ============================
+# ============================ auth-center ============================
 def test_auth(ctx):
     token = ctx["token"]
     rt = ctx["refreshToken"]
     ts = ctx["ts"]
 
-    code, biz, j, text = test_api("L4-AUTH-001", "auth/login", "kb-auth", "POST", "/kb/api/auth/login",
+    code, biz, j, text = test_api("L4-AUTH-001", "auth/login", "auth-center", "POST", "/kb/api/auth/login",
                                   body={"username": USERNAME, "password": PASSWORD}, expect_code=200)
 
-    code, biz, j, text = test_api("L4-AUTH-002", "auth/logout (invalid token -> 401)", "kb-auth", "POST", "/kb/api/auth/logout",
+    code, biz, j, text = test_api("L4-AUTH-002", "auth/logout (invalid token -> 401)", "auth-center", "POST", "/kb/api/auth/logout",
                                   token="invalid.token.value", expect_code=401)
 
-    code, biz, j, text = test_api("L4-AUTH-003", "auth/refresh", "kb-auth", "POST", "/kb/api/auth/refresh",
+    code, biz, j, text = test_api("L4-AUTH-003", "auth/refresh", "auth-center", "POST", "/kb/api/auth/refresh",
                                   body={"refreshToken": rt}, expect_code=200)
     if isinstance(j, dict) and j.get("code") == 200:
         ctx["refreshToken"] = j["data"].get("refreshToken", rt)
     else:
         snippet = text[:400]
         if "TooManyResults" in snippet or "TooManyResultsException" in snippet:
-            record("L4-AUTH-003", "auth/refresh", "kb-auth", "WARN",
+            record("L4-AUTH-003", "auth/refresh", "auth-center", "WARN",
                    "复现 TooManyResultsException: " + snippet)
 
-    code, biz, j, text = test_api("L4-AUTH-004", "user/profile GET", "kb-auth", "GET", "/kb/api/user/profile",
+    code, biz, j, text = test_api("L4-AUTH-004", "user/profile GET", "auth-center", "GET", "/kb/api/user/profile",
                                   token=token, expect_code=200)
 
-    code, biz, j, text = test_api("L4-AUTH-005", "user/profile PUT", "kb-auth", "PUT", "/kb/api/user/profile",
+    code, biz, j, text = test_api("L4-AUTH-005", "user/profile PUT", "auth-center", "PUT", "/kb/api/user/profile",
                                   body={"nickname": "admin-" + ts, "email": "admin@test.local",
                                         "phone": "13800000000", "avatar": ""}, token=token, expect_code=200)
 
     code, biz, j, text = test_api("L4-AUTH-006", "user/password PUT (wrong old pwd -> 400/401)",
-                                  "kb-auth", "PUT", "/kb/api/user/password",
+                                  "auth-center", "PUT", "/kb/api/user/password",
                                   body={"oldPassword": "wrong_old_pwd_xxx", "newPassword": "newPwd456"},
                                   token=token, expect_code=400)
     if not (isinstance(j, dict) and j.get("code") in (400, 401)):
-        record("L4-AUTH-006", "user/password", "kb-auth", "WARN", "预期 400/401 实际 biz=%s" % biz)
+        record("L4-AUTH-006", "user/password", "auth-center", "WARN", "预期 400/401 实际 biz=%s" % biz)
 
-    code, biz, j, text = test_api("L4-AUTH-007", "token POST", "kb-auth", "POST", "/kb/api/token",
+    code, biz, j, text = test_api("L4-AUTH-007", "token POST", "auth-center", "POST", "/kb/api/token",
                                   body={"name": "测试-%s" % ts, "scope": "read"}, token=token, expect_code=200)
     token_id = None
     token_plain = None
@@ -261,26 +261,26 @@ def test_auth(ctx):
     ctx["apiTokenId"] = token_id
     ctx["apiTokenPlain"] = token_plain
 
-    code, biz, j, text = test_api("L4-AUTH-008", "token GET (list)", "kb-auth", "GET", "/kb/api/token?page=1&size=10",
+    code, biz, j, text = test_api("L4-AUTH-008", "token GET (list)", "auth-center", "GET", "/kb/api/token?page=1&size=10",
                                   token=token, expect_code=200)
 
     if token_id:
-        code, biz, j, text = test_api("L4-AUTH-009", "token/{id}/toggle PUT", "kb-auth", "PUT",
+        code, biz, j, text = test_api("L4-AUTH-009", "token/{id}/toggle PUT", "auth-center", "PUT",
                                       "/kb/api/token/%s/toggle" % token_id, token=token, expect_code=200)
     else:
-        record("L4-AUTH-009", "token toggle", "kb-auth", "SKIP", "无 tokenId")
+        record("L4-AUTH-009", "token toggle", "auth-center", "SKIP", "无 tokenId")
 
     if token_plain:
-        code, biz, j, text = test_api("L4-AUTH-010", "token/verify POST", "kb-auth", "POST", "/kb/api/token/verify",
+        code, biz, j, text = test_api("L4-AUTH-010", "token/verify POST", "auth-center", "POST", "/kb/api/token/verify",
                                       body={"token": token_plain}, expect_code=200)
     else:
-        record("L4-AUTH-010", "token/verify", "kb-auth", "SKIP", "无明文 token")
+        record("L4-AUTH-010", "token/verify", "auth-center", "SKIP", "无明文 token")
 
     if token_id:
-        code, biz, j, text = test_api("L4-AUTH-011", "token/{id} DELETE", "kb-auth", "DELETE",
+        code, biz, j, text = test_api("L4-AUTH-011", "token/{id} DELETE", "auth-center", "DELETE",
                                       "/kb/api/token/%s" % token_id, token=token, expect_code=200)
     else:
-        record("L4-AUTH-011", "token delete", "kb-auth", "SKIP", "无 tokenId")
+        record("L4-AUTH-011", "token delete", "auth-center", "SKIP", "无 tokenId")
 
 
 # ============================ kb-file ============================
@@ -880,7 +880,7 @@ def test_ops_dependency(ctx):
     # L4-OPS-DEP-003 创建依赖（serviceId=1 依赖 dependsOnServiceId=2，使用 1/2 兜底 ID）
     dep_id = None
     code, biz, j, text = test_api("L4-OPS-DEP-003", "ops/dependency POST", group, "POST", "/kb/api/ops/dependency",
-                                  body={"serviceId": 1, "serviceName": "kb-auth",
+                                  body={"serviceId": 1, "serviceName": "auth-center",
                                         "dependsOnServiceId": 2, "dependsOnServiceName": "kb-file",
                                         "dependencyType": "RUNTIME",
                                         "remark": "L4测试依赖-%s" % ts},
@@ -976,7 +976,7 @@ def write_report(ts):
             group_stats[grp]["skip"] += 1
 
     # 分组顺序
-    api_group_order = ["kb-auth", "kb-file", "kb-knowledge", "kb-ops",
+    api_group_order = ["auth-center", "kb-file", "kb-knowledge", "kb-ops",
                       "kb-ops-port", "kb-ops-credential", "kb-ops-domain", "kb-ops-dependency"]
     prd_group = "PRD-Route"
 

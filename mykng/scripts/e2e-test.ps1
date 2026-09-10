@@ -167,7 +167,7 @@ function Build-Query {
 # ============================================================
 # 1. Auth Module (12 endpoints)
 # ============================================================
-Write-Host "========== 1. Auth Module (kb-auth 12 endpoints) ==========" -ForegroundColor Cyan
+Write-Host "========== 1. Auth Module (auth-center 12 endpoints) ==========" -ForegroundColor Cyan
 
 # 1.1 Login
 $r = Invoke-KbApi -Method POST -Path "/auth/login" -Body @{username="admin";password="admin123"} -TestName "Login"

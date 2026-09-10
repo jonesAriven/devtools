@@ -13,8 +13,6 @@ REMOTE_BASE = "/root/devtools/mykng"
 # Files to upload (relative paths from base)
 FILES = [
     # IT files (11)
-    "kb-auth/src/test/java/com/kb/auth/AuthIT.java",
-    "kb-auth/src/test/java/com/kb/auth/CucumberIT.java",
     "kb-file/src/test/java/com/kb/file/CucumberIT.java",
     "kb-file/src/test/java/com/kb/file/FileIT.java",
     "kb-gateway/src/test/java/com/kb/gateway/KbGatewayIT.java",
@@ -25,7 +23,6 @@ FILES = [
     "kb-ops/src/test/java/com/kb/ops/CucumberIT.java",
     "kb-ops/src/test/java/com/kb/ops/OpsIT.java",
     # Feature files (6)
-    "kb-auth/src/test/resources/features/auth.feature",
     "kb-file/src/test/resources/features/file_upload_search.feature",
     "kb-knowledge/src/test/resources/features/share_access.feature",
     "kb-knowledge/src/test/resources/features/doc_lifecycle.feature",

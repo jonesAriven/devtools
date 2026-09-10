@@ -56,13 +56,13 @@ mykng 知识库微服务构建脚本
   -help         显示此帮助
 
 服务名:
-  kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+  kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
   不指定则构建全部
 
 示例:
   bash scripts/build.sh
   bash scripts/build.sh kb-intelligence
-  bash scripts/build.sh --no-cache kb-auth
+  bash scripts/build.sh --no-cache auth-center
 EOF
             exit 0
             ;;
@@ -71,7 +71,7 @@ EOF
 done
 
 # 所有微服务（按依赖顺序）
-ALL_SERVICES="kb-gateway kb-auth kb-file kb-knowledge kb-intelligence"
+ALL_SERVICES="kb-gateway auth-center kb-file kb-knowledge kb-intelligence"
 
 # ---------- Maven 编译 ----------
 maven_build() {

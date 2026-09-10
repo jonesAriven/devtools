@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 正常参数 / 参数缺失 / 非法格式 / 越权访问 / 未认证 / 重复提交 / 大数据量。
  * <p>
  * kb-gateway 为 Reactive（WebFlux / Spring Cloud Gateway）栈，使用 {@link WebTestClient}。
- * 下游 kb-auth/kb-knowledge 等服务在测试环境未启动，因此鉴权通过后路由转发会因连接下游失败而返回 5xx；
+ * 下游 auth-center/kb-knowledge 等服务在测试环境未启动，因此鉴权通过后路由转发会因连接下游失败而返回 5xx；
  * 本测试通过 "是否 401" 来判定 JwtAuthFilter 的放行/拦截逻辑，与既有 KbGatewayApplicationTests 一致。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -54,7 +54,7 @@ class KbGatewayIT {
     @DisplayName("场景1-正常参数-白名单路径无Token放行（非401）")
     void scenario1_normalParameter_whitelistPasses() {
         // 白名单路径 /kb/api/auth/login 无需 Token，JwtAuthFilter 直接放行
-        // 下游 kb-auth 未启动 → 5xx，但鉴权层放行（非 401）即证明参数合法
+        // 下游 auth-center 未启动 → 5xx，但鉴权层放行（非 401）即证明参数合法
         webTestClient.post().uri("/kb/api/auth/login")
                 .header("Content-Type", "application/json")
                 .bodyValue("{}")

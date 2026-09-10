@@ -112,8 +112,8 @@ Write-Host "  Token: $($token.Substring(0,30))..." -ForegroundColor Green
 Write-Host "  expiresIn: $($loginData.data.expiresIn) (文档应为 900000=15min)" -ForegroundColor Yellow
 Write-Host ""
 
-# ===== 2. kb-auth 服务（11 个接口）=====
-Write-Host "[2/6] 测试 kb-auth 服务（11 接口）..." -ForegroundColor Yellow
+# ===== 2. auth-center 服务（11 个接口）=====
+Write-Host "[2/6] 测试 auth-center 服务（11 接口）..." -ForegroundColor Yellow
 Test-Api "auth" "用户登录" "POST" "/kb/api/auth/login" $loginBody -NoAuth
 Test-Api "auth" "用户登录-错误密码" "POST" "/kb/api/auth/login" '{"username":"admin","password":"wrong"}' -NoAuth -ExpectCode 401
 Test-Api "auth" "用户登出" "POST" "/kb/api/auth/logout" "" $token

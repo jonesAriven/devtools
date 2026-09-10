@@ -3,7 +3,7 @@
 # ============================================================
 # 用法:
 #   .\scripts\health-check.ps1                 # 全量检查
-#   .\scripts\health-check.ps1 -Service kb-auth # 仅检查单个服务
+#   .\scripts\health-check.ps1 -Service auth-center # 仅检查单个服务
 #   .\scripts\health-check.ps1 -Help            # 显示帮助
 # ============================================================
 
@@ -49,7 +49,7 @@ mykng 知识库微服务健康检查脚本 (PowerShell)
 # 微服务: name=port
 $services = @(
     @{ Name = "kb-gateway"; Port = 8080 },
-    @{ Name = "kb-auth"; Port = 8081 },
+    @{ Name = "auth-center"; Port = 8085 },
     @{ Name = "kb-file"; Port = 8082 },
     @{ Name = "kb-knowledge"; Port = 8083 },
     @{ Name = "kb-intelligence"; Port = 8086 }

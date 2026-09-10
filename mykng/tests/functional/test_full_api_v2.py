@@ -3,7 +3,7 @@
 """L4 全量功能测试 - 基于 接口规范清单_v1.md v2.1
 
 严格按规范清单正文实际列出的端点调用，不编造接口。
-规范统计：kb-auth(11) + kb-file(12) + kb-knowledge(41) + kb-ops(26) = 90 个实际端点
+规范统计：auth-center(11) + kb-file(12) + kb-knowledge(41) + kb-ops(26) = 90 个实际端点
 （规范标题声称 95/96 个，存在计数不一致，已在报告末尾标注 KNOWN_ISSUE）
 """
 import json
@@ -135,8 +135,8 @@ def main():
     # 暂存创建的资源 ID
     ctx = {"ts": ts, "token": token, "refreshToken": refresh_token}
 
-    # ---------- kb-auth ----------
-    print("\n----- kb-auth (11) -----")
+    # ---------- auth-center ----------
+    print("\n----- auth-center (11) -----")
     test_auth(ctx)
 
     # ---------- kb-file ----------
@@ -167,7 +167,7 @@ def main():
             print("  [WARN] %s %s -- %s" % (cid, name, det))
 
 
-# ============================ kb-auth ============================
+# ============================ auth-center ============================
 def test_auth(ctx):
     token = ctx["token"]
     rt = ctx["refreshToken"]

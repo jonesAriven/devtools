@@ -4,7 +4,7 @@
 # ============================================================
 # 用法:
 #   bash inject-network-delay.sh                                    # 默认对 kb-gateway 注入 200ms 延迟 30s
-#   bash inject-network-delay.sh --target kb-auth --delay 500ms     # 指定容器和延迟
+#   bash inject-network-delay.sh --target auth-center --delay 500ms     # 指定容器和延迟
 #   bash inject-network-delay.sh --duration 60                      # 持续 60s
 #   bash inject-network-delay.sh --jitter 100ms                     # 添加抖动
 #   bash inject-network-delay.sh -help                              # 显示帮助
@@ -50,7 +50,7 @@ show_help() {
   -help              显示此帮助
 
 示例:
-  bash inject-network-delay.sh --target kb-auth --delay 500ms --jitter 100ms
+  bash inject-network-delay.sh --target auth-center --delay 500ms --jitter 100ms
 EOF
 }
 

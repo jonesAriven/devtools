@@ -58,7 +58,7 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- JWT：网关本地解析（高性能，不回调 kb-auth） -->
+        <!-- JWT：网关本地解析（高性能，不回调 auth-center） -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -72,7 +72,7 @@
             <artifactId>jjwt-jackson</artifactId>
         </dependency>
 
-        <!-- Nimbus JOSE+JWT：解析 OIDC JWKS（RS256 双验签过渡期，与 kb-auth SAS 自带版本同族） -->
+        <!-- Nimbus JOSE+JWT：解析 OIDC JWKS（RS256 双验签过渡期，与 auth-center SAS 自带版本同族） -->
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>

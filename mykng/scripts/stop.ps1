@@ -3,7 +3,7 @@
 # ============================================================
 # 用法:
 #   .\scripts\stop.ps1              # 停止所有服务（保留容器）
-#   .\scripts\stop.ps1 kb-auth      # 停止单个服务
+#   .\scripts\stop.ps1 auth-center      # 停止单个服务
 #   .\scripts\stop.ps1 -Down        # 停止并移除容器（保留数据卷）
 #   .\scripts\stop.ps1 -Down -Volumes  # 停止并移除容器和数据卷（危险！）
 #   .\scripts\stop.ps1 -Help        # 显示帮助
@@ -48,7 +48,7 @@ mykng 知识库微服务停止脚本 (PowerShell)
 
 示例:
   .\scripts\stop.ps1
-  .\scripts\stop.ps1 kb-auth
+  .\scripts\stop.ps1 auth-center
   .\scripts\stop.ps1 -Down
 "@
 }

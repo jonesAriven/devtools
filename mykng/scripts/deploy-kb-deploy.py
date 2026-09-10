@@ -10,7 +10,7 @@ PASSWORD = "root"
 LOCAL_BASE = r"d:\huliang\java\ideaworkspace\devtools\mykng"
 REMOTE_BASE = "/root/kb-deploy"
 
-SERVICES = ["kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence"]
+SERVICES = ["kb-gateway", "auth-center", "kb-file", "kb-knowledge", "kb-intelligence"]
 
 
 def upload_file(sftp, local_path, remote_path, ssh):

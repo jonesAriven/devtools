@@ -4,7 +4,7 @@
 # ============================================================
 # 用法:
 #   bash scripts/health-check.sh                 # 全量检查
-#   bash scripts/health-check.sh kb-auth         # 仅检查单个服务
+#   bash scripts/health-check.sh auth-center         # 仅检查单个服务
 #   bash scripts/health-check.sh -help           # 显示帮助
 #
 # 检查内容:
@@ -42,7 +42,7 @@ info() { echo -e "${BLUE}[INFO ]${NC} $1"; }
 # 微服务: name=port
 SERVICES=(
     "kb-gateway=8080"
-    "kb-auth=8081"
+    "auth-center=8085"
     "kb-file=8082"
     "kb-knowledge=8083"
     "kb-intelligence=8086"
@@ -79,12 +79,12 @@ mykng 知识库微服务健康检查脚本
   bash scripts/health-check.sh -help
 
 参数:
-  service   可选服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+  service   可选服务名: kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
             不指定则全量检查
 
 示例:
   bash scripts/health-check.sh
-  bash scripts/health-check.sh kb-auth
+  bash scripts/health-check.sh auth-center
 EOF
 }
 

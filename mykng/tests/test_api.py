@@ -87,10 +87,10 @@ def skip(name: str, reason: str = ""):
     result.record(name, "SKIP", reason, 0)
 
 # ============================================================
-# 1. 认证服务 (kb-auth) - 10 个接口
+# 1. 认证服务 (auth-center) - 10 个接口
 # ============================================================
 def test_auth():
-    print("\n📋 1. 认证服务 (kb-auth)")
+    print("\n📋 1. 认证服务 (auth-center)")
     
     # 1.1 登录
     def _login():

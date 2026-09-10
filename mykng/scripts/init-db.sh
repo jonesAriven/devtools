@@ -161,7 +161,7 @@ verify_databases() {
 # ---------- 创建管理员 ----------
 create_admin() {
     info "=== 创建默认管理员 ==="
-    # 使用 BCrypt 加密的 admin123 密码（与 kb-auth 服务一致）
+    # 使用 BCrypt 加密的 admin123 密码（与 auth-center 服务一致）
     local sql
     sql="USE kb_auth;
 INSERT IGNORE INTO user (id, username, password, phone, status, created_at, updated_at)

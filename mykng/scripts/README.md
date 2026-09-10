@@ -10,13 +10,13 @@
 | -------------------------- | ------------------------------------------------- | ----------------------------------------- |
 | `deploy.sh`                | 一键部署（build/up/down/restart/all/logs/status） | `bash scripts/deploy.sh all`              |
 | `build.sh`                 | Maven 编译 + Docker 构建                          | `bash scripts/build.sh --no-cache`        |
-| `rollback.sh`              | 服务回滚（单个 / 全部）                           | `bash scripts/rollback.sh kb-auth`        |
+| `rollback.sh`              | 服务回滚（单个 / 全部）                           | `bash scripts/rollback.sh auth-center`        |
 | `health-check.sh`          | 健康检查（容器 + actuator + 基础设施连通性）      | `bash scripts/health-check.sh`            |
 | `backup.sh`                | 数据库备份（5 个 MySQL + MongoDB）                | `bash scripts/backup.sh`                  |
 | `init-env.sh`              | 首次环境初始化                                    | `bash scripts/init-env.sh`                |
 | `start.sh`                 | 启动服务                                          | `bash scripts/start.sh`                   |
 | `stop.sh`                  | 停止服务（保留 / 移除容器）                       | `bash scripts/stop.sh --down`             |
-| `restart.sh`               | 重启服务                                          | `bash scripts/restart.sh kb-auth`         |
+| `restart.sh`               | 重启服务                                          | `bash scripts/restart.sh auth-center`         |
 | `status.sh`                | 状态查看（容器 + 端口 + 磁盘 + 内存）             | `bash scripts/status.sh`                  |
 | `db-migrate-verify.sh`     | 数据迁移校验（快照对比 + verify SQL）             | `bash scripts/db-migrate-verify.sh`       |
 | `init-db.sh`               | 数据库初始化                                      | `bash scripts/init-db.sh --verify`        |
@@ -72,7 +72,7 @@ bash scripts/start.sh                 # 启动所有
 bash scripts/stop.sh                  # 停止所有（保留容器）
 bash scripts/stop.sh --down           # 停止并移除容器
 bash scripts/restart.sh               # 重启所有
-bash scripts/restart.sh kb-auth       # 重启单个服务
+bash scripts/restart.sh auth-center       # 重启单个服务
 ```
 
 ### 查看状态
@@ -81,7 +81,7 @@ bash scripts/restart.sh kb-auth       # 重启单个服务
 bash scripts/status.sh                # 完整状态（容器 + 端口 + 资源）
 bash scripts/health-check.sh          # 健康检查（actuator + 连通性）
 bash scripts/deploy.sh logs           # 查看所有日志
-bash scripts/deploy.sh logs kb-auth   # 查看单个服务日志
+bash scripts/deploy.sh logs auth-center   # 查看单个服务日志
 ```
 
 ### 数据库备份与恢复
@@ -120,7 +120,7 @@ docker exec -i kb-mongo mongorestore --uri="mongodb://kb:kb123456@localhost:2701
 bash scripts/rollback.sh kb-intelligence
 
 # 回滚到指定 tag
-bash scripts/rollback.sh kb-auth 20260628_103000
+bash scripts/rollback.sh auth-center 20260628_103000
 
 # 回滚所有服务（含数据备份）
 bash scripts/rollback.sh all
@@ -190,15 +190,15 @@ bash scripts/chaos-engineering/verify-ha.sh --recover
 
 - **项目名**：`kb-deploy`
 - **网络**：`kb-deploy_kb-net`
-- **容器命名前缀**：`kb-`（如 `kb-mysql`、`kb-auth`）
-- **镜像命名前缀**：`kb-deploy-`（如 `kb-deploy-kb-auth`）
+- **容器命名前缀**：`kb-`（如 `kb-mysql`、`auth-center`）
+- **镜像命名前缀**：`kb-deploy-`（如 `kb-deploy-auth-center`）
 
 ## 服务端口映射
 
 | 服务              | 容器端口 | 宿主机端口 | 说明         |
 | ----------------- | -------- | ---------- | ------------ |
 | kb-gateway        | 8080     | 8090       | API 网关     |
-| kb-auth           | 8081     | -          | 认证服务     |
+| auth-center           | 8081     | -          | 认证服务     |
 | kb-file           | 8082     | -          | 文件服务     |
 | kb-knowledge      | 8083     | -          | 知识服务     |
 | kb-ops            | 8084     | -          | 运维服务     |

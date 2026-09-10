@@ -23,8 +23,8 @@ bash scripts/chaos-engineering/inject-mysql-down.sh --duration 30
 # 模拟 Redis 宕机 60 秒
 bash scripts/chaos-engineering/inject-redis-down.sh --duration 60
 
-# 模拟 kb-auth 与 kb-knowledge 之间网络延迟 500ms
-bash scripts/chaos-engineering/inject-network-delay.sh --target kb-auth --delay 500ms
+# 模拟 auth-center 与 kb-knowledge 之间网络延迟 500ms
+bash scripts/chaos-engineering/inject-network-delay.sh --target auth-center --delay 500ms
 
 # 模拟 kb-file 容器 OOM
 bash scripts/chaos-engineering/inject-oom.sh --target kb-file

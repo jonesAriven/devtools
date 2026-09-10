@@ -106,10 +106,10 @@ function Invoke-Up {
     Wait-Healthy "kb-mongo" 60 | Out-Null
 
     Write-Step "启动微服务..."
-    Invoke-Dc up -d kb-auth kb-file kb-knowledge kb-intelligence kb-gateway
+    Invoke-Dc up -d auth-center kb-file kb-knowledge kb-intelligence kb-gateway
 
     Write-Step "等待微服务就绪（最多 180s）..."
-    foreach ($svc in @("kb-auth","kb-file","kb-knowledge","kb-intelligence","kb-gateway")) {
+    foreach ($svc in @("auth-center","kb-file","kb-knowledge","kb-intelligence","kb-gateway")) {
         $ok = Wait-Healthy $svc 180
         if (-not $ok) { Write-Warn "$svc 未在规定时间内就绪，请检查日志: docker logs $svc" }
     }
@@ -182,7 +182,7 @@ mykng 知识库微服务部署脚本 (PowerShell)
 示例:
   .\scripts\deploy.ps1 all
   .\scripts\deploy.ps1 up
-  .\scripts\deploy.ps1 logs kb-auth
+  .\scripts\deploy.ps1 logs auth-center
 "@
 }
 

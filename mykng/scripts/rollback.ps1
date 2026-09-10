@@ -51,13 +51,13 @@ function Write-Err  { param([string]$Msg) Write-Host "[ERROR] $Msg" -ForegroundC
 
 # 服务到数据库的映射
 $SvcDbMap = @{
-    "kb-auth"         = "kb_auth"
+    "auth-center"         = "kb_auth"
     "kb-file"         = "kb_file"
     "kb-knowledge"    = "kb_knowledge"
     "kb-intelligence" = "kb_intelligence"
 }
 
-$AllServices = @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence")
+$AllServices = @("kb-gateway", "auth-center", "kb-file", "kb-knowledge", "kb-intelligence")
 
 # ---------- 帮助 ----------
 function Show-Help {
@@ -69,12 +69,12 @@ mykng 知识库微服务回滚脚本 (PowerShell)
   .\scripts\rollback.ps1 all
 
 参数:
-  service   服务名: kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence / all
+  service   服务名: kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence / all
   tag       可选镜像 tag（默认使用上一 timestamp 版本）
 
 示例:
   .\scripts\rollback.ps1 kb-intelligence
-  .\scripts\rollback.ps1 kb-auth 20260628_103000
+  .\scripts\rollback.ps1 auth-center 20260628_103000
   .\scripts\rollback.ps1 all
 "@
 }
@@ -192,7 +192,7 @@ switch ($Service) {
     "all" {
         Invoke-RollbackAll
     }
-    { $_ -in @("kb-gateway", "kb-auth", "kb-file", "kb-knowledge", "kb-intelligence") } {
+    { $_ -in @("kb-gateway", "auth-center", "kb-file", "kb-knowledge", "kb-intelligence") } {
         Invoke-RollbackOne -Svc $Service -TargetTag $Tag | Out-Null
     }
     default {

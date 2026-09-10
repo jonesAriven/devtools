@@ -4,7 +4,7 @@
 # ============================================================
 # 用法:
 #   bash scripts/stop.sh              # 停止所有服务（保留容器）
-#   bash scripts/stop.sh kb-auth      # 停止单个服务
+#   bash scripts/stop.sh auth-center      # 停止单个服务
 #   bash scripts/stop.sh --down       # 停止并移除容器（保留数据卷）
 #   bash scripts/stop.sh -help        # 显示帮助
 # ============================================================
@@ -45,7 +45,7 @@ mykng 知识库微服务停止脚本
 
 示例:
   bash scripts/stop.sh
-  bash scripts/stop.sh kb-auth
+  bash scripts/stop.sh auth-center
   bash scripts/stop.sh --down
 EOF
 }

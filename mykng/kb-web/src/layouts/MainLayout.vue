@@ -281,7 +281,7 @@ const { logout } = useAuth()
 // 模块动态菜单：各菜单项依赖对应微服务模块的可用性
 const kbKnowledgeAvailable = computed(() => moduleStore.isModuleAvailable('kb-knowledge'))
 const kbFileAvailable = computed(() => moduleStore.isModuleAvailable('kb-file'))
-const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('kb-auth'))
+const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('auth-center'))
 // 知识库分组同时包含 kb-knowledge 与 kb-file 依赖项，任一可用即显示分组
 const showKbGroup = computed(() => kbKnowledgeAvailable.value || kbFileAvailable.value)
 

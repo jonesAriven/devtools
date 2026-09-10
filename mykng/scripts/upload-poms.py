@@ -12,12 +12,10 @@ REMOTE_BASE = "/root/devtools/mykng"
 
 POM_FILES = [
     "kb-parent/pom.xml",
-    "kb-common/pom.xml",
     "kb-file/pom.xml",
     "kb-intelligence/pom.xml",
     "kb-ops/pom.xml",
     "kb-knowledge/pom.xml",
-    "kb-auth/pom.xml",
     "kb-gateway/pom.xml",
 ]
 

@@ -397,7 +397,7 @@ export interface CreateTokenRequest {
 
 /** 系统模块状态 */
 export interface ModuleStatus {
-  /** 模块名称，如 kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence */
+  /** 模块名称，如 kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence */
   name: string
   /** 健康状态：UP / DOWN */
   status: string

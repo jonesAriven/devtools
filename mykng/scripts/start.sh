@@ -4,7 +4,7 @@
 # ============================================================
 # 用法:
 #   bash scripts/start.sh              # 启动所有服务
-#   bash scripts/start.sh kb-auth      # 启动单个服务
+#   bash scripts/start.sh auth-center      # 启动单个服务
 #   bash scripts/start.sh -help        # 显示帮助
 # ============================================================
 
@@ -39,11 +39,11 @@ mykng 知识库微服务启动脚本
 参数:
   service   可选服务名，不指定则启动全部
             可选: mysql / redis / minio / meilisearch / mongodb
-                kb-gateway / kb-auth / kb-file / kb-knowledge / kb-intelligence
+                kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence
 
 示例:
   bash scripts/start.sh
-  bash scripts/start.sh kb-auth
+  bash scripts/start.sh auth-center
 EOF
 }
 
