@@ -6,7 +6,9 @@ import posixpath
 
 HOST = "100.93.36.113"
 USER = "root"
-PASSWORD = "root"
+PASSWORD = os.environ.get("MYKNG_SSH_PASSWORD", "")   # 2026-09-11：明文默认值已移除（已泄露到公开仓库），见 ADR §12.15
+if not PASSWORD:
+    raise SystemExit("请先设置环境变量 MYKNG_SSH_PASSWORD 后再运行本脚本")
 LOCAL_BASE = r"d:\huliang\java\ideaworkspace\devtools\mykng"
 REMOTE_BASE = "/root/devtools/mykng"
 

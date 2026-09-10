@@ -13,10 +13,10 @@
     .\kb-cli.ps1 up prod           # 启动生产环境（全量）
     .\kb-cli.ps1 down              # 停止所有服务
     .\kb-cli.ps1 stop kb-file      # 停止指定模块
-    .\kb-cli.ps1 start kb-auth     # 启动指定模块（不启动依赖）
+    .\kb-cli.ps1 start auth-center  # 启动指定模块（不启动依赖）
     .\kb-cli.ps1 status            # 查看状态
     .\kb-cli.ps1 logs kb-gateway   # 查看日志
-    .\kb-cli.ps1 rebuild kb-auth   # 重新构建并启动
+    .\kb-cli.ps1 rebuild auth-center  # 重新构建并启动
     .\kb-cli.ps1 list              # 列出所有模块
 #>
 
@@ -42,7 +42,7 @@ $ValidEnvironments = @('dev', 'test', 'prod')
 
 # 所有服务列表（基础设施 + 微服务）
 $InfrastructureServices = @('mysql', 'redis', 'nacos', 'minio', 'meilisearch', 'mongodb')
-$MicroServices = @('kb-gateway', 'kb-auth', 'kb-file', 'kb-knowledge', 'kb-intelligence')
+$MicroServices = @('kb-gateway', 'auth-center', 'kb-file', 'kb-knowledge', 'kb-intelligence')
 $AllServices = $InfrastructureServices + $MicroServices
 
 # 可构建的微服务（有 Dockerfile 的服务）
@@ -57,7 +57,7 @@ $ServiceProfiles = @{
     'meilisearch'     = @('test', 'prod')
     'mongodb'         = @('test', 'prod')
     'kb-gateway'      = @('dev', 'test', 'prod')
-    'kb-auth'         = @('dev', 'test', 'prod')
+    'auth-center'     = @('dev', 'test', 'prod')
     'kb-file'         = @('test', 'prod')
     'kb-knowledge'    = @('dev', 'test', 'prod')
     'kb-intelligence' = @('test', 'prod')
@@ -296,10 +296,10 @@ function Invoke-List {
         $p = $ServiceProfiles[$svc] -join ', '
         $port = switch ($svc) {
             'kb-gateway'      { '8090->8080' }
-            'kb-auth'         { '8081 (内网)' }
-            'kb-file'         { '8082 (内网)' }
-            'kb-knowledge'    { '8083 (内网)' }
-            'kb-intelligence' { '8086 (内网)' }
+            'auth-center'     { '8085->8085' }
+            'kb-file'         { '8089->8089' }
+            'kb-knowledge'    { '8092->8092' }
+            'kb-intelligence' { '8086->8086' }
             default           { '-' }
         }
         Write-Host ("  {0,-14} ports: {1,-14} profiles: [{2}]" -f $svc, $port, $p)
@@ -316,11 +316,11 @@ function Invoke-List {
     Write-Host "  .\kb-cli.ps1 up dev             启动开发环境"
     Write-Host "  .\kb-cli.ps1 up test            启动测试环境"
     Write-Host "  .\kb-cli.ps1 down               停止所有服务"
-    Write-Host "  .\kb-cli.ps1 start kb-auth      单独启动某服务"
+    Write-Host "  .\kb-cli.ps1 start auth-center  单独启动某服务"
     Write-Host "  .\kb-cli.ps1 stop kb-file       单独停止某服务"
     Write-Host "  .\kb-cli.ps1 status             查看运行状态"
     Write-Host "  .\kb-cli.ps1 logs kb-gateway    查看服务日志"
-    Write-Host "  .\kb-cli.ps1 rebuild kb-auth    重新构建并启动"
+    Write-Host "  .\kb-cli.ps1 rebuild auth-center  重新构建并启动"
     Write-Host ""
 }
 
@@ -360,7 +360,7 @@ function Show-Help {
 #     param($wordToComplete, $commandAst, $cursorPosition)
 #     $commands = @('up','down','start','stop','status','logs','rebuild','list','help')
 #     $services = @('mysql','redis','nacos','minio','meilisearch','mongodb',
-#                    'kb-gateway','kb-auth','kb-file','kb-knowledge','kb-intelligence')
+#                    'kb-gateway','auth-center','kb-file','kb-knowledge','kb-intelligence')
 #     $envs = @('dev','test','prod')
 #     $elements = $commandAst.CommandElements | Select-Object -Skip 1 -ExpandProperty Value
 #     if ($elements.Count -eq 0) {

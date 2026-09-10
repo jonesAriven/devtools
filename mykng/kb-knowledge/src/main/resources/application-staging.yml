@@ -30,8 +30,6 @@ jwt:
   secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
 
 kb:
-  auth:
-    host: ${KB_AUTH_HOST:http://auth-center:8085}
   file:
     host: ${KB_FILE_HOST:http://kb-file:8089}
 

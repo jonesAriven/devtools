@@ -27,10 +27,6 @@ mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-kb:
-  feign:
-    auth-url: ${KB_AUTH_HOST:http://auth-center:8085}   # 环境变量名保留 KB_AUTH_HOST 以兼容 compose env；默认值指向 auth-center
-
 logging:
   level:
     com.kb: DEBUG

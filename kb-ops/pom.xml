@@ -93,7 +93,7 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- OpenFeign (服务间调用 kb-auth 验证 Token) -->
+        <!-- OpenFeign (服务间调用：SyncFromIntelServiceImpl 同步 kb-intelligence 数据) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>

@@ -98,7 +98,6 @@ stages:
           echo "=== 编译完成，检查产物 ==="
           ls -lh \
             mykng/kb-gateway/target/*.jar \
-            mykng/kb-auth/target/*.jar \
             mykng/kb-file/target/*.jar \
             mykng/kb-knowledge/target/*.jar \
             mykng/kb-intelligence/target/*.jar \
@@ -115,7 +114,6 @@ stages:
           - name: mykng-jars
             path: |
               mykng/kb-gateway/target/*.jar
-              mykng/kb-auth/target/*.jar
               mykng/kb-file/target/*.jar
               mykng/kb-knowledge/target/*.jar
               mykng/kb-intelligence/target/*.jar

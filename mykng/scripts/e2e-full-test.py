@@ -22,7 +22,9 @@ from ssh_exec import exec_command
 
 HOST = "100.93.36.113"
 SSH_USER = "root"
-SSH_PASSWORD = "root"
+SSH_PASSWORD = os.environ.get("MYKNG_SSH_PASSWORD", "")   # 2026-09-11：明文默认值已移除（已泄露到公开仓库），见 ADR §12.15
+if not SSH_PASSWORD:
+    raise SystemExit("请先设置环境变量 MYKNG_SSH_PASSWORD 后再运行本脚本")
 
 BASE_URL = "http://100.93.36.113:8090/kb/api"
 HEALTH_URL = "http://100.93.36.113:8090/actuator/health"
