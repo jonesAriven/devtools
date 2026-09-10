@@ -75,9 +75,9 @@
               <el-icon><Setting /></el-icon>
               <span>系统</span>
             </template>
-            <el-menu-item :index="'/log'" :disabled="!kbAuthAvailable" :title="kbAuthReason">
+            <el-menu-item :index="'/log'" :disabled="!authCenterAvailable" :title="authCenterReason">
               <el-icon><Tickets /></el-icon>
-              <template #title>操作日志<span v-if="!kbAuthAvailable" class="status-dot"></span></template>
+              <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
             </el-menu-item>
             <el-menu-item :index="'/settings'">
               <el-icon><Setting /></el-icon>
@@ -170,9 +170,9 @@
                 <el-icon><Setting /></el-icon>
                 <span>系统</span>
               </template>
-              <el-menu-item :index="'/log'" :disabled="!kbAuthAvailable" :title="kbAuthReason">
+              <el-menu-item :index="'/log'" :disabled="!authCenterAvailable" :title="authCenterReason">
                 <el-icon><Tickets /></el-icon>
-                <template #title>操作日志<span v-if="!kbAuthAvailable" class="status-dot"></span></template>
+                <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
               </el-menu-item>
               <el-menu-item :index="'/settings'">
                 <el-icon><Setting /></el-icon>
@@ -285,11 +285,11 @@ const { logout } = useAuth()
 // 模块动态菜单：各菜单项依赖对应微服务模块的可用性
 const kbKnowledgeAvailable = computed(() => moduleStore.isModuleAvailable('kb-knowledge'))
 const kbFileAvailable = computed(() => moduleStore.isModuleAvailable('kb-file'))
-const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('auth-center'))
+const authCenterAvailable = computed(() => moduleStore.isModuleAvailable('auth-center'))
 // 模块不可用时给用户看的中文原因（用于 tooltip）
 const kbKnowledgeReason = computed(() => moduleStore.getModuleUnavailableReason('kb-knowledge'))
 const kbFileReason = computed(() => moduleStore.getModuleUnavailableReason('kb-file'))
-const kbAuthReason = computed(() => moduleStore.getModuleUnavailableReason('auth-center'))
+const authCenterReason = computed(() => moduleStore.getModuleUnavailableReason('auth-center'))
 // 知识库分组含 kb-knowledge 与 kb-file，两者均不可用时整体灰化；分组标题只灰化、不禁用，保证可展开
 const kbGroupDisabled = computed(() => !kbKnowledgeAvailable.value && !kbFileAvailable.value)
 const kbGroupReason = computed(() => [kbKnowledgeReason.value, kbFileReason.value].filter(Boolean).join('；'))
