@@ -47,7 +47,14 @@ request.interceptors.response.use(
     if (data.traceId) {
       response.headers['x-trace-id'] = data.traceId
     }
-    if (data.code !== 0 && data.code !== 200) {
+    // 仅当响应体确实是"业务信封"时才做业务码校验。
+    // 例外：网关自身的端点（GET /api/system/modules）返回**裸数组**，不带 {code,message,data}，
+    // 若不加这个判据，HTTP 200 的正常响应会被误判成"请求失败"弹红条，且调用方只能拿到 reject
+    // —— 这正是历史上"请求失败 其实出自成功分支"那类误报的根因（当时被误诊为打到 SPA 兜底路径）。
+    // 只豁免数组、不豁免字符串：字符串响应体（典型是被网关 SPA 兜底返回的 index.html）
+    // 仍然按异常处理，因为那才是"请求打到了没有后端路由的路径"的真正信号。
+    const isBareArray = Array.isArray(response.data)
+    if (!isBareArray && data.code !== 0 && data.code !== 200) {
       const msg = data.message || '请求失败'
       const traceId = (data as any)?.traceId
       const url = `${ctx}/api${response.config.url ?? ''}`

@@ -10,7 +10,9 @@ source woodScript/lib-build.sh
 
 echo ">>> [1/3] Maven build mykng (4 modules) + registry consistency gate <<<"
 cd mykng/kb-parent
-# 注册表漂移门禁：这里放开 surefire 但用 -Dtest 只跑一致性用例。
+# 注册表漂移门禁 + 状态机真值表：这里放开 surefire 但用 -Dtest 只跑这两个用例类。
+#   ModuleManifestConsistencyTest —— 拦住"改了 registry 却没跑 gen-registry.py"的漂移
+#   ModuleStateTest                —— 锁死四态判定规则（纯 JUnit，不需要 Nacos）
 # 目的在于拦住「改了 mykng/module-registry.yml 却没跑 gen-registry.py」这类漂移 ——
 # 它过去只会表现为「菜单静默消失」，现在是构建失败。
 #
@@ -23,7 +25,7 @@ cd mykng/kb-parent
 # 与绑定 verify 阶段的 pitest(mutationThreshold=70)，全量放开是独立决策，需先实测稳定。
 # 被排除在这道门禁之外的回归信号，见 ADR Phase 0.5 的「未覆盖」清单。
 mvn clean package -B -V -ntp -T 2C \
-  -Dtest=ModuleManifestConsistencyTest -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dtest=ModuleManifestConsistencyTest,ModuleStateTest -Dsurefire.failIfNoSpecifiedTests=false \
   -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository \
   -Dmykng.registry.file="$(cd .. && pwd)/module-registry.yml"
 cd ../..

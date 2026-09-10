@@ -142,25 +142,24 @@ public class ModuleHealthController {
                 });
     }
 
-    /** 「期望 vs 实际」判定，整个改造的核心逻辑（判据见 {@link ModuleState}）。 */
+    /**
+     * 「期望 vs 实际」判定。**判定规则本身在 {@link ModuleState#resolve}**（纯函数 + 真值表测试），
+     * 这里只负责 {@code everSeen} 的副作用与 DTO 组装。
+     * <p>
+     * 2026-09-10 修正：原先 {@code !expected && actual == 0} 直接返回 DOWN，注释声称
+     * "交由上层 filter 过滤"，但单模块端点 {@code getModule(name)} 是直接调 {@code probeOne} 的、
+     * 绕过了 filter —— 于是任意野生名字（如前端 kb-web、已删的 kb-auth）都会被报成"服务宕机"。
+     * 现在改成：仍在 Nacos 列表里才算 DOWN（残留条目），毫无注册痕迹则判 MISSING（查无此注册）。
+     */
     private ModuleStatus evaluate(String name, int actual, Set<String> serviceNames) {
-        boolean expected = manifest.isExpected(name);
-        boolean inList = serviceNames != null && serviceNames.contains(name);
-
         if (actual > 0) {
             // 有实例 → 记录"见过"，供进程重启后的 DOWN 判定兜底
             everSeen.add(name);
-            return build(name, expected ? ModuleState.OK : ModuleState.UNEXPECTED, actual, inList);
         }
-
-        if (!expected) {
-            // 期望集外、无实例：只会出现在候选集里（即 Nacos 残留条目），交由上层 filter 过滤
-            return build(name, ModuleState.DOWN, 0, inList);
-        }
-
-        // 曾有实例（本进程见过）或 Nacos 里仍留有服务条目 → "服务下线"；否则判为"名字对不上"
-        boolean hadHistory = everSeen.contains(name) || inList;
-        return build(name, hadHistory ? ModuleState.DOWN : ModuleState.MISSING, 0, inList);
+        boolean inList = serviceNames != null && serviceNames.contains(name);
+        ModuleState state = ModuleState.resolve(
+                manifest.isExpected(name), actual, inList, everSeen.contains(name));
+        return build(name, state, actual, inList);
     }
 
     /** Nacos 整体不可用时的统一降级：全部期望模块报 UNKNOWN（前端视作可用），并打一条 WARN。 */

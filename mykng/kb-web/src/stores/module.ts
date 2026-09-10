@@ -35,7 +35,11 @@ export const useModuleStore = defineStore('module', () => {
   async function fetchModules() {
     try {
       const res = await getModuleStatusApi()
-      const list = res.data.data || []
+      // 网关端点返回裸数组（无 {code,data} 信封）：res.data 本身就是列表。
+      // 三元兼容是为了万一将来网关改为信封返回时，不至于静默变成空列表。
+      const list: ModuleStatus[] = Array.isArray(res.data)
+        ? res.data
+        : ((res.data as any)?.data ?? [])
       const map: Record<string, ModuleStatus> = {}
       for (const m of list) {
         map[m.name] = m

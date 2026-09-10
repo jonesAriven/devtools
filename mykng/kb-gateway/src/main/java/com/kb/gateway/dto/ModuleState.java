@@ -11,8 +11,8 @@ package com.kb.gateway.dto;
  * <table>
  *   <tr><th>取值</th><th>判据</th><th>语义</th><th>可用</th></tr>
  *   <tr><td>OK</td><td>在期望集 且 Nacos 有实例</td><td>正常</td><td>是</td></tr>
- *   <tr><td>DOWN</td><td>在期望集 且 实例数为 0，但曾有实例</td><td>运维事件：服务下线/崩溃</td><td>否</td></tr>
- *   <tr><td>MISSING</td><td>在期望集 且 本次进程启动以来从未见过该服务（Nacos 列表里也没有）</td><td>配置漂移（模块名对不上），或服务长期未启动</td><td>否</td></tr>
+ *   <tr><td>DOWN</td><td>有注册痕迹但当前 0 实例（本进程见过，或仍留在 Nacos 服务列表）</td><td>运维事件：服务下线/崩溃</td><td>否</td></tr>
+ *   <tr><td>MISSING</td><td>无任何注册痕迹（期望集内却从未注册，或期望集外且 Nacos 里压根不存在这个名字）</td><td>名字对不上 / 查无此注册</td><td>否</td></tr>
  *   <tr><td>UNEXPECTED</td><td>不在期望集 但 Nacos 有实例</td><td>野模块：注册了但注册表没声明</td><td>是</td></tr>
  *   <tr><td>UNKNOWN</td><td>探活基建本身不可用（Nacos 整体拉取失败/单模块超时）</td><td>无法判定，按可用放行避免误隐藏</td><td>是</td></tr>
  * </table>
@@ -31,14 +31,40 @@ public enum ModuleState {
 
     /** 期望集内且 Nacos 有实例 */
     OK,
-    /** 期望集内、曾有实例、现为 0 —— 服务下线（运维事件） */
+    /** 有注册痕迹但当前 0 实例（本进程见过，或仍留在 Nacos 服务列表）—— 服务下线（运维事件） */
     DOWN,
-    /** 期望集内、本次启动以来从未见过该服务 —— 命名/配置漂移，或服务长期未启动 */
+    /** 无任何注册痕迹 —— 名字对不上（期望集内从未注册）或查无此注册（期望集外且 Nacos 无） */
     MISSING,
     /** 期望集外、Nacos 却有实例 —— 未声明的野模块 */
     UNEXPECTED,
     /** 探活基建不可用，无法判定；按可用放行 */
     UNKNOWN;
+
+    /**
+     * 纯函数判定：把「期望 vs 实际」映射到状态。
+     * <p>
+     * 抽成无副作用的静态方法有两个目的：其一，这段逻辑是本模块最核心的语义，     * 抽出来才能用真值表锁死（见 {@code ModuleStateTest}），且不需要 Spring 与 Nacos；     * 其二，避免判定规则散落在 controller 的分支里、被注释和实现不一致地描述。
+     *
+     * @param expected 是否在注册表期望集（module-manifest.json）内
+     * @param actual   Nacos 实际实例数
+     * @param inList   名字是否出现在 Nacos 服务列表中（即使实例数为 0）
+     * @param everSeen 本进程启动以来是否见过该模块的实例
+     * @return 判定结果；{@code UNKNOWN} 不在此函数产出，它专指探活基建本身不可用
+     */
+    public static ModuleState resolve(boolean expected, int actual, boolean inList, boolean everSeen) {
+        if (actual > 0) {
+            return expected ? OK : UNEXPECTED;
+        }
+        if (!expected) {
+            // 期望集外且零实例，两种来源语义不同，不能一律叫"宕机"：
+            //  - 名字仍在 Nacos 服务列表里 → 注册痕迹还在，属残留条目 → 按"已下线"看待
+            //  - 名字在 Nacos 里毫无痕迹   → 不是宕机，而是"查无此注册"
+            //    （任意野生名字都会落到这里，例如前端 kb-web、已删的 kb-auth）
+            return inList ? DOWN : MISSING;
+        }
+        // 期望集内却零实例：本进程见过 或 Nacos 仍留有条目 → 服务下线；否则是名字对不上
+        return (everSeen || inList) ? DOWN : MISSING;
+    }
 
     /**
      * 是否对用户可用。
