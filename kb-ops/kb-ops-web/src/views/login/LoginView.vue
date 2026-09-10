@@ -30,7 +30,7 @@ const loginConfig = {
   showForgotPassword: true,  // 启用集成式忘记密码
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
-    clientId: 'kb-ops',
+    clientId: 'marschat-kbops',
     redirectUri: `${window.location.origin}/login`,
     scope: 'openid profile',
   },

@@ -28,7 +28,7 @@ const loginConfig = {
   showForgotPassword: true,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
-    clientId: 'portal',
+    clientId: 'marschat-portal',
     redirectUri: `${window.location.origin}/login`,
     scope: 'openid profile',
   },

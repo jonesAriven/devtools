@@ -27,7 +27,7 @@ const loginConfig = {
   showForgotPassword: true,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
-    clientId: 'kb-web',
+    clientId: 'marschat-kbweb',
     redirectUri: `${window.location.origin}/login`,
     scope: 'openid profile',
   },
