@@ -1,9 +1,9 @@
 /**
- * kb-auth SSO（OIDC authorization_code + PKCE）工具集。
+ * auth-center SSO（OIDC authorization_code + PKCE）工具集。
  * 移植自 kb-web，按 infra-monitor 的 base=/infra 调整 redirect_uri。
  *
  * 流程：
- *   startSsoLogin()    → 跳转 kb-auth /oauth2/authorize
+ *   startSsoLogin()    → 跳转 auth-center /oauth2/authorize
  *   handleSsoCallback()→ 回调页用 code + code_verifier 换 RS256 access_token / refresh_token
  *   refreshOidcToken() → 401 时用 refresh_token 静默续期（SAS 端 rotation 已启用）
  */

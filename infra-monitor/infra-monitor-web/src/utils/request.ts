@@ -73,7 +73,7 @@ request.interceptors.response.use(
       }
 
       const refreshToken = getRefreshToken()
-      // 双 token 体系分流：OIDC（kb-auth RS256）走 SAS 静默续期；legacy 仅本地登录态，无 refresh 端点，直接登出
+      // 双 token 体系分流：OIDC（auth-center RS256）走 SAS 静默续期；legacy 仅本地登录态，无 refresh 端点，直接登出
       if (!refreshToken) {
         clearTokens()
         if (!isWhiteList(url)) {

@@ -40,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         String username = tokenProvider.getUsernameFromToken(token);
                         setAuthentication(userId, username == null ? userId : username);
                     } else if ("access".equals(type)) {
-                        // legacy HS256 token（kb-auth 自签，type=access）
+                        // legacy HS256 token（历史自签，type=access）
                         Long userId = tokenProvider.getUserIdFromToken(token);
                         String username = tokenProvider.getUsernameFromToken(token);
                         setAuthentication(userId, username == null ? String.valueOf(userId) : username);

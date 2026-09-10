@@ -1,5 +1,6 @@
--- kb-auth 初始化
 -- kb_auth 数据库初始化脚本
+-- 使用方：auth-center（认证中心，容器 8085）。原 kb-auth 服务源码已于 2026-09-10 清除，
+-- 库名 kb_auth 与文件名 02-kb-auth.sql 作为历史沿用保持不变（与 03-kb-file/05-kb-knowledge 命名约定一致）。
 -- 包含 user, refresh_token, jwt_blacklist, ops_api_token, operation_log 表
 
 CREATE DATABASE IF NOT EXISTS `kb_auth` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

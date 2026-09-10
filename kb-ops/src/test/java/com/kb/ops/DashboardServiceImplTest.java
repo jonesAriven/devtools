@@ -64,7 +64,7 @@ class DashboardServiceImplTest {
         when(serviceMapper.selectList(any())).thenReturn(List.of(s1, s2, s3, s4));
 
         DeploymentRecord r1 = new DeploymentRecord();
-        r1.setServiceName("kb-auth");
+        r1.setServiceName("auth-center");
         r1.setVersion("1.0");
         r1.setOperator("admin");
         r1.setDeployTime(LocalDateTime.now());

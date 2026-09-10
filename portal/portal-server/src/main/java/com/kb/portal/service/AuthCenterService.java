@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * auth-center（kb-auth）OIDC 客户端 + 管理代理。
+ * auth-center OIDC 客户端 + 管理代理。
  * - 授权码换 token（client_secret_basic）
  * - refresh_token 换新 access token（SAS 默认不轮换失效，重放安全）
  * - /admin/users 代理：携带 RS256 access token，401 自动刷新重试一次
@@ -133,7 +133,7 @@ public class AuthCenterService {
 
     /**
      * 管理代理调用：
-     * 1) 优先 SSO 身份（RS256，kb-auth 审计记录真实操作者）；refresh 失效自动清陈旧 token；
+     * 1) 优先 SSO 身份（RS256，auth-center 审计记录真实操作者）；refresh 失效自动清陈旧 token；
      * 2) 兜底服务身份（legacy HS512，密码登录的管理员没有 SSO 会话也可用用户管理）；
      * 3) 两者都 401 才对外报 401。
      */
@@ -189,7 +189,7 @@ public class AuthCenterService {
         return new ProxyResult(response.statusCode(), response.body());
     }
 
-    /** 服务账号登录 kb-auth legacy 接口，缓存 token 到期前 60s */
+    /** 服务账号登录 auth-center legacy 接口，缓存 token 到期前 60s */
     private synchronized String getServiceToken() throws Exception {
         if (serviceToken != null && System.currentTimeMillis() < serviceTokenExpiresAt) {
             return serviceToken;

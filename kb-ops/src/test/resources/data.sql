@@ -5,7 +5,7 @@ MERGE INTO `ops_host` (`id`, `name`, `ip`, `ssh_port`, `status`, `deleted`, `cre
     KEY(`id`) VALUES (1, 'test-host', '192.168.1.100', 22, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO `ops_service` (`id`, `name`, `type`, `version`, `port`, `host_id`, `status`, `deleted`, `created_at`, `updated_at`)
-    KEY(`id`) VALUES (1, 'kb-auth', 'web', '1.0.0', 8081, 1, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    KEY(`id`) VALUES (1, 'auth-center', 'web', '1.0.0', 8085, 1, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO `ops_change_log` (`id`, `service_id`, `service_name`, `host_id`, `version`, `operator`, `result`, `rollback`, `created_at`)
-    KEY(`id`) VALUES (1, 1, 'kb-auth', 1, '1.0.0', 'admin', 1, 0, CURRENT_TIMESTAMP);
+    KEY(`id`) VALUES (1, 1, 'auth-center', 1, '1.0.0', 'admin', 1, 0, CURRENT_TIMESTAMP);

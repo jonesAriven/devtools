@@ -33,7 +33,7 @@ jwt:
 # Feign 客户端配置
 kb:
   auth:
-    host: ${KB_AUTH_HOST:http://kb-auth:8085}
+    host: ${KB_AUTH_HOST:http://auth-center:8085}
   file:
     host: ${KB_FILE_HOST:http://kb-file:8089}
 

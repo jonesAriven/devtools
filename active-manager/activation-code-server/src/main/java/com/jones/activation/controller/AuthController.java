@@ -72,7 +72,7 @@ public class AuthController {
     }
 
     /**
-     * 统一认证（auth-center / kb-auth）SSO 登录桥接。
+     * 统一认证（auth-center）SSO 登录桥接。
      * 前端已完成 OIDC authorization_code + PKCE 流程，此处：服务端用 OidcTokenVerifier 对 RS256
      * access_token 验签（签名 + issuer + 过期），并校验 token 内用户名与请求用户名一致，通过后才建立
      * 与「账号密码登录」同口径的 HttpSession（激活码数据无用户隔离，统一以管理员身份进入）。

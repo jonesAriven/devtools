@@ -54,7 +54,7 @@ class DeploymentRecordServiceImplTest {
     void createDeployment() {
         OpsService svc = new OpsService();
         svc.setId(1L);
-        svc.setName("kb-auth");
+        svc.setName("auth-center");
         svc.setHostId(1L);
         when(serviceMapper.selectById(1L)).thenReturn(svc);
 
@@ -95,7 +95,7 @@ class DeploymentRecordServiceImplTest {
     void createDeployment_hostIdNull_usesServiceHostId() {
         OpsService svc = new OpsService();
         svc.setId(1L);
-        svc.setName("kb-auth");
+        svc.setName("auth-center");
         svc.setHostId(5L);
         when(serviceMapper.selectById(1L)).thenReturn(svc);
         when(recordMapper.insert(any(DeploymentRecord.class))).thenAnswer(invocation -> {
@@ -124,7 +124,7 @@ class DeploymentRecordServiceImplTest {
     void createDeployment_resultFailed_noVersionUpdate() {
         OpsService svc = new OpsService();
         svc.setId(1L);
-        svc.setName("kb-auth");
+        svc.setName("auth-center");
         svc.setHostId(1L);
         when(serviceMapper.selectById(1L)).thenReturn(svc);
         when(recordMapper.insert(any(DeploymentRecord.class))).thenAnswer(invocation -> {
@@ -149,7 +149,7 @@ class DeploymentRecordServiceImplTest {
     void createDeployment_versionNull_noVersionUpdate() {
         OpsService svc = new OpsService();
         svc.setId(1L);
-        svc.setName("kb-auth");
+        svc.setName("auth-center");
         svc.setHostId(1L);
         when(serviceMapper.selectById(1L)).thenReturn(svc);
         when(recordMapper.insert(any(DeploymentRecord.class))).thenAnswer(invocation -> {

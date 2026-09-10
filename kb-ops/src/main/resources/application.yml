@@ -33,18 +33,18 @@ marschat:
   auth:
     secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
   # OIDC RS256 双验签（auth-core 2.0.0）：对接 auth-center 签发的 RS256 token。
-  # 过渡期内 HS256（kb-auth 自签）与 RS256（auth-center）并存，TokenProvider 自动先 RS256 后回退 HS256。
-  # issuer 必须与 auth-center 签发方一致；jwks-uri 走 compose 内网直连 kb-auth 绕过公网回环。
+  # 过渡期内 HS256（历史自签 token）与 RS256（auth-center）并存，TokenProvider 自动先 RS256 后回退 HS256。
+  # issuer 必须与 auth-center 签发方一致；jwks-uri 走 compose 内网直连 auth-center 绕过公网回环。
   oidc:
     issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
-    jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://kb-auth:8085/oauth2/jwks}
+    jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://auth-center:8085/oauth2/jwks}
 
 # 服务间调用 (单机部署，直接 HTTP URL)
-# 独立运行时可选：kb-ops 脱离 mykng 后，以下 Feign 调用 kb-auth/kb-intelligence 为可选依赖。
+# 独立运行时可选：kb-ops 脱离 mykng 后，以下 Feign 调用 auth-center/kb-intelligence 为可选依赖。
 # 若不需要 Token 验证 / 智能同步，可忽略；需要时请确保目标服务可达。
 kb:
   feign:
-    auth-url: ${AUTH_URL:http://kb-auth:8081}
+    auth-url: ${AUTH_URL:http://auth-center:8085}
     intelligence-url: ${INTELLIGENCE_URL:http://kb-intelligence:8086}
 
 logging:

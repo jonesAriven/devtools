@@ -35,7 +35,7 @@ class DependencyServiceImplTest {
     void list_noFilter_returnsPagedResult() {
         Dependency d = new Dependency();
         d.setId(1L);
-        d.setServiceName("kb-auth");
+        d.setServiceName("auth-center");
         Page<Dependency> page = new Page<>(1, 20);
         page.setRecords(List.of(d));
         page.setTotal(1);
@@ -44,7 +44,7 @@ class DependencyServiceImplTest {
         PageResult<Dependency> result = dependencyService.list(null, 1, 20);
 
         assertEquals(1, result.getTotal());
-        assertEquals("kb-auth", result.getList().get(0).getServiceName());
+        assertEquals("auth-center", result.getList().get(0).getServiceName());
     }
 
     @Test
@@ -67,12 +67,12 @@ class DependencyServiceImplTest {
     void getById_exists_returnsDependency() {
         Dependency d = new Dependency();
         d.setId(1L);
-        d.setServiceName("kb-auth");
+        d.setServiceName("auth-center");
         when(dependencyMapper.selectById(1L)).thenReturn(d);
 
         Dependency result = dependencyService.getById(1L);
 
-        assertEquals("kb-auth", result.getServiceName());
+        assertEquals("auth-center", result.getServiceName());
     }
 
     @Test
@@ -88,7 +88,7 @@ class DependencyServiceImplTest {
     void create_typeNull_defaultsToRequired() {
         DependencyRequest request = new DependencyRequest();
         request.setServiceId(1L);
-        request.setServiceName("kb-auth");
+        request.setServiceName("auth-center");
         request.setDependsOnServiceId(2L);
         request.setDependsOnServiceName("mysql");
         request.setDescription("强依赖");
@@ -100,7 +100,7 @@ class DependencyServiceImplTest {
 
         Dependency result = dependencyService.create(request);
 
-        assertEquals("kb-auth", result.getServiceName());
+        assertEquals("auth-center", result.getServiceName());
         assertEquals("REQUIRED", result.getDependencyType());
         verify(dependencyMapper).insert(any(Dependency.class));
     }
@@ -132,12 +132,12 @@ class DependencyServiceImplTest {
         when(dependencyMapper.updateById(any(Dependency.class))).thenReturn(1);
 
         DependencyRequest request = new DependencyRequest();
-        request.setServiceName("new-kb-auth");
+        request.setServiceName("new-auth-center");
         request.setDependencyType("WEAK");
 
         Dependency result = dependencyService.update(1L, request);
 
-        assertEquals("new-kb-auth", result.getServiceName());
+        assertEquals("new-auth-center", result.getServiceName());
         assertEquals("WEAK", result.getDependencyType());
         verify(dependencyMapper).updateById(any(Dependency.class));
     }
@@ -148,7 +148,7 @@ class DependencyServiceImplTest {
         when(dependencyMapper.selectById(999L)).thenReturn(null);
 
         DependencyRequest request = new DependencyRequest();
-        request.setServiceName("kb-auth");
+        request.setServiceName("auth-center");
 
         assertThrows(NotFoundException.class, () -> dependencyService.update(999L, request));
     }
