@@ -1,7 +1,6 @@
 <template>
   <LoginPage
     :config="loginConfig"
-    @sso-login="handleSsoLogin"
     @password-reset="handlePasswordReset"
   />
 </template>
@@ -24,10 +23,12 @@ const loginConfig = {
   color: '#409eff',
   showSso: true,
   showForgotPassword: true,
+  // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /ops/sso-callback）
+  onSsoLogin: handleSsoLogin,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
     clientId: 'marschat-kbops',
-    redirectUri: `${window.location.origin}/login`,
+    redirectUri: `${window.location.origin}/ops/sso-callback`,
     scope: 'openid profile',
   },
   labels: {

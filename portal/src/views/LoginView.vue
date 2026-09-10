@@ -1,7 +1,6 @@
 <template>
   <LoginPage
     :config="loginConfig"
-    @sso-login="handleSsoLogin"
     @password-reset="handlePasswordReset"
   />
 </template>
@@ -23,10 +22,12 @@ const loginConfig = {
   color: '#667eea',
   showSso: true,
   showForgotPassword: true,
+  // SSO 走 portal 自己的服务端流（机密客户端，回调 /portal/auth/callback）
+  onSsoLogin: handleSsoLogin,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
     clientId: 'marschat-portal',
-    redirectUri: `${window.location.origin}/login`,
+    redirectUri: `${window.location.origin}/portal/auth/callback`,
     scope: 'openid profile',
   },
   labels: {

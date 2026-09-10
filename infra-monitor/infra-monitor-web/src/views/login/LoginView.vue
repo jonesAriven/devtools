@@ -2,7 +2,6 @@
   <LoginPage
     :config="loginConfig"
     @login="handleLogin"
-    @sso-login="handleSsoLogin"
     @password-reset="handlePasswordReset"
   />
 </template>
@@ -12,6 +11,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
+import { startSsoLogin } from '@/utils/sso'
 
 const router = useRouter()
 const route = useRoute()
@@ -24,10 +24,12 @@ const loginConfig = {
   color: '#409eff',
   showSso: true,
   showForgotPassword: true,
+  // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /infra/sso-callback）
+  onSsoLogin: handleSsoLogin,
   ssoConfig: {
     issuer: 'https://auth.marschat.online',
     clientId: 'marschat-inframon',
-    redirectUri: `${window.location.origin}/login`,
+    redirectUri: `${window.location.origin}/infra/sso-callback`,
     scope: 'openid profile',
   },
   labels: {
@@ -57,8 +59,12 @@ async function handleLogin(credentials: { username: string; password: string }) 
   }
 }
 
-function handleSsoLogin() {
-  window.location.href = `/api/auth/sso/authorize?redirect=${encodeURIComponent(window.location.origin)}`
+async function handleSsoLogin() {
+  try {
+    await startSsoLogin((route.query.redirect as string) || '/dashboard')
+  } catch (err: any) {
+    ElMessage.error(err?.message || 'SSO 登录发起失败')
+  }
 }
 
 function handlePasswordReset() {
