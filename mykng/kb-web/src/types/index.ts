@@ -396,13 +396,33 @@ export interface CreateTokenRequest {
 // ============================================================
 
 /** 系统模块状态 */
+/** 模块健康四态 + 兜底态（UNKNOWN = Nacos 整体不可达，无法判定） */
+export type ModuleStateValue = 'OK' | 'DOWN' | 'MISSING' | 'UNEXPECTED' | 'UNKNOWN'
+
 export interface ModuleStatus {
   /** 模块名称，如 kb-gateway / auth-center / kb-file / kb-knowledge / kb-intelligence */
   name: string
-  /** 健康状态：UP / DOWN */
-  status: string
-  /** 在线实例数 */
-  instances: number
-  /** 是否可用（status=UP 且 instances>0） */
+  /**
+   * 四态健康状态：
+   * - OK：在期望集内且 Nacos 有实例 → 可用
+   * - DOWN：在期望集内、曾有实例、当前实例数为 0 → 不可用（服务宕机，运维事件）
+   * - MISSING：在期望集内、从未注册过实例 → 不可用（配置/命名漂移，如模块改名未同步注册表）
+   * - UNEXPECTED：不在期望集内但 Nacos 有实例 → 服务实际存活，只是未声明（野模块）
+   * - UNKNOWN：Nacos 整体不可达，无法判定 → 视作可用（避免一次抖动把所有菜单灰掉）
+   */
+  state: ModuleStateValue
+  /** 是否在注册表期望集内 */
+  expected: boolean
+  /** Nacos 实际实例数 */
+  actual: number
+  /** 网关进程启动以来是否见过该模块实例（区分 DOWN 与 MISSING） */
+  everSeen: boolean
+  /** Nacos 服务列表中是否存在该名字（即使实例数为 0） */
+  inNacosServiceList: boolean
+  /** 是否可用（等效于 state 为 OK / UNEXPECTED / UNKNOWN），后端算好后给出，兼容字段 */
   available: boolean
+  /** 健康状态旧字段，兼容保留：UP / DOWN / UNKNOWN */
+  status: 'UP' | 'DOWN' | 'UNKNOWN'
+  /** 在线实例数旧字段，兼容保留，等于 actual */
+  instances: number
 }

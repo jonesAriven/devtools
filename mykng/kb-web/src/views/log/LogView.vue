@@ -3,7 +3,7 @@
     <el-card shadow="never">
       <template #header>
         <div class="header-bar">
-          <span class="page-title">系统日志</span>
+          <span class="page-title">操作日志</span>
           <div class="header-actions">
             <div v-if="activeTab === 'operation'" class="filter-group">
               <el-select
@@ -475,6 +475,16 @@ function handleTabChange() {
   loadData()
 }
 
+/** 拼接后端返回的 traceId（若存在）到错误提示，便于报障定位 */
+function appendTraceId(e: unknown, base: string): string {
+  // 两条错误路径的来源不同，都要覆盖：
+  // - 业务码非 0/200 → 拦截器 reject 出的 Error 上直接挂了 traceId（见 api/index.ts）
+  // - HTTP 非 2xx   → axios reject 出 AxiosError，traceId 在 response.data 里
+  const err = e as any
+  const tid = err?.traceId ?? err?.response?.data?.traceId
+  return tid ? `${base}（traceId: ${tid}）` : base
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -508,8 +518,8 @@ async function loadData() {
       requestList.value = res.data.data.list
       total.value = res.data.data.total
     }
-  } catch {
-    ElMessage.error('加载日志列表失败')
+  } catch (e) {
+    ElMessage.error(appendTraceId(e, '加载日志列表失败'))
   } finally {
     loading.value = false
   }
@@ -537,36 +547,54 @@ function resetFilter() {
 async function showOperationDetail(row: OperationLog) {
   try {
     const res = await getLogDetail(row.id)
-    currentOperationLog.value = res.data.data
+    // P1-3b：后端对不存在的 id 返回 200 + data:null，需判空避免空白弹窗
+    const data = res.data.data as OperationLog | null
+    if (data == null) {
+      ElMessage.warning('未找到该条日志记录')
+      return
+    }
+    currentOperationLog.value = data
     detailVisible.value = true
-  } catch {
+  } catch (e) {
     currentOperationLog.value = row
     detailVisible.value = true
-    ElMessage.error('加载详情失败，显示列表数据')
+    ElMessage.error(appendTraceId(e, '加载详情失败，显示列表数据'))
   }
 }
 
 async function showErrorDetail(row: ErrorLog) {
   try {
     const res = await getErrorLogDetail(row.id)
-    currentErrorLog.value = res.data.data
+    // P1-3b：后端对不存在的 id 返回 200 + data:null，需判空避免空白弹窗
+    const data = res.data.data as ErrorLog | null
+    if (data == null) {
+      ElMessage.warning('未找到该条日志记录')
+      return
+    }
+    currentErrorLog.value = data
     detailVisible.value = true
-  } catch {
+  } catch (e) {
     currentErrorLog.value = row
     detailVisible.value = true
-    ElMessage.error('加载详情失败，显示列表数据')
+    ElMessage.error(appendTraceId(e, '加载详情失败，显示列表数据'))
   }
 }
 
 async function showRequestDetail(row: RequestLog) {
   try {
     const res = await getRequestLogDetail(row.id)
-    currentRequestLog.value = res.data.data
+    // P1-3b：后端对不存在的 id 返回 200 + data:null，需判空避免空白弹窗
+    const data = res.data.data as RequestLog | null
+    if (data == null) {
+      ElMessage.warning('未找到该条日志记录')
+      return
+    }
+    currentRequestLog.value = data
     detailVisible.value = true
-  } catch {
+  } catch (e) {
     currentRequestLog.value = row
     detailVisible.value = true
-    ElMessage.error('加载详情失败，显示列表数据')
+    ElMessage.error(appendTraceId(e, '加载详情失败，显示列表数据'))
   }
 }
 
@@ -583,7 +611,7 @@ onMounted(loadData)
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .header-bar {
@@ -612,7 +640,7 @@ onMounted(loadData)
 }
 
 .muted {
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .log-table :deep(.el-table__row) {

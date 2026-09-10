@@ -28,46 +28,46 @@
             <el-icon><Grid /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
-          <el-sub-menu index="kb-group" v-if="showKbGroup">
+          <el-sub-menu index="kb-group">
             <template #title>
               <el-icon><FolderOpened /></el-icon>
-              <span>知识库</span>
+              <span :class="{ 'menu-group-title-disabled': kbGroupDisabled }" :title="kbGroupReason">知识库</span>
             </template>
-            <el-menu-item :index="'/spaces'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/spaces'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><List /></el-icon>
-              <template #title>知识空间</template>
+              <template #title>知识空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace && kbKnowledgeAvailable">
+            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><FolderOpened /></el-icon>
-              <template #title>当前空间</template>
+              <template #title>当前空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/stars'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/stars'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><Star /></el-icon>
-              <template #title>我的收藏</template>
+              <template #title>我的收藏<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/search'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><Search /></el-icon>
-              <template #title>搜索</template>
+              <template #title>搜索<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/file'" v-if="kbFileAvailable">
+            <el-menu-item :index="'/file'" :disabled="!kbFileAvailable" :title="kbFileReason">
               <el-icon><Document /></el-icon>
-              <template #title>文件</template>
+              <template #title>文件<span v-if="!kbFileAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/tag'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/tag'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><PriceTag /></el-icon>
-              <template #title>标签</template>
+              <template #title>标签<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/share'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/share'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><Share /></el-icon>
-              <template #title>分享</template>
+              <template #title>分享<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/trash'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/trash'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><Delete /></el-icon>
-              <template #title>回收站</template>
+              <template #title>回收站<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
-            <el-menu-item :index="'/graph'" v-if="kbKnowledgeAvailable">
+            <el-menu-item :index="'/graph'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
               <el-icon><Connection /></el-icon>
-              <template #title>知识图谱</template>
+              <template #title>知识图谱<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
             </el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="system-group">
@@ -75,9 +75,9 @@
               <el-icon><Setting /></el-icon>
               <span>系统</span>
             </template>
-            <el-menu-item :index="'/log'" v-if="kbAuthAvailable">
+            <el-menu-item :index="'/log'" :disabled="!kbAuthAvailable" :title="kbAuthReason">
               <el-icon><Tickets /></el-icon>
-              <template #title>操作日志</template>
+              <template #title>操作日志<span v-if="!kbAuthAvailable" class="status-dot"></span></template>
             </el-menu-item>
             <el-menu-item :index="'/settings'">
               <el-icon><Setting /></el-icon>
@@ -123,46 +123,46 @@
               <el-icon><Grid /></el-icon>
               <template #title>工作台</template>
             </el-menu-item>
-            <el-sub-menu index="kb-group" v-if="showKbGroup">
+            <el-sub-menu index="kb-group">
               <template #title>
                 <el-icon><FolderOpened /></el-icon>
-                <span>知识库</span>
+                <span :class="{ 'menu-group-title-disabled': kbGroupDisabled }" :title="kbGroupReason">知识库</span>
               </template>
-              <el-menu-item :index="'/spaces'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/spaces'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><List /></el-icon>
-                <template #title>知识空间</template>
+                <template #title>知识空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace && kbKnowledgeAvailable">
+              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><FolderOpened /></el-icon>
-                <template #title>当前空间</template>
+                <template #title>当前空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/stars'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/stars'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><Star /></el-icon>
-                <template #title>我的收藏</template>
+                <template #title>我的收藏<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/search'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/search'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><Search /></el-icon>
-                <template #title>搜索</template>
+                <template #title>搜索<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/file'" v-if="kbFileAvailable">
+              <el-menu-item :index="'/file'" :disabled="!kbFileAvailable" :title="kbFileReason">
                 <el-icon><Document /></el-icon>
-                <template #title>文件</template>
+                <template #title>文件<span v-if="!kbFileAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/tag'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/tag'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><PriceTag /></el-icon>
-                <template #title>标签</template>
+                <template #title>标签<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/share'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/share'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><Share /></el-icon>
-                <template #title>分享</template>
+                <template #title>分享<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/trash'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/trash'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><Delete /></el-icon>
-                <template #title>回收站</template>
+                <template #title>回收站<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
-              <el-menu-item :index="'/graph'" v-if="kbKnowledgeAvailable">
+              <el-menu-item :index="'/graph'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
                 <el-icon><Connection /></el-icon>
-                <template #title>知识图谱</template>
+                <template #title>知识图谱<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
               </el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="system-group">
@@ -170,6 +170,10 @@
                 <el-icon><Setting /></el-icon>
                 <span>系统</span>
               </template>
+              <el-menu-item :index="'/log'" :disabled="!kbAuthAvailable" :title="kbAuthReason">
+                <el-icon><Tickets /></el-icon>
+                <template #title>操作日志<span v-if="!kbAuthAvailable" class="status-dot"></span></template>
+              </el-menu-item>
               <el-menu-item :index="'/settings'">
                 <el-icon><Setting /></el-icon>
                 <template #title>设置</template>
@@ -282,8 +286,13 @@ const { logout } = useAuth()
 const kbKnowledgeAvailable = computed(() => moduleStore.isModuleAvailable('kb-knowledge'))
 const kbFileAvailable = computed(() => moduleStore.isModuleAvailable('kb-file'))
 const kbAuthAvailable = computed(() => moduleStore.isModuleAvailable('auth-center'))
-// 知识库分组同时包含 kb-knowledge 与 kb-file 依赖项，任一可用即显示分组
-const showKbGroup = computed(() => kbKnowledgeAvailable.value || kbFileAvailable.value)
+// 模块不可用时给用户看的中文原因（用于 tooltip）
+const kbKnowledgeReason = computed(() => moduleStore.getModuleUnavailableReason('kb-knowledge'))
+const kbFileReason = computed(() => moduleStore.getModuleUnavailableReason('kb-file'))
+const kbAuthReason = computed(() => moduleStore.getModuleUnavailableReason('auth-center'))
+// 知识库分组含 kb-knowledge 与 kb-file，两者均不可用时整体灰化；分组标题只灰化、不禁用，保证可展开
+const kbGroupDisabled = computed(() => !kbKnowledgeAvailable.value && !kbFileAvailable.value)
+const kbGroupReason = computed(() => [kbKnowledgeReason.value, kbFileReason.value].filter(Boolean).join('；'))
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
@@ -479,6 +488,24 @@ function handleClickOutside(e: MouseEvent) {
 
     &:not(.el-menu--collapse) {
       width: 100%;
+    }
+
+    // 模块不可用标记：只在异常时渲染。
+    // 刻意不为「正常」画绿点 —— 12 个菜单项各挂一个绿点等于没有信号，
+    // 只有异常态才值得抓注意力；具体原因由 title tooltip 给出（见 getModuleUnavailableReason）。
+    .status-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-left: 8px;
+      vertical-align: middle;
+      background-color: #e6a23c;
+    }
+
+    // 分组标题整体不可用时置灰（仅样式，不禁用，保证可展开）
+    .menu-group-title-disabled {
+      color: #c0c4cc;
     }
   }
 }

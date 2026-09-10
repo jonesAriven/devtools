@@ -1,9 +1,26 @@
 # ====================================================================
 # mykng 模块与插件注册清单（Single Source of Truth）
 # ====================================================================
-# 本文件是 mykng 系统的"单一事实来源"：
-#   - 所有脚本、CI/CD、网关路由、文档生成器从此文件派生模块信息
-#   - 添加/移除模块或插件只需修改此文件，无需遍历 15+ 配置文件
+# 本文件是 mykng 系统的"单一事实来源"。
+#
+# 【消费契约】改完本文件必须跑生成器，否则 CI 会红：
+#     python3 mykng/gen-registry.py           # 生成全部派生产物
+#     python3 mykng/gen-registry.py --check   # 校验派生产物是否过期（无需 PyYAML）
+#
+# 【派生产物】下列文件由 gen-registry.py 生成，禁止手工编辑：
+#     1. kb-gateway/src/main/resources/module-manifest.json
+#        —— 网关运行时读它做「期望 vs 实际」模块比对（替代原先硬编码的 KNOWN_MODULES）
+#     2. docs/generated/模块契约文档.md
+#     3. docs/generated/架构图.mmd
+#
+# 【漂移门禁】module-manifest.json 内嵌本文件的 sha256（sourceSha256）。
+#     kb-gateway 的 ModuleManifestConsistencyTest 在 CI 中比对两者：
+#     改了本文件却没跑生成器 → 哈希不匹配 → 构建失败。
+#
+# 【模块字段约定】
+#     nacos-registered: true    该模块注册到 Nacos，属于网关健康探针的「期望集」
+#     nacos-registered: false   仅前端/工具，不参与 Nacos 探活
+#     宿主端口 host-port 必须与 docker/docker-compose.*.yml 的端口映射一致
 #
 # 文件结构：
 #   1. global         — 全局配置
@@ -92,9 +109,10 @@ infrastructure:
 modules:
   - name: kb-gateway
     type: service
+    nacos-registered: true
     profile: core          # core=所有环境必启
     port: 8080             # 容器内端口
-    host-port: 8090        # 宿主机映射端口（仅 gateway 映射）
+    host-port: 8090        # 宿主机映射端口（compose: "8090:8080"）
     context: /kb
     health-path: /actuator/health
     depends-on: []         # 网关不依赖业务服务（路由延迟生效）
@@ -116,6 +134,20 @@ modules:
         target: kb-knowledge
       - path: /kb/api/folder/**
         target: kb-knowledge
+      - path: /kb/api/web/**
+        target: kb-knowledge
+      - path: /kb/api/search/**
+        target: kb-knowledge
+      - path: /kb/api/share/**
+        target: kb-knowledge
+      - path: /kb/api/tag/**
+        target: kb-knowledge
+      - path: /kb/api/space/**
+        target: kb-knowledge
+      - path: /kb/api/trash/**
+        target: kb-knowledge
+      - path: /kb/api/version/**
+        target: kb-knowledge
       - path: /kb/api/intelligence/**
         target: kb-intelligence
     description: API 网关：路由转发、JWT 鉴权、限流
@@ -127,6 +159,7 @@ modules:
   # 旧引用 http://kb-auth:8085 继续兜底到本服务。
   - name: auth-center
     type: external         # external=独立仓库部署，非 mykng 仓内模块
+    nacos-registered: true
     profile: external
     port: 8085
     host-port: null        # 不映射宿主机端口
@@ -140,9 +173,11 @@ modules:
 
   - name: kb-file
     type: service
+    nacos-registered: true
     profile: file
     port: 8089
-    host-port: null
+    host-port: 8089        # compose: "8089:8089"
+
     health-path: /actuator/health
     depends-on: [auth-center]
     infra-depends: [mysql, redis, minio, meilisearch, mongodb]
@@ -152,9 +187,10 @@ modules:
 
   - name: kb-knowledge
     type: service
+    nacos-registered: true
     profile: knowledge
     port: 8092
-    host-port: null
+    host-port: 8092        # compose: "8092:8092"
     health-path: /actuator/health
     depends-on: [auth-center, kb-file]
     infra-depends: [mysql, redis, meilisearch, mongodb]
@@ -164,9 +200,10 @@ modules:
 
   - name: kb-intelligence
     type: service
+    nacos-registered: true
     profile: intelligence
     port: 8086
-    host-port: null
+    host-port: 8086        # compose: "8086:8086"
     health-path: /actuator/health
     depends-on: []
     infra-depends: [mysql, redis, mongodb, meilisearch]
@@ -176,9 +213,10 @@ modules:
 
   - name: kb-web
     type: frontend
+    nacos-registered: false   # 前端 nginx 容器，不注册 Nacos
     profile: web
     port: 80
-    host-port: 8088
+    host-port: 8091        # compose(docker-compose.web.yml): "8091:80"
     health-path: /
     depends-on: [kb-gateway]
     infra-depends: []

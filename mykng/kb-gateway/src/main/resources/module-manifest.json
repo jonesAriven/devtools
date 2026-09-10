@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "source": "mykng/module-registry.yml",
+  "sourceSha256": "cef5a96ff0be68c786f265e0183b13e9bfa4b66db9df7656f2a724566ed80606",
+  "contextPath": "/kb",
+  "expectedModules": [
+    "auth-center",
+    "kb-file",
+    "kb-gateway",
+    "kb-intelligence",
+    "kb-knowledge"
+  ],
+  "modules": [
+    {
+      "name": "auth-center",
+      "type": "external",
+      "nacosRegistered": true,
+      "containerPort": 8085,
+      "hostPort": null,
+      "healthPath": "/actuator/health",
+      "registryAlias": "kb-auth",
+      "database": "kb_auth",
+      "dependsOn": [],
+      "infraDepends": [
+        "mysql",
+        "redis"
+      ],
+      "routes": [],
+      "description": "统一认证中心（SSO/OIDC）：登录、JWT 签发、用户管理、API Token、操作日志"
+    },
+    {
+      "name": "kb-file",
+      "type": "service",
+      "nacosRegistered": true,
+      "containerPort": 8089,
+      "hostPort": 8089,
+      "healthPath": "/actuator/health",
+      "registryAlias": null,
+      "database": "kb_file",
+      "dependsOn": [
+        "auth-center"
+      ],
+      "infraDepends": [
+        "mysql",
+        "redis",
+        "minio",
+        "meilisearch",
+        "mongodb"
+      ],
+      "routes": [],
+      "description": "文件管理：上传、下载、分片、解析、回收站"
+    },
+    {
+      "name": "kb-gateway",
+      "type": "service",
+      "nacosRegistered": true,
+      "containerPort": 8080,
+      "hostPort": 8090,
+      "healthPath": "/actuator/health",
+      "registryAlias": null,
+      "database": null,
+      "dependsOn": [],
+      "infraDepends": [],
+      "routes": [
+        "/kb/api/auth/**",
+        "/kb/api/user/**",
+        "/kb/api/token/**",
+        "/kb/api/log/**",
+        "/kb/api/file/**",
+        "/kb/api/bucket/**",
+        "/kb/api/doc/**",
+        "/kb/api/folder/**",
+        "/kb/api/web/**",
+        "/kb/api/search/**",
+        "/kb/api/share/**",
+        "/kb/api/tag/**",
+        "/kb/api/space/**",
+        "/kb/api/trash/**",
+        "/kb/api/version/**",
+        "/kb/api/intelligence/**"
+      ],
+      "description": "API 网关：路由转发、JWT 鉴权、限流"
+    },
+    {
+      "name": "kb-intelligence",
+      "type": "service",
+      "nacosRegistered": true,
+      "containerPort": 8086,
+      "hostPort": 8086,
+      "healthPath": "/actuator/health",
+      "registryAlias": null,
+      "database": "kb_intelligence",
+      "dependsOn": [],
+      "infraDepends": [
+        "mysql",
+        "redis",
+        "mongodb",
+        "meilisearch"
+      ],
+      "routes": [],
+      "description": "知识引擎：导入、解析、实体抽取、LLM 集成"
+    },
+    {
+      "name": "kb-knowledge",
+      "type": "service",
+      "nacosRegistered": true,
+      "containerPort": 8092,
+      "hostPort": 8092,
+      "healthPath": "/actuator/health",
+      "registryAlias": null,
+      "database": "kb_knowledge",
+      "dependsOn": [
+        "auth-center",
+        "kb-file"
+      ],
+      "infraDepends": [
+        "mysql",
+        "redis",
+        "meilisearch",
+        "mongodb"
+      ],
+      "routes": [],
+      "description": "知识管理：文档、文件夹、分享、标签、搜索、版本"
+    },
+    {
+      "name": "kb-web",
+      "type": "frontend",
+      "nacosRegistered": false,
+      "containerPort": 80,
+      "hostPort": 8091,
+      "healthPath": "/",
+      "registryAlias": null,
+      "database": null,
+      "dependsOn": [
+        "kb-gateway"
+      ],
+      "infraDepends": [],
+      "routes": [],
+      "description": "Vue3 前端"
+    }
+  ]
+}

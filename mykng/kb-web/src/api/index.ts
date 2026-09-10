@@ -49,18 +49,26 @@ request.interceptors.response.use(
     }
     if (data.code !== 0 && data.code !== 200) {
       const msg = data.message || '请求失败'
+      const traceId = (data as any)?.traceId
+      const url = `${ctx}/api${response.config.url ?? ''}`
       // 可观测性：仅凭 toast「请求失败」无法定位是哪个请求。
       // 注意：落到这里的典型场景是「HTTP 200 但响应体不是业务信封」
       //（多为请求打到了没有后端路由的路径，被网关 SPA 兜底 /kb/** 返回 index.html）。
       console.error('[api] 业务响应异常', {
-        url: `${ctx}/api${response.config.url ?? ''}`,
+        url,
         code: (data as any)?.code,
         message: msg,
-        traceId: (data as any)?.traceId,
+        traceId,
         bodyPreview: typeof response.data === 'string' ? response.data.slice(0, 160) : undefined,
       })
-      ElMessage.error(msg)
-      return Promise.reject(new Error(msg))
+      // traceId 必须同时出现在「用户看到的提示」和「reject 出的 error」上：
+      // - 只打在 console 里 = 用户报障时拿不到，等于没有
+      // - 不挂到 error 上 = 调用方 catch 后无法二次拼接，各页面只能自己猜
+      const shown = traceId ? `${msg}（traceId: ${traceId}）` : msg
+      ElMessage.error(shown)
+      return Promise.reject(
+        Object.assign(new Error(shown), { traceId, code: (data as any)?.code, url }),
+      )
     }
     return response
   },

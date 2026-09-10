@@ -2,3 +2,7 @@
 *.sh text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# 注册表派生产物：必须是 LF，且需与 Linux CI 侧字节一致（哈希门禁比对内容）
+mykng/kb-gateway/src/main/resources/module-manifest.json text eol=lf
+mykng/docs/generated/** text eol=lf

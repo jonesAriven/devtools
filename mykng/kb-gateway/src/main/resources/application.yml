@@ -118,6 +118,12 @@ kb:
   gateway:
     # 统一上下文路径（与 KB_CONTEXT 环境变量一致）
     context-path: ${KB_CONTEXT:/kb}
+    # 模块健康探针（GET ${KB_CONTEXT}/api/system/modules）
+    # 期望集来自 classpath:module-manifest.json，由 `python3 mykng/gen-registry.py`
+    # 从 mykng/module-registry.yml 派生。改模块名请改注册表并跑生成器，不要改 Java。
+    modules:
+      # 单模块 Nacos 探活超时（毫秒）；超时按 UNKNOWN 处理，前端视作可用以免误隐藏菜单
+      probe-timeout-ms: ${KB_MODULES_PROBE_TIMEOUT_MS:800}
     jwt:
       # 与 auth-center 保持一致的 HMAC-SHA 密钥
       secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
@@ -126,9 +132,6 @@ kb:
     whitelist:
       - ${KB_CONTEXT:/kb}/api/auth/login
       - ${KB_CONTEXT:/kb}/api/auth/refresh
-      # auth-center 邮箱验证码/忘记密码（2026-09-07 M7）：必须匿名可达，否则用户无法自助重置
-      - ${KB_CONTEXT:/kb}/api/auth/forgot-password
-      - ${KB_CONTEXT:/kb}/api/auth/reset-password
       # auth-center 邮箱验证码/忘记密码（2026-09-07 M7）：必须匿名可达，否则用户无法自助重置
       - ${KB_CONTEXT:/kb}/api/auth/forgot-password
       - ${KB_CONTEXT:/kb}/api/auth/reset-password
