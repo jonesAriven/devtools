@@ -1,18 +1,22 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { getToken } from '@/utils/token'
-
-import 'element-plus/theme-chalk/el-message.css'
-import 'element-plus/theme-chalk/el-message-box.css'
-import 'element-plus/theme-chalk/el-notification.css'
-import 'element-plus/theme-chalk/el-loading.css'
 
 import './styles/index.scss'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+for (const [name, comp] of Object.entries(ElementPlusIconsVue)) {
+  app.component(name, comp)
+}
+
 app.use(pinia)
 app.use(router)
+app.use(ElementPlus)
 app.mount('#app')
