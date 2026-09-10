@@ -52,6 +52,13 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
+        <!-- Redis（Reactive）：持久化「曾见过实例」的模块名，消除跨网关重启的 DOWN/MISSING 误判。
+             非主链路依赖：Redis 不可用时自动降级为纯内存，见 ModuleEverSeenStore。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
         <!-- Actuator：健康检查 / 路由查看 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

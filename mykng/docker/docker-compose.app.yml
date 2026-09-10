@@ -29,6 +29,9 @@ services:
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}
       - NACOS_PASSWORD=${NACOS_PASSWORD:-nacos}
       - JWT_SECRET=${JWT_SECRET:-YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!}
+      # 模块探活 everSeen 持久化（非主链路：连不上自动退回纯内存）
+      - REDIS_HOST=platform-redis
+      - REDIS_PORT=6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

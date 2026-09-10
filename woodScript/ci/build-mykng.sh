@@ -25,7 +25,7 @@ cd mykng/kb-parent
 # 与绑定 verify 阶段的 pitest(mutationThreshold=70)，全量放开是独立决策，需先实测稳定。
 # 被排除在这道门禁之外的回归信号，见 ADR Phase 0.5 的「未覆盖」清单。
 mvn clean package -B -V -ntp -T 2C \
-  -Dtest=ModuleManifestConsistencyTest,ModuleStateTest -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dtest=ModuleManifestConsistencyTest,ModuleStateTest,ModuleEverSeenStoreTest -Dsurefire.failIfNoSpecifiedTests=false \
   -Djacoco.skip=true -Dmaven.repo.local=/root/.m2/repository \
   -Dmykng.registry.file="$(cd .. && pwd)/module-registry.yml"
 cd ../..

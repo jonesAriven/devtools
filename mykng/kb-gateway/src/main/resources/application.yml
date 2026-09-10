@@ -9,6 +9,13 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  data:
+    redis:
+      host: ${REDIS_HOST:platform-redis}
+      port: ${REDIS_PORT:6379}
+      # 仅用于模块探活 everSeen 的持久化（非主链路）；连不上时自动降级，不影响网关转发
+      connect-timeout: 2s
+      timeout: 2s
   cloud:
     nacos:
       discovery:
@@ -124,6 +131,13 @@ kb:
     modules:
       # 单模块 Nacos 探活超时（毫秒）；超时按 UNKNOWN 处理，前端视作可用以免误隐藏菜单
       probe-timeout-ms: ${KB_MODULES_PROBE_TIMEOUT_MS:800}
+      # 「曾见过实例」的模块名持久化：区分 DOWN（宕机）与 MISSING（从未见过）的判据。
+      # 不持久化时网关重启会清零，跨重启的宕机会被误判成 MISSING（ADR §12.11 已知限制）。
+      ever-seen:
+        # 关掉即退回纯内存模式（重启后又分不清 DOWN/MISSING），仅用于 Redis 故障期应急
+        redis-enabled: ${KB_MODULES_EVER_SEEN_REDIS_ENABLED:true}
+        redis-key: ${KB_MODULES_EVER_SEEN_REDIS_KEY:kb:gateway:modules:ever-seen}
+        ttl-days: ${KB_MODULES_EVER_SEEN_TTL_DAYS:30}
     jwt:
       # 与 auth-center 保持一致的 HMAC-SHA 密钥
       secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!

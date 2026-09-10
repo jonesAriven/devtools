@@ -3,6 +3,8 @@ package com.kb.gateway.controller;
 import com.kb.gateway.config.ModuleManifest;
 import com.kb.gateway.dto.ModuleState;
 import com.kb.gateway.dto.ModuleStatus;
+import com.kb.gateway.modules.ModuleEverSeenStore;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
@@ -21,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -52,8 +55,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * deprecated）。前端可继续只读 {@code available}，行为不变。
  *
  * <h2>已知取舍</h2>
- * 未加短期缓存，每次请求仍访问 Nacos（N+1 次调用，与改造前一致）。{@code /modules} 目前只在
- * 前端启动时调用一次，暂不构成热点；若后续调用频次上升，可在此加 TTL 缓存。
+ * <ul>
+ *   <li>未加短期缓存，每次请求仍访问 Nacos（N+1 次调用，与改造前一致）。{@code /modules} 目前只在
+ *       前端启动时调用一次，暂不构成热点；若后续调用频次上升，可在此加 TTL 缓存。</li>
+ *   <li>{@code everSeen} 已外置到 Redis（见 {@link ModuleEverSeenStore}），跨网关重启存活。
+ *       Redis 不可用时退回纯内存，此时仍存在“跨重启的宕机被判成 MISSING”的旧歧义，
+ *       但前端文案只陈述可观测事实、不替运维下结论，不会把人引向错误的处置方向。</li>
+ * </ul>
  */
 @Slf4j
 @RestController
@@ -68,16 +76,43 @@ public class ModuleHealthController {
 
     /**
      * 网关进程启动以来"见过实例"的模块名，用于区分 DOWN（曾有实例）与 MISSING（从未见过）。
-     * 进程重启会清零，因此判定时还会结合 Nacos 服务列表里是否仍留有该名字。
+     * 进程重启会清零，因此判定时还会结合 Nacos 服务列表里是否仍留有该名字；
+     * 并在启动时从 {@link ModuleEverSeenStore} 装载历史记录，使这份记忆跨重启存活。
      */
     private final Set<String> everSeen = ConcurrentHashMap.newKeySet();
 
+    /** everSeen 的外部持久化（Redis）。未启用 / Redis 不可用时为空操作，退回纯内存。 */
+    private final ModuleEverSeenStore everSeenStore;
+
     public ModuleHealthController(DiscoveryClient discoveryClient,
                                   ModuleManifest manifest,
+                                  ModuleEverSeenStore everSeenStore,
                                   @Value("${kb.gateway.modules.probe-timeout-ms:800}") long probeTimeoutMs) {
         this.discoveryClient = discoveryClient;
         this.manifest = manifest;
+        this.everSeenStore = everSeenStore;
         this.probeTimeoutMs = probeTimeoutMs > 0 ? probeTimeoutMs : 800L;
+    }
+
+    /**
+     * 启动期装载 everSeen 历史。这里允许阻塞（初始化阶段，不在 Netty 事件循环上）且设了上限；
+     * 失败只打 WARN —— 装载失败仅降低 DOWN/MISSING 的区分精度，不影响端点可用。
+     */
+    @PostConstruct
+    public void restoreEverSeen() {
+        if (!everSeenStore.isEnabled()) {
+            return;
+        }
+        try {
+            Map<String, Long> restored = everSeenStore.load().block(Duration.ofSeconds(3));
+            if (restored != null && !restored.isEmpty()) {
+                everSeen.addAll(restored.keySet());
+                log.info("模块 everSeen 已从持久化恢复 {} 条：{}", restored.size(), restored.keySet());
+            }
+        } catch (Exception e) {
+            log.warn("模块 everSeen 装载失败，本次以纯内存运行（只影响 DOWN/MISSING 区分精度）：{}",
+                    e.toString());
+        }
     }
 
     /**
@@ -152,9 +187,9 @@ public class ModuleHealthController {
      * 现在改成：仍在 Nacos 列表里才算 DOWN（残留条目），毫无注册痕迹则判 MISSING（查无此注册）。
      */
     private ModuleStatus evaluate(String name, int actual, Set<String> serviceNames) {
-        if (actual > 0) {
-            // 有实例 → 记录"见过"，供进程重启后的 DOWN 判定兜底
-            everSeen.add(name);
+        // 只在"首次见到"时落盘：写入是异步 best-effort，不参与响应路径，因此不增加 /modules 延迟
+        if (actual > 0 && everSeen.add(name)) {
+            everSeenStore.markSeen(name);
         }
         boolean inList = serviceNames != null && serviceNames.contains(name);
         ModuleState state = ModuleState.resolve(
