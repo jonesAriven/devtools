@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.39)
       '@marschat/auth-components':
-        specifier: 0.1.0
-        version: 0.1.0(element-plus@2.14.2)(typescript@5.9.3)
+        specifier: 0.2.0
+        version: 0.2.0(element-plus@2.14.2)(typescript@5.9.3)
       '@marschat/frontend-common':
         specifier: 0.2.0
         version: 0.2.0(element-plus@2.14.2)(vue@3.5.39)
@@ -364,8 +364,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: false
 
-  /@marschat/auth-components@0.1.0(element-plus@2.14.2)(typescript@5.9.3):
-    resolution: {integrity: sha512-HNYZiwenEPwPnQvdp4qpZbgiRoVPKBsvTSnZQg5efLtBD6LiDF1TGTkdIyAotWrLZz1qL3vuT4rCTpjDwWHcgw==}
+  /@marschat/auth-components@0.2.0(element-plus@2.14.2)(typescript@5.9.3):
+    resolution: {integrity: sha512-m1QDlyJ5OFeoxicjkiDqBMgPByJKiELx5CdBCCgQ7XUkzkDEtperkGQoNM55Av8GAuM0XpwwrossQaSXsb3ldQ==}
     peerDependencies:
       element-plus: ^2.6.1
     dependencies:
