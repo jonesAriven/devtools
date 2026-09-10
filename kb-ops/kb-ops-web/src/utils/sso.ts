@@ -10,7 +10,7 @@
 
 // OIDC 配置（与 auth-center 对齐）
 const OIDC_ISSUER = 'https://auth.marschat.online'
-const OIDC_CLIENT_ID = 'kb-ops'
+const OIDC_CLIENT_ID = 'marschat-kbops'
 const OIDC_REDIRECT_URI = `${window.location.origin}/ops/sso-callback`
 
 const STATE_KEY = 'kb_ops_sso_state'

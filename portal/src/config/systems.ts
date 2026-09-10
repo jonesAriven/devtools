@@ -47,7 +47,7 @@ export const systems: SystemConfig[] = [
     icon: 'Reading',
     color: '#409eff',
     techStack: 'Spring Boot 3.2 + Vue3 + MySQL + MongoDB + MinIO + MeiliSearch',
-    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=kb-web&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fkb.marschat.online%2Fkb%2Fsso-callback',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=marschat-kbweb&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fkb.marschat.online%2Fkb%2Fsso-callback',
     docs: [
       { label: '产品文档', url: 'https://kb.marschat.online/kb/#/dashboard' },
       { label: '部署方案', url: 'https://kb.marschat.online/kb/' },
@@ -111,7 +111,7 @@ export const systems: SystemConfig[] = [
     icon: 'Monitor',
     color: '#409eff',
     techStack: 'Spring Boot 3.4 + Vue3 + MySQL',
-    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=infra-monitor&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fmonitor.marschat.online%2Finfra%2Fsso-callback',
+    ssoUrl: 'https://auth.marschat.online/oauth2/authorize?client_id=marschat-inframon&response_type=code&scope=openid%20profile&redirect_uri=https%3A%2F%2Fmonitor.marschat.online%2Finfra%2Fsso-callback',
   },
   {
     id: 'dolphin',
