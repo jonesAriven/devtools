@@ -23,6 +23,8 @@ const loginConfig = {
   color: '#667eea',
   showSso: true,
   showForgotPassword: true,
+  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，经 kb-gateway）
+  authApiBase: '/kb/api/auth',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /kb/sso-callback）
   onSsoLogin: handleSsoLogin,
   ssoConfig: {

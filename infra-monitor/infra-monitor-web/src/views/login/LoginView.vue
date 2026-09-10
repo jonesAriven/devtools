@@ -24,6 +24,8 @@ const loginConfig = {
   color: '#409eff',
   showSso: true,
   showForgotPassword: true,
+  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，monitor 域经 catch-all 反代到 mykng）
+  authApiBase: '/kb/api/auth',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /infra/sso-callback）
   onSsoLogin: handleSsoLogin,
   ssoConfig: {

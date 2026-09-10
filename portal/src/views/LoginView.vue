@@ -22,6 +22,8 @@ const loginConfig = {
   color: '#667eea',
   showSso: true,
   showForgotPassword: true,
+  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，main 域新增 /portal/auth-api/ 路由）
+  authApiBase: '/portal/auth-api',
   // SSO 走 portal 自己的服务端流（机密客户端，回调 /portal/auth/callback）
   onSsoLogin: handleSsoLogin,
   ssoConfig: {

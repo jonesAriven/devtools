@@ -6,3 +6,6 @@ allowBuilds:
 onlyBuiltDependencies:
   - esbuild
   - "@parcel/watcher"
+minimumReleaseAgeExclude:
+  - '@marschat/auth-components'
+  - '@marschat/frontend-common'

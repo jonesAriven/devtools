@@ -23,6 +23,8 @@ const loginConfig = {
   color: '#409eff',
   showSso: true,
   showForgotPassword: true,
+  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，本域 nginx /ops/auth-api/ 已直连网关）
+  authApiBase: '/ops/auth-api',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /ops/sso-callback）
   onSsoLogin: handleSsoLogin,
   ssoConfig: {

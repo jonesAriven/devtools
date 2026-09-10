@@ -6,10 +6,8 @@ allowBuilds:
   esbuild: true
   vue-demi: true
 minimumReleaseAgeExclude:
-  - '@marschat/auth-components@0.1.0'
-  - '@marschat/frontend-common@0.2.0'
-  - '@marschat/auth-components@0.2.0'
-  - '@marschat/auth-components@0.3.2'
+  - '@marschat/auth-components'
+  - '@marschat/frontend-common'
 onlyBuiltDependencies:
   - esbuild
   - "@parcel/watcher"
