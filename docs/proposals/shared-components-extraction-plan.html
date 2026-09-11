@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>公共组件抽取方案 · 发布到 Nexus 复用</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --ink:#1F1F1D; --ink2:#55534E; --ink3:#8A8780;
+  --line:#E3E1DB; --line2:#CFCCC4;
+  --purple:#534AB7; --purple-bg:#EEEDFE; --purple-ink:#3C3489;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-ink:#0C447C;
+  --teal:#0F6E56; --teal-bg:#E1F5EE; --teal-ink:#085041;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-ink:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-ink:#791F1F;
+  --gray:#5F5E5A; --gray-bg:#F1EFE8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600;margin:52px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);letter-spacing:-.005em}
+h3{font-size:15px;font-weight:600;margin:28px 0 10px}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;padding:1px 5px;border-radius:4px;color:var(--purple-ink)}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+.meta{color:var(--ink3);font-size:12.5px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.lead{background:var(--purple-bg);border:1px solid #CECBF6;border-radius:12px;padding:20px 22px;margin:20px 0}
+.lead h3{margin-top:0;color:var(--purple-ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;font-weight:600;background:var(--gray-bg);color:var(--ink);
+  padding:9px 11px;border:1px solid var(--line2);white-space:nowrap}
+td{padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:#FBFBF9}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.5}
+.t-ok{background:var(--teal-bg);color:var(--teal-ink)}
+.t-warn{background:var(--amber-bg);color:var(--amber-ink)}
+.t-bad{background:var(--red-bg);color:var(--red-ink)}
+.t-info{background:var(--blue-bg);color:var(--blue-ink)}
+.t-gray{background:var(--gray-bg);color:var(--gray)}
+.t-pur{background:var(--purple-bg);color:var(--purple-ink)}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+.gap{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.dec{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.win{background:var(--teal-bg);border-left:3px solid var(--teal);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  background:var(--purple);color:#fff;font-size:11.5px;font-weight:600;flex-shrink:0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+.toc a{color:var(--ink);text-decoration:none;font-size:13px}
+.toc a:hover{color:var(--purple);text-decoration:underline}
+.toc ol{columns:2;column-gap:32px;margin:6px 0;padding-left:20px}
+@media(max-width:760px){.toc ol{columns:1}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"";position:absolute;left:0;top:6px;width:13px;height:13px;
+  border:1.5px solid var(--line2);border-radius:3px}
+.pri{display:flex;gap:14px;padding:16px 0;border-bottom:1px dashed var(--line2)}
+.pri:last-child{border-bottom:none}
+.pri-l{flex-shrink:0;width:62px}
+.pri-l span{display:inline-flex;align-items:center;justify-content:center;width:42px;height:24px;border-radius:6px;
+  font-size:12px;font-weight:600}
+.p0{background:var(--teal-bg);color:var(--teal-ink)}
+.p1{background:var(--blue-bg);color:var(--blue-ink)}
+.p2{background:var(--purple-bg);color:var(--purple-ink)}
+.p3{background:var(--amber-bg);color:var(--amber-ink)}
+.p4{background:var(--gray-bg);color:var(--gray)}
+.pri-c{flex:1}
+.pri-t{font-weight:600;margin-bottom:5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pri-d{font-size:13px;color:var(--ink2)}
+.big{font-size:24px;font-weight:600;color:var(--red);line-height:1.2}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}
+@media(max-width:760px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.kpi-c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi-n{font-size:24px;font-weight:600;line-height:1.15}
+.kpi-l{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.wrapnote{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>公共组件抽取方案</h1>
+<p class="sub">从代码架构角度盘点重复逻辑，明确哪些该抽成公共组件、发布到 Nexus 供后续复用</p>
+<p class="meta">2026-09-10 · 数据均从本地仓库源码实采 · 承接《统一账号体系与授权模型重构方案》</p>
+
+<div class="toc">
+<strong style="font-size:13px">目录</strong>
+<ol>
+<li><a href="#s1">结论速览</a></li>
+<li><a href="#s2">现有公共组件资产</a></li>
+<li><a href="#s3">发现一：19 个文件的死代码</a></li>
+<li><a href="#s4">发现二：真实重复的五类逻辑</a></li>
+<li><a href="#s5">发现三：已发布却没被用起来</a></li>
+<li><a href="#s6">发现四：auth-core 缺权限能力</a></li>
+<li><a href="#s7">发现五：发布链路没有 CI</a></li>
+<li><a href="#s8">抽取清单（按优先级）</a></li>
+<li><a href="#s9">不值得抽的（边界判断）</a></li>
+<li><a href="#s10">待拍板事项</a></li>
+</ol>
+</div>
+
+<h2 id="s1">一、结论速览</h2>
+
+<div class="kpi">
+<div class="kpi-c"><div class="kpi-n" style="color:var(--red)">19</div><div class="kpi-l">个死代码文件（零引用）</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--amber)">1,200+</div><div class="kpi-l">行纯粹重复的代码</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--blue)">6</div><div class="kpi-l">类应抽取的逻辑</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--teal)">4</div><div class="kpi-l">个包已有可复用能力</div></div>
+</div>
+
+<div class="lead">
+<h3>一句话结论</h3>
+<p style="margin:0">公共组件不是「缺」，而是「<b>建了却没用起来</b>」。已有 4 个包发布在 Nexus，但三个前端仍在用本地副本、三个后端仍在复制 <code>com.kb.common</code>，且累积了 19 个文件的死代码。真正需要<b>新增</b>的只有 RBAC 权限这一层——因为现有 <code>auth-core</code> 的 <code>LoginUser</code> 里根本没有角色和权限。</p>
+</div>
+
+<h2 id="s2">二、现有公共组件资产</h2>
+
+<p>先把家底摆清楚——这决定了后面大半的抽取工作其实是「迁移」而不是「新建」。</p>
+
+<table>
+<thead><tr><th>包</th><th>类型</th><th>当前版本</th><th>发布目标</th><th>已提供能力</th></tr></thead>
+<tbody>
+<tr>
+<td><code>com.marschat:common-core</code></td>
+<td>Java jar</td>
+<td>1.1.0</td>
+<td>Nexus <code>maven-releases</code></td>
+<td>统一响应 <code>Result</code>／分页 <code>PageResult</code>／异常体系 + 全局处理器／断言器／事件总线／TraceId 链路／MyBatis-Plus 自动装配<br><span class="tag t-gray">24 个类</span></td>
+</tr>
+<tr>
+<td><code>com.marschat:auth-core</code></td>
+<td>Java jar</td>
+<td>—</td>
+<td>Nexus <code>maven-releases</code></td>
+<td>JWT 签发/解析 <code>TokenProvider</code>／OIDC RS256 验签／<code>@MarsUser</code> 参数注入／Feign 透传<br><span class="tag t-gray">10 个类</span></td>
+</tr>
+<tr>
+<td><code>@marschat/auth-components</code></td>
+<td>npm</td>
+<td>0.3.3</td>
+<td>Nexus <code>npm-hosted</code></td>
+<td>登录组件 <code>LoginPanel</code>/<code>LoginPage</code>／SSO 回调视图／<code>useAuth</code>/<code>useSso</code>／PKCE／token 工具／SSO 工具<br><span class="tag t-gray">10 个文件</span></td>
+</tr>
+<tr>
+<td><code>@marschat/frontend-common</code></td>
+<td>npm</td>
+<td>0.2.0</td>
+<td>Nexus <code>npm-hosted</code></td>
+<td><code>createRequest</code> 请求工厂／认证与错误拦截器／<code>usePagination</code>/<code>useLoading</code>／<code>formatDateTime</code>/<code>storage</code><br><span class="tag t-gray">10 个文件</span></td>
+</tr>
+</tbody>
+</table>
+
+<div class="win">
+<b>好消息</b>：消费侧机制已经通了——<code>kb-parent</code> 的 <code>dependencyManagement</code> 里声明了 <code>${common-core.version}</code>，仓库指向 <code>https://nexus.marschat.online/repository/maven-public/</code>；前端 5 个应用也已在 <code>package.json</code> 里声明 <code>@marschat/*</code> 依赖并删掉了 vite alias。所以后续抽取<b>不需要再铺路</b>，只需要把代码搬进去、发版、改依赖版本。
+</div>
+
+<h2 id="s3">三、发现一：19 个文件的死代码</h2>
+
+<p>三个后端应用各自复制了一整套 <code>com.kb.common</code> 包，而 <code>common-core</code> 里已有功能更全的 <code>com.marschat.common</code> 版本。</p>
+
+<table>
+<thead><tr><th>应用</th><th>本地 <code>com/kb/common/</code> 文件</th><th>实际引用 <code>com.kb.common.*</code></th><th>实际引用 <code>com.marschat.common.*</code></th></tr></thead>
+<tbody>
+<tr>
+<td><code>devtools/kb-ops</code></td>
+<td>9 个（exception×3, page, result, trace×4）</td>
+<td><span class="tag t-bad">0 处</span>（除内部互引）</td>
+<td><span class="tag t-ok">60 处</span></td>
+</tr>
+<tr>
+<td><code>devtools/infra-monitor-server</code></td>
+<td>5 个（exception×3, page, result）</td>
+<td><span class="tag t-bad">0 处</span></td>
+<td><span class="tag t-ok">14 处</span></td>
+</tr>
+<tr>
+<td><code>devtools/portal-server</code></td>
+<td>5 个（exception×3, page, result）</td>
+<td><span class="tag t-bad">0 处</span></td>
+<td><span class="tag t-ok">10 处</span></td>
+</tr>
+</tbody>
+</table>
+
+<div class="gap">
+<b>判定依据（可复现）</b>：对 <code>PageResult</code>／<code>Result</code>／<code>BusinessException</code>／<code>GlobalExceptionHandler</code>／<code>NotFoundException</code> 逐个统计 import——三个应用对 <code>com.marschat.common.*</code> 的引用分别是 60／14／10 处，对 <code>com.kb.common.*</code> 是 <b>0 处</b>。
+<br>唯一的 3 处 <code>import com.kb.common.result.Result</code> 出现在各自的本地 <code>GlobalExceptionHandler.java</code> 里——<b>死文件引用死文件</b>，整个包确实是死的。
+<br>另外三份 <code>PageResult</code> 内容还各不相同（21／25／25 行），属于典型的复制后各自漂移。
+</div>
+
+<div class="win">
+<b>处置</b>：直接删除这 19 个文件，零风险、零收益损失。这是本次投入产出比最高的一步。
+</div>
+
+<h3>另需核实：疑似废弃的旧认证服务</h3>
+
+<p><code>devtools/mykng/kb-auth</code> 是一个完整的旧版认证模块（<code>com.kb.auth</code> 包，含 authenticator／security／service／event 等 11 个子包），而现役认证服务是独立仓 <code>auth-center</code>（<code>com.marschat.authcenter</code> 包，端口同为 8085、库同为 <code>kb_auth</code>）。两者职责重叠，<code>mykng/kb-auth</code> 疑似已被抽取替代但未清理。</p>
+
+<table>
+<thead><tr><th>证据点</th><th>观察</th></tr></thead>
+<tbody>
+<tr><td>包名</td><td><code>com.kb.auth</code>（旧）vs <code>com.marschat.authcenter</code>（新）</td></tr>
+<tr><td>端口 / 库</td><td>两者都是 8085 / <code>kb_auth</code>，不可能同时运行</td></tr>
+<tr><td>模块注册表</td><td><code>devtools/mykng/module-registry.yml</code> 仍登记 <code>kb-auth</code> 且标 <code>removable: false</code>，<b>未标注废弃</b></td></tr>
+<tr><td>同名重复类</td><td><code>OperationLog</code>／<code>CryptoUtil</code>／<code>DatabaseInitializer</code>／<code>AuthenticationContext</code> 在两边各有一份</td></tr>
+</tbody>
+</table>
+
+<div class="gap">
+<b>待核实</b>：需要确认 <code>mykng/kb-auth</code> 是否仍在 CI 构建与部署链路中。若已由 <code>auth-center</code> 取代，则这是一个<b>整模块的遗留</b>（连带 <code>module-registry.yml</code> 里的登记也要清理），应优先处置；若仍在运行，则是双写风险，问题更严重。这一项我不下结论，先标出来等你确认。
+</div>
+
+<h2 id="s4">四、发现二：真实重复的五类逻辑</h2>
+
+<p>以下是<b>零引用判据之外</b>的重复——即两边都在用、代码真的重了两遍。这类才是抽取的主体。</p>
+
+<h3>4.1 <code>CryptoUtil</code> — 5 份副本，3 种不同实现</h3>
+
+<table>
+<thead><tr><th>位置</th><th>行数</th><th>实现</th></tr></thead>
+<tbody>
+<tr><td><code>infra-monitor-server/.../infra/util/CryptoUtil.java</code></td><td>78</td><td>AES-256-GCM，<code>AES/GCM/NoPadding</code>，IV=12，TAG=128</td></tr>
+<tr><td><code>kb-ops/.../ops/util/CryptoUtil.java</code></td><td>109</td><td>同算法（AES-256-GCM，IV=12，TAG=128），实现细节不同</td></tr>
+<tr><td><code>portal-server/.../portal/util/CryptoUtil.java</code></td><td>37</td><td><span class="tag t-warn">不同实现</span> 简单 key-based，构造参数 <code>portal.encryption.key</code></td></tr>
+<tr><td><code>activation-code-server/.../util/CryptoUtil.java</code></td><td>303</td><td><span class="tag t-warn">体量大得多</span> 疑似另含 RSA 等独有能力，需单独确认</td></tr>
+<tr><td><code>mykng/kb-auth/.../util/CryptoUtil.java</code></td><td>99</td><td>随旧模块（见 §3 待核实项）</td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>抽取要点</b>：不能简单「取一份复制过去」。infra-monitor 与 kb-ops 的 GCM 参数一致（IV=12／TAG=128），可收敛为一份标准实现；但 <code>portal</code> 是<b>另一套算法</b>，<code>active-manager</code> 体量差 4 倍，直接替换会解不开存量密文。
+<br>正确做法：抽 <code>common-core</code> 的 <code>crypto</code> 包，以 AES-256-GCM 为标准实现，再为存量数据提供<b>算法标识 + 迁移期双读</b>（读到旧格式用旧逻辑解，写回统一新格式）。
+</div>
+
+<h3>4.2 <code>OperationLog</code>（操作审计） — 3 套实现</h3>
+
+<table>
+<thead><tr><th>位置</th><th>结构</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td><code>kb-ops/.../entity|controller|service/OperationLog*</code></td><td>entity 22 行，<b>字段与另两套不同</b>（含 resourceType／resourceId／userAgent）</td><td><span class="tag t-ok">在用</span></td></tr>
+<tr><td><code>auth-center/.../entity|controller|service/OperationLog*</code></td><td>entity 26 行</td><td><span class="tag t-ok">在用</span></td></tr>
+<tr><td><code>mykng/kb-auth/.../entity|controller|service/OperationLog*</code></td><td>与 auth-center 同构</td><td><span class="tag t-warn">随旧模块</span></td></tr>
+</tbody>
+</table>
+
+<p>关键点是：<b>kb-ops 那套和 auth-center 那套字段都不一样</b>——说明它们是从同一个想法各自演化出来的，不是有意设计的差异。而本次授权重构恰好要求「用户管理补齐审计日志」，正好可以一次抽干净。</p>
+
+<div class="dec">
+<b>抽取要点</b>：在 <code>common-core</code> 新增 <code>audit</code> 包——<code>@AuditOperation</code> 注解 + 统一 <code>OperationLog</code> 实体 + AOP 切面自动落库（记录 操作人／动作／资源／前后值／IP／UA）。各应用只需在方法上加注解，不再各自写 service。
+<br>顺带解决「审计字段不统一」的问题——统一后跨系统审计才有意义。
+</div>
+
+<h3>4.3 前端 SSO / Token 工具 — 4 份副本</h3>
+
+<table>
+<thead><tr><th>文件</th><th>kb-web</th><th>kb-ops-web</th><th>infra-monitor-web</th><th>myfrp</th><th>auth-components 已有</th></tr></thead>
+<tbody>
+<tr>
+<td><code>utils/sso.ts</code></td>
+<td>149 行<br><span class="tag t-bad">3 处引用</span></td>
+<td>174 行<br><span class="tag t-bad">3 处引用</span></td>
+<td>150 行<br><span class="tag t-bad">3 处引用</span></td>
+<td>177 行<br><span class="tag t-gray">.js</span></td>
+<td><span class="tag t-ok">163 行</span></td>
+</tr>
+<tr>
+<td><code>utils/token.ts</code></td>
+<td>47 行<br><span class="tag t-bad">6 处引用</span></td>
+<td>31 行<br><span class="tag t-bad">5 处引用</span></td>
+<td>47 行<br><span class="tag t-bad">6 处引用</span></td>
+<td>—</td>
+<td><span class="tag t-ok">已导出</span></td>
+</tr>
+</tbody>
+</table>
+
+<p>三份 <code>sso.ts</code> 的函数名和函数体完全一致——<code>startSsoLogin</code>／<code>handleSsoCallback</code>／<code>refreshOidcToken</code>／<code>decodeOidcClaims</code>——<b>唯一差异是两行常量</b>：</p>
+
+<table>
+<thead><tr><th>应用</th><th>存储键前缀</th><th>clientId</th></tr></thead>
+<tbody>
+<tr><td>kb-web</td><td><code>kb_sso_state</code> / <code>kb_sso_verifier</code> / <code>kb_sso_redirect</code></td><td>marschat-kbweb</td></tr>
+<tr><td>kb-ops-web</td><td><code>kb_ops_sso_state</code> / <code>kb_ops_sso_verifier</code> / …</td><td>marschat-kbops</td></tr>
+<tr><td>infra-monitor-web</td><td><code>infra_sso_state</code> / <code>infra_sso_verifier</code> / …</td><td>marschat-inframon</td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>抽取要点</b>：不是「把代码搬进包」，而是<b>参数化</b>——<code>auth-components</code> 里已有全部函数，补一个工厂：
+<pre class="mono" style="background:#EFEEE9;border-radius:8px;padding:10px 12px;margin:8px 0;overflow-x:auto">export function createSsoClient(opts: {
+  clientId: string
+  redirectUri: string
+  issuer?: string
+  keyPrefix: string        // 'kb' | 'kb_ops' | 'infra'
+}): { startSsoLogin; handleSsoCallback; refreshOidcToken; decodeOidcClaims }</pre>
+各应用从 149 行本地副本降为 5 行配置。<b>token 层更简单</b>——<code>frontend-common</code> 已导出 <code>createLocalStorageTokenStore</code>，直接换用。
+</div>
+
+<h3>4.4 前端路由守卫 — 4 份</h3>
+
+<p>四个应用各写一份 <code>router.beforeEach</code>，逻辑几乎逐行相同：取 token → 判断 <code>meta.requiresAuth !== false</code> → 无 token 跳登录并带 <code>redirect</code> → 已登录访问登录页则回跳。portal 额外多一个 <code>requiresAdmin</code> 判断。</p>
+
+<div class="dec">
+<b>抽取要点</b>：<code>frontend-common</code> 新增 <code>createAuthGuard({ loginRoute, getToken })</code>，并扩展 <code>meta</code> 契约以承载 RBAC：
+<pre class="mono" style="background:#EFEEE9;border-radius:8px;padding:10px 12px;margin:8px 0;overflow-x:auto">meta: {
+  requiresAuth?: boolean
+  requiredPermissions?: string[]   // 新增：绑定权限点
+}</pre>
+守卫内统一处理「无权限 → 403 页」而不是各应用自己判断 admin。
+</div>
+
+<h3>4.5 前端菜单渲染 — 3 份硬编码</h3>
+
+<table>
+<thead><tr><th>应用</th><th>MainLayout 行数</th><th>菜单写法</th></tr></thead>
+<tbody>
+<tr><td>portal</td><td>473</td><td><span class="tag t-ok">数据驱动</span> <code>v-for="cat in categories"</code>（可作范式）</td></tr>
+<tr><td>kb-ops-web</td><td>332</td><td><span class="tag t-bad">硬编码</span> 十几个 <code>el-menu-item</code> 平铺</td></tr>
+<tr><td>infra-monitor-web</td><td>255</td><td><span class="tag t-bad">硬编码</span></td></tr>
+<tr><td>kb-web</td><td>685（含 ShareLayout）</td><td><span class="tag t-bad">硬编码</span></td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>抽取要点</b>：抽 <code>&lt;SidebarMenu :menus="menus" /&gt;</code> 组件，接收菜单数组渲染。这与 RBAC 的菜单权限天然咬合——菜单数组不再硬编码，而是来自 <code>GET /auth/permissions</code> 下发。一次抽取同时解决「重复」和「权限过滤」两个问题。
+</div>
+
+<h2 id="s5">五、发现三：已发布却没被用起来</h2>
+
+<p>这是最值得注意的一类浪费——包在 Nexus 上、依赖也声明了，代码里却还在用本地副本。</p>
+
+<table>
+<thead><tr><th>应用</th><th>声明的依赖</th><th>实际 import 包的文件数</th><th>真实情况</th></tr></thead>
+<tbody>
+<tr>
+<td>kb-web</td>
+<td>auth-components + frontend-common</td>
+<td>1（仅登录页用 <code>LoginPanel</code>）</td>
+<td><span class="tag t-warn">SSO/token 仍走本地副本</span></td>
+</tr>
+<tr>
+<td>kb-ops-web</td>
+<td>auth-components + frontend-common</td>
+<td>1</td>
+<td><span class="tag t-warn">本地 <code>utils/request.ts</code> 被 13 处引用；<code>createRequest</code> 仅 1 处</span></td>
+</tr>
+<tr>
+<td>infra-monitor-web</td>
+<td>auth-components + frontend-common</td>
+<td><b>0</b></td>
+<td><span class="tag t-bad">frontend-common 是死依赖</span>，本地 <code>utils/request.ts</code> 被 6 处引用</td>
+</tr>
+<tr>
+<td>portal</td>
+<td>auth-components + frontend-common</td>
+<td>待细化统计</td>
+<td>已用登录组件</td>
+</tr>
+<tr>
+<td>cosmic-studio</td>
+<td>auth-components（<b>无 frontend-common</b>）</td>
+<td>1</td>
+<td>自带 <code>utils/format.js</code>，与包内 <code>formatDateTime</code> 重复</td>
+</tr>
+<tr>
+<td>myfrp</td>
+<td><span class="tag t-bad">无任何 @marschat 依赖</span></td>
+<td>0</td>
+<td>自带 177 行 <code>sso.js</code> + 独立 <code>request.js</code></td>
+</tr>
+</tbody>
+</table>
+
+<div class="gap">
+<b>结论</b>：依赖声明了但代码没用，等于<b>双份维护成本 + 零收益</b>。这类「半迁移」状态比完全没迁移更危险——升级时两边都要改，改完还得担心不一致。
+<br>处置顺序：先把本地副本换成包内能力（删副本），再清理死依赖（<code>infra-monitor-web</code> 的 frontend-common）。
+</div>
+
+<h2 id="s6">六、发现四：auth-core 缺权限能力（本次重构的硬缺口）</h2>
+
+<p>这是唯一一类<b>真正需要新建</b>的公共能力。现有 <code>auth-core</code> 的 <code>LoginUser</code> 只有三个字段：</p>
+
+<pre class="mono" style="background:#EFEEE9;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:12px 0">public record LoginUser(Long userId, String username, String tokenType) {
+    public boolean isRefreshToken() { return "refresh".equals(tokenType); }
+}</pre>
+
+<p><code>TokenProvider.parseUser()</code> 也只解析这三项——<b>没有 role、没有 realm、没有 permissions</b>。所以任何后端应用想校验「这个人能不能调这个接口」，在共享库里根本没有抓手，只能各写各的。</p>
+
+<table>
+<thead><tr><th>需要的公共能力</th><th>落在哪个包</th><th>解决什么</th></tr></thead>
+<tbody>
+<tr><td><code>LoginUser</code> 扩展 roles／realm／permissions</td><td><code>auth-core</code></td><td>后端能拿到当前人的权限</td></tr>
+<tr><td><code>@RequirePermission("client:type:key")</code> 注解</td><td><code>auth-core</code></td><td>接口级声明式鉴权，替代各写 <code>@PreAuthorize("hasRole('ADMIN')")</code></td></tr>
+<tr><td><code>PermissionInterceptor</code> + 本地缓存</td><td><code>auth-core</code></td><td>统一拦截、统一 403 语义（接 <code>NoPermissionException</code>）</td></tr>
+<tr><td><code>MenuRegistryReporter</code> 启动上报</td><td><code>auth-core</code></td><td>应用把菜单树注册给认证中心，不用各写一遍</td></tr>
+<tr><td><code>useMenus()</code> / <code>usePermissions()</code> / <code>&lt;PermissionGate&gt;</code></td><td><code>auth-components</code></td><td>前端菜单过滤与按钮级权限</td></tr>
+<tr><td><code>createAuthGuard()</code> / <code>&lt;SidebarMenu&gt;</code></td><td><code>frontend-common</code></td><td>路由守卫与菜单渲染统一</td></tr>
+</tbody>
+</table>
+
+<div class="win">
+<b>这一层的价值</b>：把 RBAC 做成公共能力后，接入一个新应用的成本从「实现一套权限体系」降为「加一个依赖 + 加注解」。这才是「发布到 Nexus 后续直接用」的真正形态。
+</div>
+
+<h2 id="s7">七、发现五：发布链路没有 CI</h2>
+
+<table>
+<thead><tr><th>环节</th><th>现状</th><th>问题</th></tr></thead>
+<tbody>
+<tr><td>Java 发布</td><td><code>distributionManagement</code> 指向 <code>nexus.marschat.online/repository/maven-releases/</code></td><td>坐标配置好了</td></tr>
+<tr><td>npm 发布</td><td>指向 Nexus <code>npm-hosted</code></td><td>坐标配置好了</td></tr>
+<tr><td><b>触发方式</b></td><td><code>scripts/build-all.ps1</code> + <code>push-all.ps1</code>（手动 PowerShell）</td><td><span class="tag t-bad">纯手工</span></td></tr>
+<tr><td><b>CI 流水线</b></td><td><span class="tag t-bad">无</span>（<code>marschat-components</code> 仓无 woodpecker 配置）</td><td>ADR-2026-09-09 的「后续优化 #2」未落地</td></tr>
+<tr><td>版本管理</td><td><code>.changeset/</code> 目录存在但<b>为空</b></td><td>npm 版本靠手改，无 CHANGELOG</td></tr>
+<tr><td>版本号一致性</td><td>common-core <code>1.1.0</code> / frontend-common <code>0.2.0</code> / auth-components <code>0.3.3</code></td><td>各包独立演进，无平台版本视角</td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>建议</b>：本次抽取动作会让包发布变频繁（多次改包 + 发版），如果还靠手动脚本，很容易出现「代码搬进去了但没发包 / 发了包但没改依赖版本」的断裂——这正是上次「流水线全绿线上没变」的同类风险。建议同步补一条 <code>marschat-components</code> 流水线：打 tag → 构建 → <b>maven 与 npm 双发</b> → 同步 <code>push-all.ps1</code> 的双推逻辑（Gitee + GitHub）。
+</div>
+
+<h2 id="s8">八、抽取清单（按优先级）</h2>
+
+<div class="card">
+
+<div class="pri">
+<div class="pri-l"><span class="p0">P0</span></div>
+<div class="pri-c">
+<div class="pri-t">清死代码 <span class="tag t-ok">零风险</span><span class="tag t-gray">约 19 个文件</span></div>
+<div class="pri-d">删除 kb-ops／infra-monitor-server／portal-server 三处 <code>com/kb/common/**</code>；核实并处置 <code>mykng/kb-auth</code> 旧模块（含 module-registry.yml 登记）。<b>无行为变更，可单独提交。</b></div>
+</div>
+</div>
+
+<div class="pri">
+<div class="pri-l"><span class="p1">P1</span></div>
+<div class="pri-c">
+<div class="pri-t">消除真实重复 <span class="tag t-info">高收益</span><span class="tag t-gray">约 1,200 行</span></div>
+<div class="pri-d">
+① <code>common-core</code> 新增 <code>crypto</code> 包（AES-256-GCM 标准实现 + 存量双读），迁移 5 处 <code>CryptoUtil</code>；<br>
+② <code>common-core</code> 新增 <code>audit</code> 包（<code>@AuditOperation</code> + 统一实体 + AOP 落库），迁移 3 套 <code>OperationLog</code>；<br>
+③ <code>frontend-common</code> 新增 <code>createAuthGuard</code> + <code>&lt;SidebarMenu&gt;</code>；<br>
+④ 三前端改用包内 sso／token，<code>auth-components</code> 补 <code>createSsoClient</code> 工厂，删本地副本。
+</div>
+</div>
+</div>
+
+<div class="pri">
+<div class="pri-l"><span class="p2">P2</span></div>
+<div class="pri-c">
+<div class="pri-t">新建 RBAC 公共能力 <span class="tag t-pur">重构必需</span></div>
+<div class="pri-d">
+<code>auth-core</code>：扩展 <code>LoginUser</code>（roles／realm／permissions）、新增 <code>@RequirePermission</code> + <code>PermissionInterceptor</code> + <code>MenuRegistryReporter</code>；<br>
+<code>auth-components</code>：新增 <code>useMenus()</code>／<code>usePermissions()</code>／<code>&lt;PermissionGate&gt;</code>。<br>
+<b>这一层做完，接入新应用 = 加依赖 + 加注解。</b>
+</div>
+</div>
+</div>
+
+<div class="pri">
+<div class="pri-l"><span class="p3">P3</span></div>
+<div class="pri-c">
+<div class="pri-t">补齐接入 <span class="tag t-warn">逐应用</span></div>
+<div class="pri-d">
+<code>myfrp</code>（前端 + 后端都未接入 <code>@marschat/*</code>／<code>common-core</code>）、<code>active-manager</code>（无 common-core）、<code>mykng/kb-ops</code>（无 common-core）；<br>
+<code>cosmic-studio</code> 前端补 <code>frontend-common</code>（后端是 Python，<b>不做跨语言共享</b>）。
+</div>
+</div>
+</div>
+
+<div class="pri">
+<div class="pri-l"><span class="p4">P4</span></div>
+<div class="pri-c">
+<div class="pri-t">发布链路自动化 <span class="tag t-gray">治本</span></div>
+<div class="pri-d">
+<code>marschat-components</code> 加 CI：tag → 构建 → maven + npm 双发 → 双远程推送；启用 changeset 管理 npm 版本与 CHANGELOG；建立平台版本号对齐策略（当前 3 个包版本各自为政）。
+</div>
+</div>
+</div>
+
+</div>
+
+<h2 id="s9">九、不值得抽的（边界判断）</h2>
+
+<p>抽取要有边界，否则会把「公共库」变成「什么都往里的垃圾箱」。以下明确<b>不抽</b>：</p>
+
+<table>
+<thead><tr><th>对象</th><th>不抽的理由</th></tr></thead>
+<tbody>
+<tr><td>各应用整体 <code>MainLayout.vue</code></td><td>品牌、导航项、布局差异是<b>应用身份的一部分</b>，只抽其中的菜单渲染与用户下拉</td></tr>
+<tr><td>cosmic-studio 的 Python 后端</td><td>跨语言（Python vs Java），硬共享会引入 IPC 或重复实现，得不偿失</td></tr>
+<tr><td>各应用 <code>views/</code> 业务页面</td><td>领域逻辑，共享会造成耦合，不属于公共组件范畴</td></tr>
+<tr><td><code>activation-code-server</code> 的 303 行 <code>CryptoUtil</code></td><td>体量差 4 倍，需先确认是否含 RSA 等独有能力；只抽真正的公共部分，不整体搬</td></tr>
+<tr><td>各应用 <code>api/</code> 下的接口定义</td><td>业务契约，各系统接口不同，共享无意义</td></tr>
+</tbody>
+</table>
+
+<h2 id="s10">十、待拍板事项</h2>
+
+<div class="lead">
+<h3>请良哥确认</h3>
+<ul class="chk">
+<li><b>P0 是否立刻执行</b>——19 个死文件删除零风险，建议独立提交先做掉，不等到重构开始</li>
+<li><b>P0 的 <code>mykng/kb-auth</code> 到底是死是活</b>——需要你确认它是否已被 <code>auth-center</code> 取代（这个只有你知道部署实情）</li>
+<li><b><code>CryptoUtil</code> 收敛策略</b>：是否接受「以 AES-256-GCM 为标准 + 存量密文双读迁移」？还是保持各应用算法独立、只抽接口不抽实现？</li>
+<li><b>P1 与 RBAC 重构（P2）的先后</b>——建议 P1 先做（消除重复、把包发好版），再让 P2 的 RBAC 能力一次性进包，避免同一批包发两次版本</li>
+<li><b>是否补 CI 自动发布</b>（P4）——本次抽取会频繁发包，手动脚本的断裂风险较高</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>抽取动作的共同点（一句话）</h4>
+<p style="margin:0">除了 RBAC 那一层，<b>其余都不是「新建公共组件」，而是「把已经重复的代码搬进已存在的包，然后删副本」</b>。所以这次没有架构风险，只有搬迁量和版本发布的节奏问题。</p>
+</div>
+
+<p class="wrapnote">
+本文所有数量、行数、引用计数均于 2026-09-10 从本地仓库源码实采（<code>grep</code> 计数可通过文中给出的判据复现），未使用推测。<br>
+涉及的判断性结论已标注依据；<code>mykng/kb-auth</code> 的存废、<code>activation-code-server</code> 的 CryptoUtil 构成两项标明「待核实」，未下结论。<br>
+关联文档：<code>ADR-2026-09-09-公共组件发布到Nexus私服.md</code> · <code>统一账号体系与授权模型重构方案</code>
+</p>
+
+</div>
+</body>
+</html>

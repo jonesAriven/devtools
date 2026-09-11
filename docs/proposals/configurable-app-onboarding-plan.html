@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="uq2ovf4DnTaYBd5G2E9NNj">
+<head data-page-node-id="FAJr5ATdMkjojgUF4dHVdt">
+<meta charset="UTF-8" data-page-node-id="QMhK3CNtEqrmUagj7ls6Gk">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="Fk6lDuD5HCarfMn2Oa5Jna">
+<title>新应用配置化接入方案 · 扩展性设计</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --ink:#1F1F1D; --ink2:#55534E; --ink3:#8A8780;
+  --line:#E3E1DB; --line2:#CFCCC4;
+  --purple:#534AB7; --purple-bg:#EEEDFE; --purple-ink:#3C3489;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-ink:#0C447C;
+  --teal:#0F6E56; --teal-bg:#E1F5EE; --teal-ink:#085041;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-ink:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-ink:#791F1F;
+  --gray:#5F5E5A; --gray-bg:#F1EFE8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600;margin:52px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);letter-spacing:-.005em}
+h3{font-size:15px;font-weight:600;margin:28px 0 10px}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;padding:1px 5px;border-radius:4px;color:var(--purple-ink)}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+.meta{color:var(--ink3);font-size:12.5px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.lead{background:var(--purple-bg);border:1px solid #CECBF6;border-radius:12px;padding:20px 22px;margin:20px 0}
+.lead h3{margin-top:0;color:var(--purple-ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;font-weight:600;background:var(--gray-bg);color:var(--ink);
+  padding:9px 11px;border:1px solid var(--line2);white-space:nowrap}
+td{padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:#FBFBF9}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.5}
+.t-ok{background:var(--teal-bg);color:var(--teal-ink)}
+.t-warn{background:var(--amber-bg);color:var(--amber-ink)}
+.t-bad{background:var(--red-bg);color:var(--red-ink)}
+.t-info{background:var(--blue-bg);color:var(--blue-ink)}
+.t-gray{background:var(--gray-bg);color:var(--gray)}
+.t-pur{background:var(--purple-bg);color:var(--purple-ink)}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+.gap{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.dec{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.win{background:var(--teal-bg);border-left:3px solid var(--teal);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  background:var(--purple);color:#fff;font-size:11.5px;font-weight:600;flex-shrink:0}
+pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  overflow-x:auto;margin:12px 0;line-height:1.6}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+@media(max-width:760px){.kpi{grid-template-columns:1fr}}
+.kpi-c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi-n{font-size:26px;font-weight:600;line-height:1.15}
+.kpi-l{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+.toc a{color:var(--ink);text-decoration:none;font-size:13px}
+.toc a:hover{color:var(--purple);text-decoration:underline}
+.toc ol{columns:2;column-gap:32px;margin:6px 0;padding-left:20px}
+@media(max-width:760px){.toc ol{columns:1}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"";position:absolute;left:0;top:6px;width:13px;height:13px;
+  border:1.5px solid var(--line2);border-radius:3px}
+.step{display:flex;gap:14px;padding:14px 0;border-bottom:1px dashed var(--line2)}
+.step:last-child{border-bottom:none}
+.step-n{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--blue-bg);color:var(--blue-ink);
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}
+.step-c{flex:1}
+.step-t{font-weight:600;margin-bottom:4px}
+.wrapnote{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+.layer{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0;background:var(--card)}
+.layer-h{font-weight:600;font-size:14px;margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lv{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:22px;padding:0 8px;
+  border-radius:6px;font-size:12px;font-weight:600}
+</style>
+</head>
+<body data-page-node-id="8LAt6cTGIMMXTnfWbfs1qD">
+<div class="wrap" data-page-node-id="ntX8KDhXRWAZPLOiSJMPlZ">
+
+<h1 data-page-node-id="28ZropBpaOLKnb6gPT1ARG">新应用配置化接入方案</h1>
+<p class="sub" data-page-node-id="eNBrFhHKs9Rl2ZqGDEq6wO">让「再建一个应用」从改 8 处代码变成填 1 份配置</p>
+<p class="meta" data-page-node-id="q2ES9A841VMlAf08I4Vzeu">2026-09-10 · 数据从本地仓库实采 · 承接《公共组件抽取方案》与《统一账号体系重构方案》</p>
+
+<div class="toc" data-page-node-id="PWLYd4EjUhwoBqhGQybSCz">
+<strong style="font-size:13px" data-page-node-id="SYIvMkL4vmYne3SsXcmCyH">目录</strong>
+<ol data-page-node-id="gJiVYCJZx9YsBqCQKCCfyy">
+<li data-page-node-id="Pk4Dr977LoeBUMrlwvSaAt"><a href="#s1" data-page-node-id="BCfnlaSHhexkMreGY0f6jo">结论速览</a></li>
+<li data-page-node-id="cHtQPj2ktugWApvfmbWHTF"><a href="#s2" data-page-node-id="kYe7viGufVXGJommBXdOL9">现状：接入要动 8 处</a></li>
+<li data-page-node-id="LmA5NmB6a194f3MeRnmWIK"><a href="#s3" data-page-node-id="VJe935dyDIVwv1sLFaU2So">已有的配置化范式</a></li>
+<li data-page-node-id="2IUXBDVyCWizW9nF3U9FmG"><a href="#s4" data-page-node-id="BpUawjtpeEWZFwt2LF6OZx">目标设计：单一真源 + 生成器</a></li>
+<li data-page-node-id="Qsy3E9y1ys35dB59VdQDNh"><a href="#s5" data-page-node-id="OextESOF6M5bdPrLs0Fe1J">auth-center 三层配置化</a></li>
+<li data-page-node-id="NxlflPLGYgJVA8SiPoKjp4"><a href="#s6" data-page-node-id="YBnFauKcHPTyrAzB4g4oDT">前端：编译期 → 运行时配置</a></li>
+<li data-page-node-id="iBqwF9FXKRvG3zMjuEGhNf"><a href="#s7" data-page-node-id="fGLfDUXM116NC79cFUTl3F">后端：加依赖 + 5 行 yaml</a></li>
+<li data-page-node-id="tXFbsdh1EL3jCmAQuLS88v"><a href="#s8" data-page-node-id="cATh2Pf4uYHtQdDvREiJGM">接入前后对比</a></li>
+<li data-page-node-id="1iwUg1Th0OvtxbCgPAPUf5"><a href="#s9" data-page-node-id="38KXdWOLjmfz05awm9vOSd">脚手架</a></li>
+<li data-page-node-id="nVBqmeuogyjrQOFUmZW1Yz"><a href="#s10" data-page-node-id="615Noiz8CfHfi1zM3cisLc">分层实施与待拍板</a></li>
+</ol>
+</div>
+
+<h2 id="s1" data-page-node-id="44vHkXHBtwEvgMqqBtV6wI">一、结论速览</h2>
+
+<div class="kpi" data-page-node-id="BhvUPE9vcDWgqURAXZjNFB">
+<div class="kpi-c" data-page-node-id="8CEwHrce0HLfuNrIavjGLJ"><div class="kpi-n" style="color:var(--red)" data-page-node-id="XhWdRHkME8tnbuYsF1NhJA">8</div><div class="kpi-l" data-page-node-id="GFvb3h5Llgu0cY61PNeHfD">接入新应用要改的地方</div></div>
+<div class="kpi-c" data-page-node-id="RWVi3ocyGamHG9VojbhlEt"><div class="kpi-n" style="color:var(--amber)" data-page-node-id="gEROUhShgaWNlK9Rp3yBbI">~230</div><div class="kpi-l" data-page-node-id="sDS8o41lYVVVWREIEjSHFH">行配置/代码（分散 8 处）</div></div>
+<div class="kpi-c" data-page-node-id="i5j2H1RuAButkFM2jLxplr"><div class="kpi-n" style="color:var(--teal)" data-page-node-id="wlbkwBAz3vrAuH1twL8IvM">1</div><div class="kpi-l" data-page-node-id="R8Bz6LXUc5xuBbF9v419aM">目标：只填 1 份 registry</div></div>
+</div>
+
+<div class="lead" data-page-node-id="C1FjiZQFFZkNBEgYBZOF68">
+<h3 data-page-node-id="AEeON1hmBbSXCJozQEle7T">核心诊断</h3>
+<p data-page-node-id="fgvDUUTQYQ27x0ij421rG4">公共组件已经解决了「<b data-page-node-id="GUc0SvzqjfxLFSHnwxqG9T">代码复用</b>」，但没有解决「<b data-page-node-id="OIfV7uaoceDBBF617iL7cl">注册复用</b>」——接入一个新应用，代码是复用的（引包即可），可<b data-page-node-id="6D8u0DaQ1uZn9e52CkHTDW">声明和注册</b>却散落在 8 个地方，而且关键那一处（OIDC 客户端注册）是<b data-page-node-id="78gxhdTkkCmDTJskH2ULdw">写死的 Java 代码</b>，加个应用要改认证中心源代码并重新部署它。</p>
+<p style="margin-bottom:0" data-page-node-id="gqBqSSCsQbGcFuwTZiNAvh">所以这一层的答案不是「再抽一个组件」，而是<b data-page-node-id="XONHcWAA11FW1uYchVxEP4">把 8 处声明收敛成 1 份配置，用生成器派生其余</b>。而这件事你已经有现成范式——<code data-page-node-id="kRtjUsQ3FnlTFv2kgpCqlx">module-registry.yml</code>。</p>
+</div>
+
+<h2 id="s2" data-page-node-id="w6C6sOxY3WEQYeddbAoqrf">二、现状：接入一个新应用要动 8 处</h2>
+
+<p data-page-node-id="3mBCE8piBnDXwpiKulD4mn">以下每一处的行数都是从仓库里实数量出来的。</p>
+
+<table data-page-node-id="NrOM3RbLnSyIAFAHjBA8Zk">
+<thead data-page-node-id="KuXmvMPn8PvGJLuCkj4IKW"><tr data-page-node-id="KpUEo6S5E8LOKYKnkKpcg1"><th data-page-node-id="Ye8uNzfppqe0CsJEdEYrmZ">#</th><th data-page-node-id="7Zxwy14nYA2ezaAvAdbRLp">位置</th><th data-page-node-id="pd3uoiLIAXB66uf1jsIAu0">形式</th><th data-page-node-id="oPBeSXcgOpCgBLNpB8p0F6">每个应用的量</th><th data-page-node-id="soafJowwYWfWvdRZznSjTR">要动 auth-center？</th></tr></thead>
+<tbody data-page-node-id="MTOD9cLei3Kn2Y5Ws9tBtE">
+<tr data-page-node-id="8OXZvhbxVW0mfCYJQDeDuR">
+<td data-page-node-id="kSYfVnjw26ekkUrKloWVMT">1</td>
+<td data-page-node-id="AyNJi03MY4YaeE7J8JLxyE"><code data-page-node-id="VbWXm7Tlud0ti5107IVL2s">auth-center/.../DatabaseInitializer.java</code></td>
+<td data-page-node-id="W90XiQGOSq65MlM3UVKbSj"><span class="tag t-bad" data-page-node-id="eZmTyoyLpVypJEj61V5ihG">Java 硬编码</span></td>
+<td data-page-node-id="Jbt6xnsOwdYTrJoSMdM7i0">~48 行（含硬编码内网 IP）</td>
+<td data-page-node-id="bEE8IFeMAjJhlg9GM0oCxE"><span class="tag t-bad" data-page-node-id="nTxz9zWu5ffxNx9UqLdEdu">要，且必须重新部署认证中心</span></td>
+</tr>
+<tr data-page-node-id="87BVWBfMT0IDV11RMwF6iC">
+<td data-page-node-id="kEmgaB72GQywHBplqKxGzd">2</td>
+<td data-page-node-id="8DE7DWV3XV1gZwXcwiOTvf"><code data-page-node-id="i1GCGVLWX5GjT4rzzNIB9E">&lt;app&gt;/src/views/LoginView.vue</code></td>
+<td data-page-node-id="ibyyQe80rapaQf0jGJaNSa">前端配置对象</td>
+<td data-page-node-id="SFtvvk3WfUku6XwUBNIbSF">~40 行（brand/ssoConfig/authApiBase）</td>
+<td data-page-node-id="mwPlERBWl4FUUFvOmWtw9V"><span class="tag t-ok" data-page-node-id="HNm1xW3aHXmnvzYporh408">否</span></td>
+</tr>
+<tr data-page-node-id="iEK3N7uhWuWDKV6rGZO4Ls">
+<td data-page-node-id="c7hx4aFsEEMAhxzlMAAeTs">3</td>
+<td data-page-node-id="SurCJVAJtAAgiqqVUjs2hl"><code data-page-node-id="tCh8mIZOmPggA0dqEMT1qD">portal/src/config/systems.ts</code></td>
+<td data-page-node-id="gAB0Wc0Cig5yOndY1VkvTA"><span class="tag t-warn" data-page-node-id="3sE6EVnLx2ezuoogOJSiBZ">前端硬编码</span></td>
+<td data-page-node-id="2OCMp0xm1aSYWGTZKmJzeq">~15 行（含 URL 编码的 client_id + redirect_uri）</td>
+<td data-page-node-id="dV1ov4JxtHlQuu9Hhp81kZ"><span class="tag t-ok" data-page-node-id="onQvheypPYaCxGSkZC4YiO">否</span></td>
+</tr>
+<tr data-page-node-id="oKQXL2otG6WzSmGkWOdRO0">
+<td data-page-node-id="KPjuvuZ5llaqQmzk2jQK4w">4</td>
+<td data-page-node-id="jN38zA7KVDZ5YL0QmkYOGa"><code data-page-node-id="XswmVMqXGU6tuF9gWGG4QB">&lt;app&gt;/nginx.conf</code></td>
+<td data-page-node-id="KLRBopG7SwDzSr0EQzDFIr">nginx location</td>
+<td data-page-node-id="kbHhDxb4naGBZOZMcWGCYT">若干条代理规则</td>
+<td data-page-node-id="gG3Htp8ScEIHGAgU6I7AT6"><span class="tag t-ok" data-page-node-id="C6AFDbzhZS2skGNzv7wUBb">否</span></td>
+</tr>
+<tr data-page-node-id="cZDVKrOb5TjFFB4BwxHdFE">
+<td data-page-node-id="BGvrkbIRK2nWB3uYzkXGo8">5</td>
+<td data-page-node-id="Tdy27XCFa1gkBf8o02I7MS"><code data-page-node-id="WK2xOSIasgKuwxAi8JO3Xb">config-as-code</code> 仓库</td>
+<td data-page-node-id="6USovdznfwU5OgDjT47AI1">nginx 站点配置</td>
+<td data-page-node-id="HwxJZKXpTvOe5BFB1ixTfN">一份站点文件</td>
+<td data-page-node-id="nGUlPliDk20GwEkW0uOaJJ"><span class="tag t-ok" data-page-node-id="NvNCyzphNtgy8YMCwQvfVn">否</span></td>
+</tr>
+<tr data-page-node-id="upgfUyPu3RfCizvCMt8vOx">
+<td data-page-node-id="7FzHNTKX3XwQEpKKloio3P">6</td>
+<td data-page-node-id="C77xkU9xlxDHaOyRkmPy7i"><code data-page-node-id="uIIso5v1twlKdXSo9cXfA6">devtools/.woodpecker.yml</code></td>
+<td data-page-node-id="LAlvrN2PpCFrrTgxTbBkip">CI YAML</td>
+<td data-page-node-id="gK8Wqzc0KawgGqLLKIqajO">~30 行（build + deploy 一对）</td>
+<td data-page-node-id="DtcNWQgrmLUbjGFphIWx8O"><span class="tag t-ok" data-page-node-id="924ONECYaU7lOuU1dklSb7">否</span></td>
+</tr>
+<tr data-page-node-id="KLA3zahqRTFNRvHCGpW1J8">
+<td data-page-node-id="gcVP7I43UlzKFqhm9Yg7Lq">7</td>
+<td data-page-node-id="oMjYVAdnBqzndtQ3BDvSuk"><code data-page-node-id="5i2DdWFEeYpuTMY0Bz7yIR">woodScript/cd/deploy-&lt;app&gt;.sh</code></td>
+<td data-page-node-id="0BCAplJWvlSFH5IuQq3Q28">Shell 脚本</td>
+<td data-page-node-id="Uc6BgDZVZjzJaB6y9Sb2Kt">54 ~ 81 行</td>
+<td data-page-node-id="OrNYDfc5MTNr4CKXAV5PGy"><span class="tag t-ok" data-page-node-id="FXRz13pgcQrEJas47lE0dh">否</span></td>
+</tr>
+<tr data-page-node-id="41BvCxzr2obyfv2BCDOunq">
+<td data-page-node-id="fEi1S1AVaeI91dg57nAEpe">8</td>
+<td data-page-node-id="oVjD6M7CJ3QZo2BdB4qM1Z"><code data-page-node-id="wQkkimPL6oFQOYUfUAam1r">&lt;app&gt;/package.json</code></td>
+<td data-page-node-id="BFK8VvtDE0yFdZSzpPGUCn">依赖声明</td>
+<td data-page-node-id="yNuGuWu4gtWM7Dp07p74jK">2 行</td>
+<td data-page-node-id="8kZeqm3vfcea90AIb9Br2U"><span class="tag t-ok" data-page-node-id="69FMLNRAzqFBbAhbzW7PQE">否</span></td>
+</tr>
+</tbody>
+</table>
+
+<h3 data-page-node-id="ezuCgduHeh6EBp8Uj2TPeh">最要命的是第 1 处</h3>
+
+<p data-page-node-id="O1kroLLQQcqORGr3ucdGqP"><code data-page-node-id="r2I0OzHtzMW0VwCQ0YtWWj">DatabaseInitializer.java</code> 共 <b data-page-node-id="n7N5VUdEblRlZVlVnZNmCz">534 行</b>，里面有 <b data-page-node-id="u7EGkMExZdvk0iBSOCRVSX">5 个 seed 方法</b>，各自服务一个或一组应用。抽两段出来对比——除了 clientId、名称、3 条回调地址三样东西，<b data-page-node-id="tEFBD7glOahxn8ooOcHUpH">其余 40 余行完全相同</b>：</p>
+
+<pre data-page-node-id="lh4wqLTUJWBiKB6KODAN3t">private void seedInframonClient(...) {
+    List&lt;String&gt; requiredRedirects = List.of(
+            "https://monitor.marschat.online/infra/sso-callback",
+            "http://192.168.31.105/infra/sso-callback",
+            "http://localhost:3002/infra/sso-callback");     ← 内网 IP 写进 Java 源码
+    ...
+    RegisteredClient.withId(UUID.randomUUID().toString())
+            .clientId("marschat-inframon")                    ← 差异点 1
+            .clientName("MarsChat Infra Monitor (SPA)")       ← 差异点 2
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+            .redirectUris(r -&gt; r.addAll(requiredRedirects))    ← 差异点 3
+            .scope(OidcScopes.OPENID).scope(OidcScopes.PROFILE)
+            .clientSettings(...requireProofKey(true)...)
+            .tokenSettings(...30min / 7d...)
+            .build();
+    ...
+}</pre>
+
+<div class="gap" data-page-node-id="61N9iCaAS1MVET5eLObfsR">
+<b data-page-node-id="DaFQ4pETaGXXGhdZtkSXvC">三重问题</b>：① 每个应用 48 行样板代码，5 份共约 240 行纯重复；② <b data-page-node-id="2mqxNspzR5Clo27b1QEdI3">内网 IP 与 localhost 端口写进 Java 源码</b>，改环境要改代码；③ <code data-page-node-id="bQK0SS9d2dYbEJsLKvI1IX">DatabaseInitializer</code> 里 <code data-page-node-id="blitht2kZgEOBQNxCSZQRh">@ConfigurationProperties</code>／<code data-page-node-id="8sVm7z51jgLfTRraNjcu3Z">@Value</code> 匹配数 <b data-page-node-id="zTe2ie5K2Bod9kek0sOrMD">为 0</b>——完全没有任何外部配置读取。
+<br data-page-node-id="pikpT1RshBs60nmdDivEx1">另外实测：<code data-page-node-id="H8Vo4KEITr7caZCT7PiyN0">auth-center</code> 的 controller 里<b data-page-node-id="U5Omj477nEkMaQd4UyHHHz">没有客户端管理接口</b>，也没有 client 相关的 Properties 类。也就是说<b data-page-node-id="s16YB6nby5eWUbec7nvScX">除了改代码，没有任何别的注册途径</b>。
+</div>
+
+<h2 id="s3" data-page-node-id="YvlNKoFjFgAz9uefVngSiR">三、已有的配置化范式（可直接复用）</h2>
+
+<p data-page-node-id="5QSa8fnaeHhA2a1tMU2Oxw">好消息是这件事你不用从零设计——<code data-page-node-id="KafF8YD0m5Rj6TFwCspbaO">devtools/mykng/module-registry.yml</code> 就是同款思路，并且已经被验证过：</p>
+
+<pre data-page-node-id="oG8PxxVSvoAyd0rD8kkqWF"># mykng 模块与插件注册清单（Single Source of Truth）
+#
+# 本文件是 mykng 系统的"单一事实来源"：
+#   - 所有脚本、CI/CD、网关路由、文档生成器从此文件派生模块信息
+#   - 添加/移除模块或插件只需修改此文件，无需遍历 15+ 配置文件</pre>
+
+<div class="win" data-page-node-id="L5cpPYlHuy55LR2etQAvkc">
+<b data-page-node-id="6YCR5rfS0VgdBtSiCn3t8z">它的结构已经包含了我们需要的一切要素</b>：<code data-page-node-id="qEG2YvYdv2K68cUeX41Mgt">global</code>（全局配置）／<code data-page-node-id="H7i5IndAqcnFkdibXku1dI">infrastructure</code>（基础设施）／<code data-page-node-id="qj9s2IYxCW5Mi1TzTfufPk">modules</code>（服务模块，带 port/profile/health-path/depends-on）／<code data-page-node-id="25w4psBJFQkicZB7jGEgEX">plugins</code>（可插拔，按 P0-P3 分级）／<code data-page-node-id="GFhKwDElnpm1SMVSVZH7Bg">profile-presets</code>（预置组合方案）。
+<br data-page-node-id="jVG7Yl1GQVzgBBHmBCcVzz">已有的生成器骨架是 <code data-page-node-id="C5Td5iEHVna97BJdYQ24ti">generate_docs.py</code>。所以本方案不是发明新机制，而是<b data-page-node-id="TC47aKXMnBGu1jjeyxmuy0">把这个已验证的范式从 mykng 扩展到「平台应用」这一层</b>。
+</div>
+
+<h2 id="s4" data-page-node-id="AKh32ishVo1NKYy29Pcwqv">四、目标设计：单一真源 + 生成器</h2>
+
+<h3 data-page-node-id="YmHaVG6AfQ3oz0ohueJf4R">4.1 新增 <code data-page-node-id="wcESXDmwEfkWGaa0d5LhqQ">apps-registry.yml</code></h3>
+
+<p data-page-node-id="P3Kg6YCtdpN7WC61ssx3QT">放在 <code data-page-node-id="urpiaUFQ36jZ3SlpEOnccF">devtools/</code> 下（与 <code data-page-node-id="kNZjRa3AA5VEaTBTs4jcj4">module-registry.yml</code> 同级，或并入其中作为 <code data-page-node-id="zMWGaXFqFpg7ExFYnQAVeB">apps:</code> 节）。一个应用一段声明：</p>
+
+<pre data-page-node-id="KoxPXYGiI1K2VOi7443ATS">apps:
+  - id: cosmic-studio
+    name: COSMIC 度量表生产系统
+
+    auth:
+      client-id: cosmic-studio
+      type: public-spa                  # public-spa | confidential
+      scopes: [openid, profile]
+      redirect-uris:
+        - https://cosmic.marschat.online/sso-callback
+        - http://192.168.31.105:8310/sso-callback
+      token-ttl: { access: 30m, refresh: 7d }
+      login-methods: [password, email-code, sso]   # 启用哪些登录方式
+
+    frontend:
+      api-base: /auth-api               # auth-center 业务 API 的 nginx 前缀
+      brand:
+        title: COSMIC 度量表生产系统
+        icon: EditPen
+        color: '#534AB7'
+      guard: { login-route: /login, home: / }
+      menus: self-report                 # self-report | [静态数组]
+
+    backend:
+      type: python                       # none | java | python
+      context-path: /
+      permissions-enabled: true
+
+    deploy:
+      host: 192.168.31.105
+      port: 8310
+      ci-target: cosmic-studio
+      nginx-prefix: /
+
+    portal:
+      category: tool
+      health-check: http://192.168.31.105:8310/api/health
+      sort-order: 30</pre>
+
+<h3 data-page-node-id="G3BE3NGjDZcGi9zHUVRJdX">4.2 一个生成器派生所有产物</h3>
+
+<p data-page-node-id="ZFZX2TEzQVpYrHUoC7MF6W">新增 <code data-page-node-id="5pB8FGJvsYC6v6DvAs0s9h">scripts/gen-from-registry.py</code>（复用 <code data-page-node-id="EzL6zpgJOBXQCVfhqOX3Ki">generate_docs.py</code> 的骨架）：</p>
+
+<table data-page-node-id="cJ3TX22fUQIG7VmeSO6Pv2">
+<thead data-page-node-id="0BTHAa2NHpX3ayDL14X5zE"><tr data-page-node-id="CCN1R45GqfUcAD2OZXiOg5"><th data-page-node-id="NbjVIKeQaxG1jJPu8mseTs">派生产物</th><th data-page-node-id="ydVIzTs7VIcJAjrf2A3mRf">替代掉现状哪一处</th></tr></thead>
+<tbody data-page-node-id="OsjEQthWJEgQNFA1uddLJQ">
+<tr data-page-node-id="w8JDtOmlvw3ddJL6C8qJOY"><td data-page-node-id="INkOaGzQt0OQyomv3xOFAs"><code data-page-node-id="Es2czlYXTaahert3Wwc8hd">auth-center/src/main/resources/clients.yml</code></td><td data-page-node-id="os0f185qiVfRC674OSrUHz"><span class="tag t-ok" data-page-node-id="EIoEKOe5dMyN4nDSfNAGkj">第 1 处</span> 5 段硬编码 Java → 声明式配置</td></tr>
+<tr data-page-node-id="F0eWGnq7RFCVmbObmVF26T"><td data-page-node-id="VXMQbcA3PyYhZfhUEIr9Zv"><code data-page-node-id="LKSk2wR5kkeV27TZdtfvlw">&lt;app&gt;/public/app-config.json</code></td><td data-page-node-id="61jED0B6kvDXKdqnctWry2"><span class="tag t-ok" data-page-node-id="PqxEjEUP8w0j6S7SUpyIkM">第 2 处</span> 前端编译期配置 → 运行时配置</td></tr>
+<tr data-page-node-id="4vZp8GUxxcCswPgSu8yBWt"><td data-page-node-id="13RjYWDTxCULY88qNCWKlW"><code data-page-node-id="AgKPnEkxhjJDRfazKYQWSR">portal/src/config/systems.generated.ts</code></td><td data-page-node-id="PBfq7LjoV9H9v6oiLEMkuG"><span class="tag t-ok" data-page-node-id="tykmuDz69M5u4TQzcdDs4P">第 3 处</span> 系统卡片与 ssoUrl 自动生成</td></tr>
+<tr data-page-node-id="ibVoRQCVLQVgnxTMHouuCg"><td data-page-node-id="rvLsoxzPyKgEDpTQmwqhPP"><code data-page-node-id="wiM4amFTFoiG0wxX70QNQJ">config-as-code/sites/apps/&lt;id&gt;.conf</code></td><td data-page-node-id="46yoXvIVyLqliO6xFHwkuL"><span class="tag t-ok" data-page-node-id="MMcNU7zCnFeuemV71uK7iy">第 4、5 处</span> nginx 站点配置</td></tr>
+<tr data-page-node-id="cg0s9iI8E6YHC7GSWFrxqB"><td data-page-node-id="XwKDB5ylryOPf1BZKvV6Aw"><code data-page-node-id="D4sQYSdLL5tnGwUsRVXjHy">.woodpecker.yml</code> 的 pipeline 块</td><td data-page-node-id="gTcTztEKpyDjTwuIYmIedm"><span class="tag t-ok" data-page-node-id="m14xBXqWAuzERDXX7KP4kI">第 6 处</span> CI 步骤</td></tr>
+<tr data-page-node-id="Hx91FmP5KKG45kJxwBfWHV"><td data-page-node-id="IpwJhaDuzBSY8OFHPGBh4t"><code data-page-node-id="Skpj2gfHbUkAX6YNkQNNez">woodScript/cd/deploy-&lt;id&gt;.sh</code></td><td data-page-node-id="CwQhAGsE4i85gqvjTRCo15"><span class="tag t-ok" data-page-node-id="eUSVAmHy2PoZlwtBAG61x3">第 7 处</span> 部署脚本（模板化，只填变量）</td></tr>
+</tbody>
+</table>
+
+<div class="win" data-page-node-id="jONcSWJG19yFX77RWFVde3">
+<b data-page-node-id="MJ4jEQ2JsspXDD6GJ6ahYr">关键点</b>：派生物全部标记 <code data-page-node-id="i5wsXGrdBQtQeTyDqzVvxz">AUTO-GENERATED，勿手改</code>（仓库里 <code data-page-node-id="ExRIRBFlKxGRPEuDors7Vy">adr/INDEX.md</code> 已经是这个模式，说明团队能接受）。这样「真源唯一」才是真的，否则又会漂移成 8 处。
+</div>
+
+<h2 id="s5" data-page-node-id="EEaZW9HqADOHZx9LMby8BU">五、auth-center 三层配置化</h2>
+
+<p data-page-node-id="ie4jZjq3PSKS5gQ0nYXDNX">这是整个方案最要紧的一环，因为它现在是硬编码 Java。建议做成<b data-page-node-id="vWFJSPkcx7mxyTXdOMUbDA">三层递进</b>，按需要启用：</p>
+
+<div class="layer" data-page-node-id="XDO8zdq2qjl22cAUH3QUDe">
+<div class="layer-h" data-page-node-id="jPvhwnCMn1ob3X5hkIaSr2"><span class="lv t-info" data-page-node-id="mfOhdGXM2Iq4aUfIAVgEoD">L1</span>静态配置加载（替代硬编码）<span class="tag t-ok" data-page-node-id="xWiRS15JqKx9KB0s7MZYKR">推荐先做</span></div>
+<p style="margin:6px 0" data-page-node-id="lnDRCPzNc443YxXYf2mge1">删掉 <code data-page-node-id="V7xCG71bDZFChwkLFxoGY1">DatabaseInitializer</code> 里 5 个 seed 方法，改为读 <code data-page-node-id="LXf965toV8BeYM3htdgHs6">clients.yml</code>：</p>
+<pre style="margin-bottom:0" data-page-node-id="7jdbLFj9WtEFRrAKBtXoO0">@ConfigurationProperties(prefix = "marschat.auth.clients")
+public class AuthClientsProperties {
+    private List<ClientDef data-page-node-id="bN1v0U99ypNlJLogQgCaXe"> clients;   // 启动时批量 upsert 到 oauth2_registered_client
+}</pre>
+<p style="margin:8px 0 0" data-page-node-id="Nbquv3J2hBi4T6LoqwEyG8"><b data-page-node-id="GJpjetcceTS9OzwACS93t4">收益</b>：加应用 = 加一段 yaml，<b data-page-node-id="GSsGOUtaZJWKaWce7O7o9g">不再改 Java 代码</b>。改回调地址同理。风险为零——逻辑与现在完全一致，只是数据来源从代码变成配置。</p>
+</div>
+
+<div class="layer" data-page-node-id="S17e4TGIGlgqEeWt8w1fJR">
+<div class="layer-h" data-page-node-id="HGKMblp0i4YZzrL5hGJPBv"><span class="lv t-pur" data-page-node-id="gGz6lhlFdBewc89V4oBLcV">L2</span>动态注册接口（免重启）<span class="tag t-info" data-page-node-id="F4wXzvaXn5lF0B75kuPfK9">建议做</span></div>
+<p style="margin:6px 0" data-page-node-id="oazo1h9lyF8vDYtmxXrkRB">新增 <code data-page-node-id="HB30XkrDFjfJpbGHxqOL8C">AdminClientController</code>，暴露 <code data-page-node-id="ePsuqaWjSNwLlPqWsKBLWr">POST / PUT / DELETE /admin/oauth2-clients</code>（沿用 <code data-page-node-id="AD6tc9rAsx4IdMDtBZugue">AdminUserController</code> 的 <code data-page-node-id="ryNILSTZgewYXKKeCJKZQG">@PreAuthorize("hasRole('ADMIN')")</code> 模式）。</p>
+<p style="margin:8px 0 0" data-page-node-id="DmC4hFE9PSNTJqM1d35oBP"><b data-page-node-id="q4FrcwSBFuypPNAyharxUE">收益</b>：注册新客户端<b data-page-node-id="4cDBb5xIBbMSvIQMlDjfwK">不用重启认证中心</b>。也可在用户管理界面里做一个「OIDC 客户端管理」页签，注册这件事从改代码变成点几下。这本质上就是 OIDC <b data-page-node-id="AN7DuPTfFAmCU5a2xvtbv1">Dynamic Client Registration（RFC 7591）</b>的简化版，属于业界标准做法。</p>
+</div>
+
+<div class="layer" data-page-node-id="p6Lb21UFiCYlSiNpeqm4GQ">
+<div class="layer-h" data-page-node-id="tBxDeDAPo1NErwaG33EqZq"><span class="lv t-ok" data-page-node-id="7PeN9j7fP9ICNI7sVwCl6t">L3</span>应用自注册（最彻底）<span class="tag t-gray" data-page-node-id="aEBilZu953ip3P0OqX0u66">可选</span></div>
+<p style="margin:6px 0" data-page-node-id="VS85IgdnRp9RHWzaOCZGmq">应用启动时带一次性 <code data-page-node-id="67Cj7r1TnRsWpH8VVRoFkr">bootstrap-token</code> 调 L2 的注册接口，自己把自己注册进去（Spring Boot Admin 的注册机制同款）。</p>
+<p style="margin:8px 0 0" data-page-node-id="QTIC61Q9PFnEC0kql4w35U"><b data-page-node-id="F1RsfWTmIbRmLuOtoHAivy">收益</b>：新应用只需在<b data-page-node-id="0PFy3qAjZMCSZcSWGav9rB">自己仓库里</b>写一份 <code data-page-node-id="3q3Ti6UjuJCIxieEid07TT">marschat-app.yml</code>，部署即完成注册。代价是要管好 bootstrap token 的签发与吊销——所以列为可选，等 L1/L2 跑顺了再说。</p>
+</div>
+
+<div class="dec" data-page-node-id="w7oCAIhzygQ2BmFDCnV3Jz">
+<b data-page-node-id="iFYIwWJfcSFs5lUWXDwImh">建议节奏</b>：L1 与 P1 公共组件抽取同批做（同一次改 auth-center、同一个发布窗口）；L2 与 RBAC 权限管理界面一起做（都是「管理能力」）；L3 视需要，不着急。
+</div>
+
+<h2 id="s6" data-page-node-id="tBDJBbjdUB7Nvmt36Z1KHT">六、前端：编译期 → 运行时配置</h2>
+
+<p data-page-node-id="wZ9gVgvom5i2RNQrY3wRoL">现状是前端配置<b data-page-node-id="LR3NZLIzEStXxTthtkJKB2">写死在构建产物里</b>：</p>
+
+<pre data-page-node-id="DzcmXax5epDi9rEmgwuCBB">// portal/src/views/LoginView.vue —— 当前
+const loginConfig = {
+  title: 'MarsChat 工具看板',
+  authApiBase: '/portal/auth-api',                    ← 换环境要改这里
+  ssoConfig: {
+    clientId: 'marschat-portal',                       ← 换环境要改这里
+    redirectUri: `${window.location.origin}/portal/auth/callback`,
+  },
+  onLogin: async (c) => { await userStore.login(c); router.push(...) },
+  brand: { ... },
+}</pre>
+
+<p data-page-node-id="tqz3cJtAmHQI4Ao9syLRpi">60 行的配置文件里，真正随环境变化的是 <code data-page-node-id="1NNNXF4dK4dXkFhDZrHt1z">authApiBase</code>／<code data-page-node-id="mTU1UnmJ4Zb2k1gN5Hv5Bw">clientId</code>／<code data-page-node-id="xjUi4BWEjpZ1Oda57zWAWp">redirectUri</code> 三项。把它们搬到运行时读取：</p>
+
+<div class="two" data-page-node-id="Z23tFr6h7AuFiovNswKnTG">
+<div class="card" data-page-node-id="ROGvceW9eTPYBOjhwD51Es">
+<h4 data-page-node-id="G7mgvzIrYg2PN7oL3RlYBN">改造后：应用侧</h4>
+<pre style="margin-bottom:0" data-page-node-id="DAuvYqwFODQW9sZ45wupXA">// main.ts —— 全应用统一两行
+import { bootstrapMarschatApp }
+  from '@marschat/auth-components'
+
+bootstrapMarschatApp()
+// 自动：读 app-config.json
+//      装路由守卫
+//      装菜单（含权限过滤）
+//      装 HTTP 拦截器</pre>
+</div>
+<div class="card" data-page-node-id="LQoIa44quwmI52dGikC0sh">
+<h4 data-page-node-id="X6UTd6XCqs06zmaoonjPGR">配置来源：运行时挂载</h4>
+<pre style="margin-bottom:0" data-page-node-id="f41Zcvd6rnJxDlJnZVaWpK">// /app-config.json（部署时由
+//  registry 生成并写入 nginx 目录）
+{
+  "apiBase": "/portal/auth-api",
+  "clientId": "marschat-portal",
+  "issuer": "https://auth.marschat.online",
+  "brand": { "title": "..." },
+  "menus": [...]
+}</pre>
+</div>
+</div>
+
+<div class="win" data-page-node-id="64ZZWaqaJndlOJewf7yplj">
+<b data-page-node-id="bGUoOWHXfzYt49dQiIy5OM">最大收益</b>：<b data-page-node-id="2iWgtpId1fFx7ycwpHIiWp">同一份构建产物可以部署到任意环境</b>——本地、内网、公网域名不用重新构建。这同时解决了「改个回调地址要重新发一次前端流水线」的痛点，也让前端流水线与环境配置彻底解耦。
+<br data-page-node-id="uV2kEQkUDa8pUebeRBV3OL">技术上只需在 <code data-page-node-id="KVoHtMugq3Ulehd2b4kFhn">index.html</code> 加载前注入一段读取 <code data-page-node-id="6E9MqRO4ileBR94jpHC1rq">/app-config.json</code> 的脚本，或让 <code data-page-node-id="z6MlYxNJ6J3Oai61gbiW3J">bootstrapMarschatApp()</code> 先 <code data-page-node-id="9RgVe1mYkFf1HZGbISSniy">fetch</code> 它再挂载应用。
+</div>
+
+<h2 id="s7" data-page-node-id="hb9GCL9LZas4DuUNkJe3br">七、后端：加依赖 + 5 行 yaml</h2>
+
+<p data-page-node-id="mY8VL8boJGBWeLNHGDSOJi">Java 应用这边的配置面本来就小，只需让 <code data-page-node-id="IKy1v2YMBEwBeNAD1TbZ6V">auth-core</code> 的自动装配把剩余部分全部接管：</p>
+
+<pre data-page-node-id="2q8UiGtmXWbD906hvunR1W"># application.yml —— 每个 Java 应用只写这些
+marschat:
+  auth:
+    enabled: true
+    issuer: https://auth.marschat.online
+    audience: ${MARSCHAT_CLIENT_ID}      # 从部署环境注入
+    permissions-enabled: true
+    menu-report:
+      enabled: true
+      registry: classpath:menu-registry.yml   # 应用自己的菜单声明</pre>
+
+<p data-page-node-id="8fW07UEwyFxc2PIPWAEm9m"><code data-page-node-id="5f96SWctbkGhjR0wamWrnH">auth-core</code> 自动装配负责：</p>
+
+<ul data-page-node-id="RZ7DKBc1w9ZbJ2iwMcu7WF">
+<li data-page-node-id="xTOOnL6dpEpUUdxRFYuOV3"><b data-page-node-id="veBnI9GHN8E9NEmIqvDocp">验签</b> —— RS256 走 <code data-page-node-id="V9ZAtJHZ8CTD6ikhbewaAO">OidcTokenVerifier</code>，HS256 回退（已有能力）</li>
+<li data-page-node-id="Dl0jj3DCUdL04EdJ4wEPR8"><b data-page-node-id="bRHfdxqEZQi4YamyB6aKoQ"><code data-page-node-id="NxsOrqwHCTQzlWQwikiiXC">@MarsUser</code> 注入</b> —— 已有能力，且会扩展出 <code data-page-node-id="o6jd2yCrkTXe2YkEISDK2d">roles</code>/<code data-page-node-id="8p6locYwwUEMMISwwIHyjr">permissions</code></li>
+<li data-page-node-id="uCGCIyKT18MGnGiD6uFjKm"><b data-page-node-id="iPy5X2tFEdaqTH0KhN8jUS"><code data-page-node-id="kjXqJQDHBfbnXXHny6CvWa">@RequirePermission</code> 校验</b> —— 本次新增，接 <code data-page-node-id="XJ3xETWx8YeB2sQsBtNlfG">NoPermissionException</code> 统一 403</li>
+<li data-page-node-id="F5HH4KvizVFvUv7JNI0bVJ"><b data-page-node-id="4eieIkBkxBpReNL0XFDBUL">菜单上报</b> —— 读 <code data-page-node-id="gcIBFqGWciokFZdkdevrfM">menu-registry.yml</code>，启动时注册给认证中心（本次新增）</li>
+</ul>
+
+<div class="dec" data-page-node-id="XY8xoLZHO1OjUfGaUGTM5S">
+<b data-page-node-id="58s5sPN0W1YCqIBdBuN4K9">顺带解决一件事</b>：菜单从「Java 代码里的菜单数组」变成 <code data-page-node-id="GhPotFZy8Ex9Yn9TXp7jF3">menu-registry.yml</code> 声明。cosmic 现在的 <code data-page-node-id="uZZM9zdjn3zXAvau7gHG6X">MENU_REGISTRY</code> 写在 <code data-page-node-id="mxXEJBcAZYFU5lOsmek93n">studio.py</code> 里，正是同一个问题的 Python 版本——两边共用一套 yml 格式，跨语言也能对齐。
+</div>
+
+<h2 id="s8" data-page-node-id="ApNK7Kbos9VCJmVKFef9YT">八、接入前后对比</h2>
+
+<table data-page-node-id="zc1Zyd7WU0ci0EkTNMiAFc">
+<thead data-page-node-id="jph6HvGgrdwAsaSZWrFDEA"><tr data-page-node-id="nvEfU7VoDwluhZw1GjtO1x"><th data-page-node-id="fCaoUFhyseE8Tr5BA3vm5t">阶段</th><th data-page-node-id="ttSBTWi4mtl9BrzI1i8DHf">要动的地方</th><th data-page-node-id="CI5YCNoo7LOdGnPesNDbJu">代价</th></tr></thead>
+<tbody data-page-node-id="MV3KPy9gkNcdb3193tgbwv">
+<tr data-page-node-id="1foAw8mCjXD76UxMhV1Lvm">
+<td data-page-node-id="PHd5yJ6xNZOTuWF61jGEMS"><b data-page-node-id="ntJBqHlZo1vtvCPdLdJHCh">现状</b></td>
+<td data-page-node-id="L5oU19HQc2dpTdZhOD0bPT">8 处，含改 <code data-page-node-id="V4Hhh6cc5oqRSPSz6CvEvw">auth-center</code> 的 Java 代码并重新部署它</td>
+<td data-page-node-id="2BpWD1jgVDG0CRSHhCEjko"><span class="tag t-bad" data-page-node-id="Frh8JtyeigYeKky0f4zNx0">~230 行，且触碰全局枢纽</span></td>
+</tr>
+<tr data-page-node-id="1PB5hGHHfNHJyp8CXCu8R4">
+<td data-page-node-id="Z9Z5nxuu7687NtpEznwnNR"><b data-page-node-id="ZwUac7uQ2W6UxNIdQ5QjRx">L1 完成后</b></td>
+<td data-page-node-id="BBngJv8ACDZ7sq0QhQQuUo">① <code data-page-node-id="vcqOoAOmq907ySDgNu1iwU">apps-registry.yml</code> 加一段<br data-page-node-id="SSHbPWSTpfbcgekFtPNqYE">② 跑一次生成器<br data-page-node-id="1DhZZSHGu5BKGFDyDTBz8R">③ 前端 <code data-page-node-id="DU8gPBWFQucPfe86DFcRrQ">main.ts</code> 两行</td>
+<td data-page-node-id="qHFa0C9Y7keQzhlRZaoOGz"><span class="tag t-warn" data-page-node-id="cs4m7ZynNJPpIHi6YNkEj3">~40 行，不碰 auth-center 代码</span></td>
+</tr>
+<tr data-page-node-id="BlbF7xNAI3HcFoLGn2ynE0">
+<td data-page-node-id="RnPVbMJejj8ms2cWxQlDW2"><b data-page-node-id="rpXINtwIPDkj4lZEUIXMZD">L2 完成后</b></td>
+<td data-page-node-id="S7aEXACpCRmPRizkvbnTAU">同上，但注册<b data-page-node-id="8YxhbYebSqKBZqt8XM0Xby">无需重启</b>认证中心</td>
+<td data-page-node-id="zPhiAymhqkRn4uHv0j1NJB"><span class="tag t-ok" data-page-node-id="RWcTHWlLRJ5N2Z70v8XChX">~40 行，零停机</span></td>
+</tr>
+<tr data-page-node-id="w9zxrDZZ754Hk6zNfFB0ew">
+<td data-page-node-id="W2qEs2hOhevLDgtWmg4upI"><b data-page-node-id="bg6KVpdOAKvgs5opkkIVmL">L3 完成后</b></td>
+<td data-page-node-id="P2ZD8JCoJx9eHYLc7oXBC7">只在自己仓库写一份 <code data-page-node-id="dBSyCF9Ks3UrVgue20PKLR">marschat-app.yml</code></td>
+<td data-page-node-id="yn75D4RNBro8PVGuDWckcH"><span class="tag t-ok" data-page-node-id="CfgP9DryG0Tyj0eNbMht0U">~25 行，一次配置</span></td>
+</tr>
+</tbody>
+</table>
+
+<div class="lead" data-page-node-id="WIAUJWTTyrBH0v99ubRYPq">
+<h3 data-page-node-id="fI45MvwaLYiDrJEkNtrXHY">换个角度看这件事</h3>
+<p style="margin-bottom:0" data-page-node-id="n2tmfCuVeUZcfVk05A1Bvf">公共组件解决的是「<b data-page-node-id="gPjSeg7FTUB10BF90moMTq">别重写代码</b>」，配置化解决的是「<b data-page-node-id="5EjNBY6V2bAgiLD9idfi27">别重写声明</b>」。两个都做到，才是「未来自建应用可以配置化接入」的完整形态——<b data-page-node-id="ZZwQmAbCl5RqZVNTJDyu5u">代码引包、声明填表、产物生成</b>。三件事各归其位，接入成本才真正降下来。</p>
+</div>
+
+<h2 id="s9" data-page-node-id="bi3wLB4TWHSOpwXSeueDxu">九、脚手架</h2>
+
+<p data-page-node-id="urzhqZuiB5jIcAwCbqInxd">再往前一步：有了 registry 和模板，可以提供一个生成脚手架，把「填表」也省掉一半：</p>
+
+<pre data-page-node-id="Nf5fG3bpQcInhZFT71NnTg"># 期望的体验
+marschat-cli new-app cosmic-studio \
+    --type public-spa \
+    --port 8310 \
+    --host 192.168.31.105
+
+# 产出：
+#   apps-registry.yml 追加一段（填好默认值）
+#   src/views/LoginView.vue（15 行，只留业务回调）
+#   src/main.ts（两行 bootstrap）
+#   nginx.conf（auth 代理 + SPA 回落）
+#   menu-registry.yml（空模板）
+#   .env.example</pre>
+
+<p data-page-node-id="5Kw5I87nKfqmkdVHPQX8TY">落地上不需要真的写 CLI——<b data-page-node-id="dCAF55Y05ZVg1uMPmAw7Sl">一个 <code data-page-node-id="w0dARk8cwnFo2FmO3gx2oQ">templates/app-skeleton/</code> 模板目录 + 一段替换脚本就够</b>。核心价值在模板本身，不在命令行包装。</p>
+
+<h2 id="s10" data-page-node-id="FZwuTQIsB8cCOHO57NE4jr">十、分层实施与待拍板</h2>
+
+<div class="card" data-page-node-id="eZb5C7v91Xod312SnlzYMx">
+<div class="step" data-page-node-id="AAJUtcxyqpEX5Ue1jtYc3M">
+<div class="step-n" data-page-node-id="eMbZRG6lHx35YXQSN5jG0Q">1</div>
+<div class="step-c" data-page-node-id="CNybuT0Z5KYeiGEedlUur3"><div class="step-t" data-page-node-id="G8V0ntntxnDaIMON22UK4w">L1 + apps-registry.yml + 生成器 <span class="tag t-ok" data-page-node-id="SyefypdnxUyxka9OeRn80H">建议先做</span></div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="cvnG5HuGh7JKJHFeKXpYFH">与 P1 公共组件抽取<b data-page-node-id="aoj2SklMVM2sLol3iTkxK3">同批</b>做——都要改 auth-center、都要重新发布，一次动库窗口搞定。做完立刻能把 5 段硬编码 Java 删掉。</p></div>
+</div>
+<div class="step" data-page-node-id="C2tgjVkLC5U6fMFWsbRbVN">
+<div class="step-n" data-page-node-id="Ux5g8I9wg8HTJJtV71U81L">2</div>
+<div class="step-c" data-page-node-id="TMd2D9OBxVLW5cps5bZuTH"><div class="step-t" data-page-node-id="MgjgPmHy6C2VlRZIZWIyk2">前端运行时配置</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="BeV9xFhuMw2daBjDHWOAzk">与 L1 同期或紧随。改 5 个前端的 <code data-page-node-id="mGuR0yyay9mH3IrnzWZxSq">main.ts</code> + 生成 <code data-page-node-id="BqE1dMbYJ4EtlMnHMlClir">app-config.json</code>。可与 P1 的前端抽取合并做。</p></div>
+</div>
+<div class="step" data-page-node-id="SfAWNOynWeaLLfQEp0S19m">
+<div class="step-n" data-page-node-id="aDF7dbEykn7gCjAFkMbvsB">3</div>
+<div class="step-c" data-page-node-id="KmBBYDgTdqACbI3WMxUn0j"><div class="step-t" data-page-node-id="njkygyXimUFf8TnYcJDDi0">L2 动态注册接口 + 客户端管理界面</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="YPGfpWGBXR3RF9nlqKEjPr">与 RBAC 权限管理界面一起做（同属「管理能力」）。做完后注册新应用零停机。</p></div>
+</div>
+<div class="step" data-page-node-id="Twi1Wbsuw0iEOVcaGGXd7J">
+<div class="step-n" data-page-node-id="Ta0lcv5Cz5cTHARaYAjGdp">4</div>
+<div class="step-c" data-page-node-id="F6hzwQ9LNjmA9PnpOgrGDp"><div class="step-t" data-page-node-id="ITiTzDtcBC6nFZ0BbFsOXz">脚手架模板</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="QNBYSQisL05XqCBmOWrF2B">最后做。前面都通了，模板才有意义。</p></div>
+</div>
+</div>
+
+<div class="lead" data-page-node-id="r4K8bKE3SqMmcrr3pIMuia">
+<h3 data-page-node-id="8TTwvPUTO0K2rFkyVhrKwD">请良哥拍板</h3>
+<ul class="chk" data-page-node-id="RXCFHpbEjT6hZRVBCnEf65">
+<li data-page-node-id="QMUUq8DAdAWkPdkIH8QIVS"><b data-page-node-id="IcuJa9XaxvqxtIou5uz2Os"><code data-page-node-id="epufXYAO7F8AzqCAgcHyxn">apps-registry.yml</code> 放哪</b>：① <code data-page-node-id="lr1dHxtQ1BFT0EIpI0HVr4">devtools/</code> 独立文件（与 <code data-page-node-id="uyxCKA4B5i55IhErvhvPUy">module-registry.yml</code> 并列）② 并入 <code data-page-node-id="49PgIrEFmQVE0fCEFEm9K8">module-registry.yml</code> 作为 <code data-page-node-id="dRaniimPxFEwMN5Y314OML">apps:</code> 节 ③ 放 <code data-page-node-id="Re8NI6DcmOZw38hY4BlABE">config-as-code</code>（跟 nginx 一起）。我倾向 ① 或 ③，因为「平台应用」的粒度比 mykng 模块大</li>
+<li data-page-node-id="dpFEFlriTlQBPrqnzCh9ZK"><b data-page-node-id="8AbgmlslZg7poUBwbphsdA">auth-center 走 L1 还是直接 L1+L2</b>：L1 零风险但改回调仍要重启；L2 更彻底但要新写一套 CRUD 接口 + 界面</li>
+<li data-page-node-id="sErGd7uwYhM2eYsJrnFX2u"><b data-page-node-id="vUYdDwSawQXMNkokaxJzKR">前端运行时配置是否做</b>：这是收益最直观的一项（同产物多环境），但需要动 5 个前端的入口文件</li>
+<li data-page-node-id="Oef3YNAcZy1z8AfbFOaOEu"><b data-page-node-id="yeimHo4CgVqVLgDTOoPu0w">生成器用什么写</b>：<code data-page-node-id="Ei2uN6eMZO24baTBe8QJeP">generate_docs.py</code> 是 Python，继续用 Python 保持一致，还是换成 Node（前端产物生成更顺手）</li>
+<li data-page-node-id="MXTArWQcZBnUlUng25OuLp"><b data-page-node-id="6k3dGHXnbsesSe324QVnAR">是否要脚手架</b>：如果未来自建应用不会很频繁，模板目录可能就够了，CLI 属于过度设计</li>
+</ul>
+</div>
+
+<p class="wrapnote" data-page-node-id="mHmcmKmGdgzn2JQiAMQHSr">
+本文所述「8 处」及各行数均于 2026-09-10 从本地仓库实采：<code data-page-node-id="63g3Y65K56oxjbU11b7rE5">DatabaseInitializer.java</code>（534 行 / 5 个 seed 方法 / <code data-page-node-id="8mHkMeuPeNJsKpdh0Ik30H">@ConfigurationProperties</code> 匹配 0 处）、
+<code data-page-node-id="1RstyEuOAg2YkZ1XL24jjJ">portal/src/config/systems.ts</code>（271 行）、<code data-page-node-id="8BvEb8In0uAdrW1RbEFtEd">devtools/.woodpecker.yml</code>（323 行 / 22 步）、<code data-page-node-id="8MS3sBcQnpPPbviyKr2ctm">woodScript/cd/*.sh</code>（11 个脚本 54~81 行）、
+<code data-page-node-id="70Y0WS1FPd6vUPPpXPeR9A">portal/src/views/LoginView.vue</code>（64 行）。未使用推测数据。<br data-page-node-id="CiEQGoEJLPJNmKL5h37IH3">
+关联文档：<code data-page-node-id="7vK4yINSe2PeAXPXmFAQ86">ADR-2026-09-09-公共组件发布到Nexus私服.md</code> · 《公共组件抽取方案》 · 《统一账号体系与授权模型重构方案》
+</p>
+
+</div>
+</body>
+</html>

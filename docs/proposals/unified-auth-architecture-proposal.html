@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="9c8jHAMxW8QTBfvGFNwHeb">
+<head data-page-node-id="gvCiYUR9Agp352noes3TVf">
+<meta charset="UTF-8" data-page-node-id="qErZ35yWLraNGsYqyd0o2X">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="rHgFSMEWUyBn3GGD6ictJz">
+<title>统一账号体系与授权模型重构方案</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --ink:#1F1F1D; --ink2:#55534E; --ink3:#8A8780;
+  --line:#E3E1DB; --line2:#CFCCC4;
+  --purple:#534AB7; --purple-bg:#EEEDFE; --purple-ink:#3C3489;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-ink:#0C447C;
+  --teal:#0F6E56; --teal-bg:#E1F5EE; --teal-ink:#085041;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-ink:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-ink:#791F1F;
+  --gray:#5F5E5A; --gray-bg:#F1EFE8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600;margin:52px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);letter-spacing:-.005em}
+h3{font-size:15px;font-weight:600;margin:28px 0 10px}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;padding:1px 5px;border-radius:4px;color:var(--purple-ink)}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+.meta{color:var(--ink3);font-size:12.5px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.lead{background:var(--purple-bg);border:1px solid #CECBF6;border-radius:12px;padding:20px 22px;margin:20px 0}
+.lead h3{margin-top:0;color:var(--purple-ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;font-weight:600;background:var(--gray-bg);color:var(--ink);
+  padding:9px 11px;border:1px solid var(--line2);white-space:nowrap}
+td{padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:#FBFBF9}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.5}
+.t-ok{background:var(--teal-bg);color:var(--teal-ink)}
+.t-warn{background:var(--amber-bg);color:var(--amber-ink)}
+.t-bad{background:var(--red-bg);color:var(--red-ink)}
+.t-info{background:var(--blue-bg);color:var(--blue-ink)}
+.t-gray{background:var(--gray-bg);color:var(--gray)}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+.opt{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0;background:var(--card)}
+.opt.rec{border:1.5px solid var(--teal);background:#F6FCF9}
+.opt-h{font-size:13.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.opt-b{font-size:13px;color:var(--ink2)}
+.opt-b b{color:var(--ink)}
+.num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  background:var(--purple);color:#fff;font-size:11.5px;font-weight:600;flex-shrink:0}
+.step{display:flex;gap:14px;padding:14px 0;border-bottom:1px dashed var(--line2)}
+.step:last-child{border-bottom:none}
+.step-n{flex-shrink:0;width:52px;font-weight:600;color:var(--purple);font-size:13px}
+.step-c{flex:1}
+.step-t{font-weight:600;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;font-size:13px;margin:12px 0}
+.kv dt{color:var(--ink3);font-weight:500}
+.kv dd{margin:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.gap{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.dec{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+@media(max-width:720px){.two{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+.toc a{color:var(--ink);text-decoration:none;font-size:13px}
+.toc a:hover{color:var(--purple);text-decoration:underline}
+.toc ol{columns:2;column-gap:32px;margin:6px 0;padding-left:20px}
+@media(max-width:720px){.toc ol{columns:1}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"";position:absolute;left:0;top:6px;width:13px;height:13px;
+  border:1.5px solid var(--line2);border-radius:3px}
+</style>
+</head>
+<body data-page-node-id="VeG0cRWjueiY2i7jAcQGuz">
+<div class="wrap" data-page-node-id="p1mXdCtJFG8F3PmydyWw7f">
+
+<h1 data-page-node-id="euAejyIICeX266EpeK54ky">统一账号体系与授权模型重构方案</h1>
+<p class="sub" data-page-node-id="p0eRAqLPYeuDKeWSI8BekO">把 5 套割裂的账号表收敛成 1 个身份池，并补上「谁有哪些系统的权限 + 菜单权限」这一整层</p>
+<p class="meta" data-page-node-id="icA9cQJklMkx1zFzWXtPep">2026-09-10 · 提案人 WorkBuddy · 状态：待拍板 · 关联 ADR-2026-09-08 统一认证单点登录（那份管「你是谁」，本份管「你能干什么」）</p>
+
+<div class="toc" data-page-node-id="YByjHLSARA1UEqSqU2nwAZ">
+<strong style="font-size:13px" data-page-node-id="HSlZFx4Gkkd5fR8Pf4YgxE">目录</strong>
+<ol data-page-node-id="Rgj8hi9ly7oAyysvcUeF1M">
+<li data-page-node-id="gvJSF3NbCMXXHoyTagnCmh"><a href="#s1" data-page-node-id="GjbHQ7A3ixhH76yyz76zuY">现状实采与问题清单</a></li>
+<li data-page-node-id="8kOFGQcPr90sZFyM3DOPpV"><a href="#s2" data-page-node-id="IT486ujW18haMgocUfwXL5">设计原则</a></li>
+<li data-page-node-id="UnFR9n6fmb2wDWUVCW8zC6"><a href="#s3" data-page-node-id="hUj8vM076Vqo8StvEe1z70">目标架构</a></li>
+<li data-page-node-id="2X9gJpEWCAWpUMDcClxaBx"><a href="#s4" data-page-node-id="rprguaeXGibeScxsDTORJb">五个关键决策（含选项对比）</a></li>
+<li data-page-node-id="VahrCZrMFXmsuY6pFvdIIK"><a href="#s5" data-page-node-id="vt85GUrGFiLVjsMwe2z4GA">SSO 用户与独立用户的映射</a></li>
+<li data-page-node-id="oRhFCWO72Zaj6xty19kFml"><a href="#s6" data-page-node-id="RGuaf1OKPMkZfPwRAp9TW6">迁移路径（6 阶段）</a></li>
+<li data-page-node-id="NNHbuek3YqjI6UDJnKu3qR"><a href="#s7" data-page-node-id="laqDM8GpAAk7C2tdFUClhU">影响面与风险</a></li>
+<li data-page-node-id="TTrUBBUrC0U0FJMJC1Kb6U"><a href="#s8" data-page-node-id="pl2mXWpEINmOcjzoOcA7UZ">待拍板事项</a></li>
+</ol>
+</div>
+
+<h2 id="s1" data-page-node-id="ouJ1F9CALAgVO0vuxd5K9a">一、现状实采与问题清单</h2>
+
+<p data-page-node-id="o27RtfEpWjE6U9QhGvC3Fc">以下每一行都是今天在真实代码与库里查出来的，不是推测。</p>
+
+<table data-page-node-id="HjG2tZvv7OZpapCsDKJJ3x">
+<thead data-page-node-id="oBNHtaK99ewF4bGPYCteRT"><tr data-page-node-id="eEjga2q4ZmhOunyAC2U6Wu"><th data-page-node-id="RAc6a9iPuo14TJxBU4xZG9">库 / 位置</th><th data-page-node-id="US8WUazbF9Gnsc92mVk5GI">账号表</th><th data-page-node-id="FTxaqbEMPeecbeW5xu04AJ">账号键</th><th data-page-node-id="H8dZd1Q5zluc5OHquEHEGZ">角色模型</th><th data-page-node-id="wpK3xOPsqzUuCrVvAkBE2O">与 SSO 的关系</th></tr></thead>
+<tbody data-page-node-id="4pxWJI0vqIP2tbBmxK9pil">
+<tr data-page-node-id="vV9YeRKZZ2aS4zjLcGeLZQ">
+  <td data-page-node-id="Wk8A2XRzzAi4fHvHhyWguy"><code data-page-node-id="8oRGygYZE44EbrXTKV7Vkk">kb_auth</code>（auth-center）</td>
+  <td data-page-node-id="RE6mAqwbZ7hYzDtORXDfhf"><code data-page-node-id="cjAym1qKtKQYLbozk71Au1">user</code></td>
+  <td data-page-node-id="uzhsxDBpRDKL9zEjoGzlTc">username 唯一；email 无约束</td>
+  <td data-page-node-id="ni4n3zaeQ1iDMhAUDmtGCE">标量 <code data-page-node-id="RqDG51YXJE4QtBMWOvFQEP">role</code> = admin / user</td>
+  <td data-page-node-id="yaCW7glsUAUEJuGd15VC68"><span class="tag t-ok" data-page-node-id="7PD1yErqCEMzAwhbK4ts5Y">唯一账号池</span> 已被 7 个 OIDC 客户端使用</td>
+</tr>
+<tr data-page-node-id="kCp8w8AGEj4lqBjiTDDq7A">
+  <td data-page-node-id="D8oDjCgRQzYAUVqVYgWSvp"><code data-page-node-id="pruE9NxbFKcznEkt0psoq1">platform</code>（portal-server）</td>
+  <td data-page-node-id="0L0GqLhr2CG9muwUzJPHGu"><code data-page-node-id="YveSwzLPVSRDA5HHteHLri">sys_user</code></td>
+  <td data-page-node-id="A2GN9RqQjlGGzdUu2w7Iyd">username 唯一；带 deleted 软删</td>
+  <td data-page-node-id="EFDLrD708cbyAqOmWUEqpu">后补的 <code data-page-node-id="PFC442ig62CxW9O77SQ9Oh">role</code> = admin / user</td>
+  <td data-page-node-id="USMfZGtD7qu9MJvoDQitxz"><span class="tag t-warn" data-page-node-id="iRyilXrni40w4462yPeNSL">JIT 镜像</span> SsoController 按 username 自动建号</td>
+</tr>
+<tr data-page-node-id="kA6K5Dati0YjcIzZMygmn9">
+  <td data-page-node-id="kkvAA7PyJRxA0D5IjFLOC1"><code data-page-node-id="GAKxYkzE9nv6yfMAau1c7j">frp_manager</code>（myfrp）</td>
+  <td data-page-node-id="D3SZJDFNkU4ZhO01cjJWvr"><code data-page-node-id="yICaZgEpF5dOzFWR9kULgL">sys_user</code></td>
+  <td data-page-node-id="r6JcVpIICbIZH9FeqdU2EI">username 唯一</td>
+  <td data-page-node-id="hsSirnraRsHmfF0H3NKygJ"><code data-page-node-id="bUFrK0hSKgCM5zidjKECn7">role</code> = ADMIN / USER</td>
+  <td data-page-node-id="wFBmRyK6Lkz21olHJFShxd"><span class="tag t-bad" data-page-node-id="iC4riGFsAZdb8vubO2L7Gx">完全独立</span> 自有 BCrypt 与登录接口</td>
+</tr>
+<tr data-page-node-id="EN0DatlsvRBc5w4cm81QHy">
+  <td data-page-node-id="GFxQYKwc39CDg3HZA48F9e"><code data-page-node-id="zGpc9OrpLi6Q1GD5k2naDb">cosmic_studio</code></td>
+  <td data-page-node-id="xVkdqRCLtjePfQovrlAFgM"><code data-page-node-id="ldJfp8EBwbhPXxFYZnxA6B">users</code></td>
+  <td data-page-node-id="caI8gagcr1oKEDEqFLaKw1">username 唯一</td>
+  <td data-page-node-id="To4KciJD7afdm6Y9sCrCB9"><code data-page-node-id="FgYkj6xV1fgYBXI4KWAOi2">role</code> = viewer / editor / admin <b data-page-node-id="J5ZdozrRYSEANvFxEOh7g7">+ menu_perms JSON</b></td>
+  <td data-page-node-id="H595Bn5UnvyDrCFQGZcsPM"><span class="tag t-warn" data-page-node-id="rtWECWnSaYEHxCZrd5W2xD">半接入</span> 已接 OIDC 登录，但账号仍独立</td>
+</tr>
+<tr data-page-node-id="bEyywBKrm36wtLsRTFPo89">
+  <td data-page-node-id="hOEEFlvzHZErSV68XowIU1">—（kb-ops）</td>
+  <td data-page-node-id="NBOFOfjEBV6WvgSrCH7fuo">无账号表</td>
+  <td data-page-node-id="4lU4cHCgL30mKldM7hF80C">—</td>
+  <td data-page-node-id="354sEFCDUek9ClZF3ZmJ8V">—</td>
+  <td data-page-node-id="wsjXS2LbXa6FpXgCkUJSCJ"><span class="tag t-ok" data-page-node-id="8npC5XsRwNmkcMY33Y3nrV">纯资源服务器</span> 完全依赖 SSO token</td>
+</tr>
+</tbody>
+</table>
+
+<h3 data-page-node-id="XMHrU3nPdJpsi1aScNHLkV">关键缺口</h3>
+
+<div class="card" data-page-node-id="AG9nApQo9QucFxvzYaf1UN">
+<ol data-page-node-id="kME2QzDQinaOakzKmclUWu">
+<li data-page-node-id="HvPlEKVU8i7iSC6SNCH9DY"><b data-page-node-id="VVG9JPdCGaH4Rxqc6Mkr1Z">Token 里的角色是标量</b>——JWT 只带 <code data-page-node-id="UCEmvFiO7lKB9EgZuW5D0q">role: admin|user</code>，没有应用级权限、没有菜单权限。这就是「无法回答谁有哪些系统权限」的根源。</li>
+<li data-page-node-id="2bBsDXRDZTc4vixpMnGMm7"><b data-page-node-id="7U5KbYeHa8edbuZoWSkFMG">realm 概念建了但空转</b>——<code data-page-node-id="mIF9cO1laDbz0JQGmxkKfP">user.realm_id</code> 字段和注释「同 realm 内应用可 SSO，跨 realm 隔离」都在，但线上全部值是 <code data-page-node-id="mlmAb7twaait89BZYA2CWi">kb</code>，多账号池能力没启用。</li>
+<li data-page-node-id="WWcUk6gucu2TSkqs4bFEDw"><b data-page-node-id="2P8qf2C66sxH650FueZQNU">没有 RBAC 表</b>——不存在 <code data-page-node-id="ACT8d5upA5uE0HVOMs2JVz">sys_role</code> / <code data-page-node-id="m8HFE7iDdw2tQwZwv4cTZH">sys_permission</code> / <code data-page-node-id="TLGuYRDpW5b36NPiYWAElX">sys_user_role</code> / <code data-page-node-id="W4pBU4G2GGILZUxPN3HWdW">sys_role_permission</code> 任何一张。</li>
+<li data-page-node-id="YlepmxB3raxQru8MsVLz9G"><b data-page-node-id="m3ABM6JjQlOtDg4IODDoSf">email 无唯一约束</b>——<code data-page-node-id="5XB6B7L7tYIEDV2zhIx0Hv">user</code> 表只有 <code data-page-node-id="jzQZGNW8eGzJCxccQc9wCN">uk_username</code> 和 <code data-page-node-id="YPXgJWGgO1qAR6IjWpHPhx">idx_phone</code>，email 既无索引也无唯一性。账号关联、找回密码全都建立在不牢靠的基础上。</li>
+<li data-page-node-id="ulF4B3lzNIDpxnB0vC2JBq"><b data-page-node-id="HZHSGJZbc2j26Nlp5hMPkA">OIDC 客户端缺两个</b>——已注册 7 个（portal / inframon / kbops / tokenhub / kbweb / activecode / memory），<code data-page-node-id="Mrn3wonB6Q0p21cFTXQnFR">cosmic-studio</code> 和 <code data-page-node-id="XUDwuBqCI2fKyvqdDFInxj">frp-manager</code> 未注册。</li>
+<li data-page-node-id="FsiBBNMXp3JOQaWTDJi21U"><b data-page-node-id="MJcsCu3CsDWjh4Gz8eH57b">cosmic 重复造轮子</b>——它自己实现了 <code data-page-node-id="kbzTtlxHsLP9D6hB6rU7WK">MENU_REGISTRY</code>（8 个菜单带 min_role 下限）+ 用户级 <code data-page-node-id="4w8B3FkI3BNR3HdN0qAmLR">menu_perms</code> JSON 白名单（角色做减法），逻辑是对的，但只在 cosmic 内部生效，其他应用享受不到。</li>
+<li data-page-node-id="zADpH9oDn645W9zKy4fCUL"><b data-page-node-id="YJdG8SCMVYkICTvDSHihFE">portal 的 JIT 关联键不牢</b>——按 <code data-page-node-id="6Y8EDJC8QMorQKOwTY667x">username</code> 关联而非 IdP 的 <code data-page-node-id="SH5YNrCjBUwp8rVTXp0q9f">sub</code>，用户改名或邮箱变更就断链。</li>
+<li data-page-node-id="N1KuFc1lZnbNqgS3S9SPHV"><b data-page-node-id="nQ62m6WasAR19s9ZzAWmTw">用户管理不达标</b>——<code data-page-node-id="iYz2SEYDecc9UmRQ0KMvug">listForAdmin</code> 全量返回无分页、无关键字搜索、增删改零审计日志、无事务、禁用用户不踢下线（JWT 仍有效）。</li>
+</ol>
+</div>
+
+<div class="gap" data-page-node-id="ZOd5sjynsTSaK96r4F8zDC">
+<b data-page-node-id="Q9d5N18XalrUs1L7rvFTRo">一句话总结现状</b>：用户要在 5 个地方各建一次账号，权限散落在各应用内部，没有任何一处能回答「张三在哪些系统有什么权限」。而且 <code data-page-node-id="C4lSPaSM183dbpXFVNnZRT">auth-center</code> 被 12 个应用直接依赖，是全局枢纽，任何改造必须向后兼容。
+</div>
+
+<h2 id="s2" data-page-node-id="LQIm1IEEsAoEXm0uYjofqz">二、设计原则</h2>
+
+<div class="two" data-page-node-id="mv5BljxbKlHKkvgcdmiCtE">
+<div class="card" data-page-node-id="gOoggKj7YMyUnHWBtSRTRq">
+<h4 data-page-node-id="XCZOROtDiQjBFLGHs93Cdi">1. 一处管人</h4>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="4AI8c1Pa49CQv33w0lqOFj">身份只有一个真源。其他应用要么完全弃用本地账号表，要么只保留一份由 SSO 驱动的映射，绝不各自维护密码。</p>
+</div>
+<div class="card" data-page-node-id="4V3l7szfmhqokds8t7veEn">
+<h4 data-page-node-id="veXFc6L3mhG8MeskwJLGyg">2. 一人一号、多身份</h4>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="Ie6CEauW1SNzq1i1BGWxxc">把 email / phone / 微信从 user 表里拆出来成身份表。唯一约束天然成立，天然支持一个用户绑多个邮箱。</p>
+</div>
+<div class="card" data-page-node-id="3I8Tt84HLII5kXV737BFxQ">
+<h4 data-page-node-id="R5ZLyOGsnVQCRHpBcfKCff">3. 授权三层分离</h4>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="6fZp6Yjto1igAvqiO3M4dV">平台角色（跨应用）／应用角色（每应用）／权限点（菜单与接口）分开，各管各的语义，不混成一个 role 字段。</p>
+</div>
+<div class="card" data-page-node-id="CrsEAyg7bE1KkvmGdb1uW1">
+<h4 data-page-node-id="BaN2NzO5aB1Mo6sU8YxEoo">4. 应用自注册权限</h4>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="TRKEKDqDU8TSCKjCb8HsHO">菜单树是应用自己的资产，由应用上报给认证中心统一存储与下发。不在认证中心硬编码各应用的菜单。</p>
+</div>
+</div>
+
+<p style="margin-top:16px" data-page-node-id="SBCTwp2BVuG9WjUi6Zty3M"><b data-page-node-id="7CcV50srtqOEmWhAxDOFMY">5. 向后兼容优先</b>——<code data-page-node-id="5RlFO6TcQJxBZBq8JZYZs6">auth-center</code> 是 12 个应用的枢纽，所有改动以「新增字段、新增接口」为主，不改老契约。<b data-page-node-id="WJNSwMarWo4Rgm5eSJhHpP">6. 收敛优于并存，但每步可独立发布</b>——不追求一次大爆炸，每个阶段都能单独上线、单独回滚。</p>
+
+<h2 id="s3" data-page-node-id="MkGKs3my9AAkzAGzPiYmV1">三、目标架构</h2>
+
+<h3 data-page-node-id="2G9EPwsUaIlInFpbC7HH5G">3.1 身份层</h3>
+<p data-page-node-id="wh7npk4EgGMzzkD30wUhl8">核心动作：把 <code data-page-node-id="A6TaXLZG7ydumC5KlBN5Nj">user</code> 表里的 <code data-page-node-id="efjuBBjzkOsLftlt9DH1Hg">email</code> / <code data-page-node-id="LexQTF6ekwCCf07BFijdhl">phone</code> / <code data-page-node-id="A3sgKbJ7ldH6Mtv68K691h">wechat_openid</code> 三列拆成独立的身份表。这是业界处理「账号关联」的标准做法，比「给 email 加个唯一索引」根本得多。</p>
+
+<table data-page-node-id="AGYUevbsB10SJRipmXves5">
+<thead data-page-node-id="jdiPJyYCIv7DFEyyzMcnmC"><tr data-page-node-id="kG02KExUrUZzvJAPztHXCH"><th data-page-node-id="ljhsqOFugAYj5p06iTTjhe">表</th><th data-page-node-id="j5MsJIPI78BYoibOZVGlZ6">职责</th><th data-page-node-id="AbmrUMJJkcKhNC5gi3sBMk">关键字段</th></tr></thead>
+<tbody data-page-node-id="ZzY0HirJe5IKP4IQVJYRGT">
+<tr data-page-node-id="3Syhc9ZatWk3gaUpZTeJv3"><td data-page-node-id="I10CyF88ep0O69NIFDkXot"><code data-page-node-id="ORh632eNAVdCKqz34RfGRr">user</code></td><td data-page-node-id="xHJkrENQ8foTOISwOUUwx7">人</td><td data-page-node-id="z2fVNDTmHLy6T14me4QWEF">id, username, nickname, avatar, status, realm_id, deleted</td></tr>
+<tr data-page-node-id="Pxo7Grluw4TwuJF263exIe"><td data-page-node-id="TIeCwidMIZZqanz1eK1DCW"><code data-page-node-id="vgKylCKLzZKd8r7DjTrmoM">user_identity</code></td><td data-page-node-id="AC3ZjvYlSRf6A49ATK8O36">身份绑定</td><td data-page-node-id="AQ7soAMsQ2BBrySvB3xIZX">id, user_id, provider(email|phone|wechat|github), identifier, verified, is_primary<br data-page-node-id="wOY3yRGwLNw2BMs9FWJrWg"><b data-page-node-id="HiOJOvPeEwMKg1VJDklQhw">UNIQUE(provider, identifier)</b></td></tr>
+<tr data-page-node-id="ySClCBvXJz6wQPYtJmEjkq"><td data-page-node-id="sUiVG6cCbClgI3QhWdeKnE"><code data-page-node-id="3wQ3FSM5V1Q6D9Q3FqsEYW">user_credential</code></td><td data-page-node-id="gb7WTUqK1bEEoIXGhIrMRi">凭证</td><td data-page-node-id="dNr1YFPUAxzqvj5YWqZrI3">user_id, type(password|totp), secret(BCrypt), updated_at</td></tr>
+</tbody>
+</table>
+
+<div class="dec" data-page-node-id="WDToWbIvuovpr9S5AtXdEz">
+<b data-page-node-id="NmvkFKeXg8X4DHRJA0WGJB">为什么值得拆</b>：① <code data-page-node-id="3WV2WuNl3FxDXAngIqUJsz">UNIQUE(provider, identifier)</code> 让邮箱唯一性成为数据库层面的事实，不再靠应用层查重；② 一个用户可绑多个邮箱、多个社交账号，「账号关联」就是插一行记录；③ 换邮箱不动 user 主键；④ 邮箱验证码登录、社交登录、手机登录共用同一套表，不用再加列。
+</div>
+
+<h3 data-page-node-id="6fr5YoqyZKYLL2JBRMAXpC">3.2 授权层：三层 RBAC</h3>
+<p data-page-node-id="e2mfZ7iR4oF8oD4P7nJU6n">采用 Keycloak 的 Realm Role / Client Role 模型——这是目前多应用 SSO 场景下的业界标准，能同时满足你说的两个诉求（「每个用户有哪些系统的权限」+「对应系统的菜单权限」）。</p>
+
+<table data-page-node-id="kHZkCIQOssoPU4EVbx1rJQ">
+<thead data-page-node-id="ETz9ETaSfxJJzRjssZoqru"><tr data-page-node-id="CYjYzfNGmt1lUbBGuQ2NE6"><th data-page-node-id="TMmO0aKZRPAcvgiaAUV1Td">层</th><th data-page-node-id="i5wDxLVVp8RzAvsw4fj5TY">名称</th><th data-page-node-id="cAOpNM0tRFikEqjhu1Il5q">作用域</th><th data-page-node-id="1emdaHSPM0Mch0uw7yWz6r">示例</th><th data-page-node-id="ZtcBWxADBbbUfJZh8Sy9JZ">回答的问题</th></tr></thead>
+<tbody data-page-node-id="7W7GefGO6io4wgZlzB4gVV">
+<tr data-page-node-id="42wO4uCrt8cGtYdlRa8Qob"><td data-page-node-id="JVCeruEE2g15fKZByrD8aU">L1</td><td data-page-node-id="5EFbJWOxehWfyaCQ89tBLx">平台角色 realm_role</td><td data-page-node-id="ttsEtU9rqakvxXXGBdOoau">跨应用全局</td><td data-page-node-id="YC8qlD1oCI8NL2CNeTBiGO"><code data-page-node-id="JX4X1ZGdWzTdDoWKIZAmft">superadmin</code> / <code data-page-node-id="IVoiz32FdxvvL3YmI4nvgI">admin</code> / <code data-page-node-id="IEGLXONz9TAjZ8lADGnWnb">user</code></td><td data-page-node-id="ESTE7JkYKJRozEWDJ4fo7B">能不能进用户管理、是不是超级管理员</td></tr>
+<tr data-page-node-id="ztbPPf6Hv3Wbj1QV9Q0MdL"><td data-page-node-id="lOISTqYM9PuOEVSU6gb1jh">L2</td><td data-page-node-id="fJ5HHdGGbVyxL9NKIEOLu9">应用角色 client_role</td><td data-page-node-id="m6m5xwJ2Y74BXNF8COs06h">单个 OIDC client</td><td data-page-node-id="FU2joWDCOLtj3CkPN9bzUo"><code data-page-node-id="durNbzi6cxzgoHtV7T0EPC">cosmic-studio:admin</code>、<code data-page-node-id="HfK8fDNs9cx4NuCnAp3QZJ">marschat-kbweb:editor</code></td><td data-page-node-id="5MgK4K9ntMHbgniWkGcAui">在某个系统里是什么身份</td></tr>
+<tr data-page-node-id="Y2HIdRWmURo73kEAjR3qh7"><td data-page-node-id="IDODBcwPJUAUjOWLkqWSUd">L3</td><td data-page-node-id="6hHHYakvYaRPf72l7HprBt">权限点 permission</td><td data-page-node-id="kvJzIpjidKEAh1GzSHf7Yv">单个 client 的资源</td><td data-page-node-id="01wY4nVEGH4pTEF3HsTpzo"><code data-page-node-id="EojpxC6OlIoQJpnkNWCQUc">cosmic-studio:menu:vocab</code>、<code data-page-node-id="NDlawrT8Vqb1aE1UYyvHZh">marschat-kbweb:api:doc:delete</code></td><td data-page-node-id="YtDzLXzmXkFWMVLRoukZvC">具体能看哪个菜单、调哪个接口</td></tr>
+</tbody>
+</table>
+
+<p data-page-node-id="aFULYddrn8SorvPegXXOhA">支撑表结构：</p>
+
+<table data-page-node-id="av9Gof3VImZHIQM3BYXhiu">
+<thead data-page-node-id="vFMYsoMVZuMn1JBJ0IC74g"><tr data-page-node-id="wHVJuJkh8vkQms7TzhNnpI"><th data-page-node-id="2973QW5OdrbUHp2fHi8dj8">表</th><th data-page-node-id="gu9dR5Mkq5NevLE0dPfV2Y">说明</th></tr></thead>
+<tbody data-page-node-id="SE0RWNj2pIXlSRoqpKSlvf">
+<tr data-page-node-id="h2F3qY5CkBtpPbZiMGgrk2"><td data-page-node-id="17EyeIVbByfxVRZT2aqqsA"><code data-page-node-id="OveATzE10Bzjvp6OspQmGo">sys_role</code></td><td data-page-node-id="f40GBPmyqhCFjo0zYbw24P">id, scope(platform|client), client_id, code, name, description —— L1 与 L2 共存一表，用 scope 区分</td></tr>
+<tr data-page-node-id="Ah2ivKb1Ao1Fg0MhcAC6lJ"><td data-page-node-id="fxQJJkOcfVukJXpUJdae2N"><code data-page-node-id="7qAzihlkcM9xXYp3zLYyAh">sys_permission</code></td><td data-page-node-id="HukYPi0iEdNGDd1hDGScyy">id, client_id, type(menu|api|action), code, name, parent_id, sort —— 菜单树靠 parent_id 自关联</td></tr>
+<tr data-page-node-id="Z2HOBMWZDVsDyQL8vDDovf"><td data-page-node-id="loEPxv5fCxl1EeCB9K33ZE"><code data-page-node-id="TYX3lBbWDeyln8n3XHuJCB">sys_role_permission</code></td><td data-page-node-id="gWuUgvCIX2TjZpHEjZxwrM">role_id, permission_id —— 角色拥有哪些权限点</td></tr>
+<tr data-page-node-id="KBPbNL7Ol1vkAkncXOKKwA"><td data-page-node-id="WxKuHH9c15CIM4AkIwvAdU"><code data-page-node-id="iH5TTytSgBt9SnnxAMDN9u">sys_user_role</code></td><td data-page-node-id="gIdGZAOKEtUTYAFJ3gkzZa">user_id, role_id, client_id, granted_by, granted_at —— 谁在什么系统里是什么角色，带授权人和时间（审计需要）</td></tr>
+<tr data-page-node-id="OAqlBSmzT9Iyf4DlIDn4Cf"><td data-page-node-id="OIsmkE2UduoApd7FpYkPDT"><code data-page-node-id="mEY2BeXJfaX4DQ0PiK2wg3">sys_role_composite</code></td><td data-page-node-id="qS8AuBgEw2TNOBMruidz0v">parent_role_id, child_role_id —— 角色继承，比如「应用管理员」自动含「编辑者」</td></tr>
+<tr data-page-node-id="HhgAyyQHsp01A5XPQrPZsN"><td data-page-node-id="6mObgs0sivHIc6JzRF8dB3"><code data-page-node-id="mArW16lV8hxZ8ell8qsbYL">sys_app_client</code></td><td data-page-node-id="oTnjMQDfAzymWs50HjiaHM">client_id, name, status, menu_registry_json, last_sync_at —— 应用注册表，含它上报的菜单树</td></tr>
+</tbody>
+</table>
+
+<h3 data-page-node-id="iXAmf8FYC51vxfgaGkRcZO">3.3 菜单权限的工作流</h3>
+
+<div class="card" data-page-node-id="yheFSu6KvAKWyW3CDlcIbJ">
+<div class="step" data-page-node-id="rsBlKokPTQ0oEuQ0gOFCHi">
+<div class="step-n" data-page-node-id="LQfZ25qkil204Pz1rna34K">注册</div>
+<div class="step-c" data-page-node-id="iPH6HUzHznxCbFUVukJhup">
+<div class="step-t" data-page-node-id="nP193cuNkprFhf4s3GifCs">应用上报自己的菜单树</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="r3IvBF5Y5NCGYVjmzLaraG">应用发布时调 <code class="mono" data-page-node-id="ZiLm56TcD1OMGtslpHYjCG">PUT /admin/clients/{client_id}/menus</code> 上报菜单数组。cosmic 现有的 <code data-page-node-id="aUi4G9AUU7rrkU4XB8I8a9">MENU_REGISTRY</code> 可以直接复用，改成上报接口即可。</p>
+</div>
+</div>
+<div class="step" data-page-node-id="PIiGKrHYASv5yX2VflpQvx">
+<div class="step-n" data-page-node-id="eaPLA3mkgW8xPpW1LYQJwq">存储</div>
+<div class="step-c" data-page-node-id="SllA4YRuimk2mIbF1dy98E">
+<div class="step-t" data-page-node-id="0aPUAq9xSCWDBbFS7DNXIl">认证中心汇总成统一权限树</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="6ne0SpegN6bREWGlmYx7G5">落进 <code data-page-node-id="RdgsD1f2Lv0mNOjKhlef2u">sys_permission</code>（type=menu）。用户管理界面据此渲染成「系统 × 菜单」的勾选树。</p>
+</div>
+</div>
+<div class="step" data-page-node-id="udBy0tSzsbsbrKlPqqqJyI">
+<div class="step-n" data-page-node-id="0iA8ZJlk60xh7dk6KRAfuV">授权</div>
+<div class="step-c" data-page-node-id="eu2HS086a2Hq4ZkzJ7Nuos">
+<div class="step-t" data-page-node-id="CnGtvNvTw9FsAEPtydFpFq">在用户管理界面勾选定权限</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="d2HsqKcHs43tYa7BAVFBkZ">勾选写入 <code data-page-node-id="2ko1ucYP0UA5sKJrDcuF5v">sys_user_role</code> / <code data-page-node-id="EW3VDLwNDo3bemc6lIo15N">sys_role_permission</code>。这就是你要的「每个用户有哪些系统的权限」页面。</p>
+</div>
+</div>
+<div class="step" data-page-node-id="RM3mimCBbUStwAqAh7jUfN">
+<div class="step-n" data-page-node-id="R8uSGNh2ASTAArfK83NGY7">下发</div>
+<div class="step-c" data-page-node-id="fRAbeeEsK2Jh0vxFY4jWZo">
+<div class="step-t" data-page-node-id="pL1Comd1UAkPTnPxY9cwYf">登录后前端拉取本应用权限集合</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)" data-page-node-id="Nd7iLB4jS1zbgnkDaX5qZv"><code class="mono" data-page-node-id="4c3yDGxwrV7HNGSPCg5zI0">GET /auth/permissions?client=&lt;id&gt;</code> → 路由守卫拦截 + 菜单按集合渲染。后端用 <code data-page-node-id="RExoeVmaQvAe1aaqC6EL41">@PreAuthorize</code> 校验权限点。</p>
+</div>
+</div>
+</div>
+
+<h3 data-page-node-id="YmbHMEApgYz4Y1sIj6PqRx">3.4 Token 契约（新增字段，老客户端可忽略）</h3>
+<pre class="mono" style="background:#EFEEE9;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:12px 0" data-page-node-id="pmyHcTwP2rdsvoWHaCPyQz">{
+  "sub": "1",                        <span style="color:var(--ink3)" data-page-node-id="d4dxvk2kavzuY9SXS8Q9RH">// 稳定主键，所有映射只用它</span>
+  "uid": "1",
+  "username": "admin",
+  "realm": "kb",
+  "role": "superadmin",              <span style="color:var(--ink3)" data-page-node-id="tYgCDLO2OCZYwMrkfqE0tj">// 平台角色，原有字段升级</span>
+  "permissions": ["cosmic-studio:menu:vocab", "..."],   <span style="color:var(--ink3)" data-page-node-id="TnlyMciZmK2nxDkJ45Zuxu">// 本 client 权限点（新增）</span>
+  "resource_access": {               <span style="color:var(--ink3)" data-page-node-id="aKdWG0CXDcsQgB3on2v7GA">// Keycloak 式应用角色（新增）</span>
+    "marschat-kbweb": { "roles": ["editor"] }
+  }
+}</pre>
+
+<h3 data-page-node-id="NRWlf7hNEyAzwflMJCWr4W">3.5 登录方式矩阵</h3>
+<table data-page-node-id="HqNnRjln0KTRqPtA2tPe5T">
+<thead data-page-node-id="MOsBCd25zBHmqfvr2nMS5b"><tr data-page-node-id="1jbKK2ztOcwaTpcyMSScXy"><th data-page-node-id="DtTh9S9aF5xkvozUPYMoUG">方式</th><th data-page-node-id="b3vDVhQBB6siuadg0M6XFH">现状</th><th data-page-node-id="1Apy7Z5uJA6QYoci9ql6e0">目标</th><th data-page-node-id="fdBNGl94CMro0xPl4AdmtY">说明</th></tr></thead>
+<tbody data-page-node-id="mmUiRrha1VJcII0pcxK2Vt">
+<tr data-page-node-id="LcWqxX0w4S7SjKik288Elq"><td data-page-node-id="5PFeas0bt6DT8JwUryFlSh">账号密码</td><td data-page-node-id="lMMiSJFHNj8jeHIBGT7jHq"><span class="tag t-ok" data-page-node-id="CwwU9KwGgjweIUfAawhV6K">已有</span></td><td data-page-node-id="9D30DnUd0GkzEAfYMKDkK4"><span class="tag t-ok" data-page-node-id="OCC4cptpqrJ4ncz5aeyk0D">保留</span></td><td data-page-node-id="Qcn7p4d104IubT7j2nxTpT"><code data-page-node-id="pgyibGDoy7GXgrZA2rBdBL">/auth/login</code></td></tr>
+<tr data-page-node-id="sTUA0CrlSwmh9DBeOiLndt"><td data-page-node-id="THT0a68du6kch2I2pz7mQN">OIDC 单点登录</td><td data-page-node-id="8V9OJPcXcn6mCgVIQAjNp4"><span class="tag t-ok" data-page-node-id="qEMcID4qNUMexLi5A0ll7h">已有</span></td><td data-page-node-id="R6lLybtWMa7zYGfk0JXGFS"><span class="tag t-ok" data-page-node-id="IHoZPGiLdoCGMTbaOz0tkM">保留</span></td><td data-page-node-id="1wtR52svLSk3qLcZAvQxVZ">8+ 应用接入</td></tr>
+<tr data-page-node-id="9VoDXBvLK3uy3wLKjgmdxB"><td data-page-node-id="VSo4hKvpb3Bx7Dm5i6Ivm2">邮箱 + 验证码</td><td data-page-node-id="2U3fnkVYiVkIUBlplhgfsJ"><span class="tag t-warn" data-page-node-id="ckPYLgVlIp1tg7lEZSi7z4">仅有零件</span></td><td data-page-node-id="fD0V5DJjMQBkJRorCkUMrN"><span class="tag t-ok" data-page-node-id="s0IbAxuAmHPEY5sWBVZuko">全量开放</span></td><td data-page-node-id="GKL3otd5Op6uFVQ2sf5zji"><code data-page-node-id="NAEl5WGxYCWl6KkjkqdtE0">MailCodeAuthenticator</code> 已写好，注释标「本期不启用」，复用 <code data-page-node-id="U0RgDGjqxuANIc87v0xXkQ">MailCodeService</code>（bizType=MAIL_LOGIN）</td></tr>
+<tr data-page-node-id="lCJ5lgMGJ1YN6XJBfaIhwR"><td data-page-node-id="H63dPdrUXAggcZNYBpsIqu">超管保底验证码</td><td data-page-node-id="2P6hSDOq1w5HeCqEaVDR37"><span class="tag t-bad" data-page-node-id="4fi9u8uDPCpnmCajEBRHn0">无</span></td><td data-page-node-id="h8PbQ5G16dt2zjgApzlCDh"><span class="tag t-ok" data-page-node-id="wEuukuHxgg7xySqzOBOknx">新增</span></td><td data-page-node-id="cgsi8ugBDh3MgDrkoPDDML">仅 <code data-page-node-id="9Vqwv7agFDeecGSHXgxoO2">superadmin</code> 可用，防止密码锁死后无法进入</td></tr>
+</tbody>
+</table>
+
+<h2 id="s4" data-page-node-id="yAg4gdPxBgUAw3YDDye7yQ">四、五个关键决策（含选项对比）</h2>
+
+<div class="card" data-page-node-id="Ul3vgjjWJyy0ETomFAPc8j">
+<h4 data-page-node-id="uIhBg10JTDWwInhftTItvL">决策 1 · 账号池收敛策略</h4>
+<div class="opt" data-page-node-id="GKAbfiARFgr3tOcX3FjQ3t">
+<div class="opt-h" data-page-node-id="tIDKlDdaiM7BrtukcIlwSm">A. 全量收敛 — 所有应用废弃本地账号表</div>
+<div class="opt-b" data-page-node-id="1W0knXnrvhmPsbDCHA0GNx">最彻底，但 cosmic 的业务表有外键指向 <code data-page-node-id="Z8zBtDDnAFT27tDYUGZk2A">users.id</code>，一次性迁移风险高。</div>
+</div>
+<div class="opt" data-page-node-id="e5DjimZlGqdx0vPwKWVDTh">
+<div class="opt-h" data-page-node-id="euDwwW7z4GRSfXr4sOZlUy">B. 保留本地表靠 JIT 同步 <span class="tag t-gray" data-page-node-id="8IGWFHnppcSGwAjmb0iSdd">portal 现状</span></div>
+<div class="opt-b" data-page-node-id="py7hJfVNKPKYW8kzDjwiTN">改造量最小，但密码仍是两套，权限仍然分散，问题没根治。</div>
+</div>
+<div class="opt rec" data-page-node-id="wEFYL0q9c68mL8tF6BZu9A">
+<div class="opt-h" data-page-node-id="RSQ4tInOdNfWnozKa1F4pf">C. 混合收敛 <span class="tag t-ok" data-page-node-id="NORFMuw1nYWV2HuT1UCSx4">推荐</span></div>
+<div class="opt-b" data-page-node-id="Umx7cT38iE8C5IcsX5nq1O">纯 SSO 应用直接废弃本地表；有业务外键的应用先 JIT + 映射表过渡，再逐步把外键迁到 SSO 的 uid。风险可控且能真正收敛。</div>
+</div>
+</div>
+
+<div class="card" data-page-node-id="5a4N8GeXU94rS23A7Baeup">
+<h4 data-page-node-id="eZ3FH6dv9ItCwDvieCz4p6">决策 2 · 身份信息存列还是存表</h4>
+<div class="opt" data-page-node-id="f9gymaBfp1E3pqpZYMsCtw">
+<div class="opt-h" data-page-node-id="7MWw1gcZplF6Qo5NJZm8QE">A. 给 <code data-page-node-id="aB4hREPsFGknT8Jocl6rvF">user.email</code> 加唯一索引</div>
+<div class="opt-b" data-page-node-id="dZGBGWrWUrv2SPVUF32T47">改动最小，但一个用户只能有一个邮箱，多身份绑定和账号关联都做不了。</div>
+</div>
+<div class="opt rec" data-page-node-id="x31DsdLdd27zcrDzZcAqn4">
+<div class="opt-h" data-page-node-id="IxSUg0hlfotGUdSwElZCnr">B. 拆 <code data-page-node-id="wytuNTeacJ0Xtf5NEqjmaB">user_identity</code> 表 <span class="tag t-ok" data-page-node-id="fE4kqc0zJNuK8W5bOFxCzP">推荐</span></div>
+<div class="opt-b" data-page-node-id="TO6A816N3XQahsmwkNEjih">既然要重构授权，一次到位。唯一性由数据库保证，账号关联变成插一行，后续加社交登录零成本。</div>
+</div>
+</div>
+
+<div class="card" data-page-node-id="9Ah19vBKtOUXZl1id1EVMJ">
+<h4 data-page-node-id="TaRnQTSXV4zzyw5vbPUDvO">决策 3 · 角色模型</h4>
+<div class="opt" data-page-node-id="ybHZGPFCPCOvEFSk4J6WZB">
+<div class="opt-h" data-page-node-id="w2uZbDi4CDFAzCvWSY0bXn">A. 保持标量 role，各应用自管</div>
+<div class="opt-b" data-page-node-id="n0k0HXiV85aMLdVGpdH4Xa">现状。回答不了「谁有哪些系统的权限」。</div>
+</div>
+<div class="opt" data-page-node-id="nM6nMEd1lIeA00y6n2V3w7">
+<div class="opt-h" data-page-node-id="WIE1cklK0ZLg1KXnYta9r0">B. 扁平 user_role 关联表</div>
+<div class="opt-b" data-page-node-id="DO4TscJGZ0QpCdMvZYesTC">能多角色，但没有客户端维度，权限点无处安放。</div>
+</div>
+<div class="opt rec" data-page-node-id="diIj6bw945NlmHn92SMHd6">
+<div class="opt-h" data-page-node-id="JZc8WEn3G7d48Ncil2edzS">C. Keycloak 三层模型 <span class="tag t-ok" data-page-node-id="GwoHNaP4ZAnzzPfELHlHFj">推荐</span></div>
+<div class="opt-b" data-page-node-id="eplX7o3oEc1U6W4zuMjRnD">业界标准，天然支持跨应用角色 + 每应用细粒度 + 角色组合继承。cosmic 的私有模型可直接映射进来。</div>
+</div>
+</div>
+
+<div class="card" data-page-node-id="cy8nSvJCbJuUNoPC3uHcBf">
+<h4 data-page-node-id="hsOn9ppQTudGyD0PgfCOi7">决策 4 · 库名 <code data-page-node-id="XqegLG0JzseNmBe0o1kRD6">kb_auth</code></h4>
+<div class="opt" data-page-node-id="dWpKaE3CW23mTYYBjb6dY0">
+<div class="opt-h" data-page-node-id="C01CUKUy6FhIDfQaK7lVdz">A. 不改</div>
+<div class="opt-b" data-page-node-id="wQDRJMIkJaKV8qc39WHx2h">省事，但一个平台级公共组件顶着 <code data-page-node-id="jZZSu7NbP3wcCOYxqWBJZG">kb_</code> 前缀，名不副实，后续接入非 kb 体系应用会更别扭。</div>
+</div>
+<div class="opt rec" data-page-node-id="ymotUEfvjmFOEmwyGwXXyX">
+<div class="opt-h" data-page-node-id="2XuPmB8H5P31yqNqrEfoCD">B. 改 <code data-page-node-id="QwI9kJCo3h2XZhiUOpknfw">marschat_auth</code> <span class="tag t-ok" data-page-node-id="VI7pyOaXhU9QeAy9WADtob">推荐</span></div>
+<div class="opt-b" data-page-node-id="2V43oDt0nn3BGrBnzdIwsx">与 <code data-page-node-id="DPtfXEbBkEHmpXi9f2ZzJF">marschat-components</code> / <code data-page-node-id="a3FjqYxxNgA8n4kcEuWyug">auth-center</code> 命名对齐。<code data-page-node-id="NCJZfkpSEzj4MesIQZUDSy">application-prod.yml</code> 里库名走 <code data-page-node-id="4NCahrNolWcjkZmvDKquXI">${MYSQL_DATABASE:kb_auth}</code> 环境变量，改库名零代码改动，只需 dump/restore + 改 compose env，回滚就是改回 env。</div>
+</div>
+</div>
+
+<div class="card" data-page-node-id="gvHnHg8kE8kUVKpbfNLZFw">
+<h4 data-page-node-id="GfSyJMaNhXd8KFnjc9rdWP">决策 5 · 菜单权限的实现方</h4>
+<div class="opt" data-page-node-id="ZoF0INeAEBzGvC8Cs4oO9e">
+<div class="opt-h" data-page-node-id="KTZ2UEbJA3AxbmfdGdovPZ">A. 各应用自管</div>
+<div class="opt-b" data-page-node-id="DC4ZkTWuuf9QO7EADZeTEv">cosmic 现状。每个应用各写一份菜单注册表 + 权限过滤逻辑，重复劳动且标准不一。</div>
+</div>
+<div class="opt rec" data-page-node-id="OYqAkUATW7c0tpV4FyZgxb">
+<div class="opt-h" data-page-node-id="8aC8qxLyiVH4LV3gK61zBs">B. 应用上报 → 认证中心统一存储下发 <span class="tag t-ok" data-page-node-id="l4DxdpdQ1Y7xjScIGL1cqt">推荐</span></div>
+<div class="opt-b" data-page-node-id="wUb9HOYw9PsfBxoSW7R87A">把 cosmic 的 <code data-page-node-id="vtebHTchvgPuLG43lJLRsA">MENU_REGISTRY</code> 抽象成通用上报接口，一次实现全部应用受益，用户管理界面也能统一展示。</div>
+</div>
+</div>
+
+<h2 id="s5" data-page-node-id="4UrpsZVBdukWVcstvS5LXY">五、SSO 用户与独立用户的映射</h2>
+
+<p data-page-node-id="tHpFrGhHbTlK5g1nFc8XHJ">这是你特别问到的一点。业界主流有三条路，结论是<b data-page-node-id="qB8twZ2Xn5NgZP0rZGBWvf">前两条组合使用，第三条不采用</b>。</p>
+
+<table data-page-node-id="BUOjxc2knUmpGTcRzG3rno">
+<thead data-page-node-id="JAA3Pxh68cq6zaybdMhVtK"><tr data-page-node-id="T8aaUBx0c8mcIA6KVQvtvM"><th data-page-node-id="0QmeWiVPi2V5SOYqiJa5n4">方案</th><th data-page-node-id="8M0W63b6E6UnkLnDx5wjua">原理</th><th data-page-node-id="I1v5CGKLdhBxMtXsyP2b67">适用场景</th><th data-page-node-id="qlrtk8GXoLHr2QM6ePetE3">取舍</th></tr></thead>
+<tbody data-page-node-id="qFEFhxTQWCDwKSbPKx0505">
+<tr data-page-node-id="2uAUtpWid2kVSxUnawLwOK">
+<td data-page-node-id="6aMoaHTsNMdcG97VDJEk0d"><b data-page-node-id="FGV2oLeREpoJtMBITBbaK0">JIT Provisioning</b><br data-page-node-id="RR9Rdol0vU1zvUSEJBrdxx">首次登录自动建号</td>
+<td data-page-node-id="8XHxUKs2dsJWaO6wxLuANZ">用户第一次 SSO 登录时，按 IdP 的 <code data-page-node-id="QOpEi219jPGArSe0gOGMUj">sub</code> 自动在本地建一条镜像记录</td>
+<td data-page-node-id="VDwnIIMF2ulDejLiDOYJyB">新应用快速接入</td>
+<td data-page-node-id="y7aw1tQDRgUDiiuTy7M7Ze"><span class="tag t-ok" data-page-node-id="EAE4kKuBWBgR7nDEReBkU5">推荐</span> portal 已在用，改关联键为 sub 即可</td>
+</tr>
+<tr data-page-node-id="cBsXyODzMtEGnlkT0VOOIr">
+<td data-page-node-id="3DS4p8QZJqES282tUNVFba"><b data-page-node-id="mbDw39WWs18Ww9lQDSSh37">Account Linking</b><br data-page-node-id="H7ANPD0znRy75buaRwVRYq">按已验证邮箱关联</td>
+<td data-page-node-id="9Ai0UGMqDKca7cxVVIztQN">本地已存在同邮箱账号时，自动或手动把两者关联起来</td>
+<td data-page-node-id="aPC9Ysm7L8zIpPxakWqbD1">存量账号迁移期</td>
+<td data-page-node-id="dM9RmB90rIaSKkQdsWa050"><span class="tag t-ok" data-page-node-id="uBOK8DOXdMxQe6mZY3Sr8W">推荐</span> 迁移期一次性使用，之后不再需要</td>
+</tr>
+<tr data-page-node-id="HA4A2wqyDmHDk9fBq9LEvR">
+<td data-page-node-id="3XkKx1UQCEzdQp1HSrLbJV"><b data-page-node-id="QDwyQSatSZI2wPxO6BCqEu">SCIM 2.0</b><br data-page-node-id="e2psgv3RnZQrGHQOicmY6o">集中目录同步</td>
+<td data-page-node-id="Ljf3kUymq2XN7w3kHBl7sg">认证中心作为目录服务，向各应用推送增删改</td>
+<td data-page-node-id="w6GyZnWar8nok6HaWsmBjl">企业级多租户</td>
+<td data-page-node-id="YsK8ZNEjq8LQr0hofwDcu1"><span class="tag t-bad" data-page-node-id="02iglrAMXK05PTJAqlejN8">不采用</span> 个人级基础设施用不上，维护成本过高</td>
+</tr>
+</tbody>
+</table>
+
+<div class="dec" data-page-node-id="wvOACU7JTCbvmDAUWF1a15">
+<b data-page-node-id="8u5Wr7jcHmotsJkFyEdlur">推荐组合</b>：① <b data-page-node-id="FrCvQ6WIuTxzOAh2lHQK14">统一关联键为 SSO 的 <code data-page-node-id="G05dV0Tiv3IyUivGRaadXm">sub</code></b>（不可变、永不变），本地业务表存 <code data-page-node-id="1u38vc2wrIhmk1tsTtc86B">subject</code> 而不是 username；② 迁移期用 <b data-page-node-id="RD5FQursRzZqb468zFqoll">已验证邮箱自动关联一次</b>，把存量本地账号挂到对应的 SSO uid 上；③ 关联完成后，本地账号表逐步降级为「只读映射」直到下线。
+</div>
+
+<div class="gap" data-page-node-id="0pKVUWg0XbNwS9yDwV9IaI">
+<b data-page-node-id="u4IgcwUa7HtZiHgd772vKO">顺带修掉一个隐患</b>：portal 现在按 <code data-page-node-id="zfpoQgnDL63IVjlsvYMn4i">username</code> 做 JIT 关联。用户改名会让映射断裂，进而可能建出重复账号。改成 <code data-page-node-id="tfheQ6oQEReK8CHVpXJQAB">sub</code> 后这类问题不会再发生。
+</div>
+
+<h2 id="s6" data-page-node-id="bj47CBolbJ9PxIqRIA9G0J">六、迁移路径（6 阶段）</h2>
+
+<p data-page-node-id="0Ond6gqLNIrMEIWlguKuud">每一阶段都能独立发布、独立回滚。建议按顺序执行，但 4/5 阶段内各应用之间可以并行。</p>
+
+<table data-page-node-id="JxUkp2ZfLayKYSmhuAbptf">
+<thead data-page-node-id="bd5rBPJu9brWkMMsmIQSmp"><tr data-page-node-id="v3JOjIrWj7UpbScqonkJYD"><th data-page-node-id="xaTsEqyIvh6GZpJ8ZZA9nm">阶段</th><th data-page-node-id="fzLwrK1hDtVv2OW0Hbj6zt">内容</th><th data-page-node-id="B1wsH4azcKCmUxecM3FtVX">可独立发布</th><th data-page-node-id="hxW3WoQtRNUSylOMFHD8JC">风险</th></tr></thead>
+<tbody data-page-node-id="yhOJBki94b948h2Lkd4226">
+<tr data-page-node-id="CWjIkRwW0Cj69xJcfoqWA0">
+<td data-page-node-id="BbUDTLtfgB7HkLyH6BNqvp"><b data-page-node-id="hNXvkw27HRY4FQERE7o51b">P0</b> 地基</td>
+<td data-page-node-id="dVjGBzMJbfGpD9lYEoSVMm">库改名 <code data-page-node-id="r2QrUyDgbJkrCbvF3OO3ig">kb_auth</code>→<code data-page-node-id="6lq3yHrZnsBV6rZqtaTGfB">marschat_auth</code>（改 env + dump/restore）；新增 <code data-page-node-id="hUIRsWSfDrS7GsAW43nm7C">user_identity</code> 表并把三列数据迁进去；建 email 唯一约束</td>
+<td data-page-node-id="1D6UGygmE2yYmabO8nCGYY"><span class="tag t-ok" data-page-node-id="BtQEN8Y7SxX2pYW9Mynhvs">是</span></td>
+<td data-page-node-id="ZaKZsEHp0pCyXHXtConUVA"><span class="tag t-ok" data-page-node-id="PBo6VTmkMzYYbiVyEf8daY">低</span> env 切换可秒回滚</td>
+</tr>
+<tr data-page-node-id="qDZQReZUnNCRA27TqyV1H4">
+<td data-page-node-id="nom6dzhLjfRQD27TgH5Pta"><b data-page-node-id="nh5FdbpsICK2CxblKesCWU">P1</b> 登录方式</td>
+<td data-page-node-id="i5OvGnY91kNyUq9OiAG9C3">启用邮箱验证码登录（对所有用户开放）；新增超管保底验证码通道</td>
+<td data-page-node-id="db7BVNWFjhzXAcFB4BZV9M"><span class="tag t-ok" data-page-node-id="YAm498ozYTK4JFc3zgYkLR">是</span></td>
+<td data-page-node-id="648a4AkDsnt05gbGfKWBpL"><span class="tag t-ok" data-page-node-id="DzVgHrlQvZc5q5Tto5sKPc">低</span> 复用已有零件</td>
+</tr>
+<tr data-page-node-id="9hZHtGr2SYfAbuRjSWqBfR">
+<td data-page-node-id="2GZ2fpGGaymqdyWps735L5"><b data-page-node-id="xdFoQkPCrWcx0oFlW3Y9mw">P2</b> 用户管理</td>
+<td data-page-node-id="yPhjZQuBHuDUeV16V7o1Qh">超管分级（<code data-page-node-id="Bro6EyaqM45ZYGJ5uJnP2u">superadmin</code> 不可删除/禁用/降级）；列表分页 + 关键字搜索 + 审计日志 + 事务 + 禁用即踢下线</td>
+<td data-page-node-id="UuaGHy53ctM7yQAaLQBO3M"><span class="tag t-ok" data-page-node-id="EXMa7Hz3ZNBWCXEmPXBC9r">是</span></td>
+<td data-page-node-id="mFEHgOhAyRdUCSgDawoAuO"><span class="tag t-ok" data-page-node-id="IAHB8wbTQ270CL8t63lbIb">低</span></td>
+</tr>
+<tr data-page-node-id="k08AE6ABErOSOryOR5m6JH">
+<td data-page-node-id="KmLygEBTPWRmUhZZOTRDxk"><b data-page-node-id="A8rAX0RVJMUdkE0bcGcFza">P3</b> 授权底座</td>
+<td data-page-node-id="54O0g4Ytb13s26Q8Pc4uCY">建 RBAC 六表；实现权限接口 <code data-page-node-id="wBaRyr3rM8zO2lgoaRUjVI">GET /auth/permissions</code>；用户管理界面加「系统权限 + 菜单权限」矩阵</td>
+<td data-page-node-id="lDgEyqHsinkg23DEUwP9iG"><span class="tag t-ok" data-page-node-id="lNRAy5onJe9xt5N8L0D8m4">是</span></td>
+<td data-page-node-id="UU1NZEO3J5M0LOvR4a35U7"><span class="tag t-warn" data-page-node-id="NH8iJKV1tHSo0Lhq1RRHWL">中</span> 涉及新表与新 UI</td>
+</tr>
+<tr data-page-node-id="P7mEIaAu1HCnGBA9mhCjn5">
+<td data-page-node-id="yyYH69wnGlwsyi6M1TVnX2"><b data-page-node-id="rtuzbZKUO5CZ8onHVcSqFw">P4</b> 应用接入</td>
+<td data-page-node-id="A5KYpAXiEeZIAsc8gBnDGM">cosmic 收编 <code data-page-node-id="tLEXVrCNoEnUWq3zCLPUi5">menu_perms</code> 到通用模型；注册 cosmic-studio 与 frp-manager 的 OIDC 客户端；portal 的 JIT 关联键改 <code data-page-node-id="Pf99sSsKW7zRU0BcNpzcvG">sub</code>；myfrp 账号收敛</td>
+<td data-page-node-id="8WIuLnbofTPlPapKGs9pQE"><span class="tag t-ok" data-page-node-id="RJpmq26dIaIeRHqh5uHGXW">逐应用</span></td>
+<td data-page-node-id="RfW5VpsK2Sh693YyALx1Ki"><span class="tag t-warn" data-page-node-id="rJ3MdRj2tMVLcr0uDQeG0G">中</span></td>
+</tr>
+<tr data-page-node-id="t2o2rrNhyvNYuCoOn7L1Dh">
+<td data-page-node-id="bf9l8EnSLWFufLcQdazhqY"><b data-page-node-id="3qoEQa3hkMgEPOXC0Krlmh">P5</b> 前端收口</td>
+<td data-page-node-id="j4BNENRCy5we7mCjAvLpg9">各前端路由守卫读 <code data-page-node-id="C69AkbZLIJmcHLzJwFkrUT">permissions</code> 做菜单过滤；本地账号表降级直至下线</td>
+<td data-page-node-id="5H2WodBAPGOtFfv9xxpVq4"><span class="tag t-ok" data-page-node-id="UEkCcoZNoKBJFa1uBpvneb">逐应用</span></td>
+<td data-page-node-id="NVApqYcRghO1oFBlTz9gHS"><span class="tag t-warn" data-page-node-id="E5BAgRrwGNyTyfMozCOmCo">中</span></td>
+</tr>
+</tbody>
+</table>
+
+<h2 id="s7" data-page-node-id="drcPk6G9n4bEpDDIaEwkeX">七、影响面与风险</h2>
+
+<div class="card" data-page-node-id="yPfodCVRlcFpqLuecJT1ZG">
+<h4 data-page-node-id="qB4hxLd4GX1PWEcgZUFLvJ">枢纽影响面（必须尊重）</h4>
+<dl class="kv" data-page-node-id="Pk7gAuBDEFB69kfg6Rcivp">
+<dt data-page-node-id="jJ5LMQcJeuUZsoRCOQYzU3">auth-center</dt><dd data-page-node-id="9KMSLpEJwnpt9vyKDPhnn6">12 个应用直接依赖 / 12 个传递影响 —— 全局最大枢纽</dd>
+<dt data-page-node-id="DeIXKu78G1C0JVh4FRTXkm">common-core</dt><dd data-page-node-id="UNcH3BGEjKSCDGoJ2ZbIcy">7 个应用直接依赖 —— 公共 jar，发版要各服务升版本走流水线</dd>
+<dt data-page-node-id="08qRHNa47zn4ugm346JKWr">auth-components</dt><dd data-page-node-id="zur8yGI3BioJ2DJiGrDP8Q">5 个前端应用依赖 —— 前端发版同理</dd>
+<dt data-page-node-id="9BW6DEbs9ZEAzECwl5wGiA">frontend-common</dt><dd data-page-node-id="kZq0F3mbHsaCW8P60hh9yj">4 个前端应用依赖</dd>
+</dl>
+</div>
+
+<div class="card" data-page-node-id="VS4ejQBFNgVjsMM8Xo2ABv">
+<h4 data-page-node-id="32uEqdrzeqFscBOvZAzRjj">风险与缓解</h4>
+<table data-page-node-id="7tAORmkq3oAZSYM80V7uBg">
+<thead data-page-node-id="9UNz3DCGdmkjTEtAXUNwDE"><tr data-page-node-id="xy89Asb9PSlcjsm6QQ4pA4"><th data-page-node-id="LTnuAOw0jNSxiO2bSe7aCD">风险</th><th data-page-node-id="GMp757fMWTdHsLKndyVSJk">缓解措施</th></tr></thead>
+<tbody data-page-node-id="wxY8VhYQOaRCA9MdWYdzE6">
+<tr data-page-node-id="Y6jfErdmaKPeAtHXod1MS8"><td data-page-node-id="dCwjMbvDFHrC6HtMfG2lhx">改 auth-center 波及 12 个应用</td><td data-page-node-id="eyLjAUljHoDWsEMg80tP8t">只做增量（新增字段/接口），不改老契约；token 新字段老客户端可忽略</td></tr>
+<tr data-page-node-id="kQSA0Zbm8TxFk3JB4byYtZ"><td data-page-node-id="G5DGGqywAOE4POxepvYZEC">库改名导致应用连不上</td><td data-page-node-id="aZZB8X1sucNFHcM2KKmGI1">走 env 变量，改名前后各做一次 dump；异常时改回 env 立即回滚</td></tr>
+<tr data-page-node-id="di2MTEkF3asvnBU68VFZjQ"><td data-page-node-id="UaELUiv6brnFwrCAaCuMGZ">邮箱唯一约束在存量数据上建失败</td><td data-page-node-id="6jdV2PmFM1uq31vN0NDZpO">P0 先跑一遍重复邮箱检测，确认无冲突再建索引；有冲突则先人工归并</td></tr>
+<tr data-page-node-id="CZVU2frOZdKZp7PklbphYR"><td data-page-node-id="fW5QHNQ9b5KpcYsAGSTqnh">公共库发版连锁升级</td><td data-page-node-id="0FXHfq8VyiOGfRuyjKKPpw">走 Nexus 私服发包 + 各服务升版本号 + 各自流水线，禁止直接引用源码</td></tr>
+<tr data-page-node-id="zGYO8KNApM7R96DxbT0fSL"><td data-page-node-id="dZVYUCXlh4LmC5DC4AlBTl">应用改造期间新旧权限并存</td><td data-page-node-id="QBFUtk92XRLAlmZ4UuOSNI">权限接口返回空集合时前端回退到现有角色逻辑，保证灰度期可用</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="s8" data-page-node-id="d6WjeztmnzZmOMCEpz0HJC">八、待拍板事项</h2>
+
+<div class="lead" data-page-node-id="lC4eHD5eDyO7Fc2eBwltCQ">
+<h3 data-page-node-id="CmD10dE1Urye2Vi8GxjpYK">请良哥确认以下三点，确认后我按 P0 起步，一次执行不中途请示</h3>
+<ul class="chk" data-page-node-id="6eEP5zKKJ6Yp15y2h6J5h8">
+<li data-page-node-id="Ie5p8PNG6ddOnfBDHmuPaH"><b data-page-node-id="Y9HWvtnDK5aGiq0jXaGFFo">决策 1~5 是否按推荐项执行</b>（混合收敛 / 身份表 / Keycloak 三层 / 库改名 marschat_auth / 菜单统一上报）——有任何一条想换，现在说最省事</li>
+<li data-page-node-id="ATvrcs6A4gevGO1B4WX7cE"><b data-page-node-id="taGpig8RvaQmN0r0z39LJH">库改名时机</b>：与本次一起做（P0），还是先做功能后改名？建议一起做，避免迁移两次</li>
+<li data-page-node-id="WkIPgNG45jCOdnYIRuokm0"><b data-page-node-id="BXIevj7GhHS6LwMpDcPWBC">权限点粒度</b>：只到「菜单 + 接口」两级，还是要细到「按钮级」？（按钮级工作量约多一倍，但覆盖更细）</li>
+</ul>
+</div>
+
+<div class="card" data-page-node-id="lCpg0MMJJF1f57P9wv0blD">
+<h4 data-page-node-id="gCCDLyiIkHweqE1Z8OvyjP">另需一并决策的两项遗留（不阻塞本方案）</h4>
+<ul data-page-node-id="hs9qgw2DMmGFhUUvCFE3JH">
+<li data-page-node-id="UbvFGOspHTZuL132be92AY">用户管理与账号体系的<b data-page-node-id="NrW2V28W2GHbfFarkdtaAa">仓库归属</b>：认证中心代码在 <code data-page-node-id="94lvMxm3bLPg8hixJ2Hedw">/root/auth-center</code>（独立仓），用户管理 UI 在 <code data-page-node-id="mmMcOM4uaPqSm26zcf6Tyj">devtools/portal</code>。重构后权限矩阵放哪边？建议统一放 portal（已有用户管理界面）。</li>
+<li data-page-node-id="acUBXNasV5W0JraR9VtHwA"><b data-page-node-id="p79TWVd1EiFzlaSrrpc6CI">superadmin 数量策略</b>：唯一保底 1 个（现役 admin 邮箱 <code data-page-node-id="sA5gpEAeA0Q1WgWWKBXoWD">marschat@163.com</code>），还是允许存在多个？建议允许多个但至少不能删到 0。</li>
+</ul>
+</div>
+
+<p style="margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px" data-page-node-id="E1HzzSG89GUuNjC5CWp2Uh">
+本文所有现状数据均于 2026-09-10 从本地仓库源码与线上库实采，未使用推测。<br data-page-node-id="2jnMQjSv5OIblGpHxRKBid">
+关联文档：<span class="mono" data-page-node-id="YCQASzqRQFf7pERvStHEoU">devtools/docs/adr/ADR-2026-09-08-统一认证单点登录.md</span>（认证）· 本方案落定后将产出对应 ADR（授权）
+</p>
+
+</div>
+</body>
+</html>

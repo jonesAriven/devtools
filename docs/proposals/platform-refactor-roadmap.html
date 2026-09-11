@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="0PzuYBRqAOaE95hOXPzOis">
+<head data-page-node-id="xt2WaA9Yu5QAGYAkkZO6B9">
+<meta charset="UTF-8" data-page-node-id="DrJMmYPo0LC7umRMqe4DQl">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="CTVbGMuJGBzmeJ9Vh5OlpE">
+<title>平台重构统一落地路线图</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --ink:#1F1F1D; --ink2:#55534E; --ink3:#8A8780;
+  --line:#E3E1DB; --line2:#CFCCC4;
+  --purple:#534AB7; --purple-bg:#EEEDFE; --purple-ink:#3C3489;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-ink:#0C447C;
+  --teal:#0F6E56; --teal-bg:#E1F5EE; --teal-ink:#085041;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-ink:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-ink:#791F1F;
+  --gray:#5F5E5A; --gray-bg:#F1EFE8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600;margin:52px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);letter-spacing:-.005em}
+h3{font-size:15px;font-weight:600;margin:28px 0 10px}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;padding:1px 5px;border-radius:4px;color:var(--purple-ink)}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+.meta{color:var(--ink3);font-size:12.5px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.lead{background:var(--purple-bg);border:1px solid #CECBF6;border-radius:12px;padding:20px 22px;margin:20px 0}
+.lead h3{margin-top:0;color:var(--purple-ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;font-weight:600;background:var(--gray-bg);color:var(--ink);
+  padding:9px 11px;border:1px solid var(--line2);white-space:nowrap}
+td{padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:#FBFBF9}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.5}
+.t-ok{background:var(--teal-bg);color:var(--teal-ink)}
+.t-warn{background:var(--amber-bg);color:var(--amber-ink)}
+.t-bad{background:var(--red-bg);color:var(--red-ink)}
+.t-info{background:var(--blue-bg);color:var(--blue-ink)}
+.t-gray{background:var(--gray-bg);color:var(--gray)}
+.t-pur{background:var(--purple-bg);color:var(--purple-ink)}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+.gap{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.dec{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.win{background:var(--teal-bg);border-left:3px solid var(--teal);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.ph{display:flex;gap:16px;padding:18px 0;border-bottom:1px dashed var(--line2)}
+.ph:last-child{border-bottom:none}
+.ph-l{flex-shrink:0;width:96px}
+.ph-badge{display:inline-flex;align-items:center;justify-content:center;width:74px;height:30px;border-radius:8px;
+  font-size:12.5px;font-weight:600}
+.p0{background:var(--teal-bg);color:var(--teal-ink)}
+.p1{background:var(--blue-bg);color:var(--blue-ink)}
+.p2{background:var(--purple-bg);color:var(--purple-ink)}
+.p3{background:var(--amber-bg);color:var(--amber-ink)}
+.p4{background:#FBEAF0;color:#72243E}
+.p5{background:var(--gray-bg);color:var(--gray)}
+.ph-c{flex:1}
+.ph-t{font-weight:600;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ph-d{font-size:13px;color:var(--ink2)}
+.ph-d b{color:var(--ink)}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}
+@media(max-width:760px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.kpi-c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi-n{font-size:24px;font-weight:600;line-height:1.15}
+.kpi-l{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.wrapnote{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"";position:absolute;left:0;top:6px;width:13px;height:13px;
+  border:1.5px solid var(--line2);border-radius:3px}
+.done li::before{border-color:var(--teal);background:var(--teal);}
+</style>
+</head>
+<body data-page-node-id="TiqTOHRbl8BVjKCqiGU0b0">
+<div class="wrap" data-page-node-id="sPHf4p5WodFnA2uiDovqNN">
+
+<h1 data-page-node-id="QMrH1zxISrQfPX4PhaNwDm">平台重构统一落地路线图</h1>
+<p class="sub" data-page-node-id="fyWEN1PSiEMkdtGZuy5iOy">把四份方案收敛成一条路径：认证重构 · 公共组件抽取 · 配置化接入 · 菜单权限</p>
+<p class="meta" data-page-node-id="f8aoTUvgQ2l8CnBvgFtIp6">2026-09-10 · 决策状态：菜单定义归属已拍板（放应用侧）· 其余待定项见 §5</p>
+
+<div class="lead" data-page-node-id="6DU07yBMD5EcfFZkollM8j">
+<h3 data-page-node-id="MA37bSzAnNBpDrirvn9SEY">先看清楚：这四份方案本来就是一件事</h3>
+<p style="margin-bottom:0" data-page-node-id="DFxKWZ2KE6dDWJM8tcKmMq">它们不是四个独立项目，而是同一件事的四个侧面——<b data-page-node-id="sto9DcbS0REHkSX0f5Mltp">「把平台从『每个应用各干各的』变成『一处定义、处处复用』」</b>。分开做会重复动同一批代码、同一批包、同一次发布窗口。所以这份路线图的作用是<b data-page-node-id="agJ0Nz9McGzNVXF91RmG14">给出依赖顺序</b>，避免返工。</p>
+</div>
+
+<h2 data-page-node-id="x1Nq056EDzW1sOY7q6yYMk">一、四份方案的关系</h2>
+
+<table data-page-node-id="auGKOXrjxNvWa4uRqpxIbk">
+<thead data-page-node-id="4mfji9zEqhUFpY2jFzQwj8"><tr data-page-node-id="5ualVRLGIOMuAQL9Mr22wi"><th data-page-node-id="xNpUCaF5LsLwgpEcMPBGzC">方案</th><th data-page-node-id="JQGRKkuiGanZPlFPq8H2su">解决什么</th><th data-page-node-id="81Z0RtjzTl3i6ivuk5k3Hg">依赖谁</th></tr></thead>
+<tbody data-page-node-id="6u22HiveikjvsNXe20OYeQ">
+<tr data-page-node-id="bvy2Ycu1bGesDHgcQgpN0N">
+<td data-page-node-id="QzCTqHFWYJnsQEz4Ot21Ar"><b data-page-node-id="lACWMib9JA6OZlUNwxYUPA">① 统一账号体系与授权模型重构</b></td>
+<td data-page-node-id="ByrwdF3yMyFyU8WO2sR6m8">一处管人（5 套账号收敛为 1 池）+ 三层 RBAC</td>
+<td data-page-node-id="EcckDANNtTDSnOwigWzwCz"><span class="tag t-gray" data-page-node-id="avphLvUAnVHzyIY7YBwUBw">无（地基）</span></td>
+</tr>
+<tr data-page-node-id="4Xrj1CMHB0ybuEoC21VY58">
+<td data-page-node-id="WQRRftwYb0S7wu9ZPO6aTW"><b data-page-node-id="FqjU9MATiFl2RlafAJmJIw">② 公共组件抽取</b></td>
+<td data-page-node-id="7EBQZxU3GNuodMDiOTaRh8">别重写代码（清 19 个死文件、消除 1200+ 行重复）</td>
+<td data-page-node-id="zsJokDo8E9o225DDStrxaR">①（RBAC 能力必须进 <code data-page-node-id="wq9FGpKuybQlY2FGoZ2m1z">auth-core</code>，否则后端无法鉴权）</td>
+</tr>
+<tr data-page-node-id="L8FVE9bAN0IU2Djljkmmc3">
+<td data-page-node-id="TKXAbjB3LbFGu4PpuijMxN"><b data-page-node-id="oQA8EZRTJZgLxXwv5FrqA3">③ 新应用配置化接入</b></td>
+<td data-page-node-id="EHz9uqHGRpMExdzvjOrgce">别重写声明（接入从 8 处收敛为 1 处）</td>
+<td data-page-node-id="McRApSGodIe5zYdDa8fkpf">②（依赖 <code data-page-node-id="THYJpHM4qPt2dUUWcQJgVE">auth-core</code> 的自动装配）</td>
+</tr>
+<tr data-page-node-id="ZYuaBay5xm2AeMk44pfzUn">
+<td data-page-node-id="pZExwXPczQ7iFK9RMwpPmm"><b data-page-node-id="DAwEgCemVsVo1jP258V1GA">④ 菜单管理与菜单权限</b></td>
+<td data-page-node-id="g94EsJk0CLMLwtwJ6pOMeD">把硬编码菜单变成可授权数据</td>
+<td data-page-node-id="O3DmbNZXyLpYNrA4K90cHn">①（<code data-page-node-id="GkPHAKLAzHs9gZ4N8NQvaA">sys_permission</code> 表）+ ②（<code data-page-node-id="qdFBFf6cy7zs3ThqVmEJyZ">&lt;SidebarMenu&gt;</code> / <code data-page-node-id="34t7vMdUauaMFFyUebeF26">useMenus()</code>）</td>
+</tr>
+</tbody>
+</table>
+
+<div class="gap" data-page-node-id="nvjYiFVviaCJeqybMBrGFK">
+<b data-page-node-id="SfuNBcTfPk8V073nRkHlqU">最关键的一条约束</b>：<b data-page-node-id="rc4bUdCH7PUCy7PesfO58h">Phase 2 是枢纽</b>——公共组件抽取（②）与 RBAC 能力建设（①的一部分）<b data-page-node-id="MjG7FP5mjRBeStDp6uFeJ7">必须同批做、同批发版</b>。
+<br data-page-node-id="m6Bc2HSRxHQMjEyNZ16u1K">因为两者都改 <code data-page-node-id="Ry4UZbn23K4qqo7oYq75kC">auth-core</code> / <code data-page-node-id="7OnBEbFJflXJUmONhizdEJ">common-core</code>，都要求全平台应用升版本。拆成两批 = <b data-page-node-id="WoDTUK2XWBBbJiJcwiOL2z">同一批包发两次版本 + 全平台应用升级两遍</b>，纯浪费。
+</div>
+
+<h2 data-page-node-id="qGVpKhkyKS0mEfixlX699u">二、阶段划分（6 个 Phase）</h2>
+
+<div class="card" data-page-node-id="3ASyl4VyjMaMyVNSgHO5By">
+
+<div class="ph" data-page-node-id="xBjP5GUPYw0x1zgZXQFWyd">
+<div class="ph-l" data-page-node-id="SKZZ86ix5wLdo6e43yLVOZ"><span class="ph-badge p0" data-page-node-id="8wCh7N3Msb1AAAXm9uEKXy">Phase 0</span></div>
+<div class="ph-c" data-page-node-id="5HfoUhRXSVIN4IYTJkDRSW">
+<div class="ph-t" data-page-node-id="3HK1eqEtTfFTNnwqZEcngs">清死代码 <span class="tag t-ok" data-page-node-id="dZpBndt01anH9OAE3Z1OSL">零风险</span><span class="tag t-ok" data-page-node-id="43qseyzaHezOOihlDWCXVl">可立即开工</span></div>
+<div class="ph-d" data-page-node-id="UEeIsIBiUwuFBECmVU18te">
+删除 kb-ops / infra-monitor-server / portal-server 三处 <code data-page-node-id="ivPBBwSSEsBSqeQC7mTFA0">com/kb/common/**</code> 共 <b data-page-node-id="I2EMk67utVImDLLR93NNxD">19 个文件</b>（零引用）。
+<br data-page-node-id="x8zi5CHX2WS5SGC1BAFHrz"><b data-page-node-id="F2jiU0xwA3X1lIqzBRGOzp">产出</b>：代码体积下降，编译通过，无行为变更。
+<br data-page-node-id="5SfvC7CeUYVTSIluiLZ3eR"><b data-page-node-id="U08daMYCfA9GteRaz1g40r">验收</b>：三应用编译 + 启动 + 冒烟通过。
+<br data-page-node-id="e9IljWcrEaO49UWHFq6YPp">⚠️ <b data-page-node-id="UtLM0nuOfmqraKDj41fqFz">需先确认</b>：<code data-page-node-id="T73rOfQ6fN45ftCPoHx30W">devtools/mykng/kb-auth</code> 是死是活（疑似被 <code data-page-node-id="UAxa4FmTZ0awFiqHbRDSug">auth-center</code> 取代）。
+</div>
+</div>
+</div>
+
+<div class="ph" data-page-node-id="QaGTkqS9eWuUjQdewMMCoA">
+<div class="ph-l" data-page-node-id="S53KabyYakDlRv0mWdJYts"><span class="ph-badge p1" data-page-node-id="l4B6vqsF4GcVgY1KzkwqbK">Phase 1</span></div>
+<div class="ph-c" data-page-node-id="1IFag04mBro5A2dsbZFAEG">
+<div class="ph-t" data-page-node-id="QODJkzNX4Wb41iCUkIKHdy">认证地基 <span class="tag t-info" data-page-node-id="3IkYvH6eQGLrBqHO7EjI3d">可独立发布</span></div>
+<div class="ph-d" data-page-node-id="yrxLAWUkdFI96afyLjF7Dk">
+库改名 <code data-page-node-id="QWfWduC7G8XimpTZFkuLbp">kb_auth</code> → <code data-page-node-id="dr9ml4eWTGct8vgADNMhcU">marschat_auth</code>（env 切换，零代码）→ 新增 <code data-page-node-id="Vz9OzreVMhD2hohfEPcyCi">user_identity</code> 表 + email 唯一约束 + 数据迁移 →
+邮箱验证码登录（全量开放）+ 超管保底通道 → <code data-page-node-id="cHRWtDhBi8uEbl9ID2yWs1">superadmin</code> 分级 → 用户管理补齐（分页/搜索/审计/事务/踢下线）。
+<br data-page-node-id="t1G05ELHGpEsFfCvf6D7H2"><b data-page-node-id="ZQDeP7sirEeaQtYDCHf4qO">产出</b>：登录方式矩阵完整；账号池基础牢靠。
+<br data-page-node-id="2ii1okYgdEVrajAk881EQj"><b data-page-node-id="BiLanPAPwqtsFAq9tZEjYa">验收</b>：邮箱验证码可登录；<code data-page-node-id="1yLxBN5FbHuPeSbYDOGXzx">superadmin</code> 不可被删/禁/降级；用户管理达 CRUD 规范。
+<br data-page-node-id="ZkS1q6T1BLr37N5ytoP4Bt"><b data-page-node-id="AvakDKedLcWvIy5ByBoE4u">回滚</b>：库改名走 env，改回即回滚；其余均为新增，无破坏性。
+</div>
+</div>
+</div>
+
+<div class="ph" data-page-node-id="qVEpFFFeJzHSxdbsj3j18e">
+<div class="ph-l" data-page-node-id="X3yuYfccC4GSYfiWVctVl5"><span class="ph-badge p2" data-page-node-id="5BEWWBzrDSGH0VfwVCCDBD">Phase 2</span></div>
+<div class="ph-c" data-page-node-id="V6IecVd5RnMMJ4XmtjvGAh">
+<div class="ph-t" data-page-node-id="0xNeAUs4sQKduqXFoeuJz9">RBAC 底座 + 公共组件 <span class="tag t-bad" data-page-node-id="BuF5zsqsqOXb90Wn7esSle">关键批 · 一次发版</span></div>
+<div class="ph-d" data-page-node-id="zllXAn5XoNzWh8E6oOgwvi">
+<b data-page-node-id="mc0Btg4sTAidGB08Q0Q3B2">认证中心</b>：建 RBAC 六表（<code data-page-node-id="HyJ4XAmBHZjWpDxzPq6wtb">sys_role</code>/<code data-page-node-id="YTyt7y0u0bCJTRBxrrj3th">sys_permission</code>/<code data-page-node-id="A8zG5Jad3pPXPEAsvPETlP">sys_role_permission</code>/<code data-page-node-id="3NJrEOWwJDDwy4ZEvtpLj0">sys_user_role</code>/<code data-page-node-id="dSoQqV5ZDioqiskrJFoAQM">sys_role_composite</code>/<code data-page-node-id="8ACUhrIEfzTCf5LATITUqU">sys_app_client</code>）+ 权限接口 <code data-page-node-id="FJ51JUz1ndoGhqJ6DVBy7V">GET /auth/permissions</code>。
+<br data-page-node-id="G1PVHLJUhAKjva1m58bzbi"><b data-page-node-id="UDo97GfrZyCsqn8Np3SPhT">auth-core</b>：扩 <code data-page-node-id="S1WB9rQzj6Ah3v43d2lic5">LoginUser</code>（roles/realm/permissions）+ <code data-page-node-id="0ROeiGrFSHT2kFBNERPuXq">@RequirePermission</code> + <code data-page-node-id="RcXbec0qPFyZkDiLUhVxx6">PermissionInterceptor</code> + <code data-page-node-id="IFx7UXdWTTCqGLvORC2ZHq">MenuRegistryReporter</code>。
+<br data-page-node-id="HBGEZJE7nzmvdL6hUlNaDm"><b data-page-node-id="0oEnknjaZJOy05fjYM8g9f">common-core</b>：新增 <code data-page-node-id="oNkIcCxU3typIaTU9aPozI">crypto</code> 包（AES-256-GCM + 存量双读）+ <code data-page-node-id="Ikp24C6RHG79M3fOLAdksX">audit</code> 包（<code data-page-node-id="7KKtsYRTRRVr4fXJCCKvxQ">@AuditOperation</code> + AOP）。
+<br data-page-node-id="NWVtSH6D5hCKnG60f2U4Wh"><b data-page-node-id="ZwmtF0AtMMNIkXcUCCZqbT">前端包</b>：<code data-page-node-id="whvNdksKqToBwayRDsEs53">auth-components</code> 补 <code data-page-node-id="rMnRzO6AsXDK2AuxFDueKY">createSsoClient</code> 工厂 / <code data-page-node-id="s6OBAPCJ0dXU4aBNiFCbhy">useMenus</code> / <code data-page-node-id="BkQF7quKCirRzeefPPP33I">usePermissions</code> / <code data-page-node-id="dr67P4VNmeD0iDF1TaekHd">PermissionGate</code>；<code data-page-node-id="B6gICmOImnyNf96viwklJZ">frontend-common</code> 补 <code data-page-node-id="lYIFDeFPwX08YG1MWp5u2t">createAuthGuard</code> / <code data-page-node-id="jxxg0ArX10eWi62Txxy3Po">SidebarMenu</code>（含「挂载路由前先拉权限」修正）。
+<br data-page-node-id="nVCuCDCY20DMjITKXY3O0o"><b data-page-node-id="EW6lZ9mtGfPY6cjGKynQxL">发版</b>：common-core / auth-core / auth-components / frontend-common 四包同批。
+<br data-page-node-id="4IngOCWzGnnKRdg0k19tB6"><b data-page-node-id="15n27eFkoINzzksjQjImGL">验收</b>：全平台应用升级后功能等价（逐应用回归）；<code data-page-node-id="R6RSs2t7GtPZxBMJf16Pkb">@RequirePermission</code> 生效率验证。
+</div>
+</div>
+</div>
+
+<div class="ph" data-page-node-id="6lNBXUGtFFi5zSfUfTqHKa">
+<div class="ph-l" data-page-node-id="nrfy8SwBov1SDCGP4Dwq2I"><span class="ph-badge p3" data-page-node-id="xmoTFmDF3TKVdMHS1fUqbT">Phase 3</span></div>
+<div class="ph-c" data-page-node-id="l3QKLp0GfsGgv0WVM1mpPQ">
+<div class="ph-t" data-page-node-id="xg7bOORFR3hPMJm770vS6o">配置化接入 <span class="tag t-warn" data-page-node-id="A9jyDfJqGXMGgN006hY8E1">依赖 Phase 2</span></div>
+<div class="ph-d" data-page-node-id="qwgysnV9vi96yjYTsv70hw">
+新增 <code data-page-node-id="CLfsHSySZcQF26T35ZVdCZ">apps-registry.yml</code>（单一真源）+ <code data-page-node-id="Xd2WG6FqhiQh3bAmJmF94d">gen-from-registry.py</code> 生成器 →
+auth-center <b data-page-node-id="nOUF8qssYVTMAqTIAMlgZK">L1</b> 改为读 <code data-page-node-id="crN0j1Dqrr4rn9qsfCbwii">clients.yml</code>（<b data-page-node-id="R8ob1yEFxhQcCmHAQOLoo8">删掉 5 段硬编码 Java</b>）→
+前端改运行时 <code data-page-node-id="inM2Z9Qb0szJLPWlCqmydI">app-config.json</code>（同产物多环境）。
+<br data-page-node-id="fnoiEPaof7wOVbXBAEFbz5"><b data-page-node-id="LpktgErCT3lhb6h9BHNOMp">产出</b>：接入新应用不再改认证中心代码。
+<br data-page-node-id="lFXhHCUFWOcFSxNlAX6mWH"><b data-page-node-id="1Eo9P6unX4Wo7iaJJZErCc">验收</b>：<b data-page-node-id="PX0WLLqw0jYYde9XDu2hv5">拿一个测试应用走完整流程——全程不改 auth-center 任何 Java 文件，成功接入</b>。这是本阶段的硬指标。
+</div>
+</div>
+</div>
+
+<div class="ph" data-page-node-id="TDiAW4WjOH72TDnnIQKsnI">
+<div class="ph-l" data-page-node-id="aXlOO99E4HvlS3CjrX8a1c"><span class="ph-badge p4" data-page-node-id="WMNdAggOUMVLMekm7IDmfC">Phase 4</span></div>
+<div class="ph-c" data-page-node-id="UCecAinrfJhRbQMPBmfKzV">
+<div class="ph-t" data-page-node-id="As5CDb9JKHJpgzmM0CGcBD">菜单权限 <span class="tag t-warn" data-page-node-id="EreNf6ijEsSg34SwQVxWg9">依赖 Phase 1/2</span></div>
+<div class="ph-d" data-page-node-id="aFUMxWRTJ2JBDyMIVUmaIs">
+<code data-page-node-id="KdQaw5aLDkjGXCTAWRN8iy">menu-registry.yml</code> 落地 + 上报打通（全量覆盖语义）→ 存量 4 应用菜单<b data-page-node-id="QNk7Y8aVddrCYteMItQTAs">先只做上报</b> →
+管理界面双视角（「用户 × 系统 × 菜单」+「角色 × 菜单」）→ 三层同源（菜单 / 路由守卫 / <code data-page-node-id="MF5bpFGAiHnJzFSejbEj2h">@RequirePermission</code>）。
+<br data-page-node-id="5DtwHg3oZo6wzReSG3iGnN"><b data-page-node-id="Qll56LMKn26Is0P2OHAZkQ">产出</b>：菜单可授权，且直输 URL、直接调接口都被拦住。
+<br data-page-node-id="PEcYTEmH88ziFmt7QoYBlW"><b data-page-node-id="PUHW7jTjrufSm6mtmdlrS7">验收</b>：给某用户减掉一个菜单后，<b data-page-node-id="sEOpXau0o5ARbFbXuGRsri">侧边栏消失 + 直输 URL 被拦 + 对应接口 403</b>，三层同时生效。
+</div>
+</div>
+</div>
+
+<div class="ph" data-page-node-id="wPsG22uKRon2YIepdFzKuh">
+<div class="ph-l" data-page-node-id="9ZXSt5qfLoBjFfEnWSHpUh"><span class="ph-badge p5" data-page-node-id="EsEpZ7EvIoG57ayIIXHGKR">Phase 5</span></div>
+<div class="ph-c" data-page-node-id="rAUx6syWv1LKcgKAYt3yZj">
+<div class="ph-t" data-page-node-id="YB0LinTnoAAj0sGjlhspe4">存量收敛 <span class="tag t-gray" data-page-node-id="H1M9HgB6PfVFKXeH4qLDDW">逐应用</span></div>
+<div class="ph-d" data-page-node-id="YE8YnwBg4I4aZRlTpk9gHb">
+各应用接入公共库（myfrp / active-manager / mykng-kb-ops）→ portal JIT 关联键改 <code data-page-node-id="2mJWxFxsVixA6k8In0U0tr">sub</code> →
+注册 cosmic-studio 与 frp-manager 的 OIDC 客户端 → 本地账号表降级下线 → 前端 <code data-page-node-id="LNhP9es7yncifR5yjJQAcg">&lt;SidebarMenu&gt;</code> 替换硬编码菜单。
+<br data-page-node-id="2D9ljV9969yJ4FRuYJTWaf"><b data-page-node-id="imo2TTh5BvZ0XXeVgsQhQT">产出</b>：账号体系真正收敛为单一池，菜单全部数据化。
+<br data-page-node-id="iSlj0Pjd55z1CvEDKunOMn"><b data-page-node-id="V2zOt50oB97Ry5fpliCiuN">验收</b>：账号只在 <code data-page-node-id="4XStdf3VqCnvuJVHVevjTx">marschat_auth</code> 一处；任一应用菜单改动不touch其他仓库。
+</div>
+</div>
+</div>
+
+</div>
+
+<h2 data-page-node-id="Yl4XerB5Z6HMCX5xJo5fPm">三、依赖图</h2>
+
+<pre data-page-node-id="fW2sJSItFLjdjHG1zHld62">Phase 0  清死代码 ────────────────────────────┐
+                                              │ 独立，随时可做
+Phase 1  认证地基（库改名/身份表/邮箱登录/超管/用户管理）
+             │
+             ├──────────────┐
+             ▼              ▼
+Phase 2  RBAC 底座 + 公共组件（关键批 · 一次发版）
+             │              │
+             │              ├──────────────┐
+             ▼              ▼              ▼
+Phase 3  配置化接入      Phase 4 菜单权限
+             │              │
+             └──────┬───────┘
+                    ▼
+Phase 5  存量收敛（逐应用）</pre>
+
+<div class="win" data-page-node-id="1TCuwjqxFCJ9OcgrP63H7z">
+<b data-page-node-id="JNJC4wLl5cZ3GkV6GgVp2M">为什么要 Phase 1 在 Phase 2 之前</b>：Phase 1 改的是「账号与凭证」这一层（user / user_identity），
+Phase 2 改的是「角色与权限」这一层（RBAC 六表）。权限表要引用 <code data-page-node-id="jOouN6CdmZhT0Jml4XHRHh">user.id</code>，所以人这一层必须先稳。
+<br data-page-node-id="697cjrGU3sgxhTkvLdXNP0"><b data-page-node-id="bsOVClANR60UukE9gvYkmF">为什么 Phase 3 与 Phase 4 可以并行</b>：一个改「接入机制」，一个改「菜单授权」，两者的交集只有
+<code data-page-node-id="kYMUWokDZIPmSVLW1a9LUv">apps-registry.yml</code> 里的 <code data-page-node-id="PeCEHDljQyPhPq4vVoMvz6">menus</code> 字段——接口定义清楚后互不阻塞。
+</div>
+
+<h2 data-page-node-id="32fragOlG4Kx6RxNz4VVAp">四、决策状态</h2>
+
+<table data-page-node-id="i9HAmpKVijJIxYXxHgYYeY">
+<thead data-page-node-id="Ohn1iV7moZpBuhCFhqHE5u"><tr data-page-node-id="08QCTKxGqGGHHgF5h9L6ar"><th data-page-node-id="rGOlPFC4n8QQ5ANj3i9TkV">决策项</th><th data-page-node-id="A3XWi9gZBggoKUII5XP9Fd">状态</th><th data-page-node-id="6iGObk1WgBuvME5tV9bwXZ">结论 / 建议</th><th data-page-node-id="wQmpfhfp7wcieIEwyb3buZ">阻塞</th></tr></thead>
+<tbody data-page-node-id="eA6gLz1xp52Do2KoejfrSX">
+<tr data-page-node-id="tcSZe4TB4DA1xfF0NtGyMm">
+<td data-page-node-id="QFRf9hId1G1jE90lAcQEXJ"><b data-page-node-id="tJLy5iLDbqQzWLUdW3RgAM">菜单定义归属</b></td>
+<td data-page-node-id="RgbH8rMMNaaZTeE9x5oYso"><span class="tag t-ok" data-page-node-id="Tojqex0OXiRAgEBu1hzold">✅ 已定</span></td>
+<td data-page-node-id="rxsCxkmEDPczEVcWA6UDle"><b data-page-node-id="dPYHMigX8bdsccBDCKCDY2">放应用侧</b>——中心只存授权，管理界面不做「建菜单」，上报走全量覆盖</td>
+<td data-page-node-id="8vn5JjUELiaAYcmsMtiuH8">Phase 4</td>
+</tr>
+<tr data-page-node-id="11J9jrvpr3GFyYZXKAyxUs"><td data-page-node-id="R6GYoBH0GcMCDqhWI7oFeN">库改名是否并入 Phase 1</td><td data-page-node-id="zF36H6vPIfMlgKxGECcLe4"><span class="tag t-warn" data-page-node-id="gThh9LJB7eprvHLNe9cDYT">待定</span></td><td data-page-node-id="GfmclHnFctNlFLHDosVuzp">建议并入（同一次动库窗口）</td><td data-page-node-id="eb9YdB6LmLRUTawH7bGVll"><b data-page-node-id="Ee7RIR2HDq9LnDWXwzLZp5">Phase 1 起步</b></td></tr>
+<tr data-page-node-id="uLw1LtK2n2zgLmCw02A0Bw"><td data-page-node-id="KCaApvfFK7GplKDQyPL8LE">权限粒度：菜单+接口 / 按钮级</td><td data-page-node-id="YCQ3IIFSMjQ1FDBo2A8YBy"><span class="tag t-warn" data-page-node-id="HOh8msGXcHpQwbjiyHhUBq">待定</span></td><td data-page-node-id="RaMfA1KKrHfJCt5LYHVNGn">按钮级工作量约翻倍</td><td data-page-node-id="cAw8V9njGi5UwDHtlwAMpd"><b data-page-node-id="IOAJaAmCpKyVC6S7liaBKA">Phase 2</b></td></tr>
+<tr data-page-node-id="6mqlosuuAGVCsGYLas6m86"><td data-page-node-id="rHa6F7W0FJlNNXOskb4XJa"><code data-page-node-id="sVMJkuoYdagdrQMwQNvppD">CryptoUtil</code> 收敛策略</td><td data-page-node-id="lJ12Bb54LkAv0tbXY0WcvD"><span class="tag t-warn" data-page-node-id="rTVZPiaVVAJyHLIdqa8HoJ">待定</span></td><td data-page-node-id="DBXnJ5xnHq33NBqYqJH13O">建议 AES-256-GCM 标准 + 存量双读</td><td data-page-node-id="aHt91r5OXTyDMjR1GJlmAQ"><b data-page-node-id="Q1cLXxtcVFkRNUae4hZigH">Phase 2</b></td></tr>
+<tr data-page-node-id="jGro02nDvSgmI1ZRsfurdP"><td data-page-node-id="nCbMXCF0648ZS7rXhIZYpA"><code data-page-node-id="CvAjRF2ud5y0eLNr9hUs1H">mykng/kb-auth</code> 存废</td><td data-page-node-id="SgEQkDZHQ9Fmov4CFZxNTQ"><span class="tag t-warn" data-page-node-id="bndBbSyHBUHR3YjFa4SxYj">待定</span></td><td data-page-node-id="BdcqxCuWKGid9uuzDARjYR">疑似被 auth-center 取代</td><td data-page-node-id="sBSHukMNFMe7L9ofsyfmq6"><b data-page-node-id="DaqBEHxT0AUVlvqyEXoagF">Phase 0</b></td></tr>
+<tr data-page-node-id="CMWE3ZLR7RRqmNpWYFUuW4"><td data-page-node-id="FJobVu8Lrc8l3M4hEApwzs">用户级菜单权限是否保留</td><td data-page-node-id="BeBtcx09PjiYXbela1vzlp"><span class="tag t-warn" data-page-node-id="CgULrGpI7hLHxaQ2QqTqjA">待定</span></td><td data-page-node-id="DYiHBQcgT1kGCIJsXgj57v">建议保留（角色默认 + 用户白名单减法）</td><td data-page-node-id="8uOj5rHeEmTMIkLt5hNGVc">Phase 4</td></tr>
+<tr data-page-node-id="4Ew9hCvd7za5ZE8chB0UW0"><td data-page-node-id="qdmO3gsD8XfEHOqUc7UHda">未配置菜单权限时默认策略</td><td data-page-node-id="llhf70PCTK8xMFHVKOVHoG"><span class="tag t-warn" data-page-node-id="ALX9BbE6ceiYFEpDgcyPNz">待定</span></td><td data-page-node-id="lZcyGPfxB4Jyg7ISDUmZdF">建议「跟随角色默认」</td><td data-page-node-id="C18wwG3KyDNI4taKuKsWkz">Phase 4</td></tr>
+<tr data-page-node-id="q83ILDAlfOls1nQ5qBCCMq"><td data-page-node-id="S22eEYUCrsiYkuQpeFYJIm"><code data-page-node-id="qUm4lwpvFlBURBHPfzIDka">apps-registry.yml</code> 放哪</td><td data-page-node-id="RYaIBcIMMmVcyD2Mq4eqki"><span class="tag t-warn" data-page-node-id="DwfxtHAGiUlfj6lOKeBUGK">待定</span></td><td data-page-node-id="NXycWuA9BWaspzOy20Pirn"><code data-page-node-id="30xIEJXtbhANtuW5CBjdrV">devtools/</code> 独立 / 并入 module-registry / 放 config-as-code</td><td data-page-node-id="00Mr5WCcFuSZWuSWysxEAa">Phase 3</td></tr>
+<tr data-page-node-id="xCiXlZT2TNGIGnZ3O3rT75"><td data-page-node-id="EXjJ6HQeUKKY2JFLsNKi1T">auth-center 走 L1 还是 L1+L2</td><td data-page-node-id="THgSuMkB4J9BV7BScOk9DL"><span class="tag t-warn" data-page-node-id="ICEvKgqgl873hYrgfPyITZ">待定</span></td><td data-page-node-id="wNnVRTDhFaPQKAhaGPzcXj">L1 零风险；L2 注册免重启但要写接口+界面</td><td data-page-node-id="CLYtLyaEXQEu2nDM2Rg5f4">Phase 3</td></tr>
+<tr data-page-node-id="ViciKL792lRbI8dFhbOJqA"><td data-page-node-id="MtDXJraZGHeZOPN1QzRXD7">前端运行时配置是否做</td><td data-page-node-id="JJFG3AW1NuOSZWl4R14mN0"><span class="tag t-warn" data-page-node-id="8zzJ34A9PY1bpHZvPx5amE">待定</span></td><td data-page-node-id="dVZKeCRjXEgRJ4Dk4RsJwD">收益最直观（同产物多环境）</td><td data-page-node-id="M5VzbD8BtDOIAz6X4npwnt">Phase 3</td></tr>
+<tr data-page-node-id="GNoFAL99xi4lUEHWJJDveA"><td data-page-node-id="w1li98SLnmVTrxEIFyMqXy">生成器用什么写</td><td data-page-node-id="sauM7zpNLcVBZqFVR6T6JK"><span class="tag t-gray" data-page-node-id="5sOZQX1o0Ar4y3X6R1hIvS">可后置</span></td><td data-page-node-id="8kSLwJjHIAO1rZOD1BK3f2">Python（沿用 generate_docs.py）或 Node</td><td data-page-node-id="fvHo4rNZx5iiO4LjhnGfUu">Phase 3</td></tr>
+<tr data-page-node-id="3TtSsLwu18QlfgqEEy7onJ"><td data-page-node-id="cSZmeFPLtabSfHn3LfodPP">是否要脚手架 CLI</td><td data-page-node-id="dhQPrjkQ7VuZPN1aQfL9WK"><span class="tag t-gray" data-page-node-id="BKumKeEPX80sCKCg6r9yOA">可后置</span></td><td data-page-node-id="1gqSqbbJJ4L4reGwHbCfhH">模板目录可能就够，CLI 易过度设计</td><td data-page-node-id="5tzFT0NUWcaGvF5qNfgzki">Phase 5 后</td></tr>
+</tbody>
+</table>
+
+<h2 data-page-node-id="U7iIwikyxNr0FSQgAoWtvE">五、建议的开工顺序</h2>
+
+<div class="card" data-page-node-id="Ix1mRQUOCyKNIfgivrjo2A">
+<div class="ph" data-page-node-id="vxdnphbPV5tmdZM8VLaVxC">
+<div class="ph-l" data-page-node-id="l8Dhgnb7mhyxCurvWtG7Vx"><span class="ph-badge p0" data-page-node-id="ykyqf6o0RVEiv6Brw1ctJu">马上</span></div>
+<div class="ph-c" data-page-node-id="qx5RDGPsfsLpPDgM3HRip3">
+<div class="ph-t" data-page-node-id="HXdP53QCsZ4nanWfnBXxqH">Phase 0 全量 + Phase 1 起步</div>
+<div class="ph-d" data-page-node-id="5CLiN6FzsH48AHpvHKA8bW">Phase 0 不需要任何决策，<b data-page-node-id="0VAqR6LPEVVWjvpMbxKXe3">可以直接开工</b>（唯一前提是确认 <code data-page-node-id="LDATb0uOIAlSyVjWRQNfsf">mykng/kb-auth</code> 存废）。
+<br data-page-node-id="8zkFMK36hIjbQXQ9iXnYq0">Phase 1 只卡一个「库改名是否并入」，定了就能连做。</div>
+</div>
+</div>
+<div class="ph" data-page-node-id="am9qdF9EtnhHajk310CzlT">
+<div class="ph-l" data-page-node-id="jvZEeAYGlVqmuyxCZB8l8k"><span class="ph-badge p2" data-page-node-id="Y9mCOKjPubdZmXvME3DZv0">关键</span></div>
+<div class="ph-c" data-page-node-id="YY3aQkIBHaKS2RZD8lfZ0D">
+<div class="ph-t" data-page-node-id="lWKKL1GKSGemiUKD112Hfa">Phase 2 一次性做完再发版</div>
+<div class="ph-d" data-page-node-id="dJFNhODAoAoyGoGbYCJIoX">这是全流程风险最集中的一批（改 <code data-page-node-id="unbZhkhZMmYbb4Rz11A1KS">auth-center</code> 枢纽 + 四个包同批发布 + 全平台升级）。
+<br data-page-node-id="Fe4lBSkwvTPGPDCK5iY4h9"><b data-page-node-id="rjvBONVFzmhp1hDyEadJMd">必须先把「权限粒度」和「CryptoUtil 策略」两个决策定下来</b>，否则中途改口径要重发版。</div>
+</div>
+</div>
+<div class="ph" data-page-node-id="x6eoFjKNT2JAzMzq4keLNg">
+<div class="ph-l" data-page-node-id="0vVSicP3ARi8cAl6dGFhM5"><span class="ph-badge p3" data-page-node-id="15SSzZmqhMRREHBxapVVTI">随后</span></div>
+<div class="ph-c" data-page-node-id="xy1ylMGe69DEatfjqWCkzb">
+<div class="ph-t" data-page-node-id="uX3aKwtt6EGL952Xk17vnT">Phase 3 / Phase 4 可并行</div>
+<div class="ph-d" data-page-node-id="gryVAVyUJcQLXS3nIAt2GA">接口对齐后互不阻塞。Phase 4 建议先只做上报（让权限界面有数据），前端渲染改造分应用后置。</div>
+</div>
+</div>
+</div>
+
+<div class="lead" data-page-node-id="MJyD2uEFnI5vFaW5QuwU76">
+<h3 data-page-node-id="SIYnyGCzFCTpKhvZ0gf4bw">一句话总结这条路径</h3>
+<p style="margin-bottom:0" data-page-node-id="9PydEDShHRsM8mRxCsE1Pw">
+<b data-page-node-id="7jjI2d7j3DUqCUEreE96LJ">先把地扫干净</b>（Phase 0）→ <b data-page-node-id="1YT1G7EZII8mcWK8efpRyz">把「人」这一层做扎实</b>（Phase 1）→ <b data-page-node-id="nqzJ7SylvHhMpq8EUsu6KV">一次把「权限」和「组件」都建起来</b>（Phase 2，枢纽）→
+<b data-page-node-id="uwemozbrR5JsBuBWPmaCSA">让接入变便宜</b>（Phase 3）→ <b data-page-node-id="MTOri82B9fXfvKKCCNmRDB">让菜单可授权</b>（Phase 4）→ <b data-page-node-id="mqNo08kFKa2qIJcZXCcCXk">把存量收干净</b>（Phase 5）。
+<br data-page-node-id="vc6HxQlL15cq8thF1g6Ot7">前五个 Phase 都在「建能力」，最后一个才「搬家」——这样风险始终在可控的一侧。
+</p>
+</div>
+
+<p class="wrapnote" data-page-node-id="O1O11xuThd3JOzBGrauwlF">
+本路线图汇总自四份方案：《统一账号体系与授权模型重构方案》《公共组件抽取方案》《新应用配置化接入方案》《菜单管理与菜单权限接入方案》，
+所有现状数据均于 2026-09-10 从本地仓库实采。<br data-page-node-id="0uOAGoqSj7dRgmkWlwNMF0">
+决策状态：菜单定义归属已由良哥拍板（2026-09-10，放应用侧）；其余 8 项待定，已标注各自阻塞的 Phase。
+</p>
+
+</div>
+</body>
+</html>

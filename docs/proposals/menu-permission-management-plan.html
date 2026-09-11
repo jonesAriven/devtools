@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>菜单管理与菜单权限接入方案</title>
+<style>
+:root{
+  --bg:#F7F7F5; --card:#FFFFFF; --ink:#1F1F1D; --ink2:#55534E; --ink3:#8A8780;
+  --line:#E3E1DB; --line2:#CFCCC4;
+  --purple:#534AB7; --purple-bg:#EEEDFE; --purple-ink:#3C3489;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-ink:#0C447C;
+  --teal:#0F6E56; --teal-bg:#E1F5EE; --teal-ink:#085041;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-ink:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-ink:#791F1F;
+  --gray:#5F5E5A; --gray-bg:#F1EFE8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 80px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600;margin:52px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--ink);letter-spacing:-.005em}
+h3{font-size:15px;font-weight:600;margin:28px 0 10px}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;padding:1px 5px;border-radius:4px;color:var(--purple-ink)}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+.meta{color:var(--ink3);font-size:12.5px;margin-bottom:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0}
+.lead{background:var(--purple-bg);border:1px solid #CECBF6;border-radius:12px;padding:20px 22px;margin:20px 0}
+.lead h3{margin-top:0;color:var(--purple-ink)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;font-weight:600;background:var(--gray-bg);color:var(--ink);
+  padding:9px 11px;border:1px solid var(--line2);white-space:nowrap}
+td{padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+tbody tr:nth-child(even){background:#FBFBF9}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.5}
+.t-ok{background:var(--teal-bg);color:var(--teal-ink)}
+.t-warn{background:var(--amber-bg);color:var(--amber-ink)}
+.t-bad{background:var(--red-bg);color:var(--red-ink)}
+.t-info{background:var(--blue-bg);color:var(--blue-ink)}
+.t-gray{background:var(--gray-bg);color:var(--gray)}
+.t-pur{background:var(--purple-bg);color:var(--purple-ink)}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+.gap{background:var(--red-bg);border-left:3px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.dec{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.win{background:var(--teal-bg);border-left:3px solid var(--teal);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.opt{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0;background:var(--card)}
+.opt.rec{border:1.5px solid var(--teal);background:#F6FCF9}
+.opt-h{font-size:13.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.opt-b{font-size:13px;color:var(--ink2)}
+pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#EFEEE9;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  overflow-x:auto;margin:12px 0;line-height:1.6}
+.mock{background:#FFFFFF;border:1px solid var(--line2);border-radius:10px;padding:14px 16px;margin:14px 0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.75;overflow-x:auto}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}
+@media(max-width:760px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.kpi-c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi-n{font-size:24px;font-weight:600;line-height:1.15}
+.kpi-l{font-size:12.5px;color:var(--ink3);margin-top:4px}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+.toc a{color:var(--ink);text-decoration:none;font-size:13px}
+.toc a:hover{color:var(--purple);text-decoration:underline}
+.toc ol{columns:2;column-gap:32px;margin:6px 0;padding-left:20px}
+@media(max-width:760px){.toc ol{columns:1}}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"";position:absolute;left:0;top:6px;width:13px;height:13px;
+  border:1.5px solid var(--line2);border-radius:3px}
+.step{display:flex;gap:14px;padding:14px 0;border-bottom:1px dashed var(--line2)}
+.step:last-child{border-bottom:none}
+.step-n{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--blue-bg);color:var(--blue-ink);
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}
+.step-c{flex:1}
+.step-t{font-weight:600;margin-bottom:4px}
+.wrapnote{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>菜单管理与菜单权限接入方案</h1>
+<p class="sub">把「硬编码在模板里的菜单」变成「可授权的数据」，并让新应用零成本接入</p>
+<p class="meta">2026-09-10 · 承接《统一账号体系与授权模型重构方案》《公共组件抽取方案》《新应用配置化接入方案》</p>
+
+<div class="toc">
+<strong style="font-size:13px">目录</strong>
+<ol>
+<li><a href="#s1">结论速览</a></li>
+<li><a href="#s2">现状盘点：四种菜单状态</a></li>
+<li><a href="#s3">关键区分：菜单的三层</a></li>
+<li><a href="#s4">核心判断：定义留应用侧</a></li>
+<li><a href="#s5">统一菜单元数据模型</a></li>
+<li><a href="#s6">菜单权限的双重模型</a></li>
+<li><a href="#s7">三层同源（菜单 / 路由 / 接口）</a></li>
+<li><a href="#s8">菜单管理界面设计</a></li>
+<li><a href="#s9">新应用接入菜单的三步</a></li>
+<li><a href="#s10">存量改造与「没有菜单」怎么办</a></li>
+<li><a href="#s11">待拍板</a></li>
+</ol>
+</div>
+
+<h2 id="s1">一、结论速览</h2>
+
+<div class="kpi">
+<div class="kpi-c"><div class="kpi-n" style="color:var(--teal)">1</div><div class="kpi-l">个应用有菜单权限（cosmic）</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--red)">~90</div><div class="kpi-l">个菜单项硬编码在模板里</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--amber)">0</div><div class="kpi-l">个应用有菜单管理界面（除 cosmic）</div></div>
+<div class="kpi-c"><div class="kpi-n" style="color:var(--purple)">3</div><div class="kpi-l">层菜单必须区分</div></div>
+</div>
+
+<div class="lead">
+<h3>先纠正一个前提</h3>
+<p style="margin-bottom:0">「很多自建应用没有菜单」——实测下来不成立。<b>每个应用都有菜单，只是只有 cosmic 把它当作「数据」，其余全写死在 Vue 模板里</b>（kb-web ~50 项、kb-ops-web ~25 项、infra-monitor-web ~11 项、myfrp 4 项）。所以问题不是「没菜单」，而是<b>菜单以标签形式存在，无法被授权</b>。把标签变成数据，就是菜单管理的全部前提。</p>
+</div>
+
+<h2 id="s2">二、现状盘点：四种菜单状态</h2>
+
+<table>
+<thead><tr><th>应用</th><th>菜单形态</th><th>菜单项</th><th>菜单权限</th></tr></thead>
+<tbody>
+<tr>
+<td><b>cosmic-studio</b></td>
+<td><span class="tag t-ok">后端下发</span> <code>GET /studio/menus</code> ← <code>MENU_REGISTRY</code>；<code>Layout.vue</code> 用 <code>v-for</code> 渲染</td>
+<td>8</td>
+<td><span class="tag t-ok">有</span> <code>user.menu_perms</code> 白名单 + <code>Admin.vue</code> 配置界面</td>
+</tr>
+<tr>
+<td>kb-web</td>
+<td><span class="tag t-bad">模板硬编码</span> <code>MainLayout.vue</code></td>
+<td>~50</td>
+<td><span class="tag t-bad">无</span></td>
+</tr>
+<tr>
+<td>kb-ops-web</td>
+<td><span class="tag t-bad">模板硬编码</span> <code>MainLayout.vue</code>（4 个 <code>el-sub-menu</code> 分组）</td>
+<td>~25</td>
+<td><span class="tag t-bad">无</span></td>
+</tr>
+<tr>
+<td>infra-monitor-web</td>
+<td><span class="tag t-bad">模板硬编码</span> <code>MainLayout.vue</code></td>
+<td>~11</td>
+<td><span class="tag t-bad">无</span></td>
+</tr>
+<tr>
+<td>myfrp</td>
+<td><span class="tag t-warn">模板硬编码</span> <code>views/Layout.vue</code></td>
+<td>4</td>
+<td><span class="tag t-warn">雏形</span> 唯一一处 <code>v-if="role === 'ADMIN'"</code> 写在模板里</td>
+</tr>
+<tr>
+<td>portal</td>
+<td><span class="tag t-info">数据驱动，但不是应用内菜单</span> <code>systems.ts</code> 271 行 = 平台系统导航</td>
+<td>系统卡片</td>
+<td><span class="tag t-bad">无</span></td>
+</tr>
+<tr>
+<td>active-manager / omnifind / note</td>
+<td>无 layout 目录</td>
+<td>—</td>
+<td><span class="tag t-bad">无</span></td>
+</tr>
+</tbody>
+</table>
+
+<div class="gap">
+<b>两个实证细节</b>：
+<br>① 三个前端路由文件里 <code>meta</code> 只有 <code>requiresAuth</code>，<b>没有 title／icon／menu 任何元数据</b>——菜单信息 100% 在模板标签里，路由与菜单是两套互不相干的东西。
+<br>② <code>myfrp</code> 的 <code>&lt;el-menu-item index="/users" v-if="role === 'ADMIN'"&gt;</code> 是全平台唯一的「菜单权限」雏形——硬编码在模板里，改一次要重发前端。
+</div>
+
+<h3>cosmic 的参考价值（现有唯一完整实现）</h3>
+
+<table>
+<thead><tr><th>能力</th><th>cosmic 的做法</th><th>评价</th></tr></thead>
+<tbody>
+<tr><td>菜单定义</td><td>后端 <code>MENU_REGISTRY</code>：<code>{key, title, icon, path, min_role}</code></td><td><span class="tag t-ok">结构正好是通用模型</span></td></tr>
+<tr><td>权限双重模型</td><td>角色下限先卡 + <code>menu_perms</code> 白名单做减法（只能减不能加）</td><td><span class="tag t-ok">设计正确，业界常用</span></td></tr>
+<tr><td>菜单下发</td><td><code>GET /studio/menus</code> 按「角色下限 ∩ 白名单」过滤后返回</td><td><span class="tag t-ok"></span></td></tr>
+<tr><td>配置界面</td><td><code>Admin.vue</code>：「跟随角色 / 自定义」开关 + 菜单勾选；列表列显示「跟随角色」或「自定 N 项」</td><td><span class="tag t-ok">交互范式可复用</span></td></tr>
+<tr><td>直输 URL 拦截</td><td>前端按菜单集合二次判权，不在集合内则重定向</td><td><span class="tag t-warn">方向对，但实现脆弱（见 §7）</span></td></tr>
+</tbody>
+</table>
+
+<h2 id="s3">三、关键区分：菜单的三层</h2>
+
+<p>「菜单管理」这个词把三件不同的事混在一起了，必须先拆开，否则设计必然走偏。</p>
+
+<table>
+<thead><tr><th>层</th><th>管什么</th><th>归属</th><th>变更频率</th></tr></thead>
+<tbody>
+<tr>
+<td><b>L0 菜单定义</b></td>
+<td>菜单树本身：key／标题／图标／路径／分组／排序／是否隐藏</td>
+<td><b>应用自己</b></td>
+<td>随应用发版（跟路由/页面强绑定）</td>
+</tr>
+<tr>
+<td><b>L1 菜单权限</b></td>
+<td>谁能看到哪些菜单：角色 → 菜单、用户 → 菜单</td>
+<td><b>认证中心</b></td>
+<td>随时改（运营动作，不该发版）</td>
+</tr>
+<tr>
+<td><b>L2 菜单渲染</b></td>
+<td>按权限过滤并渲染出侧边栏</td>
+<td><b>前端公共组件</b></td>
+<td>随组件发版</td>
+</tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>为什么必须拆开</b>：如果 L0 也放到认证中心，那么「给某个应用加一个菜单项」就要改认证中心的数据甚至代码，并重新部署它——又回到了上一份方案里「接入要动 8 处」的老问题。而 L0 天然属于应用：菜单项对应的是路由和页面组件，页面没发版，菜单先出现只会 404。
+</div>
+
+<h2 id="s4">四、核心判断：菜单定义留应用侧，认证中心只存「授权」</h2>
+
+<div class="opt">
+<div class="opt-h">A. 菜单全部集中到认证中心定义</div>
+<div class="opt-b">好处：一处看全平台菜单。坏处：<b>认证中心变成所有应用菜单的数据库</b>——加菜单要动它、菜单与前端路由脱节（先有菜单后有页面就会 404）、还要为每个应用维护不同的菜单模型。这是把耦合从应用搬到了枢纽，<b>不推荐</b>。</div>
+</div>
+<div class="opt rec">
+<div class="opt-h">B. 定义留应用侧，元数据上报，认证中心只存权限 <span class="tag t-ok">✅ 已拍板 2026-09-10</span></div>
+<div class="opt-b">
+应用侧写 <code>menu-registry.yml</code>（L0）→ 启动时上报给认证中心 → 认证中心存进 <code>sys_permission(type=menu)</code> 供<b>授权界面展示</b>（L1）→ 登录后按授权结果下发本应用菜单集合 → 前端 <code>&lt;SidebarMenu&gt;</code> 渲染（L2）。
+<br><b>关键</b>：认证中心是「<b>存 + 授权</b>」，不是「<b>定义</b>」。所以「应用没有菜单」对它毫无影响——不上报就不出现，等有了菜单再加一个 yml。
+</div>
+</div>
+
+<div class="win">
+<b>✅ 良哥已拍板：放应用侧（2026-09-10）</b>。连带确定的几件事：
+<br>① <b>管理界面不做「建菜单」功能</b>，只做「谁可见」的授权配置（§8 的两张界面）。
+<br>② <b>菜单变更不需要动认证中心</b>——加菜单 = 改应用自己的 yml + 应用发版，中心零改动。
+<br>③ 因此<b>菜单上报必须是「全量覆盖」语义</b>——中心以应用最后一次上报为准，才能识别出「已删除的菜单」并标记失效。
+<br>④ 也意味着<b>中心不校验菜单路径是否有效</b>（那是应用的事），中心只存元数据 + 授权关系。
+</div>
+
+<pre>应用侧（定义+上报）              认证中心（存储+授权）              应用侧（消费）
+menu-registry.yml  ──启动上报──▶  sys_permission(type=menu)  ──下发──▶  GET /auth/permissions
+{key,title,icon,path,          + sys_role_permission         （按授权过滤）       │
+ parent,order,visible}         + sys_user_role                                    ▼
+                                  + sys_user_menu_override              &lt;SidebarMenu :menus&gt;
+                                                                        + 路由守卫</pre>
+
+<h2 id="s5">五、统一菜单元数据模型</h2>
+
+<p>把 cosmic 的 <code>MENU_REGISTRY</code> 补全成通用模型（它缺分组、排序、隐藏、外链这几项）：</p>
+
+<pre># &lt;app&gt;/src/main/resources/menu-registry.yml   —— 应用自己的菜单树
+menus:
+  - key: dashboard
+    title: 看板
+    icon: DataAnalysis
+    path: /dashboard
+    order: 10
+  - key: resource                       # 分组节点（对应 el-sub-menu）
+    title: 资源管理
+    icon: Cpu
+    order: 20
+    children:
+      - { key: hosts,       title: 主机管理, icon: Monitor,    path: /hosts,       order: 21 }
+      - { key: services,    title: 服务管理, icon: Connection, path: /services,    order: 22 }
+      - { key: credentials, title: 凭据管理, icon: Key,        path: /credentials, order: 23 }
+  - key: admin
+    title: 系统工具
+    icon: Tools
+    order: 90
+    min-role: admin                     # 角色下限（沿用 cosmic 语义）
+    children:
+      - { key: users, title: 用户管理, icon: User, path: /users, order: 91 }
+  - key: docs
+    title: 使用文档
+    icon: Document
+    path: https://docs.marschat.online
+    external: true                      # 外链菜单
+    order: 99
+  - key: project-detail
+    title: 项目详情
+    path: /projects/:id
+    visible: false                      # 隐藏菜单：有路由但不上侧边栏</pre>
+
+<table>
+<thead><tr><th>字段</th><th>说明</th><th>对应表字段</th></tr></thead>
+<tbody>
+<tr><td><code>key</code></td><td>稳定标识，权限点用它：<code>&lt;client&gt;:menu:&lt;key&gt;</code></td><td><code>sys_permission.code</code></td></tr>
+<tr><td><code>title</code> / <code>icon</code></td><td>展示名与图标名</td><td><code>name</code> / <code>meta.icon</code></td></tr>
+<tr><td><code>path</code></td><td>路由路径或外链地址</td><td><code>meta.path</code></td></tr>
+<tr><td><code>children</code></td><td>分组或子菜单</td><td><code>parent_id</code> 自关联</td></tr>
+<tr><td><code>order</code></td><td>同级排序</td><td><code>sort</code></td></tr>
+<tr><td><code>min-role</code></td><td>角色下限，低于此角色不可见（只能做减法）</td><td><code>meta.min_role</code></td></tr>
+<tr><td><code>visible</code></td><td>是否上侧边栏（详情页等设 false）</td><td><code>meta.visible</code></td></tr>
+<tr><td><code>external</code></td><td>是否外链</td><td><code>meta.external</code></td></tr>
+</tbody>
+</table>
+
+<div class="win">
+<b>跨语言对齐</b>：cosmic 是 Python 后端，也用同一套 yml 格式。它的 <code>MENU_REGISTRY</code>（现在写死在 <code>studio.py</code>）平移到 <code>menu-registry.yml</code> 即可，未来若加 Python 版上报客户端，格式一致、不用二次翻译。
+</div>
+
+<h2 id="s6">六、菜单权限的双重模型</h2>
+
+<p>cosmic 现在这套「<b>角色下限先卡 + 用户白名单做减法</b>」是正确且实用的，建议直接作为平台标准：</p>
+
+<table>
+<thead><tr><th>层</th><th>数据</th><th>谁配</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td>角色级</td><td><code>sys_role_permission</code></td><td>管理员在「角色管理」配</td><td>定义某角色默认能看到哪些菜单（<b>上限</b>）</td></tr>
+<tr><td>用户级</td><td><code>sys_user_menu_override</code>（即 cosmic 的 <code>menu_perms</code>）</td><td>管理员在「用户管理」配</td><td>在角色上限内进一步<b>做减法</b>（收窄），永不越权</td></tr>
+<tr><td>未配置</td><td>NULL / 无记录</td><td>—</td><td><b>跟随角色默认</b></td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>为什么是「只能做减法」</b>：cosmic 的注释写得很清楚——「菜单权限只能做减法、不能越权」。这保证了<b>不管用户级怎么配，都不可能超出角色给出的范围</b>，避免「用户级配置变成提权后门」。
+<br>这条规则对用户管理界面的意义是：<b>勾选树应该只显示该角色已授权的菜单</b>，而不是全量菜单。否则管理员会误以为勾了就能给。
+</div>
+
+<h3>未配置时的默认策略</h3>
+
+<div class="opt">
+<div class="opt-h">A. 默认全部可见</div>
+<div class="opt-b">宽松。<b>问题</b>：新加的菜单对所有角色自动可见，敏感菜单容易漏配而暴露。</div>
+</div>
+<div class="opt">
+<div class="opt-h">B. 默认全部不可见</div>
+<div class="opt-b">严格。<b>问题</b>：角色没配好时所有人菜单全空，误以为系统坏了。</div>
+</div>
+<div class="opt rec">
+<div class="opt-h">C. 默认跟随角色默认 <span class="tag t-ok">推荐 = cosmic 现状</span></div>
+<div class="opt-b">用户级未配置 → 用角色级结果；角色级也未配置 → 用 <code>min-role</code> 兜底。逐层回退，不会出现「全空」也不会「全开」。</div>
+</div>
+
+<h2 id="s7">七、三层同源（菜单 / 路由 / 接口）</h2>
+
+<div class="gap">
+<b>必须堵的洞</b>：菜单藏了，但用户直接敲 URL 仍能进页面；前端拦住了，但接口仍可被直接调用。
+「菜单权限」如果只挡菜单，等于<b>没挡</b>——这是典型的安全假象。
+</div>
+
+<table>
+<thead><tr><th>层</th><th>手段</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td>菜单</td><td><code>&lt;SidebarMenu&gt;</code> 只渲染有权限的项</td><td>权限集合里的 <code>menu:*</code></td></tr>
+<tr><td>路由</td><td>守卫校验 <code>meta.requiredPermissions</code>，不在集合内跳 403</td><td>同一份权限集合</td></tr>
+<tr><td>接口</td><td>后端 <code>@RequirePermission("&lt;client&gt;:api:&lt;key&gt;")</code></td><td>token 里的 <code>permissions</code></td></tr>
+</tbody>
+</table>
+
+<h3>顺带修掉 cosmic 守卫的一个脆弱点</h3>
+
+<p>cosmic 现在按菜单集合做 URL 拦截，但写了两段很长的注释解释一个坑：</p>
+
+<pre>// 权限守卫二次执行：直输 URL 整页刷新时 watch 跑在 menus 加载前（空数组不拦），
+// 路由此后不再变化，守卫会永久失效——菜单加载完在这里补判一次</pre>
+
+<p>根因是<b>「先挂载路由、后异步拉菜单」</b>这个顺序——守卫在权限还没到手时就跑过了，只能靠事后补判兜底。补判能work，但这是治标，而且注释里已经出现「首屏直链漏页签」「未授权页签要一并清掉」等连带问题（都是同一个根因的衍生）。</p>
+
+<div class="dec">
+<b>公共组件里的正确做法</b>：<code>bootstrapMarschatApp()</code> 在<b>挂载路由之前</b>先拉权限，拉不到就阻塞导航（不进入应用页面）。这样守卫天然只需执行一次，不需要「二次补判」，那些衍生问题也一并消失。
+<br>顺带统一 403 语义：无权限跳统一 403 页，而不是各应用自己 replace 到第一个菜单。
+</div>
+
+<h2 id="s8">八、菜单管理界面设计</h2>
+
+<p>在 portal 的用户管理里，把「系统权限」做成一个页签。分两个视角：</p>
+
+<h3>视角一：用户视角（这个人在各系统有什么权限）</h3>
+
+<div class="mock">用户管理 → 张三 → 【系统权限】页签
+┌──────────────────────────────────────────────────────────────┐
+│  系统                 应用角色        菜单权限                │
+├──────────────────────────────────────────────────────────────┤
+│  COSMIC 度量表生产     admin         自定 5 项      [配置 ▸] │
+│  知识库 kb-web         editor        跟随角色      [配置 ▸] │
+│  运维平台 kb-ops        viewer        跟随角色      [配置 ▸] │
+│  统一看板 portal       user          —              —        │
+└──────────────────────────────────────────────────────────────┘
+点 [配置 ▸] 展开：
+┌──────────────────────────────────────────────────────────────┐
+│  COSMIC 度量表 · 菜单权限                                     │
+│  ( ) 跟随角色默认（admin 可见 8 项）                          │
+│  (•) 自定义（只能在角色已授权范围内收窄）                     │
+│      ☑ 工作台    ☑ 编写库    ☑ 归档库    ☐ 质量门禁         │
+│      ☑ 版本管理  ☐ 规范中心  ☐ 业务词库  ☑ 系统管理         │
+│                                        [取消]  [保存]        │
+└──────────────────────────────────────────────────────────────┘</div>
+
+<h3>视角二：角色视角（这个角色默认能看到什么）</h3>
+
+<div class="mock">角色管理 → 应用管理员 → 【菜单权限】
+┌──────────────────────────────────────────────────────────────┐
+│  系统 × 菜单 勾选树                                           │
+│                                                              │
+│  ▼ COSMIC 度量表生产                                          │
+│      ☑ 工作台   ☑ 编写库   ☑ 归档库   ☑ 质量门禁            │
+│      ☑ 版本管理 ☑ 规范中心 ☑ 业务词库 ☑ 系统管理            │
+│  ▼ 运维平台 kb-ops                                            │
+│      ☑ 看板                                                  │
+│      ▼ 资源管理      ☑ 主机  ☑ 服务  ☑ 端口  ☑ 凭据         │
+│      ▼ 部署运维      ☑ 部署记录  ☑ 矛盾检测                  │
+│      ▼ 系统工具      ☐ 操作日志                              │
+│                                          [全选]  [保存]      │
+└──────────────────────────────────────────────────────────────┘</div>
+
+<div class="win">
+<b>两张界面共用同一个数据源</b>：应用上报的菜单树（<code>sys_permission</code>，按 <code>client_id</code> 分组、<code>parent_id</code> 成树）。所以应用上报什么，管理界面就显示什么——<b>认证中心不用硬编码任何应用的菜单</b>。
+</div>
+
+<h2 id="s9">九、新应用接入菜单的三步</h2>
+
+<div class="card">
+<div class="step">
+<div class="step-n">1</div>
+<div class="step-c"><div class="step-t">写 <code>menu-registry.yml</code> <span class="tag t-gray">可选，没有菜单就跳过</span></div>
+<p style="margin:0;font-size:13px;color:var(--ink2)">把菜单树声明出来（§5 的格式）。<b>这是把「模板标签」变成「数据」的那一步</b>，也是唯一需要手动做的工作。</p></div>
+</div>
+<div class="step">
+<div class="step-n">2</div>
+<div class="step-c"><div class="step-t">启动时自动上报 <span class="tag t-ok">零代码</span></div>
+<p style="margin:0;font-size:13px;color:var(--ink2)"><code>auth-core</code> 的 <code>MenuRegistryReporter</code> 读该文件，启动时调 <code>PUT /admin/clients/{clientId}/menus</code>。应用侧只写一行配置开关（见《配置化接入方案》§7 的 <code>menu-report</code>）。</p></div>
+</div>
+<div class="step">
+<div class="step-n">3</div>
+<div class="step-c"><div class="step-t">前端换成公共组件渲染</div>
+<p style="margin:0;font-size:13px;color:var(--ink2)">删掉 <code>MainLayout.vue</code> 里的硬编码 <code>el-menu-item</code>，换成 <code>&lt;SidebarMenu :menus="menus"&gt;</code>，<code>menus</code> 来自 <code>useMenus()</code>（自动拉 <code>GET /auth/permissions</code> 并按权限过滤）。</p></div>
+</div>
+</div>
+
+<div class="lead">
+<h3>接入成本对照</h3>
+<table style="margin-bottom:0">
+<thead><tr><th>场景</th><th>要做的事</th><th>工作量</th></tr></thead>
+<tbody>
+<tr><td><b>新应用，有菜单</b></td><td>写 yml（1 个文件）+ 前端换组件</td><td><span class="tag t-ok">~半天</span></td></tr>
+<tr><td><b>新应用，无菜单</b></td><td>什么都不用做</td><td><span class="tag t-ok">0</span></td></tr>
+<tr><td><b>等以后有菜单了</b></td><td>加一个 yml 文件，不改认证中心、不改公共组件</td><td><span class="tag t-ok">~1 小时</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="win">
+<b>这正好回答了你担心的「很多应用没菜单」</b>：菜单上报是<b>可选</b>的。没菜单的应用照常接入 SSO 和权限体系（只是没有可分配的菜单项）；将来有了菜单，加一个 yml 就行，<b>认证中心和公共组件都不用动</b>。菜单的有无，对平台零影响。
+</div>
+
+<h2 id="s10">十、存量改造与边界情况</h2>
+
+<h3>10.1 存量应用改造（4 个硬编码菜单的应用）</h3>
+
+<table>
+<thead><tr><th>应用</th><th>改造内容</th><th>性质</th></tr></thead>
+<tbody>
+<tr><td>kb-ops-web</td><td>从 <code>MainLayout.vue</code> 提取 4 组 25 项 → <code>menu-registry.yml</code>（已有 <code>el-sub-menu</code> 分组，正好映射 <code>children</code>）</td><td><span class="tag t-ok">纯机械提取</span></td></tr>
+<tr><td>infra-monitor-web</td><td>提取 ~11 项</td><td><span class="tag t-ok">纯机械提取</span></td></tr>
+<tr><td>kb-web</td><td>提取 ~50 项（最大）</td><td><span class="tag t-warn">量大但同性质</span></td></tr>
+<tr><td>myfrp</td><td>提取 4 项；<code>v-if="role === 'ADMIN'"</code> 改为 <code>min-role: admin</code></td><td><span class="tag t-ok">顺带把硬编码角色判断规范化</span></td></tr>
+</tbody>
+</table>
+
+<div class="dec">
+<b>改造是「提取」而非「重写」</b>：模板里已有的 title／icon／path／分组顺序，逐条抄进 yml 即可，无需重新设计菜单结构。而且可以先不动前端——<b>第一版只上报菜单给认证中心，让权限界面有数据可配</b>，前端渲染改造放到后面单独做。这样风险可以切开。
+</div>
+
+<h3>10.2 几个必须想清楚的边界</h3>
+
+<table>
+<thead><tr><th>情况</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td><b>菜单有但页面没发版</b>（先配权限后有页面）</td><td>以应用上报为准——应用没发版就不会上报新菜单，权限界面也就看不到。天然避免 404。</td></tr>
+<tr><td><b>应用下线/改名</b></td><td>菜单随上报消失。需要处理「孤儿权限」——建议上报接口做<b>全量覆盖</b>（不存在的 key 标记失效），而不是增量追加。</td></tr>
+<tr><td><b>隐藏菜单</b>（详情页、编辑页）</td><td><code>visible: false</code> —— 有路由、可直链、但不上侧边栏，且<u>仍需在权限集合内</u>（否则直链能进）。</td></tr>
+<tr><td><b>外链菜单</b></td><td><code>external: true</code>，不过路由守卫，但仍可授权控制可见性。</td></tr>
+<tr><td><b>菜单项改名</b></td><td><code>key</code> 是稳定标识、<code>title</code> 只影响展示。<b>改名不动 key</b>，权限配置不会失效。</td></tr>
+<tr><td><b>跨应用菜单</b>（一个菜单跳另一个系统）</td><td>本质是外链，走 <code>external</code>；平台级导航（portal 系统卡片）另归 <code>apps-registry.yml</code> 管。</td></tr>
+</tbody>
+</table>
+
+<h2 id="s11">十一、待拍板</h2>
+
+<div class="lead">
+<h3>决策状态</h3>
+<table style="margin-bottom:0">
+<thead><tr><th>决策项</th><th>状态</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td><b>菜单定义归属</b></td><td><span class="tag t-ok">✅ 已定</span></td><td><b>放应用侧</b>（2026-09-10 良哥拍板）——中心只存授权，管理界面不做「建菜单」，走全量覆盖语义</td></tr>
+<tr><td>用户级菜单权限是否保留</td><td><span class="tag t-warn">待定</span></td><td>建议保留（cosmic 的「角色默认 + 用户白名单减法」）</td></tr>
+<tr><td>未配置时默认策略</td><td><span class="tag t-warn">待定</span></td><td>建议「跟随角色默认」</td></tr>
+<tr><td>存量改造节奏</td><td><span class="tag t-warn">待定</span></td><td>建议第一版只做上报，前端渲染改造分应用后置</td></tr>
+<tr><td>是否需要独立「菜单管理」页面</td><td><span class="tag t-gray">可后置</span></td><td>查看各应用上报了哪些菜单、上报时间、是否生效（运维排查用）</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h4>⚠️ 唯一还需要注意的代价</h4>
+<p style="margin:0">放应用侧之后，<b>中心的菜单列表是「应用报上来的」，不是「中心自己知道的」</b>。所以会出现两个特性，属于该方案的固有属性而非缺陷：
+<br>① <b>新菜单在应用发版前不会出现在授权界面</b>——因为还没上报，配不了。<b>这恰恰是好事</b>：避免了「菜单配了但页面还没有」的 404。
+<br>② <b>应用停用或未启动时，其菜单仍保留在中心</b>（最后一次上报的结果）。如果想看到「实时存活」状态，需要靠 <code>sys_app_client.last_sync_at</code> 来体现——上报时间过久即视为可疑。这一点已在 §5 的 <code>sys_app_client</code> 表设计中预留。</p>
+</div>
+
+<div class="card">
+<h4>与前面三份方案的关系</h4>
+<table style="margin-bottom:0">
+<thead><tr><th>方案</th><th>本方案在其上的位置</th></tr></thead>
+<tbody>
+<tr><td>《统一账号体系与授权模型重构》</td><td>提供 RBAC 三层模型与 <code>sys_permission</code> 表——本方案是其中 <code>type=menu</code> 这一类的落地细化</td></tr>
+<tr><td>《公共组件抽取方案》</td><td>提供 <code>&lt;SidebarMenu&gt;</code> / <code>useMenus()</code> 的落点（<code>frontend-common</code> / <code>auth-components</code>）</td></tr>
+<tr><td>《新应用配置化接入方案》</td><td>提供 <code>apps-registry.yml</code> 的 <code>menus</code> 字段与 <code>menu-report</code> 开关——本方案是它的菜单侧展开</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="wrapnote">
+本文菜单项数、文件行数、代码引用均于 2026-09-10 从本地仓库实采：<code>kb-web/MainLayout.vue</code>（含 ShareLayout 685 行）、
+<code>kb-ops-web/MainLayout.vue</code>（332 行，4 组）、<code>infra-monitor-web/MainLayout.vue</code>（255 行）、
+<code>myfrp/frontend/src/views/Layout.vue</code>、<code>cosmic-studio/app/routers/studio.py:225-256</code>、
+<code>cosmic-studio/frontend/src/Layout.vue:89-124</code>、<code>cosmic-studio/frontend/src/views/Admin.vue</code>、
+<code>portal/src/config/systems.ts</code>（271 行）。三个前端路由文件 <code>meta</code> 中 title/icon 匹配数为 0（已核）。
+<br>关联：<code>ADR-2026-09-08-统一认证单点登录.md</code> · 前述三份方案文档
+</p>
+
+</div>
+</body>
+</html>
