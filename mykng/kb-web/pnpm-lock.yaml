@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.38(typescript@5.9.3))
       '@marschat/auth-components':
-        specifier: ^0.4.1
-        version: 0.4.1(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)
+        specifier: ^0.5.0
+        version: 0.5.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)
       '@marschat/frontend-common':
         specifier: 0.2.1
         version: 0.2.1(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(vue@3.5.38(typescript@5.9.3))
@@ -435,8 +435,8 @@ packages:
   '@marijn/find-cluster-break@1.0.3':
     resolution: {integrity: sha512-FY+MKLBoTsLNJF/eLWaOsXGdz6uh3Iu1axjPf6TUq92IYumcTcXWHoS747JARLkcdlJ/Waiaxc5wQfFO8jC6NA==}
 
-  '@marschat/auth-components@0.4.1':
-    resolution: {integrity: sha512-9cP7aLNtJXUNiXAVKX7fXDd4yHQTMfZ9+kunMIMwEyPFAENxOvK+cZ9TRxtY4g43pmYgmCcPPrBV+nluc3EV3g==}
+  '@marschat/auth-components@0.5.0':
+    resolution: {integrity: sha512-Xk+jMT37TcCFG7AsjIVEjwekic3enlj3q94rHUuaWcd+BaneGncBgTKkWUBbViv0nMxBLxjdXGzMdVMUerJLhQ==}
     peerDependencies:
       element-plus: ^2.6.1
 
@@ -2550,7 +2550,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.3': {}
 
-  '@marschat/auth-components@0.4.1(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)':
+  '@marschat/auth-components@0.5.0(element-plus@2.14.1(vue@3.5.38(typescript@5.9.3)))(typescript@5.9.3)':
     dependencies:
       '@element-plus/icons-vue': 2.3.2(vue@3.5.38(typescript@5.9.3))
       element-plus: 2.14.1(vue@3.5.38(typescript@5.9.3))

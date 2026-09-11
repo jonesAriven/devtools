@@ -12,7 +12,13 @@
  * - 探到会话后，跳**portal 自己的服务端授权入口** `/portal/api/auth/sso/authorize`；
  * - 统一登出（SLO）用组件的 `ssoLogout` —— 它是标准 OIDC RP-Initiated Logout，两条路径通用。
  */
-import { createSsoClient, type SsoConfig, type SloOptions } from '@marschat/auth-components'
+import {
+  createSsoClient,
+  type SsoConfig,
+  type SloOptions,
+  type SessionWatcher,
+  type SessionWatcherOptions,
+} from '@marschat/auth-components'
 
 /** portal 登录页地址 —— 统一登出回跳地址（必须落在 auth-center 的 post_logout 白名单内） */
 export const PORTAL_LOGIN_URL = `${window.location.origin}/portal/login`
@@ -53,8 +59,36 @@ export async function bootstrapLoginPage(redirect?: string): Promise<boolean> {
   return true
 }
 
-/** 统一登出（SLO）：销毁 IdP 会话 + 清本地，然后回跳登录页 */
+/**
+ * 会话监视器句柄（应用内**单例**）—— 避免重复创建挂上多份定时器/监听器。
+ */
+let sessionWatcher: SessionWatcher | null = null
+
+/**
+ * 启动**会话监视**（幂等）—— Phase 6「单点登出跨应用联动」。
+ *
+ * ⚠️ 与换票模式无关：探针只回答"浏览器在 auth-center 侧还有没有 IdP 会话"，
+ * 因此 BFF 机密客户端（portal）与浏览器直换票应用可以复用同一实现。
+ *
+ * SAS 1.x 不实现 back-channel logout，别处登出后本应用本地 token 不会自动失效。
+ * 监视器在「页面切回可见 / 获焦 / 定时（默认 60s）」时探一次 `/auth/session`，
+ * **只有确认会话已消失**才清本地并跳登录页；探针异常一律保持现状（fail-safe）。
+ */
+export function startSessionWatcher(options?: SessionWatcherOptions): SessionWatcher {
+  if (sessionWatcher) return sessionWatcher
+  sessionWatcher = sso.watchSession(options)
+  return sessionWatcher
+}
+
+/** 停止会话监视（登出前调用） */
+export function stopSessionWatcher(): void {
+  sessionWatcher?.stop()
+  sessionWatcher = null
+}
+
+/** 统一登出（SLO）：先停监视 → 销毁 IdP 会话 + 清本地，然后回跳登录页 */
 export function logout(options: SloOptions = {}): void {
+  stopSessionWatcher()
   sso.logout(options)
 }
 
@@ -72,5 +106,8 @@ export const buildSloUrl = (options?: SloOptions) => sso.buildLogoutUrl(options)
 /** 仅清本地凭据，不碰 IdP 会话 */
 export const clearLocalAuth = () => sso.clearLocalAuth()
 
-/** 统一登出（SLO）——绑定配置版，等价于 `logout()` */
-export const ssoLogout = (options?: SloOptions) => sso.logout(options)
+/** 统一登出（SLO）——绑定配置版，等价于 `logout()`（同样会先停会话监视） */
+export const ssoLogout = (options?: SloOptions) => {
+  stopSessionWatcher()
+  sso.logout(options)
+}

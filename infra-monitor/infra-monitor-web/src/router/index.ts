@@ -51,6 +51,13 @@ const routes: RouteRecordRaw[] = [
         name: 'Services',
         component: () => import('@/views/services/ServicesView.vue'),
       },
+      {
+        // Phase 6 · 统一用户管理（6 应用共用同一份公共组件；菜单仅管理员可见，
+        // 权限闸门在 auth-center AdminUserController 的 @PreAuthorize("hasRole('ADMIN')")）
+        path: 'users',
+        name: 'Users',
+        component: () => import('@/views/users/UsersView.vue'),
+      },
     ],
   },
   {

@@ -3,7 +3,7 @@
  * ============================================================================
  * 本文件**不再自己实现** OIDC/PKCE/会话探针/SLO，全部委托给公共组件：
  *
- *   @marschat/auth-components@0.4.1  →  dist/marschat-auth-core.umd.js
+ *   @marschat/auth-components@0.5.0  →  dist/marschat-auth-core.umd.js
  *   （框架无关 UMD 单文件，挂 window.MarschatAuth；sha256 见同目录 VENDORED.md）
  *
  * 这里只保留「本应用特有」的两件事：
@@ -16,6 +16,7 @@
  *   - 统一登出 logout（SLO）：带 id_token_hint 跳 /auth/slo 销毁 IdP 会话，
  *     而不是只清本地（只清本地会被下一个应用静默免登回登不掉的假象）
  *   - Token 静默续期 renew：public client 无 refresh_token，改走「静默重授权」
+ *   - 会话监视 startSessionWatcher：跨应用 SLO 联动（他处登出 → 本应用自动登出）
  * ============================================================================
  */
 (function (global) {
@@ -56,6 +57,9 @@
     var LOAD_ERROR = '统一认证组件 marschat-auth-core.umd.js 未加载，请检查静态资源是否部署完整';
 
     var sso = null;
+
+    /** 会话监视器单例（SLO 联动：IdP 会话失效 → 本应用自动登出/回登录页） */
+    var watcher = null;
 
     if (!MICRO || typeof MICRO.createSsoClient !== 'function') {
         // 不在这里抛错：登录页/回调页会在调用时拿到明确错误并展示给用户。
@@ -198,6 +202,43 @@
     }
 
     // ------------------------------------------------------------------
+    // 会话监视（SLO 跨应用联动）
+    // ------------------------------------------------------------------
+
+    /**
+     * 启动会话监视器：定时/切标签页/获得焦点/跨标签页 storage 变化时探测
+     * auth-center 侧 IdP 会话。**仅在确认失去会话时**才清本地并回跳登录页
+     * （fail-safe：探针失败=网络抖动/超时/CORS 一律保持现状，绝不误登出）。
+     *
+     * 幂等：重复调用返回既有单例，不会叠加定时器。
+     *
+     * @param {object} [options] 透传 SessionWatcherOptions（intervalMs/confirmCount/loginUrl 等）
+     * @returns {object|null} 监视器句柄（含 stop()），组件未就绪时返回 null
+     */
+    function startSessionWatcher(options) {
+        if (!sso) return null;
+        if (watcher) return watcher;
+        try {
+            watcher = client().watchSession(options || {});
+            return watcher;
+        } catch (e) {
+            if (global.console && console.warn) console.warn('[activecode] 会话监视启动失败', e);
+            return null;
+        }
+    }
+
+    /** 停止会话监视器（登出/切账号前调用，避免旧监视器误跳转） */
+    function stopSessionWatcher() {
+        if (!watcher) return;
+        try {
+            watcher.stop();
+        } catch (e) {
+            /* ignore */
+        }
+        watcher = null;
+    }
+
+    // ------------------------------------------------------------------
     // 登出 / 续期
     // ------------------------------------------------------------------
 
@@ -221,6 +262,8 @@
      */
     function logout(options) {
         var opts = options || {};
+        // 先停会话监视，避免登出过程中监视器触发一次多余探针/跳转
+        stopSessionWatcher();
         var c = client();
         // 顺序：先取 id_token（登出后本地就没了）→ 清本地 → 跳 SLO
         var idToken = null;
@@ -245,6 +288,7 @@
 
     /** 仅清本地凭据（不碰 IdP 会话） */
     function clearLocalAuth() {
+        stopSessionWatcher();
         clearLocalState();
     }
 
@@ -266,6 +310,7 @@
             last = 0;
         }
         if (last && now - last < RENEW_GUARD_MS) {
+            stopSessionWatcher();
             clearLocalState();
             global.location.href = LOGIN_URL + '?reauth=1';
             return Promise.reject(new Error('SSO 会话反复失效，已回退登录页'));
@@ -296,6 +341,9 @@
         renew: renew,
         isOidc: isOidc,
         clearLocalAuth: clearLocalAuth,
+        // 会话监视（SLO 跨应用联动）
+        startSessionWatcher: startSessionWatcher,
+        stopSessionWatcher: stopSessionWatcher,
         /** 组件版本，线上排障用 */
         version: (MICRO && MICRO.version) || 'unknown',
         /** 组件是否加载成功 */

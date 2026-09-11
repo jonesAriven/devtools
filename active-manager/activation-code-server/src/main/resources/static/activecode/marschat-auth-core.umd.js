@@ -1,7 +1,10 @@
 (function(global, factory) {
   typeof exports === "object" && typeof module !== "undefined" ? factory(exports) : typeof define === "function" && define.amd ? define(["exports"], factory) : (global = typeof globalThis !== "undefined" ? globalThis : global || self, factory(global.MarschatAuth = {}));
 })(this, function(exports2) {
-  "use strict";
+  "use strict";var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
   function generateVerifier() {
     const bytes = new Uint8Array(32);
     if (crypto && crypto.getRandomValues) {
@@ -424,15 +427,17 @@
         headers: { Accept: "application/json" },
         signal: controller.signal
       });
-      if (!res.ok) return { authenticated: false };
+      if (!res.ok) return { authenticated: false, ok: false };
       const body = await res.json().catch(() => null);
       const payload = body && typeof body === "object" && body.data ? body.data : body;
       return {
         authenticated: !!(payload == null ? void 0 : payload.authenticated),
-        username: (payload == null ? void 0 : payload.username) ?? null
+        username: (payload == null ? void 0 : payload.username) ?? null,
+        // 只有解析出对象才算「探针成功执行」，此时 authenticated 才可用于主动登出判定
+        ok: payload != null
       };
     } catch {
-      return { authenticated: false };
+      return { authenticated: false, ok: false };
     } finally {
       clearTimeout(timer);
     }
@@ -481,6 +486,138 @@
     } catch {
     }
   }
+  const DEFAULTS = {
+    intervalMs: 6e4,
+    watchVisibility: true,
+    watchFocus: true,
+    watchStorage: true,
+    timeoutMs: 4e3,
+    confirmCount: 1,
+    redirectOnLost: true
+  };
+  function isOnLoginPage(loginUrl) {
+    try {
+      const cur = new URL(window.location.href);
+      const target = new URL(loginUrl, window.location.origin);
+      return cur.origin === target.origin && cur.pathname === target.pathname;
+    } catch {
+      return false;
+    }
+  }
+  function createSessionWatcher(config2, options = {}) {
+    const opts = { ...DEFAULTS, ...options };
+    const loginUrl = options.loginUrl || config2.loginUrl || "/login";
+    let running = false;
+    let paused = false;
+    let timer = null;
+    let probing = false;
+    let lostStreak = 0;
+    let firstProbeTimer = null;
+    async function tick() {
+      var _a, _b;
+      if (!running || paused || probing) return true;
+      if (!getToken()) {
+        return false;
+      }
+      probing = true;
+      try {
+        const probe = await probeIdpSession(config2, { timeoutMs: opts.timeoutMs });
+        if (!probe.ok) {
+          lostStreak = 0;
+          (_a = opts.onProbeError) == null ? void 0 : _a.call(opts, new Error("session probe failed (untrusted)"));
+          return true;
+        }
+        if (probe.authenticated) {
+          lostStreak = 0;
+          return true;
+        }
+        lostStreak += 1;
+        if (lostStreak < opts.confirmCount) {
+          return true;
+        }
+        lostStreak = 0;
+        const username = probe.username ?? null;
+        stopWatcher();
+        clearLocalAuthSafely();
+        (_b = opts.onSessionLost) == null ? void 0 : _b.call(opts, { username, reason: "probe" });
+        if (opts.redirectOnLost && !isOnLoginPage(loginUrl)) {
+          const sep = loginUrl.includes("?") ? "&" : "?";
+          window.location.assign(`${loginUrl}${sep}slo=1`);
+        }
+        return false;
+      } finally {
+        probing = false;
+      }
+    }
+    function clearLocalAuthSafely() {
+      try {
+        clearTokens();
+      } catch {
+      }
+      try {
+        localStorage.removeItem("auth_user");
+      } catch {
+      }
+    }
+    function stopWatcher() {
+      running = false;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      if (firstProbeTimer) {
+        clearTimeout(firstProbeTimer);
+        firstProbeTimer = null;
+      }
+      document.removeEventListener("visibilitychange", onWakeup);
+      window.removeEventListener("focus", onWakeup);
+      window.removeEventListener("storage", onStorage);
+    }
+    function onWakeup() {
+      if (!running || paused) return;
+      if (document.visibilityState === "hidden") return;
+      void tick();
+    }
+    function onStorage() {
+      if (!running || paused) return;
+      void tick();
+    }
+    return {
+      start() {
+        if (running) return;
+        running = true;
+        paused = false;
+        if (opts.watchVisibility) document.addEventListener("visibilitychange", onWakeup);
+        if (opts.watchFocus) window.addEventListener("focus", onWakeup);
+        if (opts.watchStorage) window.addEventListener("storage", onStorage);
+        if (opts.intervalMs > 0) {
+          timer = setInterval(() => void tick(), opts.intervalMs);
+        }
+        firstProbeTimer = setTimeout(() => void tick(), 3e3);
+      },
+      stop: stopWatcher,
+      pause() {
+        paused = true;
+      },
+      resume() {
+        paused = false;
+      },
+      probeNow() {
+        return tick();
+      },
+      isRunning() {
+        return running;
+      },
+      isPaused() {
+        return paused;
+      }
+    };
+  }
+  function startSessionWatcher(config2, options = {}) {
+    const watcher = createSessionWatcher(config2, options);
+    watcher.start();
+    return watcher;
+  }
   function createSsoClient(config2) {
     if (!(config2 == null ? void 0 : config2.issuer)) {
       throw new Error("[marschat-auth] createSsoClient 缺少 issuer");
@@ -514,6 +651,25 @@
       buildAuthorizeUrl: () => buildSsoAuthorizeUrl(config2),
       /** 仅清本地凭据，不碰 IdP 会话 */
       clearLocalAuth: () => clearLocalAuth(),
+      /**
+       * 启动**会话监视**（Phase 6：单点登出跨应用联动）。
+       *
+       * SAS 不支持 back-channel logout，其他应用在别处登出后本地 token 不会失效。
+       * 监视线程会在「页面切回可见 / 窗口获焦 / 定时（默认 60s）」时探一次
+       * `/auth/session`，**确认**会话消失才清本地并跳登录页；探针失败一律保持现状。
+       *
+       * @returns 监视器句柄 —— **应用主动登出前必须 `.stop()`**，否则登出跳转途中
+       *          监视器可能再判定一次，造成多余的二次跳转。
+       *
+       * @example
+       * ```ts
+       * const watcher = sso.watchSession({ intervalMs: 60_000 })
+       * // 退出登录时：
+       * watcher.stop()
+       * sso.logout()
+       * ```
+       */
+      watchSession: (options) => startSessionWatcher(config2, options),
       // ---- token 便捷方法 ----
       getToken: () => getToken(),
       getIdToken: () => getIdToken(),
@@ -521,13 +677,119 @@
       isOidc: () => isOidcToken()
     };
   }
-  const version = "0.4.1";
+  class UserAdminError extends Error {
+    constructor(message, status = 0) {
+      super(message);
+      /** HTTP 状态码（0 表示未拿到响应，如网络异常） */
+      __publicField(this, "status");
+      this.name = "UserAdminError";
+      this.status = status;
+    }
+  }
+  function createUserAdminClient(options) {
+    const base = (options.baseUrl || "").replace(/\/+$/, "");
+    if (!base) {
+      throw new UserAdminError("[marschat-auth] createUserAdminClient 缺少 baseUrl");
+    }
+    const doFetch = options.fetchImpl ?? fetch;
+    const timeoutMs = options.timeoutMs ?? 15e3;
+    async function request(path, init) {
+      const url = new URL(`${base}${path}`, window.location.origin);
+      if (init.query) {
+        for (const [k, v] of Object.entries(init.query)) {
+          if (v !== void 0 && v !== null && v !== "") url.searchParams.set(k, String(v));
+        }
+      }
+      const headers = { Accept: "application/json" };
+      if (init.body !== void 0) headers["Content-Type"] = "application/json";
+      const token = options.getToken ? options.getToken() : null;
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      let res;
+      try {
+        res = await doFetch(url.toString(), {
+          method: init.method,
+          headers,
+          body: init.body === void 0 ? void 0 : JSON.stringify(init.body),
+          signal: controller.signal
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        throw new UserAdminError(
+          e instanceof Error && e.name === "AbortError" ? "请求超时，请稍后重试" : "网络异常，请检查连接",
+          0
+        );
+      } finally {
+        clearTimeout(timer);
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new UserAdminError(
+          res.status === 401 ? "登录已过期，请重新登录" : "当前账号无权限管理用户",
+          res.status
+        );
+      }
+      if (res.status === 204) return void 0;
+      const text = await res.text().catch(() => "");
+      let payload = null;
+      if (text) {
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = null;
+        }
+      }
+      if (!res.ok) {
+        throw new UserAdminError((payload == null ? void 0 : payload.message) || `请求失败(HTTP ${res.status})`, res.status);
+      }
+      if (payload && typeof payload === "object" && "code" in payload) {
+        if (payload.code !== 200) {
+          throw new UserAdminError(payload.message || `操作失败(code ${payload.code})`, res.status);
+        }
+        return payload.data;
+      }
+      return payload;
+    }
+    return {
+      list(query = {}) {
+        return request("", {
+          method: "GET",
+          query: {
+            realmId: query.realmId,
+            keyword: query.keyword,
+            page: query.page ?? 1,
+            size: query.size ?? 20
+          }
+        }).then((r) => ({
+          list: (r == null ? void 0 : r.list) ?? [],
+          total: (r == null ? void 0 : r.total) ?? 0,
+          page: (r == null ? void 0 : r.page) ?? query.page ?? 1,
+          size: (r == null ? void 0 : r.size) ?? query.size ?? 20
+        }));
+      },
+      create(payload) {
+        return request("", { method: "POST", body: payload });
+      },
+      update(id, payload) {
+        return request(`/${id}`, { method: "PUT", body: payload });
+      },
+      remove(id) {
+        return request(`/${id}`, { method: "DELETE" });
+      },
+      resetPassword(id, newPassword) {
+        return request(`/${id}/password`, { method: "PUT", body: { newPassword } });
+      }
+    };
+  }
+  const version = "0.5.0";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;
   exports2.clearLocalAuth = clearLocalAuth;
   exports2.clearTokens = clearTokens;
+  exports2.createSessionWatcher = createSessionWatcher;
   exports2.createSsoClient = createSsoClient;
+  exports2.createUserAdminClient = createUserAdminClient;
   exports2.decodeOidcClaims = decodeOidcClaims;
   exports2.getIdToken = getIdToken;
   exports2.getToken = getToken;
@@ -542,6 +804,7 @@
   exports2.setTokenKind = setTokenKind;
   exports2.silentSignIn = silentSignIn;
   exports2.ssoLogout = ssoLogout;
+  exports2.startSessionWatcher = startSessionWatcher;
   exports2.startSsoLogin = startSsoLogin;
   exports2.version = version;
   Object.defineProperty(exports2, Symbol.toStringTag, { value: "Module" });

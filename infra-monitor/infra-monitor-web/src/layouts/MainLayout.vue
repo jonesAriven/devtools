@@ -36,6 +36,10 @@
             <el-icon><Connection /></el-icon>
             <template #title>服务监控</template>
           </el-menu-item>
+          <el-menu-item v-if="isAdmin" index="/users">
+            <el-icon><UserFilled /></el-icon>
+            <template #title>用户管理</template>
+          </el-menu-item>
         </el-menu>
       </div>
     </el-aside>
@@ -80,6 +84,8 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
+import { getToken } from '@/utils/token'
+import { decodeOidcClaims } from '@/utils/sso'
 
 const route = useRoute()
 const router = useRouter()
@@ -87,6 +93,16 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 
 const currentRoute = computed(() => route.path)
+
+/**
+ * 是否平台管理员 —— 决定「用户管理」菜单是否可见（Phase 6）。
+ * 判据取自 auth-center 签发的 OIDC token `role` claim（不另发请求）。
+ * 菜单可见性只是体验层；真正的权限闸门在 auth-center `AdminUserController`。
+ */
+const isAdmin = computed(() => {
+  const claims = decodeOidcClaims(getToken() || '')
+  return claims?.role === 'admin' || claims?.role === 'superadmin'
+})
 
 const pageTitleMap: Record<string, string> = {
   Dashboard: '总览看板',

@@ -1428,6 +1428,17 @@ function setAdminExpire(minutes, btn) {
         checkSession();
         loadVersionCheckConfig();
 
+        // ===== SLO 跨应用联动：监视 auth-center 侧 IdP 会话 =====
+        // 他处（任一接入应用）登出后，本应用在下次探针周期内自动清本地并回登录页。
+        // fail-safe：探针失败（网络抖动/超时/502/CORS）绝不误登出，只有确认无会话才登出。
+        try {
+            if (window.ActiveCodeSSO && ActiveCodeSSO.startSessionWatcher) {
+                ActiveCodeSSO.startSessionWatcher();
+            }
+        } catch (e) {
+            // 组件缺失/异常时不影响主流程
+        }
+
         // ===== 批量删除相关函数 =====
         function toggleSelectAll(source) {
             const checkboxes = document.querySelectorAll('.row-checkbox');

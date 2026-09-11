@@ -7,6 +7,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { getToken } from '@/utils/token'
+import { startSessionWatcher } from '@/utils/sso'
 import { useModuleStore } from '@/stores/module'
 import { useAppStore } from '@/stores/app'
 import { setupErrorHandler } from '@/utils/errorReporter'
@@ -35,4 +36,6 @@ useAppStore(pinia).initThemeOnBoot()
 // 应用启动时：若已登录，拉取模块状态用于动态菜单（失败时 store 内部降级为全部可用）
 if (getToken()) {
   useModuleStore(pinia).fetchModules()
+  // Phase 6：启动会话监视 —— 任一应用统一登出后，本应用会随之退出（跨应用单点登出联动）
+  startSessionWatcher()
 }

@@ -112,12 +112,26 @@
 
         // ===== 静默免登：探测到有效 IdP 会话则直接免密进入，否则正常显示登录框 =====
         (function bootstrap() {
+            var qs = new URLSearchParams(location.search);
             // 401 静默重授权仍失败时，main.html 会带 ?reauth=1 回登录页；
             // 此时必须停掉免登探测，否则「免登 → 401 → 免登」会无限弹跳。
-            var isReauth = new URLSearchParams(location.search).get('reauth') === '1';
+            var isReauth = qs.get('reauth') === '1';
             if (isReauth) {
                 try { history.replaceState(null, '', location.pathname); } catch (e) {}
                 showLoginCard();
+                return;
+            }
+            // SLO 联动登出（任一应用登出 → 本应用被联动踢回登录页）带 ?slo=1：
+            // 直接展示登录框并给出提示，跳过免登探测（IdP 会话已销毁）。
+            var isSlo = qs.get('slo') === '1';
+            if (isSlo) {
+                try { history.replaceState(null, '', location.pathname); } catch (e) {}
+                showLoginCard();
+                var sloEl = document.getElementById('errorMsg');
+                if (sloEl) {
+                    sloEl.textContent = '您已在其他应用退出登录，请重新登录';
+                    sloEl.classList.add('show');
+                }
                 return;
             }
             try {

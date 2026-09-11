@@ -13,7 +13,13 @@
  * - `ssoLogout()` 统一登出（SLO）：销毁 IdP 会话，不只是清本地
  * - `renewByReauthorize()` 静默续期：public client 拿不到 refresh_token，改为静默重授权
  */
-import { createSsoClient, type SsoConfig, type SloOptions } from '@marschat/auth-components'
+import {
+  createSsoClient,
+  type SsoConfig,
+  type SloOptions,
+  type SessionWatcher,
+  type SessionWatcherOptions,
+} from '@marschat/auth-components'
 import { CONTEXT_PATH, OIDC_CLIENT_ID, OIDC_ISSUER, OIDC_REDIRECT_URI } from '@/config'
 
 /** kb-web 的 SSO 配置（唯一真源，供登录页/回调页/登出共用） */
@@ -73,8 +79,40 @@ export const renewByReauthorize = (redirect?: string) => sso.renew(redirect)
 /** 仅构建登出 URL（需要自己控制跳转时机时用） */
 export const buildSloUrl = (options?: SloOptions) => sso.buildLogoutUrl(options)
 
-/** 统一登出（SLO）：销毁 IdP 会话 + 清本地，然后回跳登录页 */
-export const ssoLogout = (options?: SloOptions) => sso.logout(options)
+/**
+ * 会话监视器句柄（应用内**单例**）。
+ *
+ * 为什么要单例：`startSessionWatcher()` 可能在多处被调用（应用启动、路由守卫），
+ * 重复创建会挂上多份定时器与事件监听 → 探针请求翻倍、登出逻辑重复触发。统一在这里收口。
+ */
+let sessionWatcher: SessionWatcher | null = null
+
+/**
+ * 启动**会话监视**（幂等）—— Phase 6「单点登出跨应用联动」。
+ *
+ * 背景：SAS 1.x 不实现 OIDC back-channel logout，因此在别的应用登出后，
+ * 本应用的本地 token 不会自动失效（表现为"这个退了那个还在"）。
+ * 监视线程会在「页面切回可见 / 窗口获焦 / 定时（默认 60s）」时探一次
+ * auth-center `/auth/session`；**只有确认会话已消失**才清本地并跳登录页，
+ * 探针异常一律保持现状（fail-safe，绝不把在线用户误踢出去）。
+ */
+export function startSessionWatcher(options?: SessionWatcherOptions): SessionWatcher {
+  if (sessionWatcher) return sessionWatcher
+  sessionWatcher = sso.watchSession(options)
+  return sessionWatcher
+}
+
+/** 停止会话监视（登出前调用，避免登出跳转途中被二次判定） */
+export function stopSessionWatcher(): void {
+  sessionWatcher?.stop()
+  sessionWatcher = null
+}
+
+/** 统一登出（SLO）：先停监视 → 销毁 IdP 会话 + 清本地 → 回跳登录页 */
+export const ssoLogout = (options?: SloOptions) => {
+  stopSessionWatcher()
+  sso.logout(options)
+}
 
 /** 仅清本地凭据，不碰 IdP 会话 */
 export const clearLocalAuth = () => sso.clearLocalAuth()

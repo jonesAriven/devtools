@@ -79,6 +79,10 @@
               <el-icon><Tickets /></el-icon>
               <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
             </el-menu-item>
+            <el-menu-item v-if="isAdmin" :index="'/users'">
+              <el-icon><UserFilled /></el-icon>
+              <template #title>用户管理</template>
+            </el-menu-item>
             <el-menu-item :index="'/settings'">
               <el-icon><Setting /></el-icon>
               <template #title>设置</template>
@@ -173,6 +177,10 @@
               <el-menu-item :index="'/log'" :disabled="!authCenterAvailable" :title="authCenterReason">
                 <el-icon><Tickets /></el-icon>
                 <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
+              </el-menu-item>
+              <el-menu-item v-if="isAdmin" :index="'/users'">
+                <el-icon><UserFilled /></el-icon>
+                <template #title>用户管理</template>
               </el-menu-item>
               <el-menu-item :index="'/settings'">
                 <el-icon><Setting /></el-icon>
@@ -271,6 +279,8 @@ import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useModuleStore } from '@/stores/module'
 import { useAuth } from '@/composables/useAuth'
+import { getToken } from '@/utils/token'
+import { decodeOidcClaims } from '@/utils/sso'
 import BackToTop from '@/components/BackToTop.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 
@@ -293,6 +303,17 @@ const authCenterReason = computed(() => moduleStore.getModuleUnavailableReason('
 // 知识库分组含 kb-knowledge 与 kb-file，两者均不可用时整体灰化；分组标题只灰化、不禁用，保证可展开
 const kbGroupDisabled = computed(() => !kbKnowledgeAvailable.value && !kbFileAvailable.value)
 const kbGroupReason = computed(() => [kbKnowledgeReason.value, kbFileReason.value].filter(Boolean).join('；'))
+
+/**
+ * 是否平台管理员 —— 决定「用户管理」菜单是否可见（Phase 6）。
+ * 判据取自 auth-center 签发的 OIDC token `role` claim（不另发请求）。
+ * 注：菜单可见性只是体验层收敛，真正的权限闸门在 auth-center
+ * `AdminUserController` 的 `@PreAuthorize("hasRole('ADMIN')")`。
+ */
+const isAdmin = computed(() => {
+  const claims = decodeOidcClaims(getToken() || '')
+  return claims?.role === 'admin' || claims?.role === 'superadmin'
+})
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
@@ -323,6 +344,7 @@ const pageTitleMap: Record<string, string> = {
   trash: '回收站',
   file: '文件',
   settings: '设置',
+  users: '用户管理',
   'doc-create': '新建文档',
   'doc-edit': '编辑文档',
   'file-detail': '文件详情',
