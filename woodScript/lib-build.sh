@@ -58,13 +58,24 @@ setup_pnpm() {
     pm_version=$(grep -oP '"packageManager"\s*:\s*"pnpm@\K[^"]+' "${pkg_file}" || true)
   fi
 
-  if [ -n "${pm_version}" ]; then
-    echo "  📦 检测到 packageManager: pnpm@${pm_version}，锁定安装"
-    npm install -g "pnpm@${pm_version}" 2>/dev/null
+  # 🔴 必须显式 --registry 走 Nexus（2026-09-11 实测事故）
+  #   直连 registry.npmjs.org 在本网络下单请求就要 12s+（Nexus 同请求 0.65s），
+  #   `npm install -g pnpm` 会长时间挂死在「解析 latest dist-tag / 下载 tarball」上：
+  #   实测 kb-ops-web(#578) / infra-monitor-web(#579) 两条流水线卡在该步骤超过 18 分钟，
+  #   最终只能手动 cancel。未声明 packageManager 的应用（kb-ops-web / infra-monitor-web）
+  #   走的是 `npm install -g pnpm`（无版本号）分支，必然要联网查 latest，因此必挂。
+  #   另：pnpm@latest 已到 11.x，与本仓 lockfileVersion 9.0 存在兼容风险，故缺省锁 9.15.9。
+  local nexus_reg="${NEXUS_NPM_REGISTRY:-http://192.168.31.105:8081/repository/npm-public/}"
+  if [ -z "${pm_version}" ]; then
+    pm_version="${PNPM_DEFAULT_VERSION:-9.15.9}"
+    echo "  📦 未指定 packageManager，使用默认 pnpm@${pm_version}（不再装 latest）"
   else
-    echo "  📦 未指定 packageManager，安装 pnpm@latest"
-    npm install -g pnpm 2>/dev/null
+    echo "  📦 检测到 packageManager: pnpm@${pm_version}，锁定安装"
   fi
+
+  echo "  📦 经 Nexus 安装 pnpm@${pm_version}: ${nexus_reg}"
+  npm install -g --registry "${nexus_reg}" --no-fund --no-audit "pnpm@${pm_version}" \
+    || echo "  WARN npm 全局安装 pnpm@${pm_version} 失败，尝试复用镜像内已有的 pnpm"
 
   pnpm --version
   pnpm config set registry "${NEXUS_NPM_REGISTRY}"
