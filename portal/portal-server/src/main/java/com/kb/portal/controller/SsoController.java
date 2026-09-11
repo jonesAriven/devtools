@@ -83,8 +83,13 @@ public class SsoController {
 
             authCenterService.storeRefreshToken(user.getId(), tokenJson);
             String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+            // auth uid：前端会话监视器的「身份一致性守卫」比对用（auth-components 0.5.4+）
+            String authUid = claims.path("uid").asText(null);
+            if (authUid == null || authUid.isBlank()) {
+                authUid = claims.path("sub").asText(null);
+            }
             return Result.ok(new LoginResponse(token, user.getUsername(),
-                    user.getNickname() != null ? user.getNickname() : user.getUsername(), user.getRole()));
+                    user.getNickname() != null ? user.getNickname() : user.getUsername(), user.getRole(), authUid));
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

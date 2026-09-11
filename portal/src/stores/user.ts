@@ -6,23 +6,29 @@ import { logout as ssoLogoutPortal } from '@/utils/sso'
 const TOKEN_KEY = 'portal_token'
 const USER_KEY = 'portal_user'
 const ROLE_KEY = 'portal_role'
+// auth-center 用户 id：会话监视器「身份一致性守卫」的本地身份依据（0.5.4+）
+const AUTH_UID_KEY = 'portal_auth_uid'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem(TOKEN_KEY) || '')
   const username = ref<string>(localStorage.getItem(USER_KEY) || '')
   const role = ref<string>(localStorage.getItem(ROLE_KEY) || 'user')
+  const authUid = ref<string>(localStorage.getItem(AUTH_UID_KEY) || '')
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => role.value === 'admin')
 
-  function setSession(res: { token?: string; accessToken?: string; username?: string; role?: string }, fallbackUsername?: string) {
+  function setSession(res: { token?: string; accessToken?: string; username?: string; role?: string; authUid?: string }, fallbackUsername?: string) {
     const tokenVal = res.token || res.accessToken || ''
     token.value = tokenVal
     username.value = res.username || fallbackUsername || ''
     role.value = res.role || 'user'
+    authUid.value = res.authUid || ''
     localStorage.setItem(TOKEN_KEY, tokenVal)
     localStorage.setItem(USER_KEY, username.value)
     localStorage.setItem(ROLE_KEY, role.value)
+    if (authUid.value) localStorage.setItem(AUTH_UID_KEY, authUid.value)
+    else localStorage.removeItem(AUTH_UID_KEY)
   }
 
   async function login(credentials: LoginRequest) {
@@ -47,9 +53,11 @@ export const useUserStore = defineStore('user', () => {
     token.value = ''
     username.value = ''
     role.value = 'user'
+    authUid.value = ''
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
     localStorage.removeItem(ROLE_KEY)
+    localStorage.removeItem(AUTH_UID_KEY)
   }
 
   /**
@@ -69,6 +77,7 @@ export const useUserStore = defineStore('user', () => {
     token,
     username,
     role,
+    authUid,
     isLoggedIn,
     isAdmin,
     login,

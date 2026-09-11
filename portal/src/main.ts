@@ -6,7 +6,7 @@ import App from './App.vue'
 import router from './router'
 import './styles/index.scss'
 import { useUserStore } from '@/stores/user'
-import { startSessionWatcher } from '@/utils/sso'
+import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
 
 // Element Plus 图标 - 全量注册
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
@@ -36,5 +36,11 @@ if (userStore.token) {
   startSessionWatcher({
     getToken: () => userStore.token,
     clearLocalAuth: () => userStore.clearSession(),
+    // 身份一致性守卫（auth-components 0.5.4+）：exchange 响应带 authUid（auth-center 用户 id），
+    // 与探针返回的 username（同为 auth uid）比对，错位（共享浏览器换人）→ 清本地后重走 BFF 换票
+    getLocalIdentity: () => userStore.authUid || null,
+    onIdentityMismatch: () => {
+      window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/')
+    },
   })
 }
