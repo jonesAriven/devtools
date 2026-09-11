@@ -507,6 +507,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function createSessionWatcher(config2, options = {}) {
     const opts = { ...DEFAULTS, ...options };
     const loginUrl = options.loginUrl || config2.loginUrl || "/login";
+    const readToken = options.getToken ?? getToken;
+    const clearAuth = options.clearLocalAuth ?? clearLocalAuthSafely;
     let running = false;
     let paused = false;
     let timer = null;
@@ -516,7 +518,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     async function tick() {
       var _a, _b;
       if (!running || paused || probing) return true;
-      if (!getToken()) {
+      if (!readToken()) {
         return false;
       }
       probing = true;
@@ -538,7 +540,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         lostStreak = 0;
         const username = probe.username ?? null;
         stopWatcher();
-        clearLocalAuthSafely();
+        clearAuth();
         (_b = opts.onSessionLost) == null ? void 0 : _b.call(opts, { username, reason: "probe" });
         if (opts.redirectOnLost && !isOnLoginPage(loginUrl)) {
           const sep = loginUrl.includes("?") ? "&" : "?";
@@ -781,7 +783,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     };
   }
-  const version = "0.5.0";
+  const version = "0.5.1";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;

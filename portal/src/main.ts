@@ -25,6 +25,16 @@ app.use(ElementPlus)
 app.mount('#app')
 
 // Phase 6：已登录则启动会话监视 —— 任一应用统一登出后，本应用随之退出（跨应用单点登出联动）
-if (useUserStore(pinia).token) {
-  startSessionWatcher()
+//
+// ⚠️ 必须显式注入 getToken / clearLocalAuth：
+//   portal 的凭据是**自家服务端换票后写入 `portal_token`**（见 stores/user.ts 的 TOKEN_KEY），
+//   并不是组件库约定的 `auth_access_token` 键。而监视器默认只用组件库的键判断「本地还有没有凭据」，
+//   读不到就在 tick 首行短路、**永不发出探针** → 别处登出后 portal 永远登不掉。
+//   （2026-09-12 实测：运行期 0 次 `/auth/session` 探针，只能靠 401 拦截器被动跳 ?reauth=1。）
+const userStore = useUserStore(pinia)
+if (userStore.token) {
+  startSessionWatcher({
+    getToken: () => userStore.token,
+    clearLocalAuth: () => userStore.clearSession(),
+  })
 }
