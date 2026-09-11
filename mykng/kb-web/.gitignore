@@ -1,0 +1,4 @@
+# kb-web 是 pnpm 项目（pnpm-lock.yaml + pnpm-workspace.yaml）。
+# 禁止 npm 生成 package-lock.json 污染仓库：CI 走 pnpm install --frozen-lockfile，
+# 仅认 pnpm-lock.yaml。npm/pnpm 混用会互相拍平 node_modules，见 ADR §15.9。
+package-lock.json
