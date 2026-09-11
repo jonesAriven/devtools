@@ -69,6 +69,13 @@ const loginConfig = {
  */
 onMounted(async () => {
   try {
+    // SLO 跨应用联动登出（Phase 6）：他处登出后本应用被联动踢回登录页，URL 带 ?slo=1。
+    // 此时 IdP 会话已销毁 → 跳过免登探测并明确提示，避免用户误以为是自己掉线了。
+    if (route.query.slo === '1') {
+      probing.value = false
+      ElMessage.warning('您已在其他应用退出登录，请重新登录')
+      return
+    }
     const fromReauth = route.query.reauth === '1'
     if (fromReauth && sessionStorage.getItem(REAUTH_FLAG) === '1') {
       sessionStorage.removeItem(REAUTH_FLAG)

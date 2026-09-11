@@ -53,6 +53,13 @@ function currentRedirect(): string {
  * ⚠️ 不能用 `prompt=none`：SAS 3.2.5 不支持，会直接渲染登录页而非返回错误。
  */
 onMounted(async () => {
+  // SLO 跨应用联动登出（Phase 6）：他处登出后本应用被联动踢回登录页，URL 带 ?slo=1。
+  // 此时 IdP 会话已被销毁 → 跳过免登探测并明确提示，避免用户误以为是自己掉线了。
+  if (router.currentRoute.value.query.slo === '1') {
+    probing.value = false
+    ElMessage.warning('您已在其他应用退出登录，请重新登录')
+    return
+  }
   try {
     const jumped = await bootstrapLoginPage(currentRedirect())
     if (!jumped) probing.value = false
