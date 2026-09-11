@@ -2,7 +2,7 @@
  * SSO（OIDC authorization_code + PKCE）—— **薄适配层**（Phase 6 组件收敛）
  *
  * 实现已全部收敛到公共组件 `@marschat/auth-components`；本文件只做两件事：
- * 1. 绑定 kb-web 自己的 OIDC 配置（client_id=marscherch-kbweb，回调 /kb/sso-callback）；
+ * 1. 绑定 kb-web 自己的 OIDC 配置（client_id=marschat-kbweb，回调 /kb/sso-callback）；
  * 2. 保持既有导出名与调用签名不变，上层（LoginView / SsoCallbackView / api/index.ts）零改动。
  *
  * ⚠️ 本文件**不再**自己实现 PKCE / 换票 / 续期逻辑。此前 kb-web、kb-ops-web、
@@ -21,6 +21,7 @@ import {
   type SessionWatcherOptions,
 } from '@marschat/auth-components'
 import { CONTEXT_PATH, OIDC_CLIENT_ID, OIDC_ISSUER, OIDC_REDIRECT_URI } from '@/config'
+import { getToken } from './token'
 
 /** kb-web 的 SSO 配置（唯一真源，供登录页/回调页/登出共用） */
 export const SSO_CONFIG: SsoConfig = {
@@ -98,7 +99,13 @@ let sessionWatcher: SessionWatcher | null = null
  */
 export function startSessionWatcher(options?: SessionWatcherOptions): SessionWatcher {
   if (sessionWatcher) return sessionWatcher
-  sessionWatcher = sso.watchSession(options)
+  sessionWatcher = sso.watchSession({
+    ...options,
+    // 身份一致性守卫（auth-components 0.5.4）：IdP 会话是谁，本地会话就应是谁。
+    // 共享浏览器换人登录时本地旧 token 还在 → 探针身份 ≠ 本地身份 → 静默重换票。
+    getLocalIdentity: () => decodeOidcClaims(getToken() || '')?.sub ?? null,
+    onIdentityMismatch: () => void renewByReauthorize(),
+  })
   return sessionWatcher
 }
 

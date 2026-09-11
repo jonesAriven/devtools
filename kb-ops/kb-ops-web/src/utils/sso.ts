@@ -23,6 +23,7 @@ import {
   type SessionWatcher,
   type SessionWatcherOptions,
 } from '@marschat/auth-components'
+import { getToken } from './token'
 
 /** kb-ops 的 SSO 配置（唯一真源，供登录页/回调页/登出共用） */
 export const SSO_CONFIG: SsoConfig = {
@@ -96,7 +97,13 @@ let sessionWatcher: SessionWatcher | null = null
  */
 export function startSessionWatcher(options?: SessionWatcherOptions): SessionWatcher {
   if (sessionWatcher) return sessionWatcher
-  sessionWatcher = sso.watchSession(options)
+  sessionWatcher = sso.watchSession({
+    ...options,
+    // 身份一致性守卫（auth-components 0.5.4）：IdP 会话是谁，本地会话就应是谁。
+    // 共享浏览器换人登录时本地旧 token 还在 → 探针身份 ≠ 本地身份 → 静默重换票。
+    getLocalIdentity: () => decodeOidcClaims(getToken() || '')?.sub ?? null,
+    onIdentityMismatch: () => void renewByReauthorize(),
+  })
   return sessionWatcher
 }
 

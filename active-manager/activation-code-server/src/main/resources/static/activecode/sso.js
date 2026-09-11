@@ -219,7 +219,20 @@
         if (!sso) return null;
         if (watcher) return watcher;
         try {
-            watcher = client().watchSession(options || {});
+            var watcherOpts = Object.assign({}, options || {}, {
+                // 身份一致性守卫（auth-components 0.5.4）：IdP 会话是谁，本地会话就应是谁。
+                // 共享浏览器换人登录时本地旧 token 还在 → 探针身份 ≠ 本地身份 → 静默重换票。
+                getLocalIdentity: function () {
+                    try {
+                        var claims = MICRO.decodeOidcClaims(MICRO.getToken() || '');
+                        return claims && claims.sub ? String(claims.sub) : null;
+                    } catch (e2) { return null; }
+                },
+                onIdentityMismatch: function () {
+                    try { client().renewByReauthorize(); } catch (e3) { /* 组件异常时由兜底清态 */ }
+                }
+            });
+            watcher = client().watchSession(watcherOpts);
             return watcher;
         } catch (e) {
             if (global.console && console.warn) console.warn('[activecode] 会话监视启动失败', e);

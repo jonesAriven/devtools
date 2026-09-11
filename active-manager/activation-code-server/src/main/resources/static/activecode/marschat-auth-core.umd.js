@@ -527,7 +527,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     let lostStreak = 0;
     let firstProbeTimer = null;
     async function tick() {
-      var _a, _b;
+      var _a, _b, _c;
       if (!running || paused || probing) return true;
       if (!readToken()) {
         return false;
@@ -542,6 +542,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         }
         if (probe.authenticated) {
           lostStreak = 0;
+          const localId = (_b = opts.getLocalIdentity) == null ? void 0 : _b.call(opts);
+          if (localId && probe.username && String(probe.username) !== String(localId)) {
+            stopWatcher();
+            clearAuth();
+            if (opts.onIdentityMismatch) {
+              opts.onIdentityMismatch();
+            } else {
+              if (opts.redirectOnLost && !isOnLoginPage(loginUrl)) {
+                const sep = loginUrl.includes("?") ? "&" : "?";
+                window.location.assign(`${loginUrl}${sep}reauth=1`);
+              }
+            }
+            return false;
+          }
           return true;
         }
         lostStreak += 1;
@@ -552,7 +566,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         const username = probe.username ?? null;
         stopWatcher();
         clearAuth();
-        (_b = opts.onSessionLost) == null ? void 0 : _b.call(opts, { username, reason: "probe" });
+        (_c = opts.onSessionLost) == null ? void 0 : _c.call(opts, { username, reason: "probe" });
         if (opts.redirectOnLost && !isOnLoginPage(loginUrl)) {
           const sep = loginUrl.includes("?") ? "&" : "?";
           window.location.assign(`${loginUrl}${sep}slo=1`);
@@ -800,7 +814,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     };
   }
-  const version = "0.5.3";
+  const version = "0.5.4";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;
