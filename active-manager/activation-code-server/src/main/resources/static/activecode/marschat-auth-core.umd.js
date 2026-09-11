@@ -726,6 +726,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         clearTimeout(timer);
       }
       if (res.status === 401 || res.status === 403) {
+        if (res.status === 401 && options.onUnauthorized) {
+          try {
+            options.onUnauthorized();
+          } catch {
+          }
+        }
         throw new UserAdminError(
           res.status === 401 ? "登录已过期，请重新登录" : "当前账号无权限管理用户",
           res.status
@@ -783,7 +789,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     };
   }
-  const version = "0.5.1";
+  const version = "0.5.2";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;

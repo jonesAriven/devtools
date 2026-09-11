@@ -18,12 +18,14 @@
 import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { getToken } from '@/utils/token'
-import { decodeOidcClaims } from '@/utils/sso'
+import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
 
 const client = createUserAdminClient({
   // auth-center 是平台唯一账号池；4 个直换票应用统一走这个地址
   baseUrl: 'https://auth.marschat.online/admin/users',
   getToken: () => getToken(),
+  // 401（本地 token 过期但 IdP 会话仍在）→ 静默重授权，回来后自动重载列表
+  onUnauthorized: () => void renewByReauthorize(),
 })
 
 /** 当前登录用户 id —— 面板据此禁止"删除自己 / 禁用自己" */

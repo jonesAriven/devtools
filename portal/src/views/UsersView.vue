@@ -19,6 +19,7 @@
 import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
+import { bffAuthorizeUrl } from '@/utils/sso'
 
 const userStore = useUserStore()
 
@@ -26,6 +27,10 @@ const client = createUserAdminClient({
   // 与 src/api/request.ts 的 adminBaseURL 保持同一口径（开发走 vite 代理）
   baseUrl: import.meta.env.DEV ? '/api/admin/users' : '/portal/api/admin/users',
   getToken: () => userStore.token,
+  // 401（门户会话过期）→ 重新走 BFF 授权（服务端静默换票），回来后自动重载列表
+  onUnauthorized: () => {
+    window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/users')
+  },
 })
 
 const config: UserManagementConfig = {
