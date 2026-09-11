@@ -2,7 +2,7 @@
 
 > **文档版本**：v1.1
 > **更新日期**：2026-06-28
-> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence / kb-common）+ 前端 kb-web + 双层 Nginx
+> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway / auth-center / kb-file / kb-knowledge / kb-ops / kb-intelligence / kb-common）+ 前端 kb-web + 双层 Nginx
 > **对应 SOP**：附录 D — 安全 Checklist
 > **使用说明**：每次发布前必须由安全负责人逐项确认；任一 Blocker 项未通过禁止发布。
 > **检查频率**：每次发布前 + 每季度全面安全审计

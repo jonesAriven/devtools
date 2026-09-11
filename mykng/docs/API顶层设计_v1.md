@@ -157,7 +157,7 @@ kb-gateway
 
 | 路由 ID | 匹配路径（`/kb/api` 前缀下） | 转发目标 | StripPrefix |
 |---------|----------------------------|---------|------------|
-| kb-auth | `/auth/**`, `/user/**`, `/token/**`, `/log/**` | kb-auth:8081 | 2 |
+| auth-center | `/auth/**`, `/user/**`, `/token/**`, `/log/**` | auth-center:8085 | 2 |
 | kb-file | `/file/**`, `/bucket/**` | kb-file:8082 | 2 |
 | kb-knowledge | `/doc/**`, `/folder/**`, `/web/**`, `/search/**`, `/share/**`, `/tag/**`, `/space/**`, `/trash/**`, `/version/**` | kb-knowledge:8083 | 2 |
 | kb-intelligence | `/intelligence/**` | kb-intelligence:8086 | 2 |
@@ -175,7 +175,7 @@ kb-gateway
 
 ## 6. 接口清单（按服务分组）
 
-### 6.1 kb-auth（12 个接口）
+### 6.1 auth-center（12 个接口）
 
 | 方法 | 路径 | 描述 | 鉴权 |
 |------|------|------|------|

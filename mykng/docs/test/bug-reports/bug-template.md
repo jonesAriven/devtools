@@ -13,7 +13,7 @@
 | **Bug ID** | BUG-YYYYMMDD-NNN |
 | **标题** | （一句话描述问题，含模块与现象） |
 | **等级** | P0 阻塞 / P1 严重 / P2 一般 / P3 提示 |
-| **模块** | kb-auth / kb-file / kb-knowledge / kb-ops / kb-gateway / kb-intelligence / kb-common / 前端 |
+| **模块** | auth-center / kb-file / kb-knowledge / kb-ops / kb-gateway / kb-intelligence / kb-common / 前端 |
 | **所属版本** | v1.x.x（commit hash） |
 | **发现人** | XXX |
 | **发现日期** | YYYY-MM-DD HH:mm |

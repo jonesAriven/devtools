@@ -16,10 +16,10 @@
 | [产品需求文档_v1.md](产品需求文档_v1.md) | 产品需求文档：功能清单（Must/Should）、业务状态机、上下文路径、模块划分、测试数据设计（SOP V2.1 阶段0）。当前版本 v2.0，新增笔记功能增强（M17-M26） | 产品、开发、测试 | 需求变更时同步 |
 | [笔记功能优化_需求与设计_20260702.md](笔记功能优化_需求与设计_20260702.md) | 笔记功能增强专项设计：多格式笔记/文档大纲/双向链接/模板/导出/版本对比/文本文件在线编辑/资源树 | 产品、开发、测试 | 笔记功能迭代时同步 |
 | [API顶层设计_v1.md](API顶层设计_v1.md) | API 顶层设计：统一返回格式、错误码、认证机制、路由策略、限流、CORS（SOP V1.1 阶段0） | 前后端开发、架构 | 接口规范变更时同步 |
-| [数据库设计_v1.5.md](数据库设计_v1.5.md) | 数据库表结构设计 v1.5（含 kb-auth operation_log + kb-intelligence 4 张知识引擎表 + MongoDB kn_content + MeiliSearch kn_vectors） | 开发、DBA | 表结构变更时同步 |
+| [数据库设计_v1.5.md](数据库设计_v1.5.md) | 数据库表结构设计 v1.5（含 auth-center operation_log + kb-intelligence 4 张知识引擎表 + MongoDB kn_content + MeiliSearch kn_vectors） | 开发、DBA | 表结构变更时同步 |
 | [运维手册_v1.md](运维手册_v1.md) | 运维手册 | 运维 | 运维流程变更时更新 |
 | [使用说明书.md](使用说明书.md) | 面向最终用户的功能使用指南。当前版本 v3.0，已补充笔记增强/资源树/全局搜索/快捷新建 | 所有用户 | 新功能上线后同步更新 |
-| [接口规范清单_v1.md](接口规范清单_v1.md) | 89 个 API 接口完整规范（v2.4，含 kb-intelligence 12个；kb-ops 已剥离，OperationLog 迁至 kb-auth） | 前后端开发、第三方接入 | 接口变更时必须同步 |
+| [接口规范清单_v1.md](接口规范清单_v1.md) | 89 个 API 接口完整规范（v2.4，含 kb-intelligence 12个；kb-ops 已剥离，OperationLog 迁至 auth-center） | 前后端开发、第三方接入 | 接口变更时必须同步 |
 | [知识库部署方案_20260628.md](知识库部署方案_20260628.md) | 部署架构、Docker Compose、Nginx（双层代理）、SSL、备份、运维 | 部署/运维人员 | 部署架构变更时更新 |
 | [私有化全端个人知识库_v7.md](私有化全端个人知识库_v7.md) | 系统架构设计、服务拆分、技术栈、P0/P1 优化方案、双层Nginx部署架构 | 架构师、开发 | 架构演进时更新 |
 | [知识引擎技术方案_v2_可落地.md](知识引擎技术方案_v2_可落地.md) | 知识引擎 v2 技术方案 | 开发 | 方案变更时更新 |
@@ -125,11 +125,10 @@ mykng/
 │   ├── PRD-mykng-frontend.md
 │   └── TechArch-mykng-frontend.md
 ├── kb-parent/                     # 父工程
-├── kb-common/                     # 公共模块
 ├── kb-gateway/                    # 网关服务
-├── kb-auth/                       # 认证服务
 ├── kb-file/                       # 文件服务
 ├── kb-knowledge/                  # 知识服务
+├── kb-intelligence/               # 知识引擎服务
 ├── kb-web/                        # 前端工程
 ├── nginx/                         # Nginx 配置示例
 │   ├── kb.marschat.online.conf        # mykng本地Nginx（静态资源+API反代）

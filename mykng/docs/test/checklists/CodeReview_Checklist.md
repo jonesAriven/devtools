@@ -2,10 +2,10 @@
 
 > **文档版本**：v1.1
 > **更新日期**：2026-06-28
-> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway / kb-auth / kb-file / kb-knowledge / kb-ops / kb-intelligence / kb-common）
+> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway / auth-center / kb-file / kb-knowledge / kb-ops / kb-intelligence / kb-common）
 > **对应 SOP**：附录 C — Code Review Checklist
 > **使用说明**：每次 MR/PR 提交后，评审人按本清单逐项检查。Blocker 项必须修复方可合并；Major 项建议修复；Minor 项可后续优化。
-> **强制要求**：所有 MR 至少 1 名评审人 approve，核心模块（kb-auth/kb-gateway/kb-common）需 2 名 approve。
+> **强制要求**：所有 MR 至少 1 名评审人 approve，核心模块（auth-center/kb-gateway/kb-common）需 2 名 approve。
 
 ---
 

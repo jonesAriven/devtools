@@ -112,7 +112,7 @@
 
 | 模块 | 影响接口 | 影响页面 |
 |------|---------|---------|
-| kb-auth | /auth/login, /auth/refresh | 登录页 |
+| auth-center | /auth/login, /auth/refresh | 登录页 |
 | ... | ... | ... |
 
 ## 自测结论

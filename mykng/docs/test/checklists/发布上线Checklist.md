@@ -2,7 +2,7 @@
 
 > **文档版本**：v1.1
 > **更新日期**：2026-06-28
-> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway 8090 / kb-auth 8081 / kb-file 8082 / kb-knowledge 8083 / kb-ops 8084 / kb-intelligence 8086 / kb-common）
+> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway 8090 / auth-center 8085 / kb-file 8082 / kb-knowledge 8083 / kb-ops 8084 / kb-intelligence 8086 / kb-common）
 > **对应 SOP**：阶段 5 — 发布上线（DoD）
 > **使用说明**：发布负责人逐项确认，所有项必须为 ✅ 才可执行发布；任一项为 ❌ 必须延期或走紧急变更流程。
 > **签字角色**：发布负责人 / 架构师 / 测试负责人 / 运维负责人 / 产品负责人
@@ -120,10 +120,10 @@
 
 | 序号 | 步骤 | 命令/操作 | 预期耗时 | 验证方式 | 状态 |
 |------|------|----------|---------|---------|------|
-| E-01 | 停止旧容器（优雅停机） | `docker compose stop kb-auth kb-file kb-knowledge kb-ops` | 30s | `docker ps` 无对应容器 | ☐ ✅ ❌ |
+| E-01 | 停止旧容器（优雅停机） | `docker compose stop auth-center kb-file kb-knowledge kb-ops` | 30s | `docker ps` 无对应容器 | ☐ ✅ ❌ |
 | E-02 | 执行数据库迁移脚本 | `mysql -u root -p < db/migration/V1.x.x__upgrade.sql` | 1-5min | 脚本输出 0 error | ☐ ✅ ❌ |
 | E-03 | 数据校验 | `bash db/verify/verify_v1.x.x.sh` | 1min | 行数/字段对比一致 | ☐ ✅ ❌ |
-| E-04 | 拉取新镜像并启动后端 | `docker compose up -d kb-auth kb-file kb-knowledge kb-ops` | 1min | `docker ps` 容器 Up | ☐ ✅ ❌ |
+| E-04 | 拉取新镜像并启动后端 | `docker compose up -d auth-center kb-file kb-knowledge kb-ops` | 1min | `docker ps` 容器 Up | ☐ ✅ ❌ |
 | E-05 | 后端健康检查 | `curl http://localhost:8081/actuator/health` 等 | 30s | 各服务返回 `{"status":"UP"}` | ☐ ✅ ❌ |
 | E-06 | 启动 kb-intelligence（如涉及） | `docker compose up -d kb-intelligence` | 30s | 健康检查 UP | ☐ ✅ ❌ |
 | E-07 | 重启 kb-gateway | `docker compose up -d --force-recreate kb-gateway` | 30s | 网关路由可达 | ☐ ✅ ❌ |
@@ -252,10 +252,10 @@
 | 序号 | 步骤 | 命令/操作 | 预期耗时 | 责任人 |
 |------|------|----------|---------|--------|
 | RB-S-01 | 通知干系人 | 发布群公告 "执行回滚" | 1min | 发布负责人 |
-| RB-S-02 | 停止新服务 | `docker compose stop kb-auth kb-file kb-knowledge kb-ops` | 30s | 运维 |
+| RB-S-02 | 停止新服务 | `docker compose stop auth-center kb-file kb-knowledge kb-ops` | 30s | 运维 |
 | RB-S-03 | 执行数据库回滚脚本 | `mysql -u root -p < db/migration/V1.x.x__rollback.sql` | 1-5min | DBA |
 | RB-S-04 | 数据库回滚校验 | `bash db/verify/verify_rollback.sh` | 1min | DBA |
-| RB-S-05 | 启动旧版本镜像 | `docker compose up -d kb-auth:prev ...` | 1min | 运维 |
+| RB-S-05 | 启动旧版本镜像 | `docker compose up -d auth-center:prev ...` | 1min | 运维 |
 | RB-S-06 | 健康检查 | `curl http://localhost:8081/actuator/health` | 30s | 运维 |
 | RB-S-07 | 回滚前端 | `rsync -av /data/kb-web-prev/ /data/kb-web/` | 30s | 运维 |
 | RB-S-08 | reload Nginx | `nginx -t && nginx -s reload` | 5s | 运维 |

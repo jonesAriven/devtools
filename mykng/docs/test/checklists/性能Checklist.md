@@ -2,7 +2,7 @@
 
 > **文档版本**：v1.1
 > **更新日期**：2026-06-28
-> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway 8090 / kb-auth 8081 / kb-file 8082 / kb-knowledge 8083 / kb-ops 8084 / kb-intelligence 8086 / kb-common）+ 前端 kb-web + 双层 Nginx + 数据库/中间件
+> **适用范围**：MyKNG 知识库平台 7 模块（kb-gateway 8090 / auth-center 8085 / kb-file 8082 / kb-knowledge 8083 / kb-ops 8084 / kb-intelligence 8086 / kb-common）+ 前端 kb-web + 双层 Nginx + 数据库/中间件
 > **对应 SOP**：附录 E — 性能 Checklist
 > **使用说明**：每次发布前由性能负责人逐项确认；关键指标不达标需评估是否延期。
 > **检查频率**：每次发布前 + 每月性能巡检 + 大版本上线前压测
@@ -65,11 +65,11 @@
 
 | 编号 | 模块 | 接口 | RT P99 目标 | 验证方式 | 等级 | 状态 |
 |------|------|------|------------|---------|------|------|
-| PERF-API-AUTH-01 | kb-auth | POST /auth/login | < 200ms | locust 压测 | Blocker | ☐ ✅ ❌ |
-| PERF-API-AUTH-02 | kb-auth | POST /auth/refresh | < 100ms | locust 压测 | Blocker | ☐ ✅ ❌ |
-| PERF-API-AUTH-03 | kb-auth | GET /user/profile | < 50ms | locust 压测 | Major | ☐ ✅ ❌ |
-| PERF-API-AUTH-04 | kb-auth | PUT /user/password | < 100ms | locust 压测 | Major | ☐ ✅ ❌ |
-| PERF-API-AUTH-05 | kb-auth | POST /token | < 100ms | locust 压测 | Major | ☐ ✅ ❌ |
+| PERF-API-AUTH-01 | auth-center | POST /auth/login | < 200ms | locust 压测 | Blocker | ☐ ✅ ❌ |
+| PERF-API-AUTH-02 | auth-center | POST /auth/refresh | < 100ms | locust 压测 | Blocker | ☐ ✅ ❌ |
+| PERF-API-AUTH-03 | auth-center | GET /user/profile | < 50ms | locust 压测 | Major | ☐ ✅ ❌ |
+| PERF-API-AUTH-04 | auth-center | PUT /user/password | < 100ms | locust 压测 | Major | ☐ ✅ ❌ |
+| PERF-API-AUTH-05 | auth-center | POST /token | < 100ms | locust 压测 | Major | ☐ ✅ ❌ |
 | PERF-API-FILE-01 | kb-file | POST /file/upload | < 500ms（5MB 文件） | locust 压测 | Blocker | ☐ ✅ ❌ |
 | PERF-API-FILE-02 | kb-file | POST /file/merge | < 1s | locust 压测 | Blocker | ☐ ✅ ❌ |
 | PERF-API-FILE-03 | kb-file | GET /file/list | < 100ms | locust 压测 | Major | ☐ ✅ ❌ |

@@ -6,13 +6,15 @@
 > **使用方式**：开发提测前逐项自检，全部打勾后方可提测
 > **关联文档**：`提测准入Checklist.md`、`测试计划_v1.1.md`
 
+> ⚠️ **模块变更**：原 `kb-auth` 认证模块已独立成仓 `auth-center`（OIDC/RS256，端口 8085），不再属于本仓库的 Maven 构建范围。下方命令已从 `-pl` 模块列表中移除 `kb-auth`，其构建/测试请到 auth-center 仓库执行 `cd auth-center && mvn -DskipTests package`。
+
 ---
 
 ## 一、层级 1：变异测试（PITest）
 
 > 验证单元测试的有效性，发现「伪通过」的测试。
 
-- [ ] 1.1 已对 kb-auth/kb-file/kb-knowledge/kb-ops 的 Service 层核心方法执行 PITest
+- [ ] 1.1 已对 auth-center/kb-file/kb-knowledge/kb-ops 的 Service 层核心方法执行 PITest
 - [ ] 1.2 变异覆盖率 ≥ 70%
 - [ ] 1.3 无存活变异体（SURVIVING mutants = 0），或存活变异体已分析并确认可接受
 - [ ] 1.4 报告已归档至 `target/pit-reports/`
@@ -20,7 +22,7 @@
 
 **执行命令**：
 ```bash
-mvn org.pitest:pitest-maven:mutationCoverage -pl kb-auth,kb-file,kb-knowledge,kb-ops -DtargetClasses=**.service.impl.** -DtargetTests=**.*Test
+mvn org.pitest:pitest-maven:mutationCoverage -pl kb-file,kb-knowledge,kb-ops -DtargetClasses=**.service.impl.** -DtargetTests=**.*Test
 ```
 
 ---
@@ -42,7 +44,7 @@ mvn org.pitest:pitest-maven:mutationCoverage -pl kb-auth,kb-file,kb-knowledge,kb
 
 **执行命令**：
 ```bash
-mvn clean compile -pl kb-auth,kb-file,kb-knowledge,kb-ops,kb-gateway,kb-intelligence,kb-common
+mvn clean compile -pl kb-file,kb-knowledge,kb-ops,kb-gateway,kb-intelligence,kb-common
 mvn sonar:sonar
 ```
 
@@ -55,7 +57,7 @@ mvn sonar:sonar
 - [ ] 3.1 所有单元测试用例通过（`mvn test` 绿色）
 - [ ] 3.2 行覆盖率 ≥ 85%（JaCoCo 报告 `target/site/jacoco/index.html`）
 - [ ] 3.3 异常分支覆盖率 ≥ 80%
-- [ ] 3.4 kb-auth 单元用例 15 条全通过（L1-AUTH-001~015）
+- [ ] 3.4 auth-center 单元用例 15 条全通过（L1-AUTH-001~015）
 - [ ] 3.5 kb-file 单元用例 7 条全通过（L1-FILE-001~007）
 - [ ] 3.6 kb-knowledge 单元用例 14 条全通过（L1-KNOW-001~014）
 - [ ] 3.7 kb-ops 单元用例 5 条全通过（L1-OPS-001~005）
@@ -65,7 +67,7 @@ mvn sonar:sonar
 
 **执行命令**：
 ```bash
-mvn test -pl kb-auth,kb-file,kb-knowledge,kb-ops,kb-intelligence,kb-common
+mvn test -pl kb-file,kb-knowledge,kb-ops,kb-intelligence,kb-common
 ```
 
 ---
@@ -91,7 +93,7 @@ mvn test -pl kb-auth,kb-file,kb-knowledge,kb-ops,kb-intelligence,kb-common
   - [ ] 4.5.1 创建文档 Mongo 失败回滚（L2-TX-001）
   - [ ] 4.5.2 合并分片异常不残留（L2-TX-002）
 - [ ] 4.6 kb-gateway 集成用例 8 条全通过（L2-GW-001~008）
-- [ ] 4.7 kb-auth 集成用例 8 条全通过（L2-AUTH-001~008）
+- [ ] 4.7 auth-center 集成用例 8 条全通过（L2-AUTH-001~008）
 - [ ] 4.8 kb-file 集成用例 8 条全通过（L2-FILE-001~008）
 - [ ] 4.9 kb-knowledge 集成用例 16 条全通过（L2-KNOW-001~016）
 - [ ] 4.10 kb-ops 集成用例 8 条全通过（L2-OPS-001~008）
@@ -100,7 +102,7 @@ mvn test -pl kb-auth,kb-file,kb-knowledge,kb-ops,kb-intelligence,kb-common
 
 **执行命令**：
 ```bash
-mvn verify -pl kb-auth,kb-file,kb-knowledge,kb-ops -Dspring.profiles.active=test
+mvn verify -pl kb-file,kb-knowledge,kb-ops -Dspring.profiles.active=test
 ```
 
 ---
@@ -153,7 +155,7 @@ mvn verify -pl kb-auth,kb-file,kb-knowledge,kb-ops -Dspring.profiles.active=test
 
 **执行命令**：
 ```bash
-mvn test -Dtest=*BddTest -pl kb-auth,kb-file,kb-knowledge,kb-ops
+mvn test -Dtest=*BddTest -pl kb-file,kb-knowledge,kb-ops
 ```
 
 ---

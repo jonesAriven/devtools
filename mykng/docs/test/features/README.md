@@ -22,7 +22,7 @@
 
 | 序号 | Feature 文件 | 来源模块 | 场景数 | 覆盖业务流程 | 优先级 |
 |------|------------|---------|--------|------------|--------|
-| 1 | auth.feature | kb-auth | 12 | FLOW-01 登录认证闭环 | P0 |
+| 1 | auth.feature | auth-center | 12 | FLOW-01 登录认证闭环 | P0 |
 | 2 | file_upload_search.feature | kb-file | 27 | FLOW-03 文件上传-搜索 | P0 |
 | 3 | knowledge_import.feature | kb-intelligence | 31 | 知识导入-文档解析-实体提取-双维度渲染 | P0 |
 | 4 | doc_lifecycle.feature | kb-knowledge | 20 | FLOW-02 知识空间-文档管理 | P0 |
@@ -76,13 +76,13 @@ Feature: 用户认证
 
 ```bash
 # 执行所有 BDD 测试
-mvn test -Dtest=CucumberIT -pl kb-auth,kb-file,kb-knowledge,kb-ops,kb-intelligence
+mvn test -Dtest=CucumberIT -pl kb-file,kb-knowledge,kb-ops,kb-intelligence
 
-# 仅执行 kb-auth 的 BDD
-mvn test -Dtest=CucumberIT -pl kb-auth
+# 仅执行 auth-center 的 BDD
+cd auth-center && mvn test -Dtest=CucumberIT   # auth-center 已独立成仓，构建/测试走其仓库
 
 # 指定 feature 文件执行
-mvn test -Dtest=CucumberIT -pl kb-auth -Dcucumber.features="src/test/resources/features/auth.feature"
+cd auth-center && mvn test -Dtest=CucumberIT -Dcucumber.features="src/test/resources/features/auth.feature"
 ```
 
 ### 5.2 运行器配置
