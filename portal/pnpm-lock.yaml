@@ -4,54 +4,56 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-dependencies:
-  '@element-plus/icons-vue':
-    specifier: ^2.3.1
-    version: 2.3.2(vue@3.5.39)
-  '@marschat/auth-components':
-    specifier: ^0.3.3
-    version: 0.3.3(element-plus@2.14.2)(typescript@5.9.3)
-  '@marschat/frontend-common':
-    specifier: 0.2.0
-    version: 0.2.0(element-plus@2.14.2)(vue@3.5.39)
-  axios:
-    specifier: ^1.18.1
-    version: 1.18.1
-  element-plus:
-    specifier: ^2.7.0
-    version: 2.14.2(vue@3.5.39)
-  pinia:
-    specifier: ^3.0.4
-    version: 3.0.4(typescript@5.9.3)(vue@3.5.39)
-  vue:
-    specifier: ^3.4.21
-    version: 3.5.39(typescript@5.9.3)
-  vue-router:
-    specifier: ^5.1.0
-    version: 5.1.0(pinia@3.0.4)(vite@5.4.21)(vue@3.5.39)
+importers:
 
-devDependencies:
-  '@vitejs/plugin-vue':
-    specifier: ^5.0.4
-    version: 5.2.4(vite@5.4.21)(vue@3.5.39)
-  sass:
-    specifier: ^1.75.0
-    version: 1.101.0
-  typescript:
-    specifier: ^5.4.0
-    version: 5.9.3
-  unplugin-auto-import:
-    specifier: ^0.17.5
-    version: 0.17.8
-  unplugin-vue-components:
-    specifier: ^0.26.0
-    version: 0.26.0(vue@3.5.39)
-  vite:
-    specifier: ^5.2.0
-    version: 5.4.21(sass@1.101.0)
-  vue-tsc:
-    specifier: ^2.0.6
-    version: 2.2.12(typescript@5.9.3)
+  .:
+    dependencies:
+      '@element-plus/icons-vue':
+        specifier: ^2.3.1
+        version: 2.3.2(vue@3.5.39)
+      '@marschat/auth-components':
+        specifier: ^0.3.4
+        version: 0.3.4(element-plus@2.14.2)(typescript@5.9.3)
+      '@marschat/frontend-common':
+        specifier: 0.2.1
+        version: 0.2.1(element-plus@2.14.2)(vue@3.5.39)
+      axios:
+        specifier: ^1.18.1
+        version: 1.18.1
+      element-plus:
+        specifier: ^2.7.0
+        version: 2.14.2(vue@3.5.39)
+      pinia:
+        specifier: ^3.0.4
+        version: 3.0.4(typescript@5.9.3)(vue@3.5.39)
+      vue:
+        specifier: ^3.4.21
+        version: 3.5.39(typescript@5.9.3)
+      vue-router:
+        specifier: ^5.1.0
+        version: 5.1.0(pinia@3.0.4)(vite@5.4.21)(vue@3.5.39)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.0.4
+        version: 5.2.4(vite@5.4.21)(vue@3.5.39)
+      sass:
+        specifier: ^1.75.0
+        version: 1.101.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      unplugin-auto-import:
+        specifier: ^0.17.5
+        version: 0.17.8
+      unplugin-vue-components:
+        specifier: ^0.26.0
+        version: 0.26.0(vue@3.5.39)
+      vite:
+        specifier: ^5.2.0
+        version: 5.4.21(sass@1.101.0)
+      vue-tsc:
+        specifier: ^2.0.6
+        version: 2.2.12(typescript@5.9.3)
 
 packages:
 
@@ -362,8 +364,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: false
 
-  /@marschat/auth-components@0.3.3(element-plus@2.14.2)(typescript@5.9.3):
-    resolution: {integrity: sha512-vvMBZLzlZ68D2ZEURWC6EjPCOfbFu9ec4Zx6GA5p6moLeTO8YdiCwV2Od41i8q3jlBKzs5jZXv8kKIbkctDC1g==}
+  /@marschat/auth-components@0.3.4(element-plus@2.14.2)(typescript@5.9.3):
+    resolution: {integrity: sha512-heG4pNKSyjCpXNDnGYkjnfxbze4gKlwOBv1sakp+QaJLb0TTaMpdETQ6R+ZVy9xfiukoch9nb1zsO2yPmoaPdw==}
     peerDependencies:
       element-plus: ^2.6.1
     dependencies:
@@ -374,8 +376,8 @@ packages:
       - typescript
     dev: false
 
-  /@marschat/frontend-common@0.2.0(element-plus@2.14.2)(vue@3.5.39):
-    resolution: {integrity: sha512-CU6rC8DzyXo2VfZGl6OLTlO1RoDDjAMf33G4cXM0JN3nXP65KpI6YBeb+67PhbnLkyRe2IIMDKeSAk8+Rw1oag==}
+  /@marschat/frontend-common@0.2.1(element-plus@2.14.2)(vue@3.5.39):
+    resolution: {integrity: sha512-pR4ufsTRj4SENYOTA0qFP86jOQZFDFqyr0sc1K9aS3ivkkRgLtf8rkb3hfq+ptDvsujIV0Taqm9S1WE+xkj2mw==}
     peerDependencies:
       element-plus: ^2.6.1
       vue: ^3.4.21
