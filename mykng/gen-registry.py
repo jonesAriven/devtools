@@ -39,6 +39,7 @@ REGISTRY_PATH = SCRIPT_DIR / "module-registry.yml"
 MANIFEST_PATH = SCRIPT_DIR / "kb-gateway" / "src" / "main" / "resources" / "module-manifest.json"
 GATEWAY_APP_YML = SCRIPT_DIR / "kb-gateway" / "src" / "main" / "resources" / "application.yml"
 DOCS_DIR = SCRIPT_DIR / "docs" / "generated"
+CLI_PATH = SCRIPT_DIR / "kb-cli.ps1"
 
 MANIFEST_SCHEMA_VERSION = 1
 # 网关自身也注册 Nacos，但前端不需要为它显隐菜单；仍纳入期望集，便于发现网关自身异常
@@ -320,6 +321,7 @@ def render_mermaid(reg: dict) -> str:
 STRUCTURAL_ROUTE_PATTERNS = (
     (re.compile(r"^/kb/api/[^/]+/v3/api-docs(/|$)"), "各模块 Swagger api-docs 聚合路由（网关按模块约定生成）"),
     (re.compile(r"^/kb/api/[^/]+/swagger-ui(/|$)"), "各模块 Swagger UI 路由（网关按模块约定生成）"),
+    (re.compile(r"^/kb/api/\*\*$"), "API 未匹配兜底（404，必须放在具体 API 路由之后、SPA 兜底之前，台账 L027）"),
     (re.compile(r"^/kb/s(/|$)"), "前端静态资源路由（kb-web 内部）"),
     (re.compile(r"^/kb/?$"), "前端 SPA 兜底路由（必须最后匹配）"),
     (re.compile(r"^/kb/\*\*$"), "前端 SPA 兜底路由（必须最后匹配）"),
@@ -382,6 +384,34 @@ def check_route_drift(reg: dict) -> list:
     return problems
 
 
+def check_cli_drift(reg: dict) -> list:
+    """开发期 CLI 的服务清单 vs registry（台账 T3）。
+
+    kb-cli.ps1 不在任何构建链路上：全仓 grep 能扫到，但不会被编译或 CI 门禁拦截，
+    是「改了 registry 却漏了消费方」的典型盲区（此前 5 个模块名与端口表就整体漂移过一次）。
+    这里把它的 $MicroServices 清单纳入同一道门禁，避免再次静默漂移。
+    """
+    problems = []
+    if not CLI_PATH.exists():
+        return problems  # 文件不存在则跳过，不阻断
+
+    text = CLI_PATH.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"\$MicroServices\s*=\s*@\(([^)]*)\)", text)
+    if not m:
+        return ["kb-cli.ps1 中未找到 $MicroServices 定义（格式已变，门禁失效需同步）"]
+
+    cli_names = set(re.findall(r"'([^']+)'", m.group(1)))
+    # 运行期后端服务 = 仓内服务(type=service) + 独立仓库部署的服务(type=external，如 auth-center)
+    reg_services = {mod["name"] for mod in (reg.get("modules") or [])
+                    if mod.get("type") in ("service", "external")}
+
+    for n in sorted(cli_names - reg_services):
+        problems.append(f"kb-cli.ps1 列出服务 {n}，但 registry 无此 type=service/external 模块")
+    for n in sorted(reg_services - cli_names):
+        problems.append(f"registry 有服务 {n}，但 kb-cli.ps1 的 $MicroServices 未列出")
+    return problems
+
+
 # ---------------------------------------------------------------- 命令
 
 def cmd_check_full(reg: dict, sha: str) -> int:
@@ -400,6 +430,8 @@ def cmd_check_full(reg: dict, sha: str) -> int:
     problems = check_route_drift(reg)
     for p in problems:
         bad.append(f"路由漂移：{p}")
+    for p in check_cli_drift(reg):
+        bad.append(f"CLI 漂移：{p}")
 
     if bad:
         print(f"❌ 检出 {len(bad)} 处漂移：")
@@ -462,6 +494,14 @@ def cmd_gen(reg: dict, sha: str) -> int:
             print(f"   - {p}")
     else:
         print("✅ 路由无漂移")
+
+    cli_problems = check_cli_drift(reg)
+    if cli_problems:
+        print(f"\n⚠️  CLI 漂移 {len(cli_problems)} 处（不阻断生成，但请修正）：")
+        for p in cli_problems:
+            print(f"   - {p}")
+    else:
+        print("✅ kb-cli.ps1 服务清单与 registry 一致")
     print(f"\n源文件 sha256 = {sha}")
     return 0
 

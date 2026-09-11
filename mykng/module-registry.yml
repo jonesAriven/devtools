@@ -162,7 +162,7 @@ modules:
     nacos-registered: true
     profile: external
     port: 8085
-    host-port: null        # 不映射宿主机端口
+    host-port: 8085        # compose(docker-compose.app.yml): "8085:8085"
     health-path: /actuator/health
     depends-on: []         # 不依赖其他业务服务
     infra-depends: [mysql, redis]

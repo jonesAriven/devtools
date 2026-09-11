@@ -50,7 +50,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - platform-net
+      platform-net:
+        aliases:
+          # L040：kb-file / kb-knowledge 配的是 ${MONGO_HOST:mongodb}（默认值 mongodb），
+          # 但容器名/服务名是 platform-mongo，compose 网络内无 mongodb 这个 DNS 名，
+          # 导致 MongoHealthIndicator 每次解析超时 30s（kb-file health DOWN）。
+          # 加别名后新旧引用都可达，零代码改动、一处覆盖两个引用者。
+          - mongodb
     mem_limit: 512m
 
   # ========== MinIO ==========

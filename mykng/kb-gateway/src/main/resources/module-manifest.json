@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "source": "mykng/module-registry.yml",
-  "sourceSha256": "cef5a96ff0be68c786f265e0183b13e9bfa4b66db9df7656f2a724566ed80606",
+  "sourceSha256": "cd69518a8e9c611685ccee19d2f842abf7c36fadce6bfc48f106677150b842bc",
   "contextPath": "/kb",
   "expectedModules": [
     "auth-center",
@@ -16,7 +16,7 @@
       "type": "external",
       "nacosRegistered": true,
       "containerPort": 8085,
-      "hostPort": null,
+      "hostPort": 8085,
       "healthPath": "/actuator/health",
       "registryAlias": "kb-auth",
       "database": "kb_auth",

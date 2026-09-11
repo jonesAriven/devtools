@@ -104,6 +104,19 @@ spring:
           predicates:
             - Path=${KB_CONTEXT:/kb}/s/**
 
+        # 未匹配任何 API 路由的 /kb/api/** → 404（台账 L027）
+        # ⚠️ 顺序敏感：必须在上面所有具体 API 路由「之后」、下面 SPA 兜底「之前」。
+        # 否则未匹配的 /kb/api/xxx 会被 /kb/** 的 SPA 路由吞掉并发给 kb-web:80，
+        # 返回 Spring Cloud Gateway 默认错误体（500），把「路由不存在」误报成「服务故障」。
+        # uri=no://op 是 SCG 惯用占位 scheme（无对应 RoutingFilter，不会真的发起请求），
+        # 配合 SetStatus 直接产出 404 空体。
+        - id: kb-api-not-found
+          uri: no://op
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/**
+          filters:
+            - SetStatus=404
+
         # 前端 SPA 页面路由（/kb/ 兜底，放在最后）
         - id: kb-web-spa
           uri: http://kb-web:80

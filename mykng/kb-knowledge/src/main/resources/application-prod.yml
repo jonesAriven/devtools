@@ -30,11 +30,6 @@ meilisearch:
 jwt:
   secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
 
-# Feign 客户端配置
-kb:
-  file:
-    host: ${KB_FILE_HOST:http://kb-file:8089}
-
 logging:
   level:
     com.kb: INFO

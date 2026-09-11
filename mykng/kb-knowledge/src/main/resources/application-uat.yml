@@ -33,10 +33,6 @@ mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-kb:
-  file:
-    host: ${KB_FILE_HOST:http://kb-file:8089}
-
 logging:
   level:
     com.kb: DEBUG
