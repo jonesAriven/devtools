@@ -55,6 +55,10 @@ class ModuleManifestConsistencyTest {
 
     private static final Pattern LB_TARGET = Pattern.compile("uri:\\s*lb://([\\w.\\-]+)");
 
+    /** kb-cli.ps1 的 `$MicroServices = @('a', 'b')` 数组提取（T3 门禁） */
+    private static final Pattern CLI_MICRO_SERVICES = Pattern.compile("\\$MicroServices\\s*=\\s*@\\(([^)]*)\\)");
+    private static final Pattern SINGLE_QUOTED = Pattern.compile("'([^']+)'");
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // ================================================================ 1. 哈希门禁
@@ -158,6 +162,50 @@ class ModuleManifestConsistencyTest {
                         + "\n两种可能：①注册表漏声明该模块 → 去 module-registry.yml 补一条并设 nacos-registered: true；"
                         + "\n        ②路由写错了模块名（这正是 kb-auth→auth-center 事故的形态）→ 改 application.yml。"
                         + "\n改完记得跑：python3 mykng/gen-registry.py");
+    }
+
+    // ================================================================ 4. 开发期 CLI 一致性（T3）
+
+    @Test
+    @DisplayName("kb-cli.ps1 的 $MicroServices 必须与注册表 service/external 模块一致（T3 SSOT 门禁）")
+    void cliMicroServicesMatchRegistry() throws Exception {
+        Path registry = resolveRegistry();
+        Path cli = registry.getParent().resolve("kb-cli.ps1");
+        assertTrue(Files.isRegularFile(cli),
+                "找不到 " + cli + "（与 module-registry.yml 同目录的开发期 CLI）。"
+                        + "\n这是 T3 门禁的校验对象，缺失即失效，直接失败而非跳过。");
+
+        String text = Files.readString(cli, StandardCharsets.UTF_8);
+        Matcher m = CLI_MICRO_SERVICES.matcher(text);
+        assertTrue(m.find(),
+                "kb-cli.ps1 中未找到 $MicroServices 定义（脚本格式已变，门禁失效需同步）。");
+
+        Set<String> cliNames = new LinkedHashSet<>();
+        Matcher q = SINGLE_QUOTED.matcher(m.group(1));
+        while (q.find()) {
+            cliNames.add(q.group(1));
+        }
+
+        // 注册表中的 service/external 模块（与 gen-registry.py 的 check_cli_drift 口径一致）
+        JsonNode manifestModules = loadManifest().path("modules");
+        Set<String> regServices = new LinkedHashSet<>();
+        for (JsonNode mod : manifestModules) {
+            String type = mod.path("type").asText("");
+            if ("service".equals(type) || "external".equals(type)) {
+                String name = mod.path("name").asText("");
+                if (!name.isBlank()) {
+                    regServices.add(name);
+                }
+            }
+        }
+
+        assertEquals(regServices, cliNames,
+                () -> "\nkb-cli.ps1 的 $MicroServices 与注册表 service/external 模块不一致（T3 漂移）。\n"
+                        + "  kb-cli.ps1             = " + new ArrayList<>(cliNames) + "\n"
+                        + "  注册表 service/external = " + new ArrayList<>(regServices) + "\n"
+                        + "两种可能：①注册表漏声明/多声明模块 → 改 module-registry.yml；"
+                        + "②kb-cli.ps1 的 $MicroServices 漏改 → 改 kb-cli.ps1。\n"
+                        + "改完保持两者一致即可，无需重跑生成器（此门禁直接读源文件比对）。");
     }
 
     // ================================================================ 工具
