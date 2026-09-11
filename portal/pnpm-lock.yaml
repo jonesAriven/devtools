@@ -9,8 +9,8 @@ dependencies:
     specifier: ^2.3.1
     version: 2.3.2(vue@3.5.39)
   '@marschat/auth-components':
-    specifier: ^0.5.2
-    version: 0.5.2(element-plus@2.14.2)(typescript@5.9.3)
+    specifier: ^0.5.3
+    version: 0.5.3(element-plus@2.14.2)(typescript@5.9.3)
   '@marschat/frontend-common':
     specifier: 0.2.1
     version: 0.2.1(element-plus@2.14.2)(vue@3.5.39)
@@ -362,8 +362,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: false
 
-  /@marschat/auth-components@0.5.2(element-plus@2.14.2)(typescript@5.9.3):
-    resolution: {integrity: sha512-d0SRMnbqHgX+i2hzG51kX1qU6jn9U+0TLyVzuXkCdoqRscaiGO0S/ithmVF07NnPrr0q2D3/qvUqJxJKyZpBpQ==}
+  /@marschat/auth-components@0.5.3(element-plus@2.14.2)(typescript@5.9.3):
+    resolution: {integrity: sha512-MAGioJ7AWU3PjoYHhmB8WVoOkctg4sMdavCawwlM6qw5nNqTHY7aeVSsebCBuAwxlj9gI3HfWAqp/iMfN3fB7Q==}
     peerDependencies:
       element-plus: ^2.6.1
     dependencies:

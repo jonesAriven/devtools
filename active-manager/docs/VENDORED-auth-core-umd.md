@@ -7,12 +7,12 @@
 | 项 | 值 |
 |---|---|
 | 来源包 | `@marschat/auth-components` |
-| 版本 | `0.5.2` |
+| 版本 | `0.5.3` |
 | 源文件 | `packages/auth-components/dist/marschat-auth-core.umd.js` |
 | 落地位置 | `activation-code-server/src/main/resources/static/activecode/marschat-auth-core.umd.js` |
 | 全局变量 | `window.MarschatAuth`（纯 named 导出，无 `.default`） |
-| 文件大小 | 28547 bytes |
-| sha256 | `2d5ef96a5fc5077fd2d1bde3e9b8d3af465a8364e57040b3353216006a9a336c` |
+| 文件大小 | 28888 bytes |
+| sha256 | `f3e13193c2a4e1e82723127b0de604e19fe1bd58afb83a27ef2550be6c3f3dc6` |
 | 内联原因 | active-code-server 前端是手写静态 HTML + 原生 JS，无 npm/vite/vue，无法 `import` 任何模块 |
 
 ## 为什么内联而不是走 Nexus

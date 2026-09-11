@@ -467,7 +467,18 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     window.location.assign(url);
   }
   async function renewByReauthorize(config2, redirect) {
-    const target = redirect || `${window.location.pathname}${window.location.search}`;
+    const current = `${window.location.pathname}${window.location.search}`;
+    let target = redirect || current;
+    if (!redirect) {
+      try {
+        const cbPath = new URL(config2.redirectUri, window.location.origin).pathname;
+        const base = cbPath.replace(/\/[^/]*$/, "");
+        if (base && current.startsWith(base)) {
+          target = current.slice(base.length) || "/";
+        }
+      } catch {
+      }
+    }
     clearTokens();
     await startSsoLogin(config2, target);
     return new Promise(() => {
@@ -789,7 +800,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     };
   }
-  const version = "0.5.2";
+  const version = "0.5.3";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;
