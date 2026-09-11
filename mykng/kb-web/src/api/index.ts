@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { R } from '@/types'
 import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOidcToken } from '@/utils/token'
-import { refreshOidcToken } from '@/utils/sso'
+import { renewByReauthorize } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
@@ -88,6 +88,20 @@ request.interceptors.response.use(
         return Promise.reject(error)
       }
 
+      // ── 分流 1：OIDC（auth-center RS256，public client）──
+      // ⚠️ 必须放在「有没有 refresh_token」判断**之前**：SAS 3.2.5 对 public client
+      //   根本不签发 refresh_token（带 offline_access 会被拒 invalid_scope），
+      //   所以 OIDC 用户在这里必然没有 refresh_token —— 若先判断它，就会被当成
+      //   "续期凭据都没了"直接弹回登录页，静默重授权永远走不到。
+      //   正确做法：静默重授权（IdP 会话还在就秒回新 code，用户无感；会话没了才落登录页）。
+      //   renewByReauthorize 会导航离开，故直接返回。
+      if (isOidcToken()) {
+        originalRequest._retry = true
+        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
+        return Promise.reject(error)
+      }
+
+      // ── 分流 2：legacy（服务端签发的双 token，走 /auth/refresh）──
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
         clearTokens()
@@ -110,16 +124,6 @@ request.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // 双 token 体系分流：OIDC（auth-center RS256）走 SAS 静默续期，legacy 走原 /auth/refresh
-        if (isOidcToken()) {
-          await refreshOidcToken()
-          const newToken = getToken()
-          if (!newToken) throw new Error('OIDC 续期后无 token')
-          originalRequest.headers.Authorization = `Bearer ${newToken}`
-          pendingRequests.forEach((cb) => cb(newToken))
-          pendingRequests = []
-          return request(originalRequest)
-        }
         const res = await axios.post(`${ctx}/api/auth/refresh`, { refreshToken })
         const data = res.data as R<{ accessToken: string; refreshToken: string }>
         if (data.code === 0 || data.code === 200) {

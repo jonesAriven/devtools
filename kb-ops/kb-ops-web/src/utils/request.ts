@@ -2,8 +2,8 @@ import { createRequest, createLocalStorageTokenStore } from '@marschat/frontend-
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { API_BASE_URL, AUTH_BASE_URL } from '@/config'
-import { isOidcToken, refreshOidcToken } from '@/utils/sso'
-import { getToken, clearTokens } from '@/utils/token'
+import { renewByReauthorize } from '@/utils/sso'
+import { getToken, clearTokens, isOidcToken } from '@/utils/token'
 
 /**
  * 统一 axios 实例工厂（@marschat/frontend-common）。
@@ -24,16 +24,15 @@ const { request, authRequest } = createRequest({
   hooks: {
     onError: (message) => ElMessage.error(message),
     onUnauthorized: async () => {
-      // OIDC token 尝试静默续期
+      // ── 分流 1：OIDC（public client，无 refresh_token）→ 静默重授权 ──
+      // ⚠️ 必须放在 legacy 清本地/跳登录**之前**：SAS 不给 public client 签发
+      //    refresh_token，OIDC 用户必然没有 refresh_token —— 若先清本地再跳登录，
+      //    静默重授权永远走不到。renewByReauthorize 会导航离开，会话在则无感续期。
       if (isOidcToken()) {
-        try {
-          await refreshOidcToken()
-          return // 续期成功，让请求库自动重放
-        } catch {
-          // 续期失败，走登出流程
-        }
+        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
+        return // 已导航离开；若回跳到登录页则交由路由守卫处理
       }
-      // legacy token 或 OIDC 续期失败，清除并跳转登录页
+      // ── 分流 2：legacy（本地登录态，无 refresh 端点）→ 清本地 + 跳登录 ──
       clearTokens()
       router.push('/login')
     },

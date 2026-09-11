@@ -507,6 +507,9 @@
         </div>
     </div>
 
+    <!-- 公共组件：框架无关 UMD 单文件（@marschat/auth-components，见 VENDORED.md） -->
+    <script src="marschat-auth-core.umd.js"></script>
+    <script src="sso.js"></script>
     <script>
         let currentTime = Date.now();
         const tabNames = ['tool', 'records', 'logs', 'parse'];
@@ -1376,25 +1379,47 @@ function setAdminExpire(minutes, btn) {
         }
 
         async function handleLogout() {
+            // 1) 先销毁本应用服务端 session
             try {
                 await fetch('/activecode/api/auth/logout', { method: 'POST' });
             } catch (e) {}
-            // 清理 SSO 前端态
+            // 2) 再走统一登出（SLO）：销毁 IdP 会话 + 清本地，最后回跳登录页。
+            //    只清本地不销毁 IdP 会话的话，下一次免登会把用户直接登回来（"登不掉"）。
             try {
-                localStorage.removeItem('activecode_oidc_access');
-                localStorage.removeItem('activecode_oidc_refresh');
-                localStorage.removeItem('activecode_oidc_id');
-                localStorage.removeItem('activecode_sso_user');
-            } catch (e) {}
-            window.location.href = '/activecode/login.html';
+                ActiveCodeSSO.logout({ postLogoutRedirectUri: location.origin + '/activecode/login.html' });
+            } catch (e) {
+                // 组件不可用（静态资源缺失）时退化为只清本地
+                try {
+                    localStorage.removeItem('activecode_oidc_access');
+                    localStorage.removeItem('activecode_oidc_refresh');
+                    localStorage.removeItem('activecode_oidc_id');
+                    localStorage.removeItem('activecode_sso_user');
+                } catch (e2) {}
+                window.location.href = '/activecode/login.html';
+            }
         }
 
-        // API请求拦截：401自动跳转登录
+        // API请求拦截：401 时按登录方式分流
+        //   - OIDC 登录态 → 静默重授权（IdP 会话在则秒回新 code，用户无感）
+        //   - 老式账号密码登录 → 直接回登录页
+        let __reauthing = false;
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
             return originalFetch.apply(this, args).then(res => {
-                if (res.status === 401) {
-                    window.location.href = '/activecode/login.html';
+                if (res.status === 401 && !__reauthing) {
+                    __reauthing = true;
+                    let oidc = false;
+                    try { oidc = !!(window.ActiveCodeSSO && ActiveCodeSSO.isOidc && ActiveCodeSSO.isOidc()); } catch (e) {}
+                    if (oidc) {
+                        try {
+                            const p = ActiveCodeSSO.renew();
+                            if (p && typeof p.catch === 'function') p.catch(function () {});
+                        } catch (e) {
+                            window.location.href = '/activecode/login.html';
+                        }
+                    } else {
+                        window.location.href = '/activecode/login.html';
+                    }
                 }
                 return res;
             });

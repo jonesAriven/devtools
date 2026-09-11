@@ -32,10 +32,22 @@
         .btn-sso:hover { background: #eef2ff; box-shadow: 0 4px 14px rgba(79,70,229,0.18); }
         .btn-sso:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
         .login-footer { text-align: center; padding: 14px; font-size: 12px; color: #c4c9d4; background: #f9fafb; border-top: 1px solid #f0f1f4; }
+        /* 静默免登探测期间的启动遮罩：避免"登录框闪一下又被免登跳走"的抖动 */
+        .boot-mask { position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(24,24,27,0.92); color: #e5e7eb; font-size: 13px; letter-spacing: 0.3px; }
+        .boot-mask.hide { display: none; }
+        .boot-spinner { width: 34px; height: 34px; border: 3px solid rgba(199,210,254,0.28); border-top-color: #818cf8; border-radius: 50%; animation: bootspin 0.8s linear infinite; }
+        @keyframes bootspin { to { transform: rotate(360deg); } }
+        .login-card.pending { visibility: hidden; }
     </style>
 </head>
 <body>
-    <div class="login-card">
+    <!-- 启动遮罩：静默免登探测期间显示；探针返回"无会话"后才露出登录框 -->
+    <div class="boot-mask" id="bootMask">
+        <div class="boot-spinner"></div>
+        <div>正在检查登录状态…</div>
+    </div>
+
+    <div class="login-card pending" id="loginCard">
         <div class="login-header">
             <div class="login-logo">🔑</div>
             <h1>激活码管理系统</h1>
@@ -62,20 +74,76 @@
         <div class="login-footer">仅限管理员使用 · 如需账号请联系系统管理员</div>
     </div>
 
+    <!-- 公共组件：框架无关 UMD 单文件（@marschat/auth-components，见 VENDORED.md） -->
+    <script src="marschat-auth-core.umd.js"></script>
     <script src="sso.js"></script>
     <script>
+        var SSO_REDIRECT = '/activecode/main.html';
+
+        function showLoginCard() {
+            var mask = document.getElementById('bootMask');
+            var card = document.getElementById('loginCard');
+            if (mask) mask.classList.add('hide');
+            if (card) card.classList.remove('pending');
+        }
+
+        // 兜底：认证中心抖动/网络异常时不能让登录页一直停在遮罩上（最迟 3s 露出登录框）
+        setTimeout(showLoginCard, 3000);
+
+        function ssoFail(err) {
+            var btn = document.getElementById('btnSso');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔐</span> 统一认证登录（SSO）'; }
+            var errorEl = document.getElementById('errorMsg');
+            errorEl.textContent = '发起统一认证失败: ' + (err && err.message ? err.message : err);
+            errorEl.classList.add('show');
+        }
+
         function startSsoLogin() {
             const btn = document.getElementById('btnSso');
             if (btn) { btn.disabled = true; btn.textContent = '跳转认证中...'; }
             try {
-                ActiveCodeSSO.startSsoLogin('/activecode/main.html');
+                const p = ActiveCodeSSO.startSsoLogin(SSO_REDIRECT);
+                // login() 会导航离开（正常不会 resolve/reject），仅在发起阶段失败时兜底
+                if (p && typeof p.catch === 'function') p.catch(ssoFail);
             } catch (err) {
-                if (btn) { btn.disabled = false; btn.textContent = '统一认证登录（SSO）'; }
-                const errorEl = document.getElementById('errorMsg');
-                errorEl.textContent = '发起统一认证失败: ' + (err && err.message ? err.message : err);
-                errorEl.classList.add('show');
+                ssoFail(err);
             }
         }
+
+        // ===== 静默免登：探测到有效 IdP 会话则直接免密进入，否则正常显示登录框 =====
+        (function bootstrap() {
+            // 401 静默重授权仍失败时，main.html 会带 ?reauth=1 回登录页；
+            // 此时必须停掉免登探测，否则「免登 → 401 → 免登」会无限弹跳。
+            var isReauth = new URLSearchParams(location.search).get('reauth') === '1';
+            if (isReauth) {
+                try { history.replaceState(null, '', location.pathname); } catch (e) {}
+                showLoginCard();
+                return;
+            }
+            try {
+                if (!ActiveCodeSSO.ready) {
+                    // 组件未加载：不阻塞账号密码登录，仅记录
+                    console.error('[activecode] 统一认证组件未加载，已退化为本地账号登录');
+                    showLoginCard();
+                    return;
+                }
+                var p = ActiveCodeSSO.bootstrapLoginPage(SSO_REDIRECT);
+                if (p && typeof p.then === 'function') {
+                    p.then(function (navigated) {
+                        // 有会话时页面已导航离开；无会话返回 false → 露出登录框
+                        if (!navigated) showLoginCard();
+                    }).catch(function (e) {
+                        console.warn('[activecode] 静默免登探测失败，回退到账号密码登录', e);
+                        showLoginCard();
+                    });
+                } else {
+                    showLoginCard();
+                }
+            } catch (e) {
+                console.warn('[activecode] 静默免登异常，回退到账号密码登录', e);
+                showLoginCard();
+            }
+        })();
 
         async function handleLogin(e) {
             if (e && e.preventDefault) e.preventDefault();

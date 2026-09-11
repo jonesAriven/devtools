@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOidcToken } from '@/utils/token'
-import { refreshOidcToken } from '@/utils/sso'
+import { getToken, clearTokens, isOidcToken } from '@/utils/token'
+import { renewByReauthorize } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { API_BASE_URL } from '@/config'
@@ -45,9 +45,6 @@ request.interceptors.request.use(
   }
 )
 
-let isRefreshing = false
-let pendingRequests: Array<(token: string) => void> = []
-
 request.interceptors.response.use(
   (response) => {
     if (response.config.responseType === 'blob') {
@@ -72,49 +69,22 @@ request.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      const refreshToken = getRefreshToken()
-      // 双 token 体系分流：OIDC（auth-center RS256）走 SAS 静默续期；legacy 仅本地登录态，无 refresh 端点，直接登出
-      if (!refreshToken) {
-        clearTokens()
-        if (!isWhiteList(url)) {
-          router.push('/login')
-        }
+      // ── 分流 1：OIDC（auth-center RS256，public client）──
+      // ⚠️ 必须放在「有没有 refresh_token」判断**之前**：SAS 不给 public client 签发
+      //    refresh_token，OIDC 用户必然没有 refresh_token —— 若先判断它，会被当成"续期凭据都没了"
+      //    直接弹回登录页，静默重授权永远走不到。renewByReauthorize 会导航离开，故直接返回。
+      if (isOidcToken()) {
+        originalRequest._retry = true
+        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
         return Promise.reject(error)
       }
 
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          pendingRequests.push((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`
-            resolve(request(originalRequest))
-          })
-        })
-      }
-
-      originalRequest._retry = true
-      isRefreshing = true
-
-      try {
-        if (isOidcToken()) {
-          await refreshOidcToken()
-          const newToken = getToken()
-          if (!newToken) throw new Error('OIDC 续期后无 token')
-          originalRequest.headers.Authorization = `Bearer ${newToken}`
-          pendingRequests.forEach((cb) => cb(newToken))
-          pendingRequests = []
-          return request(originalRequest)
-        }
-        // legacy：无 refresh 端点，直接登出
-        clearTokens()
+      // ── 分流 2：legacy（本地登录态，无 refresh 端点）→ 清本地 + 跳登录 ──
+      clearTokens()
+      if (!isWhiteList(url)) {
         router.push('/login')
-        return Promise.reject(error)
-      } catch {
-        clearTokens()
-        router.push('/login')
-        return Promise.reject(error)
-      } finally {
-        isRefreshing = false
       }
+      return Promise.reject(error)
     }
 
     const message = error.response?.data?.message || error.message || '网络错误'

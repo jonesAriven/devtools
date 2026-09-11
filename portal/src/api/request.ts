@@ -46,9 +46,14 @@ function addResponseInterceptor(instance: AxiosInstance) {
     (error) => {
       const userStore = useUserStore()
       if (error.response?.status === 401) {
-        userStore.logout()
-        ElMessage.error('登录已过期，请重新登录')
-        window.location.href = '/portal/login'
+        // ⚠️ 这里只能用 clearSession（清本地），**不能** userStore.logout() ——
+        //    logout 是统一登出（SLO），会把全局 IdP 会话一起销毁。
+        //    会话过期场景下我们希望：清本地 → 回登录页 → 登录页探到 IdP 会话 →
+        //    静默免登无感把用户送回来（这就是 portal 这条 BFF 链路的"自动续期"）。
+        userStore.clearSession()
+        ElMessage.error('登录已过期，正在重新认证…')
+        // reauth=1 供登录页识别这是一次"过期重认证"，避免异常情况下无限往返
+        window.location.href = '/portal/login?reauth=1'
       } else {
         ElMessage.error(error.response?.data?.message || error.message || '请求失败')
       }

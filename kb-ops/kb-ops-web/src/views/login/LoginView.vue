@@ -1,20 +1,28 @@
 <template>
   <LoginPage
+    v-if="!probing"
     :config="loginConfig"
     @password-reset="handlePasswordReset"
   />
+  <div v-else class="sso-probing">
+    <span>正在检测登录状态…</span>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
-import { startSsoLogin } from '@/utils/sso'
+import { startSsoLogin, bootstrapLoginPage, SSO_CONFIG } from '@/utils/sso'
 
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
+
+/** 静默免登探测中：先不渲染登录框，避免"闪一下登录页又跳走" */
+const probing = ref(true)
 
 const loginConfig = {
   title: '运维管理平台',
@@ -27,12 +35,8 @@ const loginConfig = {
   authApiBase: '/ops/auth-api',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /ops/sso-callback）
   onSsoLogin: handleSsoLogin,
-  ssoConfig: {
-    issuer: 'https://auth.marschat.online',
-    clientId: 'marschat-kbops',
-    redirectUri: `${window.location.origin}/ops/sso-callback`,
-    scope: 'openid profile',
-  },
+  // 引用统一 SSO 配置（client_id=marschat-kbops，回调 /ops/sso-callback）
+  ssoConfig: SSO_CONFIG,
   labels: {
     ssoButtonText: '统一认证登录（SSO）',
     forgotPasswordText: '忘记密码？',
@@ -54,15 +58,50 @@ const loginConfig = {
   },
 }
 
+/** 当前要去的站内目标（登录页带 ?redirect=） */
+function currentRedirect(): string {
+  return (router.currentRoute.value.query.redirect as string) || '/dashboard'
+}
+
+/**
+ * 静默免登（Phase 6）：进入登录页先问 auth-center「本浏览器是否已有 IdP 会话」。
+ * - 有 → 直接跳授权，IdP 会话在则瞬间 302 回带 code，用户无感进入（不返回）
+ * - 无 → 返回 false，正常显示登录框
+ *
+ * ⚠️ 不能用 `prompt=none`：SAS 3.2.5 不支持，会直接渲染登录页而非返回错误。
+ */
+onMounted(async () => {
+  try {
+    const jumped = await bootstrapLoginPage(currentRedirect())
+    if (!jumped) probing.value = false
+  } catch {
+    // 探针失败一律按"无会话"处理，绝不能因为认证中心抖动把登录页打成白屏
+    probing.value = false
+  }
+})
+
 function handlePasswordReset() {
   ElMessage.success('密码重置成功，请使用新密码登录')
 }
 
 async function handleSsoLogin() {
   try {
-    await startSsoLogin(route.query.redirect as string || '/dashboard')
+    await startSsoLogin(currentRedirect())
   } catch (e: any) {
     ElMessage.error(e?.message || 'SSO 登录发起失败')
   }
 }
 </script>
+
+<style scoped lang="scss">
+.sso-probing {
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
+}
+</style>
