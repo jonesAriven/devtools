@@ -83,7 +83,9 @@ export function setupAuthGuard(router: Router): void {
     hasPerm: (code: string) => permissions.check(code),
     onDeny: () => {
       // 落到工作台而不是 403 空白页：权限点被收回时用户仍可用基础功能
-      router.replace(`${CONTEXT_PATH}/dashboard`)
+      // ⚠️ router 已带 /ops base（createWebHistory(ctx)），replace 传路由内路径即可；
+      //    再拼 CONTEXT_PATH 会落 /ops/ops/dashboard——不匹配任何路由，渲染出无侧边栏的空页
+      router.replace('/dashboard')
     },
   })
 }
