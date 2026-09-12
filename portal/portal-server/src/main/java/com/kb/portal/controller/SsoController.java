@@ -168,10 +168,10 @@ public class SsoController {
     }
 
     /**
-     * redirect 校验：白名单 **origin**（严格匹配，防开放重定向）+ 其任意站内路径。
-     * 旧版只收裸 origin，登录页免登传 `?redirect=/`、身份守卫传 origin+path 都会被拒
-     * 「不允许的回调地址」→ SPA 卡死在 authorize（2026-09-12 实测）。
-     * 返回值保留原路径（供回调后落地），只去尾部斜杠。
+     * redirect 校验：白名单 **origin**（严格匹配，防开放重定向）+ 其任意站内路径；
+     * **返回值必须是裸 origin** —— buildAuthorizeUrl 拿它拼 redirect_uri（origin+/portal/auth/callback），
+     * 带路径会拼出 /portal/portal/auth/callback 被 SAS 拒（2026-09-12 实测）。
+     * 路径部分丢弃，落地统一回 origin（与回调页固定回首页的既有行为一致）。
      */
     private String normalizeOrigin(String redirect) {
         if (redirect == null) {
@@ -191,7 +191,7 @@ public class SsoController {
         if (!allowed) {
             throw new BusinessException("不允许的回调地址");
         }
-        return trimmed.replaceAll("/+$", "");
+        return origin;
     }
 
     @lombok.Data

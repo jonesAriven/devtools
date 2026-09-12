@@ -40,7 +40,7 @@ if (userStore.token) {
     // 与探针返回的 username（同为 auth uid）比对，错位（共享浏览器换人）→ 清本地后重走 BFF 换票
     getLocalIdentity: () => userStore.authUid || null,
     onIdentityMismatch: () => {
-      window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/')
+      window.location.href = bffAuthorizeUrl(window.location.origin)
     },
   })
 }
