@@ -173,6 +173,35 @@ public class AuthCenterService {
         }
     }
 
+    /**
+     * 以**用户本人身份**调用 auth-center，**绝不做服务身份兜底**（Phase 2 · RBAC 权限下发）。
+     *
+     * 🔴 为什么不能复用 {@link #callAdmin}：callAdmin 在用户没有 SSO 会话时会**回退到服务账号**。
+     * 对「用户管理」这是合理的（密码登录的管理员也要能用）；但对「权限查询」是**提权漏洞**——
+     * 服务账号是 admin，兜底会把管理员的权限集合下发给一个普通用户。
+     *
+     * 因此这里严格只用调用者自己的 auth-center 身份：
+     * - 无 SSO 会话（密码登录 / refresh 已失效）→ 返回 401，前端 `usePermissions` 按
+     *   `configured=false` 降级为全放行（R10 默认策略），**不会**误放行也不提权。
+     * - auth-center 不可达 → 返回 502，同样降级。
+     *
+     * @param portalUserId portal 用户 id（JwtInterceptor 注入的 request attribute）
+     */
+    public ProxyResult callAsUser(Long portalUserId, String method, String pathWithQuery, String jsonBody) {
+        if (portalUserId == null || !refreshTokens.containsKey(portalUserId)) {
+            return new ProxyResult(401,
+                    "{\"code\":401,\"message\":\"无统一认证会话\",\"data\":null}");
+        }
+        try {
+            String accessToken = refreshAccessToken(portalUserId);
+            return doAdminCall(accessToken, method, pathWithQuery, jsonBody);
+        } catch (Exception e) {
+            log.warn("auth-center 用户身份代理调用失败: {}", e.getMessage());
+            return new ProxyResult(502,
+                    "{\"code\":502,\"message\":\"统一认证中心不可达\",\"data\":null}");
+        }
+    }
+
     private ProxyResult doAdminCall(String accessToken, String method, String pathWithQuery, String jsonBody) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(adminApi + pathWithQuery))

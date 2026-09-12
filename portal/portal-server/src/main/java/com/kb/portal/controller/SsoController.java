@@ -98,6 +98,30 @@ public class SsoController {
         }
     }
 
+    // ---------- RBAC 权限下发代理（Phase 2 下游接入）----------
+
+    /**
+     * 权限点下发代理：`GET /portal/api/auth/permissions?client=marschat-portal`。
+     *
+     * 🔴 为什么必须代理：portal 是 OIDC **机密客户端**，浏览器里只有 portal-server 自签的
+     * `portal_token`（hutool HS256），**不是 auth-center 签发的 token** —— 前端直连
+     * `https://auth.marschat.online/auth/permissions` 必然 401。
+     * 这里以**该用户自己的 auth-center 身份**转发（{@link AuthCenterService#callAsUser}，
+     * 无服务身份兜底，防提权）。
+     *
+     * 前端 `usePermissions({ issuer: '<origin>/portal/api' })` 即打到本端点；
+     * 失败/无 SSO 会话 → 返回 401，前端按 `configured=false` 全放行（R10 默认策略）。
+     */
+    @GetMapping("/auth/permissions")
+    public Result<JsonNode> permissions(@RequestParam(required = false) String client,
+                                        HttpServletRequest request) {
+        String target = (client == null || client.isBlank()) ? "marschat-portal" : client;
+        AuthCenterService.ProxyResult r = authCenterService.callAsUser(
+                (Long) request.getAttribute("userId"), "GET",
+                "/auth/permissions?client=" + URLEncoder.encode(target, StandardCharsets.UTF_8), null);
+        return toResult(r);
+    }
+
     // ---------- 用户管理代理（仅 admin）----------
 
     @GetMapping("/admin/users")

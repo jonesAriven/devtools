@@ -7,6 +7,7 @@ import router from './router'
 import './styles/index.scss'
 import { useUserStore } from '@/stores/user'
 import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
+import { permissions } from '@/utils/permissions'
 
 // Element Plus 图标 - 全量注册
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
@@ -43,4 +44,7 @@ if (userStore.token) {
       window.location.href = bffAuthorizeUrl(window.location.origin)
     },
   })
+  // Phase 2：预取 RBAC 权限点（走 portal-server 的 BFF 代理；路由守卫侧也会 ensure）。
+  // 拉取失败一律降级为 configured=false（全放行），绝不阻塞启动。
+  void permissions.ensure()
 }

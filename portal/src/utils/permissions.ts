@@ -7,16 +7,22 @@
  *   ③ 组件渲染 —— `<PermissionGate :perm="...">`
  * 三者都读 `@marschat/auth-components` 的同一份模块级权限状态。
  *
- * 权限点由 auth-center `GET /auth/permissions?client=<client_id>` 下发（组件内 60s 缓存）。
  * **R10 默认策略**：auth-center 侧未为本应用配置任何权限点（`configured=false`）→ 全部放行。
  * 因此本文件接入后，存量应用**行为完全不变**；权限点由 Phase 4 菜单上报逐步产生。
  *
+ * ⚠️ **portal 与其他应用的关键差异：权限查询必须走 BFF 代理**
+ * portal 是 OIDC **机密客户端**，浏览器里只有 portal-server 自签的 `portal_token`
+ * （hutool HS256，见 `utils/JwtUtil`），**不是 auth-center 签发的 token**。
+ * 直连 `https://auth.marschat.online/auth/permissions` 必然 401 → 永远 `configured=false`。
+ * 所以这里把 `issuer` 指向 **portal-server 的同源代理** `/portal/api`：
+ *   `GET /portal/api/auth/permissions?client=marschat-portal`
+ * 由 portal-server 用**该用户自己的 auth-center 身份**（refresh_token 换取的 RS256 access token）
+ * 转发到 auth-center —— 与 `/portal/api/admin/users` 的代理方式一致。
+ *
  * ⚠️ 权限点 code 约定（依据 auth-components 0.6.1 的 hasPermission 实现实测）：
- * 含 `:` 的 code 会被**原样使用**，不含才自动补 `<client_id>:` 前缀。
+ * 含 `:` 的 code 会被**原样使用**，不含才自动补 `<client_id>:` 前缀；
  * 而 `useMenus` 判定的码是 `<client_id>:menu:<key>`。
- * 所以路由 `meta.perm` / `PermissionGate` 的 `perm` **必须传全码**，
- * 传半码（如 `menu:users`）会因"含冒号→原样使用"而与菜单判定码不一致 → 永不匹配。
- * 统一用 `permCode()` 构造，禁止手写半码。
+ * 所以路由 `meta.perm` / `PermissionGate` 的 `perm` **必须传全码**，统一用 `permCode()` 构造。
  */
 import {
   usePermissions as createPermissions,
@@ -24,9 +30,11 @@ import {
 } from '@marschat/auth-components'
 import { createAuthGuard } from '@marschat/frontend-common'
 import type { Router } from 'vue-router'
-import { CONTEXT_PATH } from '@/config'
 import { SSO_CONFIG } from './sso'
-import { getToken } from './token'
+import { useUserStore } from '@/stores/user'
+
+/** portal-server 的同源 BFF 基址（权限查询代理入口） */
+export const BFF_API_BASE = `${window.location.origin}/portal/api`
 
 /**
  * 构造本应用的权限点全码 `<client_id>:<type>:<code>`。
@@ -41,22 +49,18 @@ export function permCode(type: 'menu' | 'api', code: string): string {
 /**
  * 本应用的权限语境（菜单 / 路由守卫 / PermissionGate **必须共用同一份**）。
  *
- * `issuer` / `clientId` 直接取 `SSO_CONFIG`（本应用 OIDC 配置的唯一真源），
- * 避免两处硬编码漂移；`getToken` 显式注入本应用的凭据读法 —— 各应用的 localStorage 键
- * 各不相同（`kb_access_token` 等），不注入的话 `/auth/permissions` 请求不带 Bearer → 401
- * → 永远 `configured=false`，权限体系静默失效。
+ * `getToken` 注入 portal 自家凭据（`portal_token`）—— portal-server 的代理端点靠它
+ * 识别"是谁在查权限"，再以该用户的 auth-center 身份转发。
  */
 export const permOptions: UsePermissionsOptions = {
-  issuer: SSO_CONFIG.issuer,
+  issuer: BFF_API_BASE,
   clientId: SSO_CONFIG.clientId,
-  getToken: () => getToken(),
+  getToken: () => useUserStore().token || null,
 }
 
 /**
- * 应用内**单例**权限句柄。
- *
- * auth-components 的权限状态本身就是模块级单例，这里再收口一层，
- * 是为了给调用方一个绑定好配置的稳定入口（不必每次重复传 `permOptions`）。
+ * 应用内**单例**权限句柄（auth-components 的权限状态本身即模块级单例，
+ * 这里再收口一层，给调用方一个绑定好配置的稳定入口）。
  */
 export const permissions = createPermissions(permOptions)
 
@@ -74,16 +78,15 @@ export function usePermissions() {
  * - `ensure()` 抛错 → **fail-open 放行**（认证中心抖动不能把整站打成 403）；
  * - 判定不通过 → 调 `onDeny` 后中断导航。
  *
- * ⚠️ 必须在 `app.use(router)` **之前**调用 —— 守卫要先于首次导航注册，
- * 否则首屏路由会跳过权限判定（这正是组件库要修正的「先挂路由后拉权限」脆弱点）。
+ * ⚠️ 必须在 `app.use(router)` **之前**调用。
  */
 export function setupAuthGuard(router: Router): void {
   createAuthGuard(router, {
     ensure: () => permissions.ensure(),
     hasPerm: (code: string) => permissions.check(code),
     onDeny: () => {
-      // 落到工作台而不是 403 空白页：权限点被收回时用户仍可用基础功能
-      router.replace(`${CONTEXT_PATH}/dashboard`)
+      // 落到工作台而不是空白页：权限点被收回时用户仍可用基础功能
+      router.replace('/')
     },
   })
 }
