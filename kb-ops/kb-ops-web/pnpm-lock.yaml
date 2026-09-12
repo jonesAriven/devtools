@@ -15,8 +15,8 @@ importers:
         specifier: ^0.6.1
         version: 0.6.1(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
       '@marschat/frontend-common':
-        specifier: 0.3.1
-        version: 0.3.1(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
+        specifier: 0.3.3
+        version: 0.3.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
       '@vueuse/core':
         specifier: ^10.9.0
         version: 10.11.1(vue@3.5.39(typescript@5.9.3))
@@ -247,8 +247,8 @@ packages:
     peerDependencies:
       element-plus: ^2.6.1
 
-  '@marschat/frontend-common@0.3.1':
-    resolution: {integrity: sha512-x4th/uT7lDIuoZOc7ieIBhn77uUTF5NVqlxBFxH3kyKZPzIsq6mBa+9ib+wREErpJO2ExOLKRKIIbkvBU5Ui4w==}
+  '@marschat/frontend-common@0.3.3':
+    resolution: {integrity: sha512-FKUseOtioDKR8noGXJJvEz+mQIXhm+5Cma+HqUuQymbbY3/3Aw0cxBBCc+aYcAiHJsh+6YlGkxh+c/35/izPYQ==}
     peerDependencies:
       element-plus: ^2.6.1
       vue: ^3.4.21
@@ -1235,7 +1235,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@marschat/frontend-common@0.3.1(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
+  '@marschat/frontend-common@0.3.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
     dependencies:
       '@vueuse/core': 10.11.1(vue@3.5.39(typescript@5.9.3))
       axios: 1.18.1
