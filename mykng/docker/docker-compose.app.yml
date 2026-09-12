@@ -65,7 +65,7 @@ services:
       #   这里的 MYSQL_HOST 仅作为降级 fallback，生产环境不生效
       - MYSQL_HOST=platform-mysql
       - MYSQL_PORT=3306
-      - MYSQL_DATABASE=kb_auth
+      - MYSQL_DATABASE=marschat_auth
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       - REDIS_HOST=platform-redis
