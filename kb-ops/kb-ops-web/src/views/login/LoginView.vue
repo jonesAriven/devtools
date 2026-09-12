@@ -30,6 +30,8 @@ const loginConfig = {
   icon: 'Setting',
   color: '#409eff',
   showSso: true,
+  // kb-ops 后端无本地登录端点（/kb-ops/login 必 403）——纯 SSO 应用隐藏死表单
+  showLocalLogin: false,
   showForgotPassword: true,
   // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，本域 nginx /ops/auth-api/ 已直连网关）
   authApiBase: '/ops/auth-api',
