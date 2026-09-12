@@ -34,7 +34,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <meilisearch.version>0.14.2</meilisearch.version>
         <minio.version>8.5.9</minio.version>
-        <common-core.version>1.1.4</common-core.version>
+        <common-core.version>1.1.5</common-core.version>
         <!-- M6: springdoc-openapi 统一版本管理 -->
         <springdoc.version>2.5.0</springdoc.version>
 
