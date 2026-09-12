@@ -38,9 +38,14 @@ export const SSO_CONFIG: SsoConfig = {
 /** 绑定好配置的客户端（SLO / 探针等通用能力走它） */
 export const sso = createSsoClient(SSO_CONFIG)
 
-/** 服务端授权入口 URL（`redirect` 交给 portal-server 处理） */
+/** 服务端授权入口 URL（`redirect` 交给 portal-server 处理）。
+ *  站内相对路径（如 `/`、`/users`）在此补全为绝对 URL —— 后端 normalizeOrigin
+ *  按 origin 校验白名单，相对路径会被拒「不允许的回调地址」（2026-09-12 实测）。 */
 export function bffAuthorizeUrl(redirect?: string): string {
-  const target = redirect || window.location.origin
+  let target = redirect || window.location.origin
+  if (target.startsWith('/')) {
+    target = window.location.origin + target
+  }
   return `${PORTAL_AUTHORIZE_PATH}?redirect=${encodeURIComponent(target)}`
 }
 

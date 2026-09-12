@@ -167,17 +167,28 @@ public class SsoController {
         }
     }
 
+    /**
+     * redirect 校验：白名单 **origin**（严格匹配，防开放重定向）+ 其任意站内路径。
+     * 旧版只收裸 origin，登录页免登传 `?redirect=/`、身份守卫传 origin+path 都会被拒
+     * 「不允许的回调地址」→ SPA 卡死在 authorize（2026-09-12 实测）。
+     * 返回值保留原路径（供回调后落地），只去尾部斜杠。
+     */
     private String normalizeOrigin(String redirect) {
         if (redirect == null) {
             throw new BusinessException("缺少 redirect 参数");
         }
         String trimmed = redirect.trim();
-        if (!(trimmed.equals("https://main.marschat.online")
-                || trimmed.equals("http://192.168.31.105:8095")
-                || trimmed.equals("http://localhost:5173")
-                || trimmed.startsWith("http://localhost:5173/")
-                || trimmed.matches("https?://main\\.marschat\\.online")
-                || trimmed.matches("http://192\\.168\\.31\\.105:8095"))) {
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(trimmed);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("不允许的回调地址");
+        }
+        String origin = uri.getScheme() + "://" + uri.getRawAuthority();
+        boolean allowed = origin.equals("https://main.marschat.online")
+                || origin.equals("http://192.168.31.105:8095")
+                || origin.equals("http://localhost:5173");
+        if (!allowed) {
             throw new BusinessException("不允许的回调地址");
         }
         return trimmed.replaceAll("/+$", "");
