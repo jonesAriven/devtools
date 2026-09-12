@@ -13,7 +13,7 @@ importers:
         version: 2.3.2(vue@3.5.39(typescript@5.9.3))
       '@marschat/auth-components':
         specifier: ^0.6.1
-        version: 0.6.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
+        version: 0.6.4(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
       '@marschat/frontend-common':
         specifier: 0.3.3
         version: 0.3.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
@@ -242,8 +242,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@marschat/auth-components@0.6.3':
-    resolution: {integrity: sha512-FFbgj0NnLHkFPs2QvVa+i4u8M01LDiZTQ4zrfN4t29n1lN3f55BFVyaEXvBY516ZjAB9F8xKFy3Fa8Xam3fPgw==}
+  '@marschat/auth-components@0.6.4':
+    resolution: {integrity: sha512-aS/j0kkUr5h1CdM8Z8qq+7xJDgYR2Kuvzn/YQakl5HqyNfPwdcXDtQzTSrW4cCkkDoGW6roav9grufeBRV2s2g==}
     peerDependencies:
       element-plus: ^2.6.1
 
@@ -1227,7 +1227,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@marschat/auth-components@0.6.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
+  '@marschat/auth-components@0.6.4(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
     dependencies:
       '@element-plus/icons-vue': 2.3.2(vue@3.5.39(typescript@5.9.3))
       element-plus: 2.14.2(vue@3.5.39(typescript@5.9.3))

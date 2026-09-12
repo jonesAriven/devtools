@@ -38,6 +38,11 @@ marschat:
   oidc:
     issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
     jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://auth-center:8085/oauth2/jwks}
+  # RBAC 权限校验（Phase 4 三层同源·接口层）：@RequirePermission 拦截器 + PermissionChecker
+  # 权限点经 auth-center 下发（60s 缓存）；fail-open=true 枢纽抖动时不打挂业务接口
+  authz:
+    client-id: marschat-kbops
+    issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
   # 菜单上报（Phase 4 P-B）：启动时把 classpath menu-registry.yml 全量覆盖上报到
   # auth-center /internal/clients/{client-id}/menus，凭据走 X-Client-Secret
   # （sys_app_client.client_secret，由运维注入；缺失时 reporter 跳过并 WARN，不阻断启动）。

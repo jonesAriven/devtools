@@ -1,5 +1,6 @@
 package com.kb.ops.controller;
 
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.page.PageResult;
 import com.marschat.common.result.Result;
 import com.kb.ops.entity.OpsConflict;
@@ -12,6 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/ops/conflict")
 @RequiredArgsConstructor
+@RequirePermission("menu:conflicts")
 public class ConflictController {
 
     private final ConflictDetectionService conflictDetectionService;

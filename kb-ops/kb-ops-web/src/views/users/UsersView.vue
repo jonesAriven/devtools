@@ -1,21 +1,35 @@
 <template>
   <div class="users-view">
-    <UserManagementPanel :config="config" />
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="用户" name="users">
+        <UserManagementPanel :config="config" />
+      </el-tab-pane>
+      <el-tab-pane label="菜单授权" name="menus" lazy>
+        <MenuPermissionPanel :config="menuPermConfig" />
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * 用户管理（Phase 6 · 统一用户管理）
+ * 用户与授权管理（Phase 6 用户管理 + Phase 4 菜单授权）
  *
- * 6 个应用共用公共组件 `UserManagementPanel`，本文件只是**薄包装**：
- * 绑定数据源（kb-ops 持有的就是 auth-center 签发的 OIDC access_token，直连 `/admin/users`）
- * 并注入本应用语境。
+ * 两个页签均为公共组件薄包装（数据直连 auth-center /admin）：
+ * - 用户：UserManagementPanel（Phase 6）
+ * - 菜单授权：MenuPermissionPanel（Phase 4，角色 × 应用菜单）
  */
-import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
-import type { UserManagementConfig } from '@marschat/auth-components'
+import { ref } from 'vue'
+import {
+  UserManagementPanel,
+  MenuPermissionPanel,
+  createUserAdminClient,
+} from '@marschat/auth-components'
+import type { UserManagementConfig, MenuPermissionConfig } from '@marschat/auth-components'
 import { getToken } from '@/utils/token'
-import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
+import { decodeOidcClaims, renewByReauthorize, SSO_CONFIG } from '@/utils/sso'
+
+const activeTab = ref('users')
 
 const client = createUserAdminClient({
   baseUrl: 'https://auth.marschat.online/admin/users',
@@ -37,6 +51,14 @@ const config: UserManagementConfig = {
     { value: 'user', label: '普通用户' },
   ],
   currentUserId,
+}
+
+const menuPermConfig: MenuPermissionConfig = {
+  baseUrl: 'https://auth.marschat.online',
+  getToken: () => getToken(),
+  clientId: SSO_CONFIG.clientId,
+  title: '菜单授权',
+  onUnauthorized: () => void renewByReauthorize(),
 }
 </script>
 

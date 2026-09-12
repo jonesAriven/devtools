@@ -1,5 +1,6 @@
 package com.kb.ops.controller;
 
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.page.PageResult;
 import com.marschat.common.result.Result;
 import com.kb.ops.dto.DependencyRequest;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/ops/dependency")
 @RequiredArgsConstructor
+@RequirePermission("menu:dependencies")
 public class DependencyController {
 
     private final DependencyService dependencyService;

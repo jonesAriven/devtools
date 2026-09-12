@@ -1,5 +1,6 @@
 package com.kb.ops.controller;
 
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.result.Result;
 import com.kb.ops.dto.DashboardVO;
 import com.kb.ops.service.DashboardService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/ops/dashboard")
 @RequiredArgsConstructor
+@RequirePermission("menu:dashboard")
 public class DashboardController {
 
     private final DashboardService dashboardService;

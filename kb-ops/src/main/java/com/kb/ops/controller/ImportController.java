@@ -1,6 +1,7 @@
 package com.kb.ops.controller;
 
 import cn.hutool.core.io.IoUtil;
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.result.Result;
 import com.kb.ops.dto.ImportRequest;
 import com.kb.ops.dto.ImportResult;
@@ -25,6 +26,7 @@ import java.util.Map;
  * 1. POST /api/ops/import  上传结构化 JSON（ImportRequest，rows 为字段名->值映射）
  * 2. POST /api/ops/import/csv  上传 CSV 文件，按 type 指定的实体解析
  */
+@RequirePermission("menu:import")
 @Slf4j
 @RestController
 @RequestMapping("/ops/import")
