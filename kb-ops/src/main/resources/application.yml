@@ -44,7 +44,8 @@ marschat:
   menu:
     report:
       enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
-      issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
+      # 容器内网直连（同 oidc.jwks-uri 模式）：/internal/** 不在公网 nginx 白名单，secret 不出公网
+      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://auth-center:8085}
       client-id: marschat-kbops
       report-mode: secret
       report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
