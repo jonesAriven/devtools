@@ -1,0 +1,269 @@
+新应用配置化接入方案 · 扩展性设计
+新应用配置化接入方案
+让「再建一个应用」从改 8 处代码变成填 1 份配置
+2026-09-10 · 数据从本地仓库实采 · 承接《公共组件抽取方案》与《统一账号体系重构方案》
+目录
+结论速览
+现状：接入要动 8 处
+已有的配置化范式
+目标设计：单一真源 + 生成器
+auth-center 三层配置化
+前端：编译期 → 运行时配置
+后端：加依赖 + 5 行 yaml
+接入前后对比
+脚手架
+分层实施与待拍板
+一、结论速览
+8
+接入新应用要改的地方
+~230
+行配置/代码（分散 8 处）
+1
+目标：只填 1 份 registry
+核心诊断
+公共组件已经解决了「代码复用」，但没有解决「注册复用」——接入一个新应用，代码是复用的（引包即可），可声明和注册却散落在 8 个地方，而且关键那一处（OIDC 客户端注册）是写死的 Java 代码，加个应用要改认证中心源代码并重新部署它。
+所以这一层的答案不是「再抽一个组件」，而是把 8 处声明收敛成 1 份配置，用生成器派生其余。而这件事你已经有现成范式——module-registry.yml。
+二、现状：接入一个新应用要动 8 处
+以下每一处的行数都是从仓库里实数量出来的。
+# | 位置 | 形式 | 每个应用的量 | 要动 auth-center？ | 
+1 | 
+auth-center/.../DatabaseInitializer.java | 
+Java 硬编码 | 
+~48 行（含硬编码内网 IP） | 
+要，且必须重新部署认证中心 | 
+2 | 
+<app>/src/views/LoginView.vue | 
+前端配置对象 | 
+~40 行（brand/ssoConfig/authApiBase） | 
+否 | 
+3 | 
+portal/src/config/systems.ts | 
+前端硬编码 | 
+~15 行（含 URL 编码的 client_id + redirect_uri） | 
+否 | 
+4 | 
+<app>/nginx.conf | 
+nginx location | 
+若干条代理规则 | 
+否 | 
+5 | 
+config-as-code 仓库 | 
+nginx 站点配置 | 
+一份站点文件 | 
+否 | 
+6 | 
+devtools/.woodpecker.yml | 
+CI YAML | 
+~30 行（build + deploy 一对） | 
+否 | 
+7 | 
+woodScript/cd/deploy-<app>.sh | 
+Shell 脚本 | 
+54 ~ 81 行 | 
+否 | 
+8 | 
+<app>/package.json | 
+依赖声明 | 
+2 行 | 
+否 | 
+最要命的是第 1 处
+DatabaseInitializer.java 共 534 行，里面有 5 个 seed 方法，各自服务一个或一组应用。抽两段出来对比——除了 clientId、名称、3 条回调地址三样东西，其余 40 余行完全相同：
+private void seedInframonClient(...) {
+ List<String> requiredRedirects = List.of(
+ "https://monitor.marschat.online/infra/sso-callback",
+ "http://192.168.31.105/infra/sso-callback",
+ "http://localhost:3002/infra/sso-callback"); ← 内网 IP 写进 Java 源码
+ ...
+ RegisteredClient.withId(UUID.randomUUID().toString())
+ .clientId("marschat-inframon") ← 差异点 1
+ .clientName("MarsChat Infra Monitor (SPA)") ← 差异点 2
+ .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+ .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+ .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+ .redirectUris(r -> r.addAll(requiredRedirects)) ← 差异点 3
+ .scope(OidcScopes.OPENID).scope(OidcScopes.PROFILE)
+ .clientSettings(...requireProofKey(true)...)
+ .tokenSettings(...30min / 7d...)
+ .build();
+ ...
+}
+三重问题：① 每个应用 48 行样板代码，5 份共约 240 行纯重复；② 内网 IP 与 localhost 端口写进 Java 源码，改环境要改代码；③ DatabaseInitializer 里 @ConfigurationProperties／@Value 匹配数 为 0——完全没有任何外部配置读取。
+另外实测：auth-center 的 controller 里没有客户端管理接口，也没有 client 相关的 Properties 类。也就是说除了改代码，没有任何别的注册途径。
+三、已有的配置化范式（可直接复用）
+好消息是这件事你不用从零设计——devtools/mykng/module-registry.yml 就是同款思路，并且已经被验证过：
+# mykng 模块与插件注册清单（Single Source of Truth）
+#
+# 本文件是 mykng 系统的"单一事实来源"：
+# - 所有脚本、CI/CD、网关路由、文档生成器从此文件派生模块信息
+# - 添加/移除模块或插件只需修改此文件，无需遍历 15+ 配置文件
+它的结构已经包含了我们需要的一切要素：global（全局配置）／infrastructure（基础设施）／modules（服务模块，带 port/profile/health-path/depends-on）／plugins（可插拔，按 P0-P3 分级）／profile-presets（预置组合方案）。
+已有的生成器骨架是 generate_docs.py。所以本方案不是发明新机制，而是把这个已验证的范式从 mykng 扩展到「平台应用」这一层。
+四、目标设计：单一真源 + 生成器
+4.1 新增 apps-registry.yml
+放在 devtools/ 下（与 module-registry.yml 同级，或并入其中作为 apps: 节）。一个应用一段声明：
+apps:
+ - id: cosmic-studio
+ name: COSMIC 度量表生产系统
+ auth:
+ client-id: cosmic-studio
+ type: public-spa # public-spa | confidential
+ scopes: [openid, profile]
+ redirect-uris:
+ - https://cosmic.marschat.online/sso-callback
+ - http://192.168.31.105:8310/sso-callback
+ token-ttl: { access: 30m, refresh: 7d }
+ login-methods: [password, email-code, sso] # 启用哪些登录方式
+ frontend:
+ api-base: /auth-api # auth-center 业务 API 的 nginx 前缀
+ brand:
+ title: COSMIC 度量表生产系统
+ icon: EditPen
+ color: '#534AB7'
+ guard: { login-route: /login, home: / }
+ menus: self-report # self-report | [静态数组]
+ backend:
+ type: python # none | java | python
+ context-path: /
+ permissions-enabled: true
+ deploy:
+ host: 192.168.31.105
+ port: 8310
+ ci-target: cosmic-studio
+ nginx-prefix: /
+ portal:
+ category: tool
+ health-check: http://192.168.31.105:8310/api/health
+ sort-order: 30
+4.2 一个生成器派生所有产物
+新增 scripts/gen-from-registry.py（复用 generate_docs.py 的骨架）：
+派生产物 | 替代掉现状哪一处 | 
+auth-center/src/main/resources/clients.yml | 第 1 处 5 段硬编码 Java → 声明式配置 | 
+<app>/public/app-config.json | 第 2 处 前端编译期配置 → 运行时配置 | 
+portal/src/config/systems.generated.ts | 第 3 处 系统卡片与 ssoUrl 自动生成 | 
+config-as-code/sites/apps/<id>.conf | 第 4、5 处 nginx 站点配置 | 
+.woodpecker.yml 的 pipeline 块 | 第 6 处 CI 步骤 | 
+woodScript/cd/deploy-<id>.sh | 第 7 处 部署脚本（模板化，只填变量） | 
+关键点：派生物全部标记 AUTO-GENERATED，勿手改（仓库里 adr/INDEX.md 已经是这个模式，说明团队能接受）。这样「真源唯一」才是真的，否则又会漂移成 8 处。
+五、auth-center 三层配置化
+这是整个方案最要紧的一环，因为它现在是硬编码 Java。建议做成三层递进，按需要启用：
+L1静态配置加载（替代硬编码）推荐先做
+删掉 DatabaseInitializer 里 5 个 seed 方法，改为读 clients.yml：
+@ConfigurationProperties(prefix = "marschat.auth.clients")
+public class AuthClientsProperties {
+ private List clients; // 启动时批量 upsert 到 oauth2_registered_client
+}
+收益：加应用 = 加一段 yaml，不再改 Java 代码。改回调地址同理。风险为零——逻辑与现在完全一致，只是数据来源从代码变成配置。
+L2动态注册接口（免重启）建议做
+新增 AdminClientController，暴露 POST / PUT / DELETE /admin/oauth2-clients（沿用 AdminUserController 的 @PreAuthorize("hasRole('ADMIN')") 模式）。
+收益：注册新客户端不用重启认证中心。也可在用户管理界面里做一个「OIDC 客户端管理」页签，注册这件事从改代码变成点几下。这本质上就是 OIDC Dynamic Client Registration（RFC 7591）的简化版，属于业界标准做法。
+L3应用自注册（最彻底）可选
+应用启动时带一次性 bootstrap-token 调 L2 的注册接口，自己把自己注册进去（Spring Boot Admin 的注册机制同款）。
+收益：新应用只需在自己仓库里写一份 marschat-app.yml，部署即完成注册。代价是要管好 bootstrap token 的签发与吊销——所以列为可选，等 L1/L2 跑顺了再说。
+建议节奏：L1 与 P1 公共组件抽取同批做（同一次改 auth-center、同一个发布窗口）；L2 与 RBAC 权限管理界面一起做（都是「管理能力」）；L3 视需要，不着急。
+六、前端：编译期 → 运行时配置
+现状是前端配置写死在构建产物里：
+// portal/src/views/LoginView.vue —— 当前
+const loginConfig = {
+ title: 'MarsChat 工具看板',
+ authApiBase: '/portal/auth-api', ← 换环境要改这里
+ ssoConfig: {
+ clientId: 'marschat-portal', ← 换环境要改这里
+ redirectUri: `${window.location.origin}/portal/auth/callback`,
+ },
+ onLogin: async (c) => { await userStore.login(c); router.push(...) },
+ brand: { ... },
+}
+60 行的配置文件里，真正随环境变化的是 authApiBase／clientId／redirectUri 三项。把它们搬到运行时读取：
+改造后：应用侧
+// main.ts —— 全应用统一两行
+import { bootstrapMarschatApp }
+ from '@marschat/auth-components'
+bootstrapMarschatApp()
+// 自动：读 app-config.json
+// 装路由守卫
+// 装菜单（含权限过滤）
+// 装 HTTP 拦截器
+配置来源：运行时挂载
+// /app-config.json（部署时由
+// registry 生成并写入 nginx 目录）
+{
+ "apiBase": "/portal/auth-api",
+ "clientId": "marschat-portal",
+ "issuer": "https://auth.marschat.online",
+ "brand": { "title": "..." },
+ "menus": [...]
+}
+最大收益：同一份构建产物可以部署到任意环境——本地、内网、公网域名不用重新构建。这同时解决了「改个回调地址要重新发一次前端流水线」的痛点，也让前端流水线与环境配置彻底解耦。
+技术上只需在 index.html 加载前注入一段读取 /app-config.json 的脚本，或让 bootstrapMarschatApp() 先 fetch 它再挂载应用。
+七、后端：加依赖 + 5 行 yaml
+Java 应用这边的配置面本来就小，只需让 auth-core 的自动装配把剩余部分全部接管：
+# application.yml —— 每个 Java 应用只写这些
+marschat:
+ auth:
+ enabled: true
+ issuer: https://auth.marschat.online
+ audience: ${MARSCHAT_CLIENT_ID} # 从部署环境注入
+ permissions-enabled: true
+ menu-report:
+ enabled: true
+ registry: classpath:menu-registry.yml # 应用自己的菜单声明
+auth-core 自动装配负责：
+验签 —— RS256 走 OidcTokenVerifier，HS256 回退（已有能力）
+@MarsUser 注入 —— 已有能力，且会扩展出 roles/permissions
+@RequirePermission 校验 —— 本次新增，接 NoPermissionException 统一 403
+菜单上报 —— 读 menu-registry.yml，启动时注册给认证中心（本次新增）
+顺带解决一件事：菜单从「Java 代码里的菜单数组」变成 menu-registry.yml 声明。cosmic 现在的 MENU_REGISTRY 写在 studio.py 里，正是同一个问题的 Python 版本——两边共用一套 yml 格式，跨语言也能对齐。
+八、接入前后对比
+阶段 | 要动的地方 | 代价 | 
+现状 | 
+8 处，含改 auth-center 的 Java 代码并重新部署它 | 
+~230 行，且触碰全局枢纽 | 
+L1 完成后 | 
+① apps-registry.yml 加一段② 跑一次生成器③ 前端 main.ts 两行 | 
+~40 行，不碰 auth-center 代码 | 
+L2 完成后 | 
+同上，但注册无需重启认证中心 | 
+~40 行，零停机 | 
+L3 完成后 | 
+只在自己仓库写一份 marschat-app.yml | 
+~25 行，一次配置 | 
+换个角度看这件事
+公共组件解决的是「别重写代码」，配置化解决的是「别重写声明」。两个都做到，才是「未来自建应用可以配置化接入」的完整形态——代码引包、声明填表、产物生成。三件事各归其位，接入成本才真正降下来。
+九、脚手架
+再往前一步：有了 registry 和模板，可以提供一个生成脚手架，把「填表」也省掉一半：
+# 期望的体验
+marschat-cli new-app cosmic-studio \
+ --type public-spa \
+ --port 8310 \
+ --host 192.168.31.105
+# 产出：
+# apps-registry.yml 追加一段（填好默认值）
+# src/views/LoginView.vue（15 行，只留业务回调）
+# src/main.ts（两行 bootstrap）
+# nginx.conf（auth 代理 + SPA 回落）
+# menu-registry.yml（空模板）
+# .env.example
+落地上不需要真的写 CLI——一个 templates/app-skeleton/ 模板目录 + 一段替换脚本就够。核心价值在模板本身，不在命令行包装。
+十、分层实施与待拍板
+1
+L1 + apps-registry.yml + 生成器 建议先做
+与 P1 公共组件抽取同批做——都要改 auth-center、都要重新发布，一次动库窗口搞定。做完立刻能把 5 段硬编码 Java 删掉。
+2
+前端运行时配置
+与 L1 同期或紧随。改 5 个前端的 main.ts + 生成 app-config.json。可与 P1 的前端抽取合并做。
+3
+L2 动态注册接口 + 客户端管理界面
+与 RBAC 权限管理界面一起做（同属「管理能力」）。做完后注册新应用零停机。
+4
+脚手架模板
+最后做。前面都通了，模板才有意义。
+请良哥拍板
+apps-registry.yml 放哪：① devtools/ 独立文件（与 module-registry.yml 并列）② 并入 module-registry.yml 作为 apps: 节 ③ 放 config-as-code（跟 nginx 一起）。我倾向 ① 或 ③，因为「平台应用」的粒度比 mykng 模块大
+auth-center 走 L1 还是直接 L1+L2：L1 零风险但改回调仍要重启；L2 更彻底但要新写一套 CRUD 接口 + 界面
+前端运行时配置是否做：这是收益最直观的一项（同产物多环境），但需要动 5 个前端的入口文件
+生成器用什么写：generate_docs.py 是 Python，继续用 Python 保持一致，还是换成 Node（前端产物生成更顺手）
+是否要脚手架：如果未来自建应用不会很频繁，模板目录可能就够了，CLI 属于过度设计
+本文所述「8 处」及各行数均于 2026-09-10 从本地仓库实采：DatabaseInitializer.java（534 行 / 5 个 seed 方法 / @ConfigurationProperties 匹配 0 处）、
+portal/src/config/systems.ts（271 行）、devtools/.woodpecker.yml（323 行 / 22 步）、woodScript/cd/*.sh（11 个脚本 54~81 行）、
+portal/src/views/LoginView.vue（64 行）。未使用推测数据。
+关联文档：ADR-2026-09-09-公共组件发布到Nexus私服.md · 《公共组件抽取方案》 · 《统一账号体系与授权模型重构方案》

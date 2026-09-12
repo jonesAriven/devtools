@@ -1,0 +1,119 @@
+平台重构统一落地路线图
+平台重构统一落地路线图
+把四份方案收敛成一条路径：认证重构 · 公共组件抽取 · 配置化接入 · 菜单权限
+2026-09-10 · 决策状态：菜单定义归属已拍板（放应用侧）· 其余待定项见 §5
+先看清楚：这四份方案本来就是一件事
+它们不是四个独立项目，而是同一件事的四个侧面——「把平台从『每个应用各干各的』变成『一处定义、处处复用』」。分开做会重复动同一批代码、同一批包、同一次发布窗口。所以这份路线图的作用是给出依赖顺序，避免返工。
+一、四份方案的关系
+方案 | 解决什么 | 依赖谁 | 
+① 统一账号体系与授权模型重构 | 
+一处管人（5 套账号收敛为 1 池）+ 三层 RBAC | 
+无（地基） | 
+② 公共组件抽取 | 
+别重写代码（清 19 个死文件、消除 1200+ 行重复） | 
+①（RBAC 能力必须进 auth-core，否则后端无法鉴权） | 
+③ 新应用配置化接入 | 
+别重写声明（接入从 8 处收敛为 1 处） | 
+②（依赖 auth-core 的自动装配） | 
+④ 菜单管理与菜单权限 | 
+把硬编码菜单变成可授权数据 | 
+①（sys_permission 表）+ ②（<SidebarMenu> / useMenus()） | 
+最关键的一条约束：Phase 2 是枢纽——公共组件抽取（②）与 RBAC 能力建设（①的一部分）必须同批做、同批发版。
+因为两者都改 auth-core / common-core，都要求全平台应用升版本。拆成两批 = 同一批包发两次版本 + 全平台应用升级两遍，纯浪费。
+二、阶段划分（6 个 Phase）
+Phase 0
+清死代码 零风险可立即开工
+删除 kb-ops / infra-monitor-server / portal-server 三处 com/kb/common/** 共 19 个文件（零引用）。
+产出：代码体积下降，编译通过，无行为变更。
+验收：三应用编译 + 启动 + 冒烟通过。
+⚠️ 需先确认：devtools/mykng/kb-auth 是死是活（疑似被 auth-center 取代）。
+Phase 1
+认证地基 可独立发布
+库改名 kb_auth → marschat_auth（env 切换，零代码）→ 新增 user_identity 表 + email 唯一约束 + 数据迁移 →
+邮箱验证码登录（全量开放）+ 超管保底通道 → superadmin 分级 → 用户管理补齐（分页/搜索/审计/事务/踢下线）。
+产出：登录方式矩阵完整；账号池基础牢靠。
+验收：邮箱验证码可登录；superadmin 不可被删/禁/降级；用户管理达 CRUD 规范。
+回滚：库改名走 env，改回即回滚；其余均为新增，无破坏性。
+Phase 2
+RBAC 底座 + 公共组件 关键批 · 一次发版
+认证中心：建 RBAC 六表（sys_role/sys_permission/sys_role_permission/sys_user_role/sys_role_composite/sys_app_client）+ 权限接口 GET /auth/permissions。
+auth-core：扩 LoginUser（roles/realm/permissions）+ @RequirePermission + PermissionInterceptor + MenuRegistryReporter。
+common-core：新增 crypto 包（AES-256-GCM + 存量双读）+ audit 包（@AuditOperation + AOP）。
+前端包：auth-components 补 createSsoClient 工厂 / useMenus / usePermissions / PermissionGate；frontend-common 补 createAuthGuard / SidebarMenu（含「挂载路由前先拉权限」修正）。
+发版：common-core / auth-core / auth-components / frontend-common 四包同批。
+验收：全平台应用升级后功能等价（逐应用回归）；@RequirePermission 生效率验证。
+Phase 3
+配置化接入 依赖 Phase 2
+新增 apps-registry.yml（单一真源）+ gen-from-registry.py 生成器 →
+auth-center L1 改为读 clients.yml（删掉 5 段硬编码 Java）→
+前端改运行时 app-config.json（同产物多环境）。
+产出：接入新应用不再改认证中心代码。
+验收：拿一个测试应用走完整流程——全程不改 auth-center 任何 Java 文件，成功接入。这是本阶段的硬指标。
+Phase 4
+菜单权限 依赖 Phase 1/2
+menu-registry.yml 落地 + 上报打通（全量覆盖语义）→ 存量 4 应用菜单先只做上报 →
+管理界面双视角（「用户 × 系统 × 菜单」+「角色 × 菜单」）→ 三层同源（菜单 / 路由守卫 / @RequirePermission）。
+产出：菜单可授权，且直输 URL、直接调接口都被拦住。
+验收：给某用户减掉一个菜单后，侧边栏消失 + 直输 URL 被拦 + 对应接口 403，三层同时生效。
+Phase 5
+存量收敛 逐应用
+各应用接入公共库（myfrp / active-manager / mykng-kb-ops）→ portal JIT 关联键改 sub →
+注册 cosmic-studio 与 frp-manager 的 OIDC 客户端 → 本地账号表降级下线 → 前端 <SidebarMenu> 替换硬编码菜单。
+产出：账号体系真正收敛为单一池，菜单全部数据化。
+验收：账号只在 marschat_auth 一处；任一应用菜单改动不touch其他仓库。
+三、依赖图
+Phase 0 清死代码 ────────────────────────────┐
+ │ 独立，随时可做
+Phase 1 认证地基（库改名/身份表/邮箱登录/超管/用户管理）
+ │
+ ├──────────────┐
+ ▼ ▼
+Phase 2 RBAC 底座 + 公共组件（关键批 · 一次发版）
+ │ │
+ │ ├──────────────┐
+ ▼ ▼ ▼
+Phase 3 配置化接入 Phase 4 菜单权限
+ │ │
+ └──────┬───────┘
+ ▼
+Phase 5 存量收敛（逐应用）
+为什么要 Phase 1 在 Phase 2 之前：Phase 1 改的是「账号与凭证」这一层（user / user_identity），
+Phase 2 改的是「角色与权限」这一层（RBAC 六表）。权限表要引用 user.id，所以人这一层必须先稳。
+为什么 Phase 3 与 Phase 4 可以并行：一个改「接入机制」，一个改「菜单授权」，两者的交集只有
+apps-registry.yml 里的 menus 字段——接口定义清楚后互不阻塞。
+四、决策状态
+决策项 | 状态 | 结论 / 建议 | 阻塞 | 
+菜单定义归属 | 
+✅ 已定 | 
+放应用侧——中心只存授权，管理界面不做「建菜单」，上报走全量覆盖 | 
+Phase 4 | 
+库改名是否并入 Phase 1 | 待定 | 建议并入（同一次动库窗口） | Phase 1 起步 | 
+权限粒度：菜单+接口 / 按钮级 | 待定 | 按钮级工作量约翻倍 | Phase 2 | 
+CryptoUtil 收敛策略 | 待定 | 建议 AES-256-GCM 标准 + 存量双读 | Phase 2 | 
+mykng/kb-auth 存废 | 待定 | 疑似被 auth-center 取代 | Phase 0 | 
+用户级菜单权限是否保留 | 待定 | 建议保留（角色默认 + 用户白名单减法） | Phase 4 | 
+未配置菜单权限时默认策略 | 待定 | 建议「跟随角色默认」 | Phase 4 | 
+apps-registry.yml 放哪 | 待定 | devtools/ 独立 / 并入 module-registry / 放 config-as-code | Phase 3 | 
+auth-center 走 L1 还是 L1+L2 | 待定 | L1 零风险；L2 注册免重启但要写接口+界面 | Phase 3 | 
+前端运行时配置是否做 | 待定 | 收益最直观（同产物多环境） | Phase 3 | 
+生成器用什么写 | 可后置 | Python（沿用 generate_docs.py）或 Node | Phase 3 | 
+是否要脚手架 CLI | 可后置 | 模板目录可能就够，CLI 易过度设计 | Phase 5 后 | 
+五、建议的开工顺序
+马上
+Phase 0 全量 + Phase 1 起步
+Phase 0 不需要任何决策，可以直接开工（唯一前提是确认 mykng/kb-auth 存废）。
+Phase 1 只卡一个「库改名是否并入」，定了就能连做。
+关键
+Phase 2 一次性做完再发版
+这是全流程风险最集中的一批（改 auth-center 枢纽 + 四个包同批发布 + 全平台升级）。
+必须先把「权限粒度」和「CryptoUtil 策略」两个决策定下来，否则中途改口径要重发版。
+随后
+Phase 3 / Phase 4 可并行
+接口对齐后互不阻塞。Phase 4 建议先只做上报（让权限界面有数据），前端渲染改造分应用后置。
+一句话总结这条路径
+先把地扫干净（Phase 0）→ 把「人」这一层做扎实（Phase 1）→ 一次把「权限」和「组件」都建起来（Phase 2，枢纽）→
+让接入变便宜（Phase 3）→ 让菜单可授权（Phase 4）→ 把存量收干净（Phase 5）。
+前五个 Phase 都在「建能力」，最后一个才「搬家」——这样风险始终在可控的一侧。
+本路线图汇总自四份方案：《统一账号体系与授权模型重构方案》《公共组件抽取方案》《新应用配置化接入方案》《菜单管理与菜单权限接入方案》，
+所有现状数据均于 2026-09-10 从本地仓库实采。
+决策状态：菜单定义归属已由良哥拍板（2026-09-10，放应用侧）；其余 8 项待定，已标注各自阻塞的 Phase。

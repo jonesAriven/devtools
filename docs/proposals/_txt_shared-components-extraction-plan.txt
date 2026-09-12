@@ -1,0 +1,243 @@
+公共组件抽取方案 · 发布到 Nexus 复用
+公共组件抽取方案
+从代码架构角度盘点重复逻辑，明确哪些该抽成公共组件、发布到 Nexus 供后续复用
+2026-09-10 · 数据均从本地仓库源码实采 · 承接《统一账号体系与授权模型重构方案》
+目录
+结论速览
+现有公共组件资产
+发现一：19 个文件的死代码
+发现二：真实重复的五类逻辑
+发现三：已发布却没被用起来
+发现四：auth-core 缺权限能力
+发现五：发布链路没有 CI
+抽取清单（按优先级）
+不值得抽的（边界判断）
+待拍板事项
+一、结论速览
+19
+个死代码文件（零引用）
+1,200+
+行纯粹重复的代码
+6
+类应抽取的逻辑
+4
+个包已有可复用能力
+一句话结论
+公共组件不是「缺」，而是「建了却没用起来」。已有 4 个包发布在 Nexus，但三个前端仍在用本地副本、三个后端仍在复制 com.kb.common，且累积了 19 个文件的死代码。真正需要新增的只有 RBAC 权限这一层——因为现有 auth-core 的 LoginUser 里根本没有角色和权限。
+二、现有公共组件资产
+先把家底摆清楚——这决定了后面大半的抽取工作其实是「迁移」而不是「新建」。
+包 | 类型 | 当前版本 | 发布目标 | 已提供能力 | 
+com.marschat:common-core | 
+Java jar | 
+1.1.0 | 
+Nexus maven-releases | 
+统一响应 Result／分页 PageResult／异常体系 + 全局处理器／断言器／事件总线／TraceId 链路／MyBatis-Plus 自动装配
+24 个类 | 
+com.marschat:auth-core | 
+Java jar | 
+— | 
+Nexus maven-releases | 
+JWT 签发/解析 TokenProvider／OIDC RS256 验签／@MarsUser 参数注入／Feign 透传
+10 个类 | 
+@marschat/auth-components | 
+npm | 
+0.3.3 | 
+Nexus npm-hosted | 
+登录组件 LoginPanel/LoginPage／SSO 回调视图／useAuth/useSso／PKCE／token 工具／SSO 工具
+10 个文件 | 
+@marschat/frontend-common | 
+npm | 
+0.2.0 | 
+Nexus npm-hosted | 
+createRequest 请求工厂／认证与错误拦截器／usePagination/useLoading／formatDateTime/storage
+10 个文件 | 
+好消息：消费侧机制已经通了——kb-parent 的 dependencyManagement 里声明了 ${common-core.version}，仓库指向 https://nexus.marschat.online/repository/maven-public/；前端 5 个应用也已在 package.json 里声明 @marschat/* 依赖并删掉了 vite alias。所以后续抽取不需要再铺路，只需要把代码搬进去、发版、改依赖版本。
+三、发现一：19 个文件的死代码
+三个后端应用各自复制了一整套 com.kb.common 包，而 common-core 里已有功能更全的 com.marschat.common 版本。
+应用 | 本地 com/kb/common/ 文件 | 实际引用 com.kb.common.* | 实际引用 com.marschat.common.* | 
+devtools/kb-ops | 
+9 个（exception×3, page, result, trace×4） | 
+0 处（除内部互引） | 
+60 处 | 
+devtools/infra-monitor-server | 
+5 个（exception×3, page, result） | 
+0 处 | 
+14 处 | 
+devtools/portal-server | 
+5 个（exception×3, page, result） | 
+0 处 | 
+10 处 | 
+判定依据（可复现）：对 PageResult／Result／BusinessException／GlobalExceptionHandler／NotFoundException 逐个统计 import——三个应用对 com.marschat.common.* 的引用分别是 60／14／10 处，对 com.kb.common.* 是 0 处。
+唯一的 3 处 import com.kb.common.result.Result 出现在各自的本地 GlobalExceptionHandler.java 里——死文件引用死文件，整个包确实是死的。
+另外三份 PageResult 内容还各不相同（21／25／25 行），属于典型的复制后各自漂移。
+处置：直接删除这 19 个文件，零风险、零收益损失。这是本次投入产出比最高的一步。
+另需核实：疑似废弃的旧认证服务
+devtools/mykng/kb-auth 是一个完整的旧版认证模块（com.kb.auth 包，含 authenticator／security／service／event 等 11 个子包），而现役认证服务是独立仓 auth-center（com.marschat.authcenter 包，端口同为 8085、库同为 kb_auth）。两者职责重叠，mykng/kb-auth 疑似已被抽取替代但未清理。
+证据点 | 观察 | 
+包名 | com.kb.auth（旧）vs com.marschat.authcenter（新） | 
+端口 / 库 | 两者都是 8085 / kb_auth，不可能同时运行 | 
+模块注册表 | devtools/mykng/module-registry.yml 仍登记 kb-auth 且标 removable: false，未标注废弃 | 
+同名重复类 | OperationLog／CryptoUtil／DatabaseInitializer／AuthenticationContext 在两边各有一份 | 
+待核实：需要确认 mykng/kb-auth 是否仍在 CI 构建与部署链路中。若已由 auth-center 取代，则这是一个整模块的遗留（连带 module-registry.yml 里的登记也要清理），应优先处置；若仍在运行，则是双写风险，问题更严重。这一项我不下结论，先标出来等你确认。
+四、发现二：真实重复的五类逻辑
+以下是零引用判据之外的重复——即两边都在用、代码真的重了两遍。这类才是抽取的主体。
+4.1 CryptoUtil — 5 份副本，3 种不同实现
+位置 | 行数 | 实现 | 
+infra-monitor-server/.../infra/util/CryptoUtil.java | 78 | AES-256-GCM，AES/GCM/NoPadding，IV=12，TAG=128 | 
+kb-ops/.../ops/util/CryptoUtil.java | 109 | 同算法（AES-256-GCM，IV=12，TAG=128），实现细节不同 | 
+portal-server/.../portal/util/CryptoUtil.java | 37 | 不同实现 简单 key-based，构造参数 portal.encryption.key | 
+activation-code-server/.../util/CryptoUtil.java | 303 | 体量大得多 疑似另含 RSA 等独有能力，需单独确认 | 
+mykng/kb-auth/.../util/CryptoUtil.java | 99 | 随旧模块（见 §3 待核实项） | 
+抽取要点：不能简单「取一份复制过去」。infra-monitor 与 kb-ops 的 GCM 参数一致（IV=12／TAG=128），可收敛为一份标准实现；但 portal 是另一套算法，active-manager 体量差 4 倍，直接替换会解不开存量密文。
+正确做法：抽 common-core 的 crypto 包，以 AES-256-GCM 为标准实现，再为存量数据提供算法标识 + 迁移期双读（读到旧格式用旧逻辑解，写回统一新格式）。
+4.2 OperationLog（操作审计） — 3 套实现
+位置 | 结构 | 状态 | 
+kb-ops/.../entity|controller|service/OperationLog* | entity 22 行，字段与另两套不同（含 resourceType／resourceId／userAgent） | 在用 | 
+auth-center/.../entity|controller|service/OperationLog* | entity 26 行 | 在用 | 
+mykng/kb-auth/.../entity|controller|service/OperationLog* | 与 auth-center 同构 | 随旧模块 | 
+关键点是：kb-ops 那套和 auth-center 那套字段都不一样——说明它们是从同一个想法各自演化出来的，不是有意设计的差异。而本次授权重构恰好要求「用户管理补齐审计日志」，正好可以一次抽干净。
+抽取要点：在 common-core 新增 audit 包——@AuditOperation 注解 + 统一 OperationLog 实体 + AOP 切面自动落库（记录 操作人／动作／资源／前后值／IP／UA）。各应用只需在方法上加注解，不再各自写 service。
+顺带解决「审计字段不统一」的问题——统一后跨系统审计才有意义。
+4.3 前端 SSO / Token 工具 — 4 份副本
+文件 | kb-web | kb-ops-web | infra-monitor-web | myfrp | auth-components 已有 | 
+utils/sso.ts | 
+149 行
+3 处引用 | 
+174 行
+3 处引用 | 
+150 行
+3 处引用 | 
+177 行
+.js | 
+163 行 | 
+utils/token.ts | 
+47 行
+6 处引用 | 
+31 行
+5 处引用 | 
+47 行
+6 处引用 | 
+— | 
+已导出 | 
+三份 sso.ts 的函数名和函数体完全一致——startSsoLogin／handleSsoCallback／refreshOidcToken／decodeOidcClaims——唯一差异是两行常量：
+应用 | 存储键前缀 | clientId | 
+kb-web | kb_sso_state / kb_sso_verifier / kb_sso_redirect | marschat-kbweb | 
+kb-ops-web | kb_ops_sso_state / kb_ops_sso_verifier / … | marschat-kbops | 
+infra-monitor-web | infra_sso_state / infra_sso_verifier / … | marschat-inframon | 
+抽取要点：不是「把代码搬进包」，而是参数化——auth-components 里已有全部函数，补一个工厂：
+export function createSsoClient(opts: {
+ clientId: string
+ redirectUri: string
+ issuer?: string
+ keyPrefix: string // 'kb' | 'kb_ops' | 'infra'
+}): { startSsoLogin; handleSsoCallback; refreshOidcToken; decodeOidcClaims }
+各应用从 149 行本地副本降为 5 行配置。token 层更简单——frontend-common 已导出 createLocalStorageTokenStore，直接换用。
+4.4 前端路由守卫 — 4 份
+四个应用各写一份 router.beforeEach，逻辑几乎逐行相同：取 token → 判断 meta.requiresAuth !== false → 无 token 跳登录并带 redirect → 已登录访问登录页则回跳。portal 额外多一个 requiresAdmin 判断。
+抽取要点：frontend-common 新增 createAuthGuard({ loginRoute, getToken })，并扩展 meta 契约以承载 RBAC：
+meta: {
+ requiresAuth?: boolean
+ requiredPermissions?: string[] // 新增：绑定权限点
+}
+守卫内统一处理「无权限 → 403 页」而不是各应用自己判断 admin。
+4.5 前端菜单渲染 — 3 份硬编码
+应用 | MainLayout 行数 | 菜单写法 | 
+portal | 473 | 数据驱动 v-for="cat in categories"（可作范式） | 
+kb-ops-web | 332 | 硬编码 十几个 el-menu-item 平铺 | 
+infra-monitor-web | 255 | 硬编码 | 
+kb-web | 685（含 ShareLayout） | 硬编码 | 
+抽取要点：抽 <SidebarMenu :menus="menus" /> 组件，接收菜单数组渲染。这与 RBAC 的菜单权限天然咬合——菜单数组不再硬编码，而是来自 GET /auth/permissions 下发。一次抽取同时解决「重复」和「权限过滤」两个问题。
+五、发现三：已发布却没被用起来
+这是最值得注意的一类浪费——包在 Nexus 上、依赖也声明了，代码里却还在用本地副本。
+应用 | 声明的依赖 | 实际 import 包的文件数 | 真实情况 | 
+kb-web | 
+auth-components + frontend-common | 
+1（仅登录页用 LoginPanel） | 
+SSO/token 仍走本地副本 | 
+kb-ops-web | 
+auth-components + frontend-common | 
+1 | 
+本地 utils/request.ts 被 13 处引用；createRequest 仅 1 处 | 
+infra-monitor-web | 
+auth-components + frontend-common | 
+0 | 
+frontend-common 是死依赖，本地 utils/request.ts 被 6 处引用 | 
+portal | 
+auth-components + frontend-common | 
+待细化统计 | 
+已用登录组件 | 
+cosmic-studio | 
+auth-components（无 frontend-common） | 
+1 | 
+自带 utils/format.js，与包内 formatDateTime 重复 | 
+myfrp | 
+无任何 @marschat 依赖 | 
+0 | 
+自带 177 行 sso.js + 独立 request.js | 
+结论：依赖声明了但代码没用，等于双份维护成本 + 零收益。这类「半迁移」状态比完全没迁移更危险——升级时两边都要改，改完还得担心不一致。
+处置顺序：先把本地副本换成包内能力（删副本），再清理死依赖（infra-monitor-web 的 frontend-common）。
+六、发现四：auth-core 缺权限能力（本次重构的硬缺口）
+这是唯一一类真正需要新建的公共能力。现有 auth-core 的 LoginUser 只有三个字段：
+public record LoginUser(Long userId, String username, String tokenType) {
+ public boolean isRefreshToken() { return "refresh".equals(tokenType); }
+}
+TokenProvider.parseUser() 也只解析这三项——没有 role、没有 realm、没有 permissions。所以任何后端应用想校验「这个人能不能调这个接口」，在共享库里根本没有抓手，只能各写各的。
+需要的公共能力 | 落在哪个包 | 解决什么 | 
+LoginUser 扩展 roles／realm／permissions | auth-core | 后端能拿到当前人的权限 | 
+@RequirePermission("client:type:key") 注解 | auth-core | 接口级声明式鉴权，替代各写 @PreAuthorize("hasRole('ADMIN')") | 
+PermissionInterceptor + 本地缓存 | auth-core | 统一拦截、统一 403 语义（接 NoPermissionException） | 
+MenuRegistryReporter 启动上报 | auth-core | 应用把菜单树注册给认证中心，不用各写一遍 | 
+useMenus() / usePermissions() / <PermissionGate> | auth-components | 前端菜单过滤与按钮级权限 | 
+createAuthGuard() / <SidebarMenu> | frontend-common | 路由守卫与菜单渲染统一 | 
+这一层的价值：把 RBAC 做成公共能力后，接入一个新应用的成本从「实现一套权限体系」降为「加一个依赖 + 加注解」。这才是「发布到 Nexus 后续直接用」的真正形态。
+七、发现五：发布链路没有 CI
+环节 | 现状 | 问题 | 
+Java 发布 | distributionManagement 指向 nexus.marschat.online/repository/maven-releases/ | 坐标配置好了 | 
+npm 发布 | 指向 Nexus npm-hosted | 坐标配置好了 | 
+触发方式 | scripts/build-all.ps1 + push-all.ps1（手动 PowerShell） | 纯手工 | 
+CI 流水线 | 无（marschat-components 仓无 woodpecker 配置） | ADR-2026-09-09 的「后续优化 #2」未落地 | 
+版本管理 | .changeset/ 目录存在但为空 | npm 版本靠手改，无 CHANGELOG | 
+版本号一致性 | common-core 1.1.0 / frontend-common 0.2.0 / auth-components 0.3.3 | 各包独立演进，无平台版本视角 | 
+建议：本次抽取动作会让包发布变频繁（多次改包 + 发版），如果还靠手动脚本，很容易出现「代码搬进去了但没发包 / 发了包但没改依赖版本」的断裂——这正是上次「流水线全绿线上没变」的同类风险。建议同步补一条 marschat-components 流水线：打 tag → 构建 → maven 与 npm 双发 → 同步 push-all.ps1 的双推逻辑（Gitee + GitHub）。
+八、抽取清单（按优先级）
+P0
+清死代码 零风险约 19 个文件
+删除 kb-ops／infra-monitor-server／portal-server 三处 com/kb/common/**；核实并处置 mykng/kb-auth 旧模块（含 module-registry.yml 登记）。无行为变更，可单独提交。
+P1
+消除真实重复 高收益约 1,200 行
+① common-core 新增 crypto 包（AES-256-GCM 标准实现 + 存量双读），迁移 5 处 CryptoUtil；
+② common-core 新增 audit 包（@AuditOperation + 统一实体 + AOP 落库），迁移 3 套 OperationLog；
+③ frontend-common 新增 createAuthGuard + <SidebarMenu>；
+④ 三前端改用包内 sso／token，auth-components 补 createSsoClient 工厂，删本地副本。
+P2
+新建 RBAC 公共能力 重构必需
+auth-core：扩展 LoginUser（roles／realm／permissions）、新增 @RequirePermission + PermissionInterceptor + MenuRegistryReporter；
+auth-components：新增 useMenus()／usePermissions()／<PermissionGate>。
+这一层做完，接入新应用 = 加依赖 + 加注解。
+P3
+补齐接入 逐应用
+myfrp（前端 + 后端都未接入 @marschat/*／common-core）、active-manager（无 common-core）、mykng/kb-ops（无 common-core）；
+cosmic-studio 前端补 frontend-common（后端是 Python，不做跨语言共享）。
+P4
+发布链路自动化 治本
+marschat-components 加 CI：tag → 构建 → maven + npm 双发 → 双远程推送；启用 changeset 管理 npm 版本与 CHANGELOG；建立平台版本号对齐策略（当前 3 个包版本各自为政）。
+九、不值得抽的（边界判断）
+抽取要有边界，否则会把「公共库」变成「什么都往里的垃圾箱」。以下明确不抽：
+对象 | 不抽的理由 | 
+各应用整体 MainLayout.vue | 品牌、导航项、布局差异是应用身份的一部分，只抽其中的菜单渲染与用户下拉 | 
+cosmic-studio 的 Python 后端 | 跨语言（Python vs Java），硬共享会引入 IPC 或重复实现，得不偿失 | 
+各应用 views/ 业务页面 | 领域逻辑，共享会造成耦合，不属于公共组件范畴 | 
+activation-code-server 的 303 行 CryptoUtil | 体量差 4 倍，需先确认是否含 RSA 等独有能力；只抽真正的公共部分，不整体搬 | 
+各应用 api/ 下的接口定义 | 业务契约，各系统接口不同，共享无意义 | 
+十、待拍板事项
+请良哥确认
+P0 是否立刻执行——19 个死文件删除零风险，建议独立提交先做掉，不等到重构开始
+P0 的 mykng/kb-auth 到底是死是活——需要你确认它是否已被 auth-center 取代（这个只有你知道部署实情）
+CryptoUtil 收敛策略：是否接受「以 AES-256-GCM 为标准 + 存量密文双读迁移」？还是保持各应用算法独立、只抽接口不抽实现？
+P1 与 RBAC 重构（P2）的先后——建议 P1 先做（消除重复、把包发好版），再让 P2 的 RBAC 能力一次性进包，避免同一批包发两次版本
+是否补 CI 自动发布（P4）——本次抽取会频繁发包，手动脚本的断裂风险较高
+抽取动作的共同点（一句话）
+除了 RBAC 那一层，其余都不是「新建公共组件」，而是「把已经重复的代码搬进已存在的包，然后删副本」。所以这次没有架构风险，只有搬迁量和版本发布的节奏问题。
+本文所有数量、行数、引用计数均于 2026-09-10 从本地仓库源码实采（grep 计数可通过文中给出的判据复现），未使用推测。
+涉及的判断性结论已标注依据；mykng/kb-auth 的存废、activation-code-server 的 CryptoUtil 构成两项标明「待核实」，未下结论。
+关联文档：ADR-2026-09-09-公共组件发布到Nexus私服.md · 统一账号体系与授权模型重构方案

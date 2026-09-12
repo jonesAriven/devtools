@@ -1,0 +1,72 @@
+# kb-ops 菜单注册表（menu-permission-management-plan §5 schema）
+# key = 权限点稳定标识（sys_permission.code，下发为 marschat-kbops:menu:<key>），与
+# kb-ops-web router meta.perm 的 permCode('menu','<key>') 严格对齐，禁止随意改名。
+# 菜单源 = kb-ops-web src/layouts/MainLayout.vue（auth-core MenuRegistryReporter 启动时
+# 全量覆盖上报到 auth-center /internal/clients/marschat-kbops/menus）。
+client: marschat-kbops
+menus:
+  - key: dashboard
+    title: 看板
+    path: /dashboard
+    order: 1
+  - key: resource-group
+    title: 资源管理
+    order: 2
+    children:
+      - key: hosts
+        title: 主机管理
+        path: /hosts
+        order: 1
+      - key: services
+        title: 服务管理
+        path: /services
+        order: 2
+      - key: ports
+        title: 端口管理
+        path: /ports
+        order: 3
+      - key: credentials
+        title: 凭据管理
+        path: /credentials
+        order: 4
+      - key: domains
+        title: 域名管理
+        path: /domains
+        order: 5
+      - key: dependencies
+        title: 依赖管理
+        path: /dependencies
+        order: 6
+  - key: deploy-group
+    title: 部署运维
+    order: 3
+    children:
+      - key: deployments
+        title: 部署记录
+        path: /deployments
+        order: 1
+      - key: conflicts
+        title: 矛盾检测
+        path: /conflicts
+        order: 2
+  - key: system-group
+    title: 系统工具
+    order: 4
+    children:
+      - key: knowledge
+        title: 运维知识库
+        path: /knowledge
+        order: 1
+      - key: import
+        title: 数据导入
+        path: /import
+        order: 2
+      - key: logs
+        title: 操作日志
+        path: /logs
+        order: 3
+      - key: users
+        title: 用户管理
+        path: /users
+        order: 4
+        min-role: admin

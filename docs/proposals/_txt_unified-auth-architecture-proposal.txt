@@ -1,0 +1,211 @@
+统一账号体系与授权模型重构方案
+统一账号体系与授权模型重构方案
+把 5 套割裂的账号表收敛成 1 个身份池，并补上「谁有哪些系统的权限 + 菜单权限」这一整层
+2026-09-10 · 提案人 WorkBuddy · 状态：待拍板 · 关联 ADR-2026-09-08 统一认证单点登录（那份管「你是谁」，本份管「你能干什么」）
+目录
+现状实采与问题清单
+设计原则
+目标架构
+五个关键决策（含选项对比）
+SSO 用户与独立用户的映射
+迁移路径（6 阶段）
+影响面与风险
+待拍板事项
+一、现状实采与问题清单
+以下每一行都是今天在真实代码与库里查出来的，不是推测。
+库 / 位置 | 账号表 | 账号键 | 角色模型 | 与 SSO 的关系 | 
+ kb_auth（auth-center） | 
+ user | 
+ username 唯一；email 无约束 | 
+ 标量 role = admin / user | 
+ 唯一账号池 已被 7 个 OIDC 客户端使用 | 
+ platform（portal-server） | 
+ sys_user | 
+ username 唯一；带 deleted 软删 | 
+ 后补的 role = admin / user | 
+ JIT 镜像 SsoController 按 username 自动建号 | 
+ frp_manager（myfrp） | 
+ sys_user | 
+ username 唯一 | 
+ role = ADMIN / USER | 
+ 完全独立 自有 BCrypt 与登录接口 | 
+ cosmic_studio | 
+ users | 
+ username 唯一 | 
+ role = viewer / editor / admin + menu_perms JSON | 
+ 半接入 已接 OIDC 登录，但账号仍独立 | 
+ —（kb-ops） | 
+ 无账号表 | 
+ — | 
+ — | 
+ 纯资源服务器 完全依赖 SSO token | 
+关键缺口
+Token 里的角色是标量——JWT 只带 role: admin|user，没有应用级权限、没有菜单权限。这就是「无法回答谁有哪些系统权限」的根源。
+realm 概念建了但空转——user.realm_id 字段和注释「同 realm 内应用可 SSO，跨 realm 隔离」都在，但线上全部值是 kb，多账号池能力没启用。
+没有 RBAC 表——不存在 sys_role / sys_permission / sys_user_role / sys_role_permission 任何一张。
+email 无唯一约束——user 表只有 uk_username 和 idx_phone，email 既无索引也无唯一性。账号关联、找回密码全都建立在不牢靠的基础上。
+OIDC 客户端缺两个——已注册 7 个（portal / inframon / kbops / tokenhub / kbweb / activecode / memory），cosmic-studio 和 frp-manager 未注册。
+cosmic 重复造轮子——它自己实现了 MENU_REGISTRY（8 个菜单带 min_role 下限）+ 用户级 menu_perms JSON 白名单（角色做减法），逻辑是对的，但只在 cosmic 内部生效，其他应用享受不到。
+portal 的 JIT 关联键不牢——按 username 关联而非 IdP 的 sub，用户改名或邮箱变更就断链。
+用户管理不达标——listForAdmin 全量返回无分页、无关键字搜索、增删改零审计日志、无事务、禁用用户不踢下线（JWT 仍有效）。
+一句话总结现状：用户要在 5 个地方各建一次账号，权限散落在各应用内部，没有任何一处能回答「张三在哪些系统有什么权限」。而且 auth-center 被 12 个应用直接依赖，是全局枢纽，任何改造必须向后兼容。
+二、设计原则
+1. 一处管人
+身份只有一个真源。其他应用要么完全弃用本地账号表，要么只保留一份由 SSO 驱动的映射，绝不各自维护密码。
+2. 一人一号、多身份
+把 email / phone / 微信从 user 表里拆出来成身份表。唯一约束天然成立，天然支持一个用户绑多个邮箱。
+3. 授权三层分离
+平台角色（跨应用）／应用角色（每应用）／权限点（菜单与接口）分开，各管各的语义，不混成一个 role 字段。
+4. 应用自注册权限
+菜单树是应用自己的资产，由应用上报给认证中心统一存储与下发。不在认证中心硬编码各应用的菜单。
+5. 向后兼容优先——auth-center 是 12 个应用的枢纽，所有改动以「新增字段、新增接口」为主，不改老契约。6. 收敛优于并存，但每步可独立发布——不追求一次大爆炸，每个阶段都能单独上线、单独回滚。
+三、目标架构
+3.1 身份层
+核心动作：把 user 表里的 email / phone / wechat_openid 三列拆成独立的身份表。这是业界处理「账号关联」的标准做法，比「给 email 加个唯一索引」根本得多。
+表 | 职责 | 关键字段 | 
+user | 人 | id, username, nickname, avatar, status, realm_id, deleted | 
+user_identity | 身份绑定 | id, user_id, provider(email|phone|wechat|github), identifier, verified, is_primaryUNIQUE(provider, identifier) | 
+user_credential | 凭证 | user_id, type(password|totp), secret(BCrypt), updated_at | 
+为什么值得拆：① UNIQUE(provider, identifier) 让邮箱唯一性成为数据库层面的事实，不再靠应用层查重；② 一个用户可绑多个邮箱、多个社交账号，「账号关联」就是插一行记录；③ 换邮箱不动 user 主键；④ 邮箱验证码登录、社交登录、手机登录共用同一套表，不用再加列。
+3.2 授权层：三层 RBAC
+采用 Keycloak 的 Realm Role / Client Role 模型——这是目前多应用 SSO 场景下的业界标准，能同时满足你说的两个诉求（「每个用户有哪些系统的权限」+「对应系统的菜单权限」）。
+层 | 名称 | 作用域 | 示例 | 回答的问题 | 
+L1 | 平台角色 realm_role | 跨应用全局 | superadmin / admin / user | 能不能进用户管理、是不是超级管理员 | 
+L2 | 应用角色 client_role | 单个 OIDC client | cosmic-studio:admin、marschat-kbweb:editor | 在某个系统里是什么身份 | 
+L3 | 权限点 permission | 单个 client 的资源 | cosmic-studio:menu:vocab、marschat-kbweb:api:doc:delete | 具体能看哪个菜单、调哪个接口 | 
+支撑表结构：
+表 | 说明 | 
+sys_role | id, scope(platform|client), client_id, code, name, description —— L1 与 L2 共存一表，用 scope 区分 | 
+sys_permission | id, client_id, type(menu|api|action), code, name, parent_id, sort —— 菜单树靠 parent_id 自关联 | 
+sys_role_permission | role_id, permission_id —— 角色拥有哪些权限点 | 
+sys_user_role | user_id, role_id, client_id, granted_by, granted_at —— 谁在什么系统里是什么角色，带授权人和时间（审计需要） | 
+sys_role_composite | parent_role_id, child_role_id —— 角色继承，比如「应用管理员」自动含「编辑者」 | 
+sys_app_client | client_id, name, status, menu_registry_json, last_sync_at —— 应用注册表，含它上报的菜单树 | 
+3.3 菜单权限的工作流
+注册
+应用上报自己的菜单树
+应用发布时调 PUT /admin/clients/{client_id}/menus 上报菜单数组。cosmic 现有的 MENU_REGISTRY 可以直接复用，改成上报接口即可。
+存储
+认证中心汇总成统一权限树
+落进 sys_permission（type=menu）。用户管理界面据此渲染成「系统 × 菜单」的勾选树。
+授权
+在用户管理界面勾选定权限
+勾选写入 sys_user_role / sys_role_permission。这就是你要的「每个用户有哪些系统的权限」页面。
+下发
+登录后前端拉取本应用权限集合
+GET /auth/permissions?client=<id> → 路由守卫拦截 + 菜单按集合渲染。后端用 @PreAuthorize 校验权限点。
+3.4 Token 契约（新增字段，老客户端可忽略）
+{
+ "sub": "1", // 稳定主键，所有映射只用它
+ "uid": "1",
+ "username": "admin",
+ "realm": "kb",
+ "role": "superadmin", // 平台角色，原有字段升级
+ "permissions": ["cosmic-studio:menu:vocab", "..."], // 本 client 权限点（新增）
+ "resource_access": { // Keycloak 式应用角色（新增）
+ "marschat-kbweb": { "roles": ["editor"] }
+ }
+}
+3.5 登录方式矩阵
+方式 | 现状 | 目标 | 说明 | 
+账号密码 | 已有 | 保留 | /auth/login | 
+OIDC 单点登录 | 已有 | 保留 | 8+ 应用接入 | 
+邮箱 + 验证码 | 仅有零件 | 全量开放 | MailCodeAuthenticator 已写好，注释标「本期不启用」，复用 MailCodeService（bizType=MAIL_LOGIN） | 
+超管保底验证码 | 无 | 新增 | 仅 superadmin 可用，防止密码锁死后无法进入 | 
+四、五个关键决策（含选项对比）
+决策 1 · 账号池收敛策略
+A. 全量收敛 — 所有应用废弃本地账号表
+最彻底，但 cosmic 的业务表有外键指向 users.id，一次性迁移风险高。
+B. 保留本地表靠 JIT 同步 portal 现状
+改造量最小，但密码仍是两套，权限仍然分散，问题没根治。
+C. 混合收敛 推荐
+纯 SSO 应用直接废弃本地表；有业务外键的应用先 JIT + 映射表过渡，再逐步把外键迁到 SSO 的 uid。风险可控且能真正收敛。
+决策 2 · 身份信息存列还是存表
+A. 给 user.email 加唯一索引
+改动最小，但一个用户只能有一个邮箱，多身份绑定和账号关联都做不了。
+B. 拆 user_identity 表 推荐
+既然要重构授权，一次到位。唯一性由数据库保证，账号关联变成插一行，后续加社交登录零成本。
+决策 3 · 角色模型
+A. 保持标量 role，各应用自管
+现状。回答不了「谁有哪些系统的权限」。
+B. 扁平 user_role 关联表
+能多角色，但没有客户端维度，权限点无处安放。
+C. Keycloak 三层模型 推荐
+业界标准，天然支持跨应用角色 + 每应用细粒度 + 角色组合继承。cosmic 的私有模型可直接映射进来。
+决策 4 · 库名 kb_auth
+A. 不改
+省事，但一个平台级公共组件顶着 kb_ 前缀，名不副实，后续接入非 kb 体系应用会更别扭。
+B. 改 marschat_auth 推荐
+与 marschat-components / auth-center 命名对齐。application-prod.yml 里库名走 ${MYSQL_DATABASE:kb_auth} 环境变量，改库名零代码改动，只需 dump/restore + 改 compose env，回滚就是改回 env。
+决策 5 · 菜单权限的实现方
+A. 各应用自管
+cosmic 现状。每个应用各写一份菜单注册表 + 权限过滤逻辑，重复劳动且标准不一。
+B. 应用上报 → 认证中心统一存储下发 推荐
+把 cosmic 的 MENU_REGISTRY 抽象成通用上报接口，一次实现全部应用受益，用户管理界面也能统一展示。
+五、SSO 用户与独立用户的映射
+这是你特别问到的一点。业界主流有三条路，结论是前两条组合使用，第三条不采用。
+方案 | 原理 | 适用场景 | 取舍 | 
+JIT Provisioning首次登录自动建号 | 
+用户第一次 SSO 登录时，按 IdP 的 sub 自动在本地建一条镜像记录 | 
+新应用快速接入 | 
+推荐 portal 已在用，改关联键为 sub 即可 | 
+Account Linking按已验证邮箱关联 | 
+本地已存在同邮箱账号时，自动或手动把两者关联起来 | 
+存量账号迁移期 | 
+推荐 迁移期一次性使用，之后不再需要 | 
+SCIM 2.0集中目录同步 | 
+认证中心作为目录服务，向各应用推送增删改 | 
+企业级多租户 | 
+不采用 个人级基础设施用不上，维护成本过高 | 
+推荐组合：① 统一关联键为 SSO 的 sub（不可变、永不变），本地业务表存 subject 而不是 username；② 迁移期用 已验证邮箱自动关联一次，把存量本地账号挂到对应的 SSO uid 上；③ 关联完成后，本地账号表逐步降级为「只读映射」直到下线。
+顺带修掉一个隐患：portal 现在按 username 做 JIT 关联。用户改名会让映射断裂，进而可能建出重复账号。改成 sub 后这类问题不会再发生。
+六、迁移路径（6 阶段）
+每一阶段都能独立发布、独立回滚。建议按顺序执行，但 4/5 阶段内各应用之间可以并行。
+阶段 | 内容 | 可独立发布 | 风险 | 
+P0 地基 | 
+库改名 kb_auth→marschat_auth（改 env + dump/restore）；新增 user_identity 表并把三列数据迁进去；建 email 唯一约束 | 
+是 | 
+低 env 切换可秒回滚 | 
+P1 登录方式 | 
+启用邮箱验证码登录（对所有用户开放）；新增超管保底验证码通道 | 
+是 | 
+低 复用已有零件 | 
+P2 用户管理 | 
+超管分级（superadmin 不可删除/禁用/降级）；列表分页 + 关键字搜索 + 审计日志 + 事务 + 禁用即踢下线 | 
+是 | 
+低 | 
+P3 授权底座 | 
+建 RBAC 六表；实现权限接口 GET /auth/permissions；用户管理界面加「系统权限 + 菜单权限」矩阵 | 
+是 | 
+中 涉及新表与新 UI | 
+P4 应用接入 | 
+cosmic 收编 menu_perms 到通用模型；注册 cosmic-studio 与 frp-manager 的 OIDC 客户端；portal 的 JIT 关联键改 sub；myfrp 账号收敛 | 
+逐应用 | 
+中 | 
+P5 前端收口 | 
+各前端路由守卫读 permissions 做菜单过滤；本地账号表降级直至下线 | 
+逐应用 | 
+中 | 
+七、影响面与风险
+枢纽影响面（必须尊重）
+auth-center12 个应用直接依赖 / 12 个传递影响 —— 全局最大枢纽
+common-core7 个应用直接依赖 —— 公共 jar，发版要各服务升版本走流水线
+auth-components5 个前端应用依赖 —— 前端发版同理
+frontend-common4 个前端应用依赖
+风险与缓解
+风险 | 缓解措施 | 
+改 auth-center 波及 12 个应用 | 只做增量（新增字段/接口），不改老契约；token 新字段老客户端可忽略 | 
+库改名导致应用连不上 | 走 env 变量，改名前后各做一次 dump；异常时改回 env 立即回滚 | 
+邮箱唯一约束在存量数据上建失败 | P0 先跑一遍重复邮箱检测，确认无冲突再建索引；有冲突则先人工归并 | 
+公共库发版连锁升级 | 走 Nexus 私服发包 + 各服务升版本号 + 各自流水线，禁止直接引用源码 | 
+应用改造期间新旧权限并存 | 权限接口返回空集合时前端回退到现有角色逻辑，保证灰度期可用 | 
+八、待拍板事项
+请良哥确认以下三点，确认后我按 P0 起步，一次执行不中途请示
+决策 1~5 是否按推荐项执行（混合收敛 / 身份表 / Keycloak 三层 / 库改名 marschat_auth / 菜单统一上报）——有任何一条想换，现在说最省事
+库改名时机：与本次一起做（P0），还是先做功能后改名？建议一起做，避免迁移两次
+权限点粒度：只到「菜单 + 接口」两级，还是要细到「按钮级」？（按钮级工作量约多一倍，但覆盖更细）
+另需一并决策的两项遗留（不阻塞本方案）
+用户管理与账号体系的仓库归属：认证中心代码在 /root/auth-center（独立仓），用户管理 UI 在 devtools/portal。重构后权限矩阵放哪边？建议统一放 portal（已有用户管理界面）。
+superadmin 数量策略：唯一保底 1 个（现役 admin 邮箱 marschat@163.com），还是允许存在多个？建议允许多个但至少不能删到 0。
+本文所有现状数据均于 2026-09-10 从本地仓库源码与线上库实采，未使用推测。
+关联文档：devtools/docs/adr/ADR-2026-09-08-统一认证单点登录.md（认证）· 本方案落定后将产出对应 ADR（授权）

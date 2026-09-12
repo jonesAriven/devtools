@@ -223,6 +223,8 @@ services:
       - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
       - CRYPTO_AES_KEY=${CRYPTO_AES_KEY:-YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
+      # Phase 4 P-B: kb-ops 菜单上报凭据（值在 .env，与 sys_app_client.client_secret 同值）
+      - MARSCHAT_MENU_REPORT_SECRET=${MARSCHAT_MENU_REPORT_SECRET}
       - KB_GATEWAY_URL=http://kb-gateway:8080
     extra_hosts:
       - "host.docker.internal:host-gateway"
