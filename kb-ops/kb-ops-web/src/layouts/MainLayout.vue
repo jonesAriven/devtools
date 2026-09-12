@@ -19,7 +19,7 @@
         >
           <!-- Phase 4 三层同源（渲染层）：菜单按 usePermissions 过滤（与路由守卫 createAuthGuard
                消费同一份权限状态；configured=false 或平台超管恒全显） -->
-          <el-menu-item v-if="can('menu:dashboard')" index="/dashboard">
+          <el-menu-item v-if="menuVisible('dashboard')" index="/dashboard">
             <el-icon><DataAnalysis /></el-icon>
             <template #title>看板</template>
           </el-menu-item>
@@ -28,27 +28,27 @@
               <el-icon><Cpu /></el-icon>
               <span>资源管理</span>
             </template>
-            <el-menu-item v-if="can('menu:hosts')" index="/hosts">
+            <el-menu-item v-if="menuVisible('hosts')" index="/hosts">
               <el-icon><Monitor /></el-icon>
               <template #title>主机管理</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:services')" index="/services">
+            <el-menu-item v-if="menuVisible('services')" index="/services">
               <el-icon><Connection /></el-icon>
               <template #title>服务管理</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:ports')" index="/ports">
+            <el-menu-item v-if="menuVisible('ports')" index="/ports">
               <el-icon><Position /></el-icon>
               <template #title>端口管理</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:credentials')" index="/credentials">
+            <el-menu-item v-if="menuVisible('credentials')" index="/credentials">
               <el-icon><Key /></el-icon>
               <template #title>凭据管理</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:domains')" index="/domains">
+            <el-menu-item v-if="menuVisible('domains')" index="/domains">
               <el-icon><Link /></el-icon>
               <template #title>域名管理</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:dependencies')" index="/dependencies">
+            <el-menu-item v-if="menuVisible('dependencies')" index="/dependencies">
               <el-icon><Box /></el-icon>
               <template #title>依赖管理</template>
             </el-menu-item>
@@ -58,11 +58,11 @@
               <el-icon><Upload /></el-icon>
               <span>部署运维</span>
             </template>
-            <el-menu-item v-if="can('menu:deployments')" index="/deployments">
+            <el-menu-item v-if="menuVisible('deployments')" index="/deployments">
               <el-icon><List /></el-icon>
               <template #title>部署记录</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:conflicts')" index="/conflicts">
+            <el-menu-item v-if="menuVisible('conflicts')" index="/conflicts">
               <el-icon><Warning /></el-icon>
               <template #title>矛盾检测</template>
             </el-menu-item>
@@ -72,19 +72,19 @@
               <el-icon><Tools /></el-icon>
               <span>系统工具</span>
             </template>
-            <el-menu-item v-if="can('menu:knowledge')" index="/knowledge">
+            <el-menu-item v-if="menuVisible('knowledge')" index="/knowledge">
               <el-icon><Reading /></el-icon>
               <template #title>运维知识库</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:import')" index="/import">
+            <el-menu-item v-if="menuVisible('import')" index="/import">
               <el-icon><Download /></el-icon>
               <template #title>数据导入</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:logs')" index="/logs">
+            <el-menu-item v-if="menuVisible('logs')" index="/logs">
               <el-icon><Tickets /></el-icon>
               <template #title>操作日志</template>
             </el-menu-item>
-            <el-menu-item v-if="can('menu:users')" index="/users">
+            <el-menu-item v-if="menuVisible('users')" index="/users">
               <el-icon><UserFilled /></el-icon>
               <template #title>用户管理</template>
             </el-menu-item>
@@ -134,12 +134,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { usePermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { getToken } from '@/utils/token'
 import { decodeOidcClaims } from '@/utils/sso'
-import { SSO_CONFIG } from '@/utils/sso'
+import { usePermissions, permCode } from '@/utils/permissions'
 
 const route = useRoute()
 const router = useRouter()
@@ -150,21 +149,19 @@ const currentRoute = computed(() => route.path)
 
 /**
  * Phase 4 三层同源（渲染层）：侧边栏菜单按权限集合过滤。
- * 与路由守卫 createAuthGuard（kb-ops-web router meta.perm）消费**同一份**
- * usePermissions 模块级状态；configured=false 或平台超管恒全显（R10）。
+ * ⚠️ 必须复用 utils/permissions 的**单例**（与路由守卫 createAuthGuard 同一份状态），
+ * 且判定码必须传**全码** `permCode('menu', key)`（= client:menu:key）——
+ * hasPermission 对含冒号的 code 原样使用（permissions.ts 头部警告），半码永不匹配。
  */
-const perms = usePermissions({
-  issuer: SSO_CONFIG.issuer,
-  clientId: SSO_CONFIG.clientId,
-  getToken: () => getToken(),
-})
+const perms = usePermissions()
 const can = perms.check
+const menuVisible = (key: string) => can(permCode('menu', key))
 const hasAnyResource = computed(() =>
-  ['menu:hosts', 'menu:services', 'menu:ports', 'menu:credentials', 'menu:domains', 'menu:dependencies'].some(can),
+  ['hosts', 'services', 'ports', 'credentials', 'domains', 'dependencies'].some(menuVisible),
 )
-const hasAnyDeploy = computed(() => ['menu:deployments', 'menu:conflicts'].some(can))
+const hasAnyDeploy = computed(() => ['deployments', 'conflicts'].some(menuVisible))
 const hasAnySystem = computed(() =>
-  ['menu:knowledge', 'menu:import', 'menu:logs', 'menu:users'].some(can),
+  ['knowledge', 'import', 'logs', 'users'].some(menuVisible),
 )
 
 /**
