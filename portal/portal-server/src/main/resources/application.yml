@@ -54,7 +54,10 @@ marschat:
     report:
       # Phase 4 P-B：启动时全量上报 menu-registry.yml（幂等，失败仅 WARN 不阻断启动）
       enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
-      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://127.0.0.1:8085}
+      # ⚠️ portal-server 走 bridge 网络（kb-app-net/platform-net），容器内 127.0.0.1 指向容器自身，
+      #    必须用 auth-center 的容器名（与 portal-server 同网，Docker DNS 可解析）。
+      #    对照：infra-monitor 是 network_mode: host，故其配置用 127.0.0.1 亦可。
+      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://auth-center:8085}
       client-id: marschat-portal
       report-mode: secret
       report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
