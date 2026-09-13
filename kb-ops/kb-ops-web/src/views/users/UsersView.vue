@@ -47,6 +47,7 @@ const config: UserManagementConfig = {
   title: '用户管理',
   subtitle: '统一账号池（auth-center）—— 全平台用户在此新增、编辑、停用与重置密码',
   roles: [
+    { value: 'superadmin', label: '超级管理员' },
     { value: 'admin', label: '管理员' },
     { value: 'user', label: '普通用户' },
   ],
