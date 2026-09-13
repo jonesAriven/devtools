@@ -98,7 +98,6 @@ services:
       platform-net:
         aliases:
           - kb-auth
-    mem_limit: 384m
 
   # ========== 文件服务 ==========
   kb-file:
