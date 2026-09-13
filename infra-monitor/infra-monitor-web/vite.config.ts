@@ -41,6 +41,9 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2015',
       chunkSizeWarningLimit: 1600,
+      // 2026-09-13：assets 路径错配 404 曾被浏览器以 immutable 缓存 7 天（URL 未变白屏）
+      // 换 assets 目录名一次性绕开坏缓存；后续部署窗口期靠 nginx /infra/ html no-cache 最小化
+      assetsDir: 'assets-v2',
       rollupOptions: {
         output: {
           manualChunks: {
