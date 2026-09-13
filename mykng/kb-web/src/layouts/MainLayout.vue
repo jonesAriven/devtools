@@ -337,10 +337,6 @@ onMounted(() => {
   }
   // 拉取模块状态用于动态菜单（若 main.ts 已拉取则刷新一次，失败时内部降级）
   moduleStore.fetchModules()
-  // TODO(debug): 菜单数据探针（kb-group children=0 排查），验证后删除
-  setTimeout(() => {
-    document.title = 'DBG:' + JSON.stringify(visibleMenus.value.map((m) => ({ k: m.key, c: m.children?.length ?? 0 })))
-  }, 3000)
 })
 
 onUnmounted(() => {
