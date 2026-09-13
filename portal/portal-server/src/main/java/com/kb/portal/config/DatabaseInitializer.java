@@ -66,6 +66,23 @@ public class DatabaseInitializer implements CommandLineRunner {
                 log.info("sys_user 补列 role 完成");
             }
 
+            // Phase 5 JIT 改 sub：sys_user 补 auth_uid 列 + 唯一索引（幂等；
+            // 唯一索引允许多 NULL——legacy 本地账号无 authUid 不受影响）
+            Integer authUidCol = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'auth_uid'", Integer.class);
+            if (authUidCol == null || authUidCol == 0) {
+                jdbcTemplate.execute("ALTER TABLE sys_user ADD COLUMN auth_uid VARCHAR(64) NULL COMMENT 'auth-center账号唯一标识(JIT关联键sub)'");
+                log.info("sys_user 补列 auth_uid 完成");
+            }
+            Integer authUidIdx = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'sys_user' AND INDEX_NAME = 'uk_auth_uid'", Integer.class);
+            if (authUidIdx == null || authUidIdx == 0) {
+                jdbcTemplate.execute("ALTER TABLE sys_user ADD UNIQUE INDEX uk_auth_uid (auth_uid)");
+                log.info("sys_user 补唯一索引 uk_auth_uid 完成");
+            }
+
             Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND username = 'admin'", Integer.class);
             if (count != null && count > 0) {
                 // 全库无 admin 角色时引导内置 admin（幂等，防管理功能死锁）

@@ -58,10 +58,34 @@ public class SsoController {
             if (username == null || username.isBlank()) {
                 throw new BusinessException("统一认证返回的用户信息不完整");
             }
+            // auth uid：token 的 uid/sub claim（Phase 5 JIT 关联键改 sub——username 可改名，
+            // auth_uid 是 auth-center 侧稳定主键）
+            String authUid = claims.path("uid").asText(null);
+            if (authUid == null || authUid.isBlank()) {
+                authUid = claims.path("sub").asText(null);
+            }
 
-            // 账号映射：按 username 找 sys_user，不存在则自动开通；角色跟随 auth-center
-            SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
-                    .eq(SysUser::getUsername, username).last("LIMIT 1"));
+            // 账号映射（Phase 5）：auth_uid 优先 → 存量按 username 命中则回填 auth_uid
+            // （Account Linking 迁移，一次性）→ 都没有则 JIT 自动开通；角色跟随 auth-center
+            SysUser user = null;
+            if (authUid != null && !authUid.isBlank()) {
+                user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getAuthUid, authUid).last("LIMIT 1"));
+            }
+            if (user == null) {
+                user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getUsername, username).last("LIMIT 1"));
+                if (user != null && authUid != null && !authUid.isBlank()) {
+                    // 存量账号迁移：绑定 auth_uid（若已被他人占用说明数据异常，拒绝登录而非串号）
+                    Long owner = sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                            .eq(SysUser::getAuthUid, authUid).ne(SysUser::getId, user.getId()));
+                    if (owner != null && owner > 0) {
+                        throw new BusinessException("账号标识冲突（auth_uid 已绑定其他账号），请联系管理员");
+                    }
+                    user.setAuthUid(authUid);
+                    log.info("SSO 存量账号迁移绑定 auth_uid: {} -> {}", username, authUid);
+                }
+            }
             if (user == null) {
                 user = new SysUser();
                 user.setUsername(username);
@@ -69,8 +93,9 @@ public class SsoController {
                 user.setNickname(nickname);
                 user.setStatus(1);
                 user.setRole(role);
+                user.setAuthUid(authUid);
                 sysUserMapper.insert(user);
-                log.info("SSO 自动开通 portal 账号: {} (role={})", username, role);
+                log.info("SSO 自动开通 portal 账号: {} (role={}, authUid={})", username, role, authUid);
             } else {
                 if (!role.equals(user.getRole())) {
                     user.setRole(role);
@@ -83,11 +108,6 @@ public class SsoController {
 
             authCenterService.storeRefreshToken(user.getId(), tokenJson);
             String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
-            // auth uid：前端会话监视器的「身份一致性守卫」比对用（auth-components 0.5.4+）
-            String authUid = claims.path("uid").asText(null);
-            if (authUid == null || authUid.isBlank()) {
-                authUid = claims.path("sub").asText(null);
-            }
             return Result.ok(new LoginResponse(token, user.getUsername(),
                     user.getNickname() != null ? user.getNickname() : user.getUsername(), user.getRole(), authUid));
         } catch (BusinessException e) {

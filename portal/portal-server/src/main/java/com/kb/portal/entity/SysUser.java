@@ -23,6 +23,12 @@ public class SysUser {
     /** 角色：admin / user（SSO 登录时与 auth-center 同步） */
     private String role;
 
+    /**
+     * auth-center 账号唯一标识（token uid/sub claim，Phase 5 JIT 关联键改 sub）。
+     * legacy 本地登录账号为 NULL；SSO 首次登录时按 username 回填（Account Linking 迁移）。
+     */
+    private String authUid;
+
     @TableLogic
     private Integer deleted;
 
