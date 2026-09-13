@@ -185,6 +185,44 @@ public class SsoController {
         return toResult(r);
     }
 
+    // ---------- 授权管理代理（Phase 4 · 应用角色绑定）----------
+
+    /** 角色列表（platform + client 级）→ auth-center GET /admin/roles */
+    @GetMapping("/admin/roles")
+    public Result<JsonNode> listRoles(HttpServletRequest request) {
+        requireAdmin(request);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "GET", "/admin/roles", null);
+        return toResult(r);
+    }
+
+    /** 用户在某应用的角色绑定 id 集合 → auth-center GET /admin/users/{id}/client-roles */
+    @GetMapping("/admin/users/{userId}/client-roles")
+    public Result<JsonNode> userClientRoles(@PathVariable Long userId,
+                                            @RequestParam(required = false) String client,
+                                            HttpServletRequest request) {
+        requireAdmin(request);
+        String qs = client == null ? "" : "?client=" + URLEncoder.encode(client, StandardCharsets.UTF_8);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "GET",
+                "/admin/users/" + userId + "/client-roles" + qs, null);
+        return toResult(r);
+    }
+
+    /** 用户在某应用的角色绑定全量覆盖 → auth-center PUT /admin/users/{id}/client-roles */
+    @PutMapping("/admin/users/{userId}/client-roles")
+    public Result<JsonNode> assignUserClientRoles(@PathVariable Long userId,
+                                                  @RequestParam(required = false) String client,
+                                                  @RequestBody String body,
+                                                  HttpServletRequest request) {
+        requireAdmin(request);
+        String qs = client == null ? "" : "?client=" + URLEncoder.encode(client, StandardCharsets.UTF_8);
+        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
+                (Long) request.getAttribute("userId"), "PUT",
+                "/admin/users/" + userId + "/client-roles" + qs, body);
+        return toResult(r);
+    }
+
     private void requireAdmin(HttpServletRequest request) {
         if (!"admin".equals(request.getAttribute("role"))) {
             throw new BusinessException(403, "需要管理员权限");

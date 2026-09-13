@@ -43,6 +43,16 @@ const config: UserManagementConfig = {
   ],
   // portal 的 token 不含 uid，用用户名作为「不能删除自己」的判据
   currentUsername: userStore.username || null,
+  // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）；
+  // 组件按其约定拼 `${baseUrl}/admin/...`，故 baseUrl 为 BFF 根（非 /admin/users）
+  appRoles: {
+    baseUrl: import.meta.env.DEV ? '/api' : '/portal/api',
+    clientId: 'marschat-portal',
+    getToken: () => userStore.token,
+    onUnauthorized: () => {
+      window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/users')
+    },
+  },
 }
 </script>
 
