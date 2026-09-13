@@ -17,7 +17,7 @@
           class="sidebar-menu"
         >
           <!-- Phase 5 菜单定义数据化：v-for 渲染 menus.ts（useMenus 过滤，R10 未配置全显） -->
-          <template v-for="m in visibleMenus" :key="m.key">
+          <template v-for="m in finalMenus" :key="m.key">
             <el-sub-menu v-if="m.children?.length" :index="m.key">
               <template #title>
                 <el-icon><component :is="ICONS[m.icon]" /></el-icon>
@@ -79,6 +79,8 @@ import { DataAnalysis, Cpu, Key, Setting, Connection, UserFilled } from '@elemen
 import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
+import { getToken } from '@/utils/token'
+import { decodeOidcClaims } from '@/utils/sso'
 import { permOptions } from '@/utils/permissions'
 import { INFRA_MENUS } from '@/menus'
 
@@ -97,6 +99,19 @@ const ICONS: Record<string, Component> = { DataAnalysis, Cpu, Key, Setting, Conn
  * 应用未启用菜单上报（configured=false）时 R10 全显，行为与改造前一致。
  */
 const { visibleMenus } = useMenus(permOptions, INFRA_MENUS)
+
+/**
+ * ⚠️ 兜底：infra 尚未上报菜单/授权（configured=false → R10 全显），「用户管理」
+ * 会暴露给普通用户（改造前由 isAdmin 隐藏）。在权限点接管前保留 token role 兜底；
+ * infra 启用菜单上报且 user 角色不绑 users 权限点后，此过滤可移除。
+ */
+const isAdmin = computed(() => {
+  const claims = decodeOidcClaims(getToken() || '')
+  return claims?.role === 'admin' || claims?.role === 'superadmin'
+})
+const finalMenus = computed(() =>
+  visibleMenus.value.filter((m) => m.key !== 'users' || isAdmin.value),
+)
 
 const pageTitleMap: Record<string, string> = {
   Dashboard: '总览看板',
