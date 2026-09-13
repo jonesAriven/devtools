@@ -35,21 +35,21 @@ export function createKbMenus(ctx: KbMenuCtx): MenuItemDef[] {
       children: [
         {
           key: 'spaces', title: '知识空间', icon: 'List', path: '/spaces', order: 1,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'current-space', title: '当前空间', icon: 'FolderOpened', order: 2,
           pathFn: ctx.currentSpacePath,
           visibleFn: ctx.hasCurrentSpace,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'stars', title: '我的收藏', icon: 'Star', path: '/stars', order: 3,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'search', title: '搜索', icon: 'Search', path: '/search', order: 4,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'file', title: '文件', icon: 'Document', path: '/file', order: 5,
@@ -58,19 +58,19 @@ export function createKbMenus(ctx: KbMenuCtx): MenuItemDef[] {
         },
         {
           key: 'tag', title: '标签', icon: 'PriceTag', path: '/tag', order: 6,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'share', title: '分享', icon: 'Share', path: '/share', order: 7,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'trash', title: '回收站', icon: 'Delete', path: '/trash', order: 8,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
         {
           key: 'graph', title: '知识图谱', icon: 'Connection', path: '/graph', order: 9,
-          disabledFn: kbDisabled(ctx), disabledReasonFn: kbReason(ctx),
+          disabledFn: () => kbDisabled(ctx), disabledReasonFn: () => kbReason(ctx),
         },
       ],
     },
