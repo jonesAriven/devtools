@@ -7,7 +7,7 @@ import App from './App.vue'
 import router from './router'
 import { getToken } from '@/utils/token'
 import { startSessionWatcher } from '@/utils/sso'
-import { permissions } from '@/utils/permissions'
+import { permissions, setupAuthGuard } from '@/utils/permissions'
 
 import './styles/index.scss'
 
@@ -17,6 +17,10 @@ const pinia = createPinia()
 for (const [name, comp] of Object.entries(ElementPlusIconsVue)) {
   app.component(name, comp)
 }
+
+// Phase 5：路由权限守卫——必须在 app.use(router) 之前注册（先于首次导航，
+// 挂载路由前先拉权限，修正「先挂路由后拉权限」脆弱点；未声明 meta.perm 的路由不受管）
+setupAuthGuard(router)
 
 app.use(pinia)
 app.use(router)

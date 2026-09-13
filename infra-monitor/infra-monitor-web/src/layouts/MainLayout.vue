@@ -16,30 +16,23 @@
           router
           class="sidebar-menu"
         >
-          <el-menu-item index="/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>总览看板</template>
-          </el-menu-item>
-          <el-menu-item index="/hosts">
-            <el-icon><Cpu /></el-icon>
-            <template #title>主机管理</template>
-          </el-menu-item>
-          <el-menu-item index="/credentials">
-            <el-icon><Key /></el-icon>
-            <template #title>凭据管理</template>
-          </el-menu-item>
-          <el-menu-item index="/configs">
-            <el-icon><Setting /></el-icon>
-            <template #title>配置信息</template>
-          </el-menu-item>
-          <el-menu-item index="/services">
-            <el-icon><Connection /></el-icon>
-            <template #title>服务监控</template>
-          </el-menu-item>
-          <el-menu-item v-if="isAdmin" index="/users">
-            <el-icon><UserFilled /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
+          <!-- Phase 5 菜单定义数据化：v-for 渲染 menus.ts（useMenus 过滤，R10 未配置全显） -->
+          <template v-for="m in visibleMenus" :key="m.key">
+            <el-sub-menu v-if="m.children?.length" :index="m.key">
+              <template #title>
+                <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+                <span>{{ m.title }}</span>
+              </template>
+              <el-menu-item v-for="c in m.children" :key="c.key" :index="c.path">
+                <el-icon><component :is="ICONS[c.icon]" /></el-icon>
+                <template #title>{{ c.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else-if="m.path" :index="m.path">
+              <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+              <template #title>{{ m.title }}</template>
+            </el-menu-item>
+          </template>
         </el-menu>
       </div>
     </el-aside>
@@ -80,12 +73,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { DataAnalysis, Cpu, Key, Setting, Connection, UserFilled } from '@element-plus/icons-vue'
+import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims } from '@/utils/sso'
+import { permOptions } from '@/utils/permissions'
+import { INFRA_MENUS } from '@/menus'
 
 const route = useRoute()
 const router = useRouter()
@@ -94,15 +89,14 @@ const userStore = useUserStore()
 
 const currentRoute = computed(() => route.path)
 
+/** menus.ts 的 icon 名 → 组件实例映射。 */
+const ICONS: Record<string, Component> = { DataAnalysis, Cpu, Key, Setting, Connection, UserFilled }
+
 /**
- * 是否平台管理员 —— 决定「用户管理」菜单是否可见（Phase 6）。
- * 判据取自 auth-center 签发的 OIDC token `role` claim（不另发请求）。
- * 菜单可见性只是体验层；真正的权限闸门在 auth-center `AdminUserController`。
+ * Phase 5 菜单定义数据化：useMenus 消费与路由守卫同一份权限单例状态。
+ * 应用未启用菜单上报（configured=false）时 R10 全显，行为与改造前一致。
  */
-const isAdmin = computed(() => {
-  const claims = decodeOidcClaims(getToken() || '')
-  return claims?.role === 'admin' || claims?.role === 'superadmin'
-})
+const { visibleMenus } = useMenus(permOptions, INFRA_MENUS)
 
 const pageTitleMap: Record<string, string> = {
   Dashboard: '总览看板',
