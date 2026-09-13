@@ -32,7 +32,6 @@ export function createKbMenus(ctx: KbMenuCtx): MenuItemDef[] {
       title: '知识库',
       icon: 'FolderOpened',
       order: 2,
-      hidden: true,
       children: [
         {
           key: 'spaces', title: '知识空间', icon: 'List', path: '/spaces', order: 1,
@@ -80,7 +79,6 @@ export function createKbMenus(ctx: KbMenuCtx): MenuItemDef[] {
       title: '系统',
       icon: 'Setting',
       order: 3,
-      hidden: true,
       children: [
         {
           key: 'log', title: '操作日志', icon: 'Tickets', path: '/log', order: 1,
