@@ -3,7 +3,7 @@
  * ============================================================================
  * 本文件**不再自己实现** OIDC/PKCE/会话探针/SLO，全部委托给公共组件：
  *
- *   @marschat/auth-components@0.5.0  →  dist/marschat-auth-core.umd.js
+ *   @marschat/auth-components@0.6.9  →  dist/marschat-auth-core.umd.js
  *   （框架无关 UMD 单文件，挂 window.MarschatAuth；sha256 见同目录 VENDORED.md）
  *
  * 这里只保留「本应用特有」的两件事：
@@ -220,7 +220,7 @@
         if (watcher) return watcher;
         try {
             var watcherOpts = Object.assign({}, options || {}, {
-                // 身份一致性守卫（auth-components 0.5.4）：IdP 会话是谁，本地会话就应是谁。
+                // 身份一致性守卫（auth-components 0.5.4 引入，现行 0.6.9）：IdP 会话是谁，本地会话就应是谁。
                 // 共享浏览器换人登录时本地旧 token 还在 → 探针身份 ≠ 本地身份 → 静默重换票。
                 getLocalIdentity: function () {
                     try {
