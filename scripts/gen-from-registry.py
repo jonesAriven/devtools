@@ -87,6 +87,8 @@ def emit_clients(data):
         print("    post-logout-redirect-uris:")
         for u in auth.get("post-logout-redirect-uris", []):
             print("      - %s" % u)
+        if not auth.get("post-logout-redirect-uris"):
+            print("      []")
 
 
 def emit_appconfig(data, client_id):

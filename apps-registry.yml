@@ -150,3 +150,12 @@ apps:
         - http://localhost:5173/sso-callback
     frontend:
       entry: https://frp.marschat.online/
+
+  # ─────────────── 测试应用（Phase 3 验收：全程零 Java 改动接入） ───────────────
+  - client-id: p3-probe-client
+    name: Phase3 Onboarding Probe
+    type: public
+    auth:
+      redirect-uris:
+        - https://p3-probe.marschat.online/sso-callback
+        - http://localhost:5173/sso-callback
