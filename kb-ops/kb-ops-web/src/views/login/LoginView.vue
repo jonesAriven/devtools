@@ -12,7 +12,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { LoginPage } from '@marschat/auth-components'
+import { LoginPage, setToken, setRefreshToken } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
 import { startSsoLogin, bootstrapLoginPage, SSO_CONFIG } from '@/utils/sso'
@@ -30,10 +30,14 @@ const loginConfig = {
   icon: 'Setting',
   color: '#409eff',
   showSso: true,
-  // kb-ops 后端无本地登录端点（/kb-ops/login 必 403）——纯 SSO 应用隐藏死表单
+  // kb-ops 后端无本地登录端点（/kb-ops/login 必 403）——纯 SSO 应用隐藏账密死表单
   showLocalLogin: false,
+  // 统一登录三方式（Phase 7）：账密被后端否决，但「邮箱验证码登录」走的是 auth-center
+  // 的 /auth/mail-login（匿名端点，经本域 /ops/auth-api/ → kb-gateway 白名单已放开），
+  // 故本应用以「邮箱验证码 + SSO」两种方式呈现。
+  showMailLogin: true,
   showForgotPassword: true,
-  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，本域 nginx /ops/auth-api/ 已直连网关）
+  // 忘记密码 / 重置密码 / 邮箱验证码登录的接口前缀（auth-center 业务 API，本域 nginx 已直连网关）
   authApiBase: '/ops/auth-api',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /ops/sso-callback）
   onSsoLogin: handleSsoLogin,
@@ -48,6 +52,27 @@ const loginConfig = {
     await userStore.login(credentials.username, credentials.password)
     const redirect = route.query.redirect as string
     router.push(redirect || '/dashboard')
+  },
+  /**
+   * 邮箱验证码登录（统一登录三方式之一）。
+   *
+   * 组件在本回调里由应用全权处理：请求 auth-center 换票 → 落 token → **硬跳转**。
+   * 用 `router.resolve().href` 取带 base 的完整路径（/ops/dashboard），
+   * 硬跳转让应用以「localStorage 已有 token」的干净状态重新引导，避免内存态 Pinia 陈旧。
+   */
+  onMailLogin: async ({ email, code }: { email: string; code: string }) => {
+    const res = await fetch('/ops/auth-api/mail-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    }).then((r) => r.json())
+    if (res.code !== 200 || !res.data?.accessToken) {
+      throw new Error(res.message || '邮箱验证码登录失败')
+    }
+    setToken(res.data.accessToken)
+    if (res.data.refreshToken) setRefreshToken(res.data.refreshToken)
+    window.location.replace(router.resolve(currentRedirect()).href)
+    return res.data
   },
   brand: {
     tagline: '运维一体化平台 · 监控 / 告警 / 自动化',

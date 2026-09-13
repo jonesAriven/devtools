@@ -32,10 +32,16 @@ const loginConfig = {
   color: '#667eea',
   showSso: true,
   showForgotPassword: true,
+  // 统一登录三方式（Phase 7）：账密（onLogin → portal 本地账号）、邮箱验证码（onMailLogin →
+  // portal-server BFF 换票 + 账号映射，与 SSO exchange 同一条 sys_user/auth_uid 链路）、
+  // 忘记密码（邮箱码找回，经 /portal/auth-api → auth-center）
+  showMailLogin: true,
   // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，main 域新增 /portal/auth-api/ 路由）
   authApiBase: '/portal/auth-api',
   // SSO 走 portal 自己的服务端流（机密客户端，回调 /portal/auth/callback）
   onSsoLogin: handleSsoLogin,
+  // 邮箱验证码登录：走 portal-server BFF（/portal/api/auth/mail-login），复用 SSO 的账号映射
+  onMailLogin: handleMailLogin,
   ssoConfig: SSO_CONFIG,
   labels: {
     ssoButtonText: '统一认证登录（SSO）',
@@ -97,6 +103,28 @@ onMounted(async () => {
 
 function handlePasswordReset() {
   ElMessage.success('密码重置成功，请使用新密码登录')
+}
+
+/**
+ * 邮箱验证码登录（统一登录三方式之一，Phase 7）。
+ *
+ * 走 portal-server BFF：服务端向 auth-center 换票 → 复用 SSO 的账号映射
+ * （auth_uid → username 回填 → JIT 开通 sys_user）→ 发 portal 自有 JWT。
+ * 成功后硬跳转（router.resolve 取带 base 的完整路径），让应用以干净状态重新引导。
+ */
+async function handleMailLogin({ email, code }: { email: string; code: string }) {
+  const res = await fetch('/portal/api/auth/mail-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  }).then((r) => r.json())
+  if (res.code !== 200 || !res.data?.token) {
+    throw new Error(res.message || '邮箱验证码登录失败')
+  }
+  userStore.setSession(res.data, email)
+  const target = (route.query.redirect as string) || '/'
+  window.location.replace(router.resolve(target).href)
+  return res.data
 }
 
 function handleSsoLogin() {

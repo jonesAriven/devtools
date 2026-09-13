@@ -65,57 +65,117 @@ public class SsoController {
                 authUid = claims.path("sub").asText(null);
             }
 
-            // 账号映射（Phase 5）：auth_uid 优先 → 存量按 username 命中则回填 auth_uid
-            // （Account Linking 迁移，一次性）→ 都没有则 JIT 自动开通；角色跟随 auth-center
-            SysUser user = null;
-            if (authUid != null && !authUid.isBlank()) {
-                user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
-                        .eq(SysUser::getAuthUid, authUid).last("LIMIT 1"));
-            }
-            if (user == null) {
-                user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
-                        .eq(SysUser::getUsername, username).last("LIMIT 1"));
-                if (user != null && authUid != null && !authUid.isBlank()) {
-                    // 存量账号迁移：绑定 auth_uid（若已被他人占用说明数据异常，拒绝登录而非串号）
-                    Long owner = sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>()
-                            .eq(SysUser::getAuthUid, authUid).ne(SysUser::getId, user.getId()));
-                    if (owner != null && owner > 0) {
-                        throw new BusinessException("账号标识冲突（auth_uid 已绑定其他账号），请联系管理员");
-                    }
-                    user.setAuthUid(authUid);
-                    log.info("SSO 存量账号迁移绑定 auth_uid: {} -> {}", username, authUid);
-                }
-            }
-            if (user == null) {
-                user = new SysUser();
-                user.setUsername(username);
-                user.setPassword(passwordUtil.encode(java.util.UUID.randomUUID().toString()));
-                user.setNickname(nickname);
-                user.setStatus(1);
-                user.setRole(role);
-                user.setAuthUid(authUid);
-                sysUserMapper.insert(user);
-                log.info("SSO 自动开通 portal 账号: {} (role={}, authUid={})", username, role, authUid);
-            } else {
-                if (!role.equals(user.getRole())) {
-                    user.setRole(role);
-                }
-                if (user.getStatus() == null || user.getStatus() == 0) {
-                    throw new BusinessException("账号已被禁用");
-                }
-                sysUserMapper.updateById(user);
-            }
-
+            SysUser user = upsertPortalUser(authUid, username, role, nickname);
+            // 仅 SSO（SAS 换票）有真正的 SAS refresh_token；邮箱码登录是 legacy token，不入 SSO 会话池
             authCenterService.storeRefreshToken(user.getId(), tokenJson);
-            String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
-            return Result.ok(new LoginResponse(token, user.getUsername(),
-                    user.getNickname() != null ? user.getNickname() : user.getUsername(), user.getRole(), authUid));
+            return Result.ok(toLoginResponse(user, authUid));
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             log.warn("SSO exchange 失败: {}", e.getMessage());
             throw new BusinessException("统一登录失败，请重试");
         }
+    }
+
+    /**
+     * 邮箱验证码登录（统一登录三方式之一，Phase 7）。
+     *
+     * <p><b>为什么必须走 BFF：</b>portal 是 OIDC 机密客户端。若浏览器直连 auth-center
+     * `/auth/mail-login`，拿到的是 auth-center 签发、portal-server 无法识别的 token；
+     * 且会绕过 portal 的账号映射（sys_user / auth_uid），造成「登录了但 portal 不认」。
+     * 因此由 portal-server 服务端换票，再复用**与 SSO exchange 完全相同**的
+     * 账号映射链路（auth_uid → username 回填 → JIT 开通）+ portal JWT 签发。
+     *
+     * <p>浏览器路径：`POST /portal/api/auth/mail-login`（同源，经 nginx → portal-server）。
+     */
+    @PostMapping("/auth/mail-login")
+    public Result<LoginResponse> mailLogin(@RequestBody MailLoginRequest request) {
+        if (request == null || request.getEmail() == null || request.getEmail().isBlank()
+                || request.getCode() == null || request.getCode().isBlank()) {
+            throw new BusinessException("缺少邮箱或验证码");
+        }
+        try {
+            JsonNode data = authCenterService.mailLogin(request.getEmail().trim(), request.getCode().trim());
+            JsonNode user = data.path("user");
+            String username = user.path("username").asText(null);
+            String role = user.path("role").asText("user");
+            String nickname = user.path("nickname").isMissingNode() || user.path("nickname").isNull()
+                    ? username : user.path("nickname").asText(username);
+            String authUid = user.path("id").asText(null);
+            if (username == null || username.isBlank()) {
+                throw new BusinessException("统一认证返回的用户信息不完整");
+            }
+            SysUser portalUser = upsertPortalUser(authUid, username, role, nickname);
+            log.info("portal 邮箱验证码登录成功: {} (authUid={})", username, authUid);
+            return Result.ok(toLoginResponse(portalUser, authUid));
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("portal 邮箱验证码登录失败: {}", e.getMessage());
+            throw new BusinessException("邮箱验证码登录失败，请重试");
+        }
+    }
+
+    /**
+     * 账号映射（Phase 5/7 共用）：auth_uid 优先 → 存量按 username 命中则回填 auth_uid
+     * （Account Linking 迁移，一次性）→ 都没有则 JIT 自动开通；角色跟随 auth-center。
+     *
+     * <p>SSO 授权码登录与邮箱验证码登录**共用本方法**，保证两条登录路径的账号视图一致。
+     */
+    private SysUser upsertPortalUser(String authUid, String username, String role, String nickname) {
+        SysUser user = null;
+        if (authUid != null && !authUid.isBlank()) {
+            user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                    .eq(SysUser::getAuthUid, authUid).last("LIMIT 1"));
+        }
+        if (user == null) {
+            user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                    .eq(SysUser::getUsername, username).last("LIMIT 1"));
+            if (user != null && authUid != null && !authUid.isBlank()) {
+                // 存量账号迁移：绑定 auth_uid（若已被他人占用说明数据异常，拒绝登录而非串号）
+                Long owner = sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getAuthUid, authUid).ne(SysUser::getId, user.getId()));
+                if (owner != null && owner > 0) {
+                    throw new BusinessException("账号标识冲突（auth_uid 已绑定其他账号），请联系管理员");
+                }
+                user.setAuthUid(authUid);
+                log.info("存量账号迁移绑定 auth_uid: {} -> {}", username, authUid);
+            }
+        }
+        if (user == null) {
+            user = new SysUser();
+            user.setUsername(username);
+            user.setPassword(passwordUtil.encode(java.util.UUID.randomUUID().toString()));
+            user.setNickname(nickname);
+            user.setStatus(1);
+            user.setRole(role);
+            user.setAuthUid(authUid);
+            sysUserMapper.insert(user);
+            log.info("自动开通 portal 账号: {} (role={}, authUid={})", username, role, authUid);
+        } else {
+            if (role != null && !role.equals(user.getRole())) {
+                user.setRole(role);
+            }
+            if (user.getStatus() == null || user.getStatus() == 0) {
+                throw new BusinessException("账号已被禁用");
+            }
+            sysUserMapper.updateById(user);
+        }
+        return user;
+    }
+
+    /** 由 portal 用户构建登录响应（两条登录路径共用，保证返回结构一致） */
+    private LoginResponse toLoginResponse(SysUser user, String authUid) {
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+        return new LoginResponse(token, user.getUsername(),
+                user.getNickname() != null ? user.getNickname() : user.getUsername(),
+                user.getRole(), authUid);
+    }
+
+    @lombok.Data
+    public static class MailLoginRequest {
+        private String email;
+        private String code;
     }
 
     // ---------- RBAC 权限下发代理（Phase 2 下游接入）----------

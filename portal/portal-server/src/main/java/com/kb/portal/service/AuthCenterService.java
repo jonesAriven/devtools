@@ -124,6 +124,34 @@ public class AuthCenterService {
         }
     }
 
+    /**
+     * 邮箱验证码登录（统一登录三方式之一，Phase 7）。
+     *
+     * <p>portal 是 OIDC **机密客户端**（BFF 服务端流）：浏览器若直连 auth-center 的
+     * `/auth/mail-login`，拿到的是 auth-center 签发的 token，与 portal 自有会话/账号映射
+     * 语义不一致。故由本服务端代理换票，再由 SsoController 走**与 SSO exchange 同一条**
+     * 账号映射（auth_uid → username 回填 → JIT 开通）+ portal JWT 签发链路。
+     *
+     * @return auth-center Result 的 {@code data} 节点（含 accessToken/refreshToken/user）
+     */
+    public JsonNode mailLogin(String email, String code) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(issuer + "/auth/mail-login"))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        objectMapper.writeValueAsString(Map.of("email", email, "code", code))))
+                .build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        JsonNode node = objectMapper.readTree(response.body());
+        if (response.statusCode() != 200 || node.path("code").asInt() != 200) {
+            log.warn("auth-center 邮箱验证码登录失败: {} {}", response.statusCode(), response.body());
+            throw new com.marschat.common.exception.BusinessException(
+                    node.path("code").asInt(400), node.path("message").asText("邮箱验证码登录失败"));
+        }
+        return node.path("data");
+    }
+
     /** 解析 RS256 access token 的 payload（不验签，仅取映射用 claims；安全依赖 exchange 直连 auth-center） */
     public JsonNode parseAccessTokenClaims(String accessToken) throws Exception {
         String[] parts = accessToken.split("\\.");

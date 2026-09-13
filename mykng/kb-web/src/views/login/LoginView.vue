@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { LoginPage } from '@marschat/auth-components'
+import { LoginPage, setToken, setRefreshToken } from '@marschat/auth-components'
 import { useAuth } from '@/composables/useAuth'
 import { bootstrapLoginPage, startSsoLogin, SSO_CONFIG } from '@/utils/sso'
 
@@ -19,10 +19,16 @@ const loginConfig = {
   color: '#667eea',
   showSso: true,
   showForgotPassword: true,
-  // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，经 kb-gateway）
+  // 统一登录三方式（Phase 7）：账密（onLogin → auth-center /auth/login）、
+  // 邮箱验证码（onMailLogin → auth-center /auth/mail-login，网关白名单已放开）、
+  // 忘记密码（邮箱码找回）三者齐备。
+  showMailLogin: true,
+  // 忘记密码 / 重置密码 / 邮箱验证码登录的接口前缀（auth-center 业务 API，经 kb-gateway）
   authApiBase: '/kb/api/auth',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /kb/sso-callback）
   onSsoLogin: handleSsoLogin,
+  // 邮箱验证码登录：应用负责请求换票 + 落 token + 硬跳转（见 handleMailLogin）
+  onMailLogin: handleMailLogin,
   ssoConfig: SSO_CONFIG,
   labels: {
     ssoButtonText: '统一认证登录（SSO）',
@@ -85,6 +91,27 @@ async function handleSsoLogin() {
   } catch (err: any) {
     ElMessage.error(err?.message || 'SSO 登录发起失败')
   }
+}
+
+/**
+ * 邮箱验证码登录（统一登录三方式之一）。
+ *
+ * 请求 auth-center 换票 → 落 token → **硬跳转**（router.resolve 取带 base 的完整路径），
+ * 让应用以「localStorage 已有 token」的干净状态重新引导，避免内存态 Pinia 陈旧。
+ */
+async function handleMailLogin({ email, code }: { email: string; code: string }) {
+  const res = await fetch('/kb/api/auth/mail-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  }).then((r) => r.json())
+  if (res.code !== 200 || !res.data?.accessToken) {
+    throw new Error(res.message || '邮箱验证码登录失败')
+  }
+  setToken(res.data.accessToken)
+  if (res.data.refreshToken) setRefreshToken(res.data.refreshToken)
+  window.location.replace(router.resolve(currentRedirect()).href)
+  return res.data
 }
 
 function handlePasswordReset() {
