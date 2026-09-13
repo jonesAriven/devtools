@@ -172,6 +172,11 @@ kb:
       # auth-center 邮箱验证码/忘记密码（2026-09-07 M7）：必须匿名可达，否则用户无法自助重置
       - ${KB_CONTEXT:/kb}/api/auth/forgot-password
       - ${KB_CONTEXT:/kb}/api/auth/reset-password
+      # auth-center 邮箱验证码登录（2026-09-14 统一登录三方式）：发码与验码登录都是匿名端点，
+      # 不在白名单会被网关 401 拦在 auth-center 之前 —— kb-web / kb-ops / portal 三应用
+      # 的 authApiBase 均经本网关转发，故一处放开三应用同时生效。
+      - ${KB_CONTEXT:/kb}/api/auth/mail-login
+      - ${KB_CONTEXT:/kb}/api/auth/mail-login/send-code
       - ${KB_CONTEXT:/kb}/api/auth/error-log/report
       - ${KB_CONTEXT:/kb}/api/share/verify/**
       - ${KB_CONTEXT:/kb}/api/share/detail/**

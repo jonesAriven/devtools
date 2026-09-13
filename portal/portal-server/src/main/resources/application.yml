@@ -61,3 +61,12 @@ marschat:
       client-id: marschat-portal
       report-mode: secret
       report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
+  # 账号映射上报（Phase 7）：把 portal 的本地账号（含超管应急账号）全量登记到中心
+  # app_account_mapping，由中心按 username/email 自动认领统一身份。
+  # secret 复用菜单上报同一个（容器已注入 MARSCHAT_MENU_REPORT_SECRET），无需新增服务器密钥。
+  account:
+    report:
+      enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
+      issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
+      client-id: marschat-portal
+      report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}

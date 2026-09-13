@@ -53,3 +53,14 @@ version-check:
 
 download:
   base-dir: /app/downloads
+
+# 统一认证平台（Phase 7）：账号映射上报——启动时把 admin_user 账号全量登记到中心
+# app_account_mapping，由中心自动认领统一身份。secret 经 compose 注入
+# MARSCHAT_MENU_REPORT_SECRET（与 apps-registry.yml 的 menu-report-secret 同值）。
+marschat:
+  account:
+    report:
+      enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
+      issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
+      client-id: marschat-activecode
+      report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
