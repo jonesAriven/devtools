@@ -1,0 +1,8 @@
+// AUTO-GENERATED from apps-registry.yml — DO NOT EDIT
+{
+  "clientId": "marschat-kbweb",
+  "issuer": "https://auth.marschat.online",
+  "entry": "https://kb.marschat.online/kb/",
+  "contextPath": "/kb",
+  "apiBase": "/kb/api"
+}
