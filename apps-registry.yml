@@ -21,7 +21,7 @@ apps:
   - client-id: marschat-portal
     name: MarsChat Portal
     type: confidential                      # confidential=机密客户端(BASIC+secret)；public=PKCE
-    secret: portal-secret-2026              # ⚠️ 明文与历史代码同级；外置 env 为后续项
+    secret: ${PORTAL_CLIENT_SECRET:portal-secret-2026}   # ${ENV:默认} 占位——容器注入 PORTAL_CLIENT_SECRET 时优先
     auth:
       redirect-uris:
         - http://localhost:5173/auth/callback
