@@ -24,70 +24,30 @@
           router
           class="sidebar-menu"
         >
-          <el-menu-item :index="'/dashboard'">
-            <el-icon><Grid /></el-icon>
-            <template #title>工作台</template>
-          </el-menu-item>
-          <el-sub-menu index="kb-group">
-            <template #title>
-              <el-icon><FolderOpened /></el-icon>
-              <span :class="{ 'menu-group-title-disabled': kbGroupDisabled }" :title="kbGroupReason">知识库</span>
-            </template>
-            <el-menu-item :index="'/spaces'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><List /></el-icon>
-              <template #title>知识空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
+          <!-- Phase 5 菜单定义数据化：v-for 渲染 menus.ts（useMenus 权限过滤 + 运行时函数字段）；
+               与移动端抽屉共用同一份定义 -->
+          <template v-for="m in visibleMenus" :key="m.key">
+            <el-sub-menu v-if="m.children?.length" :index="m.key">
+              <template #title>
+                <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+                <span :class="{ 'menu-group-title-disabled': m.disabledFn?.() }" :title="m.disabledFn?.() ? m.disabledReasonFn?.() : undefined">{{ m.title }}</span>
+              </template>
+              <el-menu-item
+                v-for="c in m.children"
+                :key="c.key"
+                :index="c.pathFn ? c.pathFn() : (c.path || c.key)"
+                :disabled="c.disabledFn?.() || false"
+                :title="c.disabledFn?.() ? c.disabledReasonFn?.() : undefined"
+              >
+                <el-icon><component :is="ICONS[c.icon]" /></el-icon>
+                <template #title>{{ c.title }}<span v-if="c.disabledFn?.()" class="status-dot"></span></template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else-if="m.pathFn || m.path" :index="m.pathFn ? m.pathFn() : (m.path || m.key)">
+              <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+              <template #title>{{ m.title }}</template>
             </el-menu-item>
-            <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><FolderOpened /></el-icon>
-              <template #title>当前空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/stars'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><Star /></el-icon>
-              <template #title>我的收藏<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/search'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><Search /></el-icon>
-              <template #title>搜索<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/file'" :disabled="!kbFileAvailable" :title="kbFileReason">
-              <el-icon><Document /></el-icon>
-              <template #title>文件<span v-if="!kbFileAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/tag'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><PriceTag /></el-icon>
-              <template #title>标签<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/share'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><Share /></el-icon>
-              <template #title>分享<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/trash'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><Delete /></el-icon>
-              <template #title>回收站<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item :index="'/graph'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-              <el-icon><Connection /></el-icon>
-              <template #title>知识图谱<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu index="system-group">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统</span>
-            </template>
-            <el-menu-item :index="'/log'" :disabled="!authCenterAvailable" :title="authCenterReason">
-              <el-icon><Tickets /></el-icon>
-              <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
-            </el-menu-item>
-            <el-menu-item v-if="isAdmin" :index="'/users'">
-              <el-icon><UserFilled /></el-icon>
-              <template #title>用户管理</template>
-            </el-menu-item>
-            <el-menu-item :index="'/settings'">
-              <el-icon><Setting /></el-icon>
-              <template #title>设置</template>
-            </el-menu-item>
-          </el-sub-menu>
+          </template>
         </el-menu>
       </div>
     </el-aside>
@@ -123,70 +83,29 @@
             class="sidebar-menu"
             @select="drawerVisible = false"
           >
-            <el-menu-item :index="'/dashboard'">
-              <el-icon><Grid /></el-icon>
-              <template #title>工作台</template>
-            </el-menu-item>
-            <el-sub-menu index="kb-group">
-              <template #title>
-                <el-icon><FolderOpened /></el-icon>
-                <span :class="{ 'menu-group-title-disabled': kbGroupDisabled }" :title="kbGroupReason">知识库</span>
-              </template>
-              <el-menu-item :index="'/spaces'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><List /></el-icon>
-                <template #title>知识空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
+            <!-- Phase 5 菜单定义数据化：与桌面端共用同一份 menus.ts 定义 -->
+            <template v-for="m in visibleMenus" :key="m.key">
+              <el-sub-menu v-if="m.children?.length" :index="m.key">
+                <template #title>
+                  <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+                  <span :class="{ 'menu-group-title-disabled': m.disabledFn?.() }" :title="m.disabledFn?.() ? m.disabledReasonFn?.() : undefined">{{ m.title }}</span>
+                </template>
+                <el-menu-item
+                  v-for="c in m.children"
+                  :key="c.key"
+                  :index="c.pathFn ? c.pathFn() : (c.path || c.key)"
+                  :disabled="c.disabledFn?.() || false"
+                  :title="c.disabledFn?.() ? c.disabledReasonFn?.() : undefined"
+                >
+                  <el-icon><component :is="ICONS[c.icon]" /></el-icon>
+                  <template #title>{{ c.title }}<span v-if="c.disabledFn?.()" class="status-dot"></span></template>
+                </el-menu-item>
+              </el-sub-menu>
+              <el-menu-item v-else-if="m.pathFn || m.path" :index="m.pathFn ? m.pathFn() : (m.path || m.key)">
+                <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+                <template #title>{{ m.title }}</template>
               </el-menu-item>
-              <el-menu-item :index="`/space/${spaceStore.currentSpace?.id || ''}`" v-if="spaceStore.currentSpace" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><FolderOpened /></el-icon>
-                <template #title>当前空间<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/stars'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><Star /></el-icon>
-                <template #title>我的收藏<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/search'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><Search /></el-icon>
-                <template #title>搜索<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/file'" :disabled="!kbFileAvailable" :title="kbFileReason">
-                <el-icon><Document /></el-icon>
-                <template #title>文件<span v-if="!kbFileAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/tag'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><PriceTag /></el-icon>
-                <template #title>标签<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/share'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><Share /></el-icon>
-                <template #title>分享<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/trash'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><Delete /></el-icon>
-                <template #title>回收站<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item :index="'/graph'" :disabled="!kbKnowledgeAvailable" :title="kbKnowledgeReason">
-                <el-icon><Connection /></el-icon>
-                <template #title>知识图谱<span v-if="!kbKnowledgeAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-            </el-sub-menu>
-            <el-sub-menu index="system-group">
-              <template #title>
-                <el-icon><Setting /></el-icon>
-                <span>系统</span>
-              </template>
-              <el-menu-item :index="'/log'" :disabled="!authCenterAvailable" :title="authCenterReason">
-                <el-icon><Tickets /></el-icon>
-                <template #title>操作日志<span v-if="!authCenterAvailable" class="status-dot"></span></template>
-              </el-menu-item>
-              <el-menu-item v-if="isAdmin" :index="'/users'">
-                <el-icon><UserFilled /></el-icon>
-                <template #title>用户管理</template>
-              </el-menu-item>
-              <el-menu-item :index="'/settings'">
-                <el-icon><Setting /></el-icon>
-                <template #title>设置</template>
-              </el-menu-item>
-            </el-sub-menu>
+            </template>
           </el-menu>
         </div>
       </div>
@@ -272,8 +191,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  Grid, FolderOpened, List, Star, Search, Document, PriceTag,
+  Share, Delete, Connection, Setting, Tickets, UserFilled,
+} from '@element-plus/icons-vue'
+import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
@@ -281,6 +205,8 @@ import { useModuleStore } from '@/stores/module'
 import { useAuth } from '@/composables/useAuth'
 import { getToken } from '@/utils/token'
 import { decodeOidcClaims } from '@/utils/sso'
+import { permOptions } from '@/utils/permissions'
+import { createKbMenus } from '@/menus'
 import BackToTop from '@/components/BackToTop.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 
@@ -314,6 +240,26 @@ const isAdmin = computed(() => {
   const claims = decodeOidcClaims(getToken() || '')
   return claims?.role === 'admin' || claims?.role === 'superadmin'
 })
+
+// ---------------- Phase 5 菜单定义数据化 ----------------
+/** menus.ts 的 icon 名 → 组件实例映射（模板 component :is 消费）。 */
+const ICONS: Record<string, Component> = {
+  Grid, FolderOpened, List, Star, Search, Document, PriceTag,
+  Share, Delete, Connection, Setting, Tickets, UserFilled,
+}
+
+/** 菜单定义工厂：注入运行时条件闭包（模块健康度/当前空间/isAdmin）。 */
+const visibleMenus = useMenus(permOptions, createKbMenus({
+  hasCurrentSpace: () => !!spaceStore.currentSpace,
+  currentSpacePath: () => `/space/${spaceStore.currentSpace?.id || ''}`,
+  kbKnowledgeAvailable: () => kbKnowledgeAvailable.value,
+  kbKnowledgeReason: () => kbKnowledgeReason.value,
+  kbFileAvailable: () => kbFileAvailable.value,
+  kbFileReason: () => kbFileReason.value,
+  authCenterAvailable: () => authCenterAvailable.value,
+  authCenterReason: () => authCenterReason.value,
+  isAdmin: () => isAdmin.value,
+})).visibleMenus
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
