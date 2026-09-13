@@ -33,16 +33,19 @@ public class HostController {
         return Result.ok(hostService.getById(id, revealPassword));
     }
 
+    @RequirePermission("api:hosts:create")
     @PostMapping
     public Result<Host> create(@Valid @RequestBody HostRequest request) {
         return Result.ok(hostService.create(request));
     }
 
+    @RequirePermission("api:hosts:update")
     @PutMapping("/{id}")
     public Result<Host> update(@PathVariable Long id, @Valid @RequestBody HostRequest request) {
         return Result.ok(hostService.update(id, request));
     }
 
+    @RequirePermission("api:hosts:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         hostService.delete(id);

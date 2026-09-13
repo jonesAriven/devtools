@@ -70,3 +70,13 @@ menus:
         path: /users
         order: 4
         min-role: admin
+
+# api 粒度权限点（Phase 4 扩展）：写操作细粒度，@RequirePermission("api:<key>") 消费。
+# 类级 menu:hosts 仍是访问闸门；api 点为方法级叠加（授权面板可单独勾选）。
+apis:
+  - key: hosts:create
+    title: 新增主机
+  - key: hosts:update
+    title: 编辑主机
+  - key: hosts:delete
+    title: 删除主机
