@@ -16,7 +16,11 @@ export const useUserStore = defineStore('user', () => {
   const authUid = ref<string>(localStorage.getItem(AUTH_UID_KEY) || '')
 
   const isLoggedIn = computed(() => !!token.value)
-  const isAdmin = computed(() => role.value === 'admin')
+  // ⚠️ 必须同时认 superadmin：auth-center 的超管账号（user.role='superadmin'，§22.1）
+  //    是平台唯一的最高权限账号；只比 'admin' 会把超管挡在 portal 用户管理之外
+  //    （2026-09-13 浏览器实测：portal_role=superadmin → /users 被重定向回工作台，
+  //      BFF /portal/api/admin/users 返回 403「需要管理员权限」）。
+  const isAdmin = computed(() => role.value === 'admin' || role.value === 'superadmin')
 
   function setSession(res: { token?: string; accessToken?: string; username?: string; role?: string; authUid?: string }, fallbackUsername?: string) {
     const tokenVal = res.token || res.accessToken || ''

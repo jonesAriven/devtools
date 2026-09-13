@@ -223,8 +223,17 @@ public class SsoController {
         return toResult(r);
     }
 
+    /**
+     * 管理员校验。
+     *
+     * <p>⚠️ 必须同时认 {@code superadmin}：auth-center 的超管账号（{@code user.role='superadmin'}，§22.1）
+     * 是平台唯一的最高权限账号。只比 {@code "admin"} 会把超管挡在 portal 用户管理之外
+     * （2026-09-13 浏览器实测：超管登录 portal 后 {@code /portal/users} 被重定向，
+     * BFF {@code /portal/api/admin/users} 返回 403「需要管理员权限」）。
+     */
     private void requireAdmin(HttpServletRequest request) {
-        if (!"admin".equals(request.getAttribute("role"))) {
+        Object role = request.getAttribute("role");
+        if (!"admin".equals(role) && !"superadmin".equals(role)) {
             throw new BusinessException(403, "需要管理员权限");
         }
     }
