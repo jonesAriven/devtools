@@ -1,0 +1,152 @@
+# =====================================================================
+# apps-registry.yml —— 平台应用注册单一真源（Phase 3 配置化接入，R4=①）
+# =====================================================================
+# 产物派生（python scripts/gen-from-registry.py）：
+#   ① auth-center/src/main/resources/clients.yml —— OIDC 客户端 L1 种子
+#   ② 各前端 public/app-config.json —— 运行时配置（同产物多环境）
+# ⚠️ 本文件是唯一手工编辑点；派生产物全部标 AUTO-GENERATED 禁止手改。
+# ⚠️ 新应用接入 = 本文件加一段 + 跑生成器 + auth-center 重启，全程不改 auth-center Java。
+# 默认值（未在 client 段覆盖时生效，与 DatabaseInitializer 既有硬编码一致）：
+defaults:
+  auth:
+    scopes: [openid, profile]
+    grant-types: [authorization_code, refresh_token]
+    access-token-ttl-minutes: 30
+    refresh-token-ttl-days: 7
+    reuse-refresh-tokens: false
+    require-consent: false
+
+apps:
+  # ─────────────── 六应用（紧密型接入） ───────────────
+  - client-id: marschat-portal
+    name: MarsChat Portal
+    type: confidential                      # confidential=机密客户端(BASIC+secret)；public=PKCE
+    secret: portal-secret-2026              # ⚠️ 明文与历史代码同级；外置 env 为后续项
+    auth:
+      redirect-uris:
+        - http://localhost:5173/auth/callback
+        - https://main.marschat.online/portal/auth/callback
+        - http://192.168.31.105:8095/portal/auth/callback
+      post-logout-redirect-uris:
+        - https://main.marschat.online/portal/login
+        - http://192.168.31.105:8095/portal/login
+        - http://localhost:5173/login
+    frontend:
+      entry: https://main.marschat.online/portal/
+      context-path: /portal
+      api-base: /portal/api
+
+  - client-id: marschat-kbweb
+    name: MarsChat KB Web (SPA)
+    type: public
+    auth:
+      redirect-uris:
+        - http://localhost:5173/kb/sso-callback
+        - https://kb.marschat.online/kb/sso-callback
+        - http://192.168.31.105/kb/sso-callback
+      post-logout-redirect-uris:
+        - https://kb.marschat.online/kb/login
+        - http://192.168.31.105/kb/login
+        - http://localhost:5173/kb/login
+    frontend:
+      entry: https://kb.marschat.online/kb/
+      context-path: /kb
+      api-base: /kb/api
+
+  - client-id: marschat-kbops
+    name: MarsChat KB Ops (SPA)
+    type: public
+    auth:
+      redirect-uris:
+        - http://localhost:3001/ops/sso-callback
+        - https://kb.marschat.online/ops/sso-callback
+        - http://192.168.31.105/ops/sso-callback
+      post-logout-redirect-uris:
+        - https://kb.marschat.online/ops/login
+        - http://192.168.31.105/ops/login
+        - http://localhost:3001/ops/login
+    frontend:
+      entry: https://kb.marschat.online/ops/
+      context-path: /ops
+      api-base: /ops/ops-api
+      auth-api-base: /ops/auth-api
+
+  - client-id: marschat-inframon
+    name: MarsChat Infra Monitor (SPA)
+    type: public
+    auth:
+      redirect-uris:
+        - https://monitor.marschat.online/infra/sso-callback
+        - http://192.168.31.105/infra/sso-callback
+        - http://localhost:3002/infra/sso-callback
+      post-logout-redirect-uris:
+        - https://monitor.marschat.online/infra/login
+        - http://192.168.31.105/infra/login
+        - http://localhost:3002/infra/login
+    frontend:
+      entry: https://monitor.marschat.online/infra/
+      context-path: /infra
+      api-base: /infra/api
+
+  - client-id: marschat-activecode
+    name: MarsChat ActiveCode (SPA)
+    type: public
+    auth:
+      # 回调用 .html 后缀：静态资源映射要求带扩展名，无后缀路由 404（DatabaseInitializer 注释）
+      redirect-uris:
+        - https://tools.marschat.online/activecode/sso-callback.html
+        - http://192.168.31.182:18080/activecode/sso-callback.html
+        - http://192.168.31.105:18080/activecode/sso-callback.html
+      post-logout-redirect-uris:
+        - https://tools.marschat.online/activecode/login.html
+        - http://192.168.31.182:18080/activecode/login.html
+        - http://192.168.31.105:18080/activecode/login.html
+    frontend:
+      entry: https://tools.marschat.online/activecode/
+      context-path: /activecode
+
+  - client-id: cosmic-studio
+    name: MarsChat COSMIC Studio
+    type: public
+    auth:
+      redirect-uris:
+        - https://cosmic.marschat.online/sso-callback
+        - http://192.168.31.105:8310/sso-callback
+        - http://localhost:5173/sso-callback
+        - http://localhost:8310/sso-callback
+    frontend:
+      entry: https://cosmic.marschat.online/
+      context-path: /
+
+  # ─────────────── 工具/面板（Phase 2 批量播种） ───────────────
+  - client-id: marschat-memory
+    name: MarsChat Memory Extract Panel
+    type: public
+    auth:
+      redirect-uris:
+        - https://memory.marschat.online/sso-callback
+        - http://192.168.31.105:8720/sso-callback
+    frontend:
+      entry: https://memory.marschat.online/
+
+  - client-id: marschat-tokenhub
+    name: MarsChat TokenHub
+    type: public
+    auth:
+      # TokenHub（Go+Next.js）原生 generic_oidc，回调为内置地址
+      redirect-uris:
+        - https://tokenhub.marschat.online/api/admin/auth/oauth/callback
+        - http://192.168.31.105:13000/api/admin/auth/oauth/callback
+    frontend:
+      entry: https://tokenhub.marschat.online/
+
+  - client-id: frp-manager
+    name: MarsChat FRP Manager
+    type: public
+    auth:
+      redirect-uris:
+        - https://frp.marschat.online/sso-callback
+        - http://192.168.31.105:18082/sso-callback
+        - http://localhost:5173/sso-callback
+    frontend:
+      entry: https://frp.marschat.online/
