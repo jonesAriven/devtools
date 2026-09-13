@@ -100,6 +100,11 @@ apps:
   - client-id: marschat-activecode
     name: MarsChat ActiveCode (SPA)
     type: public
+    # 账号映射上报凭据（Phase 7）：activecode 有自有 admin_user 账号库，启动时经
+    # /internal/clients/{id}/accounts 全量登记到中心 app_account_mapping（X-Client-Secret）。
+    # 派生进 auth-center clients.yml → ClientsYmlLoader 幂等写入 sys_app_client.client_secret；
+    # 应用侧经 compose 注入同值 MARSCHAT_MENU_REPORT_SECRET。
+    menu-report-secret: ${ACTIVECODE_MENU_REPORT_SECRET:b2ad6222f50d9f5d9000c3c9abe7ef6242494e9b5b988172}
     auth:
       # 回调用 .html 后缀：静态资源映射要求带扩展名，无后缀路由 404（DatabaseInitializer 注释）
       redirect-uris:

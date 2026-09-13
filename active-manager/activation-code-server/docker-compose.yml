@@ -23,6 +23,13 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://192.168.31.105:3306,192.168.31.182:3307,192.168.31.182:3308/tools?loadBalanceStrategy=random&loadBalanceHostRemoval=true&failOverReadOnly=false&retriesAllDown=3&connectTimeout=5000&socketTimeout=30000&autoReconnect=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=tools
       - SPRING_DATASOURCE_PASSWORD=toolsmarschat
+      # 统一账号映射上报（Phase 7）：启动时把 admin_user 本地账号全量登记到中心
+      # app_account_mapping（X-Client-Secret）。凭据与 apps-registry.yml 的
+      # menu-report-secret 同值（派生进 auth-center clients.yml → 幂等写库）。
+      # ⚠️ activecode 只挂 activecode-net（不在 platform-net），故 issuer 用宿主 LAN 地址，
+      #    不能用容器名 auth-center（DNS 不可解析）。
+      - MARSCHAT_MENU_REPORT_SECRET=b2ad6222f50d9f5d9000c3c9abe7ef6242494e9b5b988172
+      - MARSCHAT_ACCOUNT_REPORT_ISSUER=http://192.168.31.105:8085
     # volume 挂载共享下载目录 (QRCodeTools exe 文件)
     # 宿主机路径需根据实际部署环境调整:
     #   Windows本地开发: D:\huliang\java\ideaworkspace\www\download\QRCodeTools
