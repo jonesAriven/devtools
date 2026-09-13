@@ -17,78 +17,24 @@
           router
           class="sidebar-menu"
         >
-          <!-- Phase 4 三层同源（渲染层）：菜单按 usePermissions 过滤（与路由守卫 createAuthGuard
-               消费同一份权限状态；configured=false 或平台超管恒全显） -->
-          <el-menu-item v-if="menuVisible('dashboard')" index="/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>看板</template>
-          </el-menu-item>
-          <el-sub-menu v-if="hasAnyResource" index="resource-group">
-            <template #title>
-              <el-icon><Cpu /></el-icon>
-              <span>资源管理</span>
-            </template>
-            <el-menu-item v-if="menuVisible('hosts')" index="/hosts">
-              <el-icon><Monitor /></el-icon>
-              <template #title>主机管理</template>
+          <!-- Phase 5 菜单定义数据化：v-for 渲染 menus.ts 定义（与 menu-registry.yml 同构），
+               权限过滤收敛到 useMenus（与路由守卫同一份权限状态；configured=false 或超管恒全显） -->
+          <template v-for="m in visibleMenus" :key="m.key">
+            <el-sub-menu v-if="m.children?.length" :index="m.key">
+              <template #title>
+                <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+                <span>{{ m.title }}</span>
+              </template>
+              <el-menu-item v-for="c in m.children" :key="c.key" :index="c.path">
+                <el-icon><component :is="ICONS[c.icon]" /></el-icon>
+                <template #title>{{ c.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else-if="m.path" :index="m.path">
+              <el-icon><component :is="ICONS[m.icon]" /></el-icon>
+              <template #title>{{ m.title }}</template>
             </el-menu-item>
-            <el-menu-item v-if="menuVisible('services')" index="/services">
-              <el-icon><Connection /></el-icon>
-              <template #title>服务管理</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('ports')" index="/ports">
-              <el-icon><Position /></el-icon>
-              <template #title>端口管理</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('credentials')" index="/credentials">
-              <el-icon><Key /></el-icon>
-              <template #title>凭据管理</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('domains')" index="/domains">
-              <el-icon><Link /></el-icon>
-              <template #title>域名管理</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('dependencies')" index="/dependencies">
-              <el-icon><Box /></el-icon>
-              <template #title>依赖管理</template>
-            </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu v-if="hasAnyDeploy" index="deploy-group">
-            <template #title>
-              <el-icon><Upload /></el-icon>
-              <span>部署运维</span>
-            </template>
-            <el-menu-item v-if="menuVisible('deployments')" index="/deployments">
-              <el-icon><List /></el-icon>
-              <template #title>部署记录</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('conflicts')" index="/conflicts">
-              <el-icon><Warning /></el-icon>
-              <template #title>矛盾检测</template>
-            </el-menu-item>
-          </el-sub-menu>
-          <el-sub-menu v-if="hasAnySystem" index="system-group">
-            <template #title>
-              <el-icon><Tools /></el-icon>
-              <span>系统工具</span>
-            </template>
-            <el-menu-item v-if="menuVisible('knowledge')" index="/knowledge">
-              <el-icon><Reading /></el-icon>
-              <template #title>运维知识库</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('import')" index="/import">
-              <el-icon><Download /></el-icon>
-              <template #title>数据导入</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('logs')" index="/logs">
-              <el-icon><Tickets /></el-icon>
-              <template #title>操作日志</template>
-            </el-menu-item>
-            <el-menu-item v-if="menuVisible('users')" index="/users">
-              <el-icon><UserFilled /></el-icon>
-              <template #title>用户管理</template>
-            </el-menu-item>
-          </el-sub-menu>
+          </template>
         </el-menu>
       </div>
     </el-aside>
@@ -132,13 +78,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  DataAnalysis, Cpu, Monitor, Connection, Position, Key, Link, Box,
+  Upload, List, Warning, Tools, Reading, Download, Tickets, UserFilled,
+} from '@element-plus/icons-vue'
+import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { getToken } from '@/utils/token'
-import { decodeOidcClaims } from '@/utils/sso'
-import { usePermissions, permCode } from '@/utils/permissions'
+import { permOptions } from '@/utils/permissions'
+import { KB_OPS_MENUS } from '@/menus'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,32 +98,18 @@ const userStore = useUserStore()
 
 const currentRoute = computed(() => route.path)
 
-/**
- * Phase 4 三层同源（渲染层）：侧边栏菜单按权限集合过滤。
- * ⚠️ 必须复用 utils/permissions 的**单例**（与路由守卫 createAuthGuard 同一份状态），
- * 且判定码必须传**全码** `permCode('menu', key)`（= client:menu:key）——
- * hasPermission 对含冒号的 code 原样使用（permissions.ts 头部警告），半码永不匹配。
- */
-const perms = usePermissions()
-const can = perms.check
-const menuVisible = (key: string) => can(permCode('menu', key))
-const hasAnyResource = computed(() =>
-  ['hosts', 'services', 'ports', 'credentials', 'domains', 'dependencies'].some(menuVisible),
-)
-const hasAnyDeploy = computed(() => ['deployments', 'conflicts'].some(menuVisible))
-const hasAnySystem = computed(() =>
-  ['knowledge', 'import', 'logs', 'users'].some(menuVisible),
-)
+/** menus.ts 的 icon 名 → 组件实例映射（模板 component :is 消费）。 */
+const ICONS: Record<string, Component> = {
+  DataAnalysis, Cpu, Monitor, Connection, Position, Key, Link, Box,
+  Upload, List, Warning, Tools, Reading, Download, Tickets, UserFilled,
+}
 
 /**
- * 是否平台管理员 —— 决定「用户管理」菜单是否可见（Phase 6）。
- * 判据取自 auth-center 签发的 OIDC token `role` claim（不另发请求）。
- * 菜单可见性只是体验层；真正的权限闸门在 auth-center `AdminUserController`。
+ * Phase 5 菜单定义数据化：useMenus 基于**同一份权限单例状态**过滤 KB_OPS_MENUS
+ * （与路由守卫 createAuthGuard 三层同源；configured=false 或超管恒全显——R10）。
+ * 组节点 children 全被过滤后由模板 v-if="m.children?.length" 隐藏。
  */
-const isAdmin = computed(() => {
-  const claims = decodeOidcClaims(getToken() || '')
-  return claims?.role === 'admin' || claims?.role === 'superadmin'
-})
+const { visibleMenus } = useMenus(permOptions, KB_OPS_MENUS)
 
 const defaultOpeneds = computed<string[]>(() => {
   const path = route.path
@@ -220,7 +157,7 @@ onMounted(() => {
     userStore.fetchProfile()
   }
   // 三层同源：进入布局即拉权限（60s 缓存；守卫/菜单/门共用）
-  void perms.ensure()
+  void fetchPermissions(permOptions)
 })
 </script>
 
