@@ -86,7 +86,8 @@ apps:
     frontend:
       entry: https://monitor.marschat.online/infra/
       context-path: /infra
-      api-base: /infra/api
+      api-base: /infra/infra-api
+      auth-api-base: /infra/infra-api
 
   - client-id: marschat-activecode
     name: MarsChat ActiveCode (SPA)

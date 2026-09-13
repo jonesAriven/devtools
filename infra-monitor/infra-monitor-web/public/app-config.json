@@ -1,0 +1,9 @@
+// AUTO-GENERATED from apps-registry.yml — DO NOT EDIT
+{
+  "clientId": "marschat-inframon",
+  "issuer": "https://auth.marschat.online",
+  "entry": "https://monitor.marschat.online/infra/",
+  "contextPath": "/infra",
+  "apiBase": "/infra/infra-api",
+  "authApiBase": "/infra/infra-api"
+}
