@@ -85,7 +85,17 @@
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>common-core</artifactId>
-            <version>1.1.4</version>
+            <version>1.1.6</version>
+        </dependency>
+            <!-- 认证公共库（独立仓库 com.marschat:auth-core）——Phase 4 P-B 菜单上报。
+                 仅用其 MenuReportAutoConfig（@ConditionalOnProperty enabled=true 才装配）。
+                 注意：auth-core 会传递引入 jjwt（非 optional），故 AuthJwtAutoConfig/AuthWebAutoConfig
+                 会正常装配（TokenProvider + @MarsUser 解析器）；AuthzAutoConfig 的 @RequirePermission
+                 拦截器仅在配置 marschat.authz.client-id 时注册——portal 刻意不配，保持零行为变化。 -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+            <version>2.1.5</version>
         </dependency>
     </dependencies>
 

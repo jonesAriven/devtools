@@ -262,6 +262,10 @@ services:
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-kb123456}
       # auth-center Phase 2: OIDC issuer（浏览器/客户端实际可达地址，与 auth-center AUTH_ISSUER 一致；2026-09-07 L019 独立子域）
       - AUTH_CENTER_ISSUER=${AUTH_CENTER_ISSUER:-https://auth.marschat.online}
+      # Phase 4 P-B: 菜单上报凭据（client=marschat-portal，auth-core MenuRegistryReporter）。
+      # 值须与 auth-center 侧 sys_app_client.client_secret 一致；走 ${PORTAL_MENU_REPORT_SECRET} 覆盖，
+      # 缺省回退到与库内同值的内联默认。上报失败仅 WARN，不阻断启动。
+      - MARSCHAT_MENU_REPORT_SECRET=${PORTAL_MENU_REPORT_SECRET:-880546959a8c2b77bccfd839ed81b10b810f05b346a6a7a9}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

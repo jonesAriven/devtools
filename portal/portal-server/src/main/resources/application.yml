@@ -41,3 +41,20 @@ auth-center:
   issuer: ${AUTH_CENTER_ISSUER:http://192.168.31.105:8085}
   client-id: ${AUTH_CENTER_CLIENT_ID:marschat-portal}
   client-secret: ${AUTH_CENTER_CLIENT_SECRET:portal-secret-2026}
+
+# 认证公共库 auth-core（com.marschat:auth-core）配置
+marschat:
+  auth:
+    # HS256 兜底验签密钥（>= 32 字节）。portal 自身不签发/校验 HS256 token，
+    # 此处仅满足 TokenProvider 装配所需（auth-core 传递引入 jjwt，AuthJwtAutoConfig 会装配）。
+    secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
+  # ⚠️ 刻意不配置 marschat.authz.client-id：AuthzAutoConfig 的 @RequirePermission 拦截器
+  #    仅在 client-id 非空时注册。portal 现有端点无 @RequirePermission 注解，保持零行为变化。
+  menu:
+    report:
+      # Phase 4 P-B：启动时全量上报 menu-registry.yml（幂等，失败仅 WARN 不阻断启动）
+      enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
+      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://127.0.0.1:8085}
+      client-id: marschat-portal
+      report-mode: secret
+      report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}

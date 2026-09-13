@@ -1,0 +1,25 @@
+# portal 菜单注册表（menu-permission-management-plan §5 schema）
+#
+# key = 权限点稳定标识（sys_permission.code，下发为 marschat-portal:menu:<key>），与
+# portal-web src/router/index.ts 的 permCode('menu','<key>') 严格对齐，禁止随意改名。
+#
+# 与其它应用的差异说明：
+#   portal 是「卡片式门户」，侧边栏不是权限驱动的菜单树（是系统分类导航），
+#   故本表只登记 2 个**受权限守卫管辖的路由**（router meta.perm 已声明）：
+#     /manage → permCode('menu','manage')
+#     /users  → permCode('menu','users')（另有 requiresAdmin 本地兜底）
+#   上报后中心授权界面会出现 portal 的权限树，管理员可选择性授权；
+#   未绑定任何角色前 configured=false → R10 fail-open，行为与接入前完全一致。
+#
+# 上报通道：auth-core MenuRegistryReporter（启动时 PUT /internal/clients/marschat-portal/menus，
+# 凭据 X-Client-Secret = sys_app_client.client_secret，由 MARSCHAT_MENU_REPORT_SECRET 注入）。
+client: marschat-portal
+menus:
+  - key: manage
+    title: 系统管理
+    path: /manage
+    order: 1
+  - key: users
+    title: 用户管理
+    path: /users
+    order: 2
