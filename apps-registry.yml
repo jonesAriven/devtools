@@ -72,7 +72,9 @@ apps:
     frontend:
       entry: https://kb.marschat.online/ops/
       context-path: /ops
-      api-base: /ops/ops-api
+      # ⚠️ 2026-09-14 修正：原值 /ops/ops-api 与 nginx 不一致（mykng nginx 只注册 `/ops-api/`
+      # → 127.0.0.1:8084/kb-ops/），/ops/ops-api/** 会落进 `location /ops/` 被转发给前端容器。
+      api-base: /ops-api
       auth-api-base: /ops/auth-api
 
   - client-id: marschat-inframon
@@ -94,8 +96,12 @@ apps:
     frontend:
       entry: https://monitor.marschat.online/infra/
       context-path: /infra
-      api-base: /infra/infra-api
-      auth-api-base: /infra/infra-api
+      # ⚠️ 2026-09-14 修正：原值 /infra/infra-api 是**死路径**——nginx 只注册了
+      # `location /infra/api/`（proxy_pass → 127.0.0.1:8088/infra/），/infra/infra-api/**
+      # 会落进 `location /infra/` 被转发给前端静态容器，POST 一律 405。
+      # 实测：POST /infra/api/auth/login → 200；POST /infra/infra-api/auth/login → 405。
+      api-base: /infra/api
+      auth-api-base: /infra/api
 
   - client-id: marschat-activecode
     name: MarsChat ActiveCode (SPA)

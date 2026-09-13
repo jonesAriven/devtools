@@ -109,8 +109,14 @@ def emit_appconfig(data, client_id):
         "authApiBase": fe.get("auth-api-base"),
     }
     cfg = {k: v for k, v in cfg.items() if v is not None}
-    print("// AUTO-GENERATED from apps-registry.yml — DO NOT EDIT")
-    print(json.dumps(cfg, ensure_ascii=False, indent=2))
+    # ⚠️ 2026-09-14 修正：**必须输出纯 JSON**。
+    # 原实现在首行打印 `// AUTO-GENERATED ...` 注释 —— 那会让文件不是合法 JSON，
+    # 各前端 `JSON.parse(responseText)` 直接抛错被 catch 吞掉 → 静默回落到编译期 env，
+    # **整个「运行时配置」特性等于空转**（改 apps-registry 不生效，且无人报错）。
+    # 标记改为 JSON 字段承载（首键），既保留"禁止手改"提示，又不破坏 JSON 合法性。
+    marked = {"_generated": AUTO_TAG}
+    marked.update(cfg)
+    print(json.dumps(marked, ensure_ascii=False, indent=2))
 
 
 def main():
