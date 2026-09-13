@@ -1,0 +1,69 @@
+# kb-web 菜单注册表（menu-permission-management-plan §5 schema）
+# key = 权限点稳定标识（sys_permission.code，下发为 marschat-kbweb:menu:<key>），与
+# kb-web src/router/index.ts 的 permCode('menu','<key>') 严格对齐，禁止随意改名。
+# 菜单源 = kb-web src/menus.ts（createKbMenus，15 节点）；运行时动态语义（visibleFn/pathFn/
+# disabledFn）为前端渲染条件，非权限点，不进本表（current-space 的动态 path 故留空）。
+# 上报：auth-core MenuRegistryReporter 启动时经 kb-gateway 全量覆盖上报到
+# auth-center /internal/clients/marschat-kbweb/menus（X-Client-Secret）。
+client: marschat-kbweb
+menus:
+  - key: dashboard
+    title: 工作台
+    path: /dashboard
+    order: 1
+  - key: kb-group
+    title: 知识库
+    order: 2
+    children:
+      - key: spaces
+        title: 知识空间
+        path: /spaces
+        order: 1
+      - key: current-space
+        title: 当前空间
+        order: 2
+      - key: stars
+        title: 我的收藏
+        path: /stars
+        order: 3
+      - key: search
+        title: 搜索
+        path: /search
+        order: 4
+      - key: file
+        title: 文件
+        path: /file
+        order: 5
+      - key: tag
+        title: 标签
+        path: /tag
+        order: 6
+      - key: share
+        title: 分享
+        path: /share
+        order: 7
+      - key: trash
+        title: 回收站
+        path: /trash
+        order: 8
+      - key: graph
+        title: 知识图谱
+        path: /graph
+        order: 9
+  - key: system-group
+    title: 系统
+    order: 3
+    children:
+      - key: log
+        title: 操作日志
+        path: /log
+        order: 1
+      - key: users
+        title: 用户管理
+        path: /users
+        order: 2
+        min-role: admin
+      - key: settings
+        title: 设置
+        path: /settings
+        order: 3

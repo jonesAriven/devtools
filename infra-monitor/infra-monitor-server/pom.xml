@@ -98,6 +98,14 @@
             <artifactId>common-core</artifactId>
             <version>1.1.4</version>
         </dependency>
+
+        <!-- 认证公共库（com.marschat:auth-core）：仅用 MenuRegistryReporter 上报 infra-monitor 菜单树；
+             非菜单的 auth-core 自动装配（AuthJwt/AuthWeb/AuthFeign/Authz）已在 application.yml 显式排除。 -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+            <version>2.1.5</version>
+        </dependency>
     </dependencies>
 
     <repositories>

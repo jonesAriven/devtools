@@ -25,6 +25,10 @@ services:
       - CRYPTO_AES_KEY=YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=
       - INFRA_ADMIN_USER=admin
       - INFRA_ADMIN_PASS=admin123
+      # Phase 4 P-B: 菜单上报凭据（client=marschat-inframon）。
+      # 值须与 auth-center 侧 sys_app_client.client_secret 一致（clients.yml 的 ${INFRAMON_MENU_REPORT_SECRET:默认}）。
+      # 走 ${INFRAMON_MENU_REPORT_SECRET} 覆盖，缺省回退到与 clients.yml 默认同值的内联默认。
+      - MARSCHAT_MENU_REPORT_SECRET=${INFRAMON_MENU_REPORT_SECRET:-fd20b92c239eaad778f750817a33e67f6bc108179c008448}
     volumes:
       - /data/infra-monitor/logs:/app/logs
     mem_limit: 256m

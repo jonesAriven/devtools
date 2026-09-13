@@ -33,6 +33,11 @@ services:
       # 模块探活 everSeen 持久化（非主链路：连不上自动退回纯内存）
       - REDIS_HOST=platform-redis
       - REDIS_PORT=6379
+      # Phase 4 P-B: kb-gateway 代 kb-web 菜单上报凭据（client=marschat-kbweb）。
+      # 值须与 auth-center 侧 sys_app_client.client_secret 一致（clients.yml 的 ${KBWEB_MENU_REPORT_SECRET:默认}）。
+      # 走 ${KBWEB_MENU_REPORT_SECRET} 覆盖（.env），缺省回退到与 clients.yml 默认同值的内联默认——
+      # 与 kb-ops 的 MARSCHAT_MENU_REPORT_SECRET 分离命名，避免两应用共用同一变量名串值。
+      - MARSCHAT_MENU_REPORT_SECRET=${KBWEB_MENU_REPORT_SECRET:-fff08d4f9ca92f27ffb9111d1a9b8ed9e54769c3dc279bf3}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -49,12 +54,14 @@ services:
     build: /mnt/shared/auth-center-build
     container_name: auth-center
     restart: on-failure:5
+    # 2026-09-13 OOM 事故：387MB rss 被 cgroup kill——显式上限并放宽（Xmx512m/limit 768m）
+    mem_limit: 768m
     ports:
       - "8085:8085"
     environment:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod,kafka-log
-      - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -Dfile.encoding=UTF-8
+      - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseG1GC -Dfile.encoding=UTF-8
       - NACOS_HOST=platform-nacos
       - NACOS_PORT=8848
       - NACOS_USERNAME=${NACOS_USERNAME:-nacos}

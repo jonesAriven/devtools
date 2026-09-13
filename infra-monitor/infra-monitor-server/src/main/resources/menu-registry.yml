@@ -1,0 +1,35 @@
+# infra-monitor 菜单注册表（menu-permission-management-plan §5 schema）
+# key = 权限点稳定标识（sys_permission.code，下发为 marschat-inframon:menu:<key>），与
+# infra-monitor-web src/router/index.ts 的 permCode('menu','<key>') 严格对齐，禁止随意改名。
+# 菜单源 = infra-monitor-web src/menus.ts（INFRA_MENUS，6 节点）。
+# dashboard 为前端 skipPerm「常显」基础项（useMenus 短路、不参与权限过滤）；此处仍登记，
+# 以保持「中心菜单树 = 应用菜单树」一致（与 kb-ops dashboard 同为 1 个顶层基础项）。
+# 上报：auth-core MenuRegistryReporter 启动时全量覆盖上报到
+# auth-center /internal/clients/marschat-inframon/menus（X-Client-Secret）。
+client: marschat-inframon
+menus:
+  - key: dashboard
+    title: 总览看板
+    path: /dashboard
+    order: 1
+  - key: hosts
+    title: 主机管理
+    path: /hosts
+    order: 2
+  - key: credentials
+    title: 凭据管理
+    path: /credentials
+    order: 3
+  - key: configs
+    title: 配置信息
+    path: /configs
+    order: 4
+  - key: services
+    title: 服务监控
+    path: /services
+    order: 5
+  - key: users
+    title: 用户管理
+    path: /users
+    order: 6
+    min-role: admin

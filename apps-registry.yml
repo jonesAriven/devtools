@@ -39,6 +39,10 @@ apps:
   - client-id: marschat-kbweb
     name: MarsChat KB Web (SPA)
     type: public
+    # 菜单上报凭据（Phase 4 P-B internal 通道 X-Client-Secret；值现场生成，48 位十六进制）：
+    # 派生进 auth-center clients.yml → ClientsYmlLoader 幂等补写 sys_app_client.client_secret。
+    # 应用侧通过环境变量 MARSCHAT_MENU_REPORT_SECRET 注入同值（见 mykng/.env）。
+    menu-report-secret: ${KBWEB_MENU_REPORT_SECRET:fff08d4f9ca92f27ffb9111d1a9b8ed9e54769c3dc279bf3}
     auth:
       redirect-uris:
         - http://localhost:5173/kb/sso-callback
@@ -74,6 +78,10 @@ apps:
   - client-id: marschat-inframon
     name: MarsChat Infra Monitor (SPA)
     type: public
+    # 菜单上报凭据（Phase 4 P-B internal 通道 X-Client-Secret；值现场生成，48 位十六进制）：
+    # 派生进 auth-center clients.yml → ClientsYmlLoader 幂等补写 sys_app_client.client_secret。
+    # 应用侧通过环境变量 MARSCHAT_MENU_REPORT_SECRET 注入同值（见 infra-monitor compose）。
+    menu-report-secret: ${INFRAMON_MENU_REPORT_SECRET:fd20b92c239eaad778f750817a33e67f6bc108179c008448}
     auth:
       redirect-uris:
         - https://monitor.marschat.online/infra/sso-callback

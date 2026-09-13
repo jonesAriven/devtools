@@ -9,6 +9,16 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  # 仅引入 auth-core 的菜单上报自动装配（MenuReportAutoConfig）；其余 auth-core 自动装配显式排除：
+  #   - AuthJwtAutoConfig：会装配 TokenProvider（构造要求 marschat.auth.secret>=32B），网关自有 JWT 实现，无需
+  #   - AuthWebAutoConfig / AuthzAutoConfig：仅 Servlet 环境，WebFlux 下本就不激活（排除求稳）
+  #   - AuthFeignAutoConfig：网关无 OpenFeign
+  autoconfigure:
+    exclude:
+      - com.marschat.auth.AuthJwtAutoConfig
+      - com.marschat.auth.AuthWebAutoConfig
+      - com.marschat.auth.AuthFeignAutoConfig
+      - com.marschat.auth.authz.AuthzAutoConfig
   data:
     redis:
       host: ${REDIS_HOST:platform-redis}
@@ -181,6 +191,17 @@ marschat:
     issuer: ${OIDC_ISSUER:https://auth.marschat.online}
     jwks-uri: ${OIDC_JWKS_URI:http://auth-center:8085/oauth2/jwks}
     # M6: kb.gateway.services 已废弃，路由 uri 改为 lb://服务名 通过 Nacos 服务发现
+  # 菜单上报（Phase 4 P-B）：kb-gateway 代 kb-web 启动时把 classpath menu-registry.yml 全量覆盖
+  # 上报到 auth-center /internal/clients/{client-id}/menus，凭据走 X-Client-Secret
+  # （sys_app_client.client_secret，由运维注入；缺失时 reporter 跳过并 WARN，不阻断启动）。
+  menu:
+    report:
+      enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
+      # 容器内网直连（同 oidc.jwks-uri 模式）：/internal/** 不在公网 nginx 白名单，secret 不出公网
+      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://auth-center:8085}
+      client-id: marschat-kbweb
+      report-mode: secret
+      report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
 
 # M6: springdoc-openapi 网关聚合配置（WebFlux）
 # 统一入口：/kb/swagger-ui.html，可切换各模块的 API 文档

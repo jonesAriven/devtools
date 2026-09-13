@@ -75,6 +75,10 @@ def emit_clients(data):
         print("    type: %s" % ctype)
         if ctype == "confidential":
             print("    secret: %s" % a["secret"])
+        # 菜单上报凭据（Phase 4 P-B）：派生自 registry，供 ClientsYmlLoader 幂等写入
+        # sys_app_client.client_secret（/internal 通道 X-Client-Secret）。支持 ${ENV:default} 占位。
+        if a.get("menu-report-secret"):
+            print("    menu-report-secret: %s" % a["menu-report-secret"])
         print("    scopes: %s" % json.dumps(auth["scopes"]))
         print("    grant-types: %s" % json.dumps(auth["grant-types"]))
         print("    access-token-ttl-minutes: %s" % auth["access-token-ttl-minutes"])

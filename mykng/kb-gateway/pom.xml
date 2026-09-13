@@ -22,6 +22,14 @@
             <artifactId>common-core</artifactId>
         </dependency>
 
+        <!-- 认证公共库（com.marschat:auth-core）：仅用 MenuRegistryReporter 上报 kb-web 菜单树。
+             spring-boot-starter-web 在 auth-core 内为 optional，不会把 servlet/tomcat 带入 WebFlux 网关；
+             非菜单的 auth-core 自动装配（AuthJwt/AuthWeb/AuthFeign/Authz）已在 application.yml 显式排除。 -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+        </dependency>
+
         <!-- Nacos 服务发现（M2: 可拔插架构基础） -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

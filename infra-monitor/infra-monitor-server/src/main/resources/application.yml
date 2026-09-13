@@ -11,9 +11,35 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  # 仅引入 auth-core 的菜单上报自动装配（MenuReportAutoConfig）；其余 auth-core 自动装配显式排除，
+  # 保持本应用既有 JWT/Security 行为不变：
+  #   - AuthJwtAutoConfig：会装配 TokenProvider（构造要求 marschat.auth.secret>=32B），本应用自有 JWT 实现，无需
+  #   - AuthWebAutoConfig：会装配 @MarsUser 参数解析器，本应用无此用法
+  #   - AuthzAutoConfig：@RequirePermission 拦截器，本应用未用该注解
+  #   - AuthFeignAutoConfig：本应用无 OpenFeign
+  autoconfigure:
+    exclude:
+      - com.marschat.auth.AuthJwtAutoConfig
+      - com.marschat.auth.AuthWebAutoConfig
+      - com.marschat.auth.AuthFeignAutoConfig
+      - com.marschat.auth.authz.AuthzAutoConfig
   data:
     mongodb:
       uri: ${MONGO_URI:mongodb://192.168.31.182:27017/infra_monitor}
+
+# 菜单上报（Phase 4 P-B）：启动时把 classpath menu-registry.yml 全量覆盖上报到
+# auth-center /internal/clients/{client-id}/menus，凭据走 X-Client-Secret
+# （sys_app_client.client_secret，由运维注入；缺失时 reporter 跳过并 WARN，不阻断启动）。
+# infra-monitor 以 host 网络运行于 mykng(192.168.31.105)，auth-center 端口已发布到宿主 8085，
+# 故内网直连走 127.0.0.1（/internal/** 不在公网 nginx 白名单，secret 不出公网）。
+marschat:
+  menu:
+    report:
+      enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
+      issuer: ${MARSCHAT_MENU_REPORT_ISSUER:http://127.0.0.1:8085}
+      client-id: marschat-inframon
+      report-mode: secret
+      report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
 
 crypto:
   aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
