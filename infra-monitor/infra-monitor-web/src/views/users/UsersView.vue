@@ -37,6 +37,13 @@ const config: UserManagementConfig = {
     { value: 'user', label: '普通用户' },
   ],
   currentUserId,
+  // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）
+  appRoles: {
+    baseUrl: 'https://auth.marschat.online',
+    clientId: 'marschat-inframon',
+    getToken: () => getToken(),
+    onUnauthorized: () => void renewByReauthorize(),
+  },
 }
 </script>
 
