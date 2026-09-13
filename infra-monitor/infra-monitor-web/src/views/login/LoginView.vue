@@ -16,6 +16,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
+import { setToken, setTokenKind } from '@/utils/token'
 import { startSsoLogin, bootstrapLoginPage, SSO_CONFIG } from '@/utils/sso'
 
 const router = useRouter()
@@ -32,10 +34,14 @@ const loginConfig = {
   color: '#409eff',
   showSso: true,
   showForgotPassword: true,
+  // 统一登录三方式（Phase 7）：账密（应急管理员）+ 邮箱验证码（BFF 换票）+ 忘记密码
+  showMailLogin: true,
   // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，monitor 域经 catch-all 反代到 mykng）
   authApiBase: '/kb/api/auth',
   // SSO 走本应用自己的客户端 PKCE 流（public client，回调 /infra/sso-callback）
   onSsoLogin: handleSsoLogin,
+  // 邮箱验证码登录：走本应用后端 BFF（/infra/api/auth/mail-login，服务端换票 + 签发本应用 token）
+  onMailLogin: handleMailLogin,
   // 引用统一 SSO 配置（client_id=marschat-inframon，回调 /infra/sso-callback）
   ssoConfig: SSO_CONFIG,
   labels: {
@@ -104,6 +110,28 @@ async function handleSsoLogin() {
 
 function handlePasswordReset() {
   ElMessage.success('密码重置成功，请使用新密码登录')
+}
+
+/**
+ * 邮箱验证码登录（统一登录三方式之一，Phase 7）。
+ *
+ * 走本应用后端 BFF：服务端向 auth-center 换票成功后签发**本应用自有 token**
+ * （infra-monitor-server 的 jwt.secret 与 auth-center 不同源，直连拿到的 token 本应用验不过）。
+ * 成功后硬跳转，让应用以干净状态重新引导。
+ */
+async function handleMailLogin({ email, code }: { email: string; code: string }) {
+  const data = (await request.post('/auth/mail-login', { email, code })) as unknown as {
+    token: string
+    username: string
+  }
+  if (!data || !data.token) {
+    throw new Error('邮箱验证码登录失败')
+  }
+  setTokenKind('legacy')
+  setToken(data.token)
+  userStore.setOidcSession(data.username || email)
+  window.location.replace(router.resolve(currentRedirect()).href)
+  return data
 }
 </script>
 

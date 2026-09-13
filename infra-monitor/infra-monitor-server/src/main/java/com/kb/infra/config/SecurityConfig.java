@@ -51,6 +51,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/login", "/actuator/**").permitAll()
+                // 统一登录三方式（Phase 7）：邮箱验证码发码/登录为匿名端点
+                // （登录前无 token，必须在过滤器链放行；真正校验由 auth-center 承担）
+                .requestMatchers("/auth/mail-login", "/auth/mail-login/send-code").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
