@@ -26,7 +26,7 @@
         >
           <!-- Phase 5 菜单定义数据化：v-for 渲染 menus.ts（useMenus 权限过滤 + 运行时函数字段）；
                与移动端抽屉共用同一份定义 -->
-          <template v-for="m in visibleMenus" :key="m.key">
+          <template v-for="m in finalMenus" :key="m.key">
             <el-sub-menu v-if="m.children?.length" :index="m.key">
               <template #title>
                 <el-icon><component :is="ICONS[m.icon]" /></el-icon>
@@ -84,7 +84,7 @@
             @select="drawerVisible = false"
           >
             <!-- Phase 5 菜单定义数据化：与桌面端共用同一份 menus.ts 定义 -->
-            <template v-for="m in visibleMenus" :key="m.key">
+            <template v-for="m in finalMenus" :key="m.key">
               <el-sub-menu v-if="m.children?.length" :index="m.key">
                 <template #title>
                   <el-icon><component :is="ICONS[m.icon]" /></el-icon>
@@ -260,6 +260,16 @@ const visibleMenus = useMenus(permOptions, createKbMenus({
   authCenterReason: () => authCenterReason.value,
   isAdmin: () => isAdmin.value,
 })).visibleMenus
+
+/**
+ * ⚠️ 兜底（语义与 infra MainLayout 对齐，ADR §20.10）：
+ * kb-web 尚未配置授权（configured=false → R10 全显）时，「用户管理」会暴露给非超管
+ * （改造前由 isAdmin 收敛）。真实闸门仍在 auth-center（/admin/users 需 ROLE_ADMIN），
+ * 此处仅做入口级体验收敛；待权限点接管（user 角色不绑 users 权限点）后可移除本过滤。
+ */
+const finalMenus = computed(() =>
+  visibleMenus.value.filter((m) => m.key !== 'users' || isAdmin.value),
+)
 
 const isMobile = ref(false)
 const drawerVisible = ref(false)
