@@ -50,6 +50,12 @@ marschat:
     secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
   # ⚠️ 刻意不配置 marschat.authz.client-id：AuthzAutoConfig 的 @RequirePermission 拦截器
   #    仅在 client-id 非空时注册。portal 现有端点无 @RequirePermission 注解，保持零行为变化。
+  #
+  # 统一鉴权（2026-09-14 补齐）：auth-core 的 OidcTokenVerifier 默认 jwks-uri 曾指向已下线的
+  # `kb-auth`（仅靠 compose 网络别名兜底），这里**显式配置真实服务名**，消除对历史别名的隐性依赖。
+  oidc:
+    issuer: ${MARSCHAT_OIDC_ISSUER:${AUTH_CENTER_ISSUER:https://auth.marschat.online}}
+    jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://auth-center:8085/oauth2/jwks}
   menu:
     report:
       # Phase 4 P-B：启动时全量上报 menu-registry.yml（幂等，失败仅 WARN 不阻断启动）

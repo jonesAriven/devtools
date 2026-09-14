@@ -36,7 +36,7 @@
         <minio.version>8.5.9</minio.version>
         <common-core.version>1.1.5</common-core.version>
         <!-- 认证公共库（独立仓库 com.marschat:auth-core）：kb-gateway 菜单上报依赖 -->
-        <auth-core.version>2.1.5</auth-core.version>
+        <auth-core.version>2.1.6</auth-core.version>
         <!-- M6: springdoc-openapi 统一版本管理 -->
         <springdoc.version>2.5.0</springdoc.version>
 
