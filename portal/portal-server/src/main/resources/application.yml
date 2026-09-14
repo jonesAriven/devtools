@@ -36,9 +36,19 @@ management:
     health:
       show-details: always
 
-# 统一认证中心（auth-center Phase 2）：SSO 登录 + 用户管理代理
+# 统一认证中心（auth-center Phase 2）：SSO 登录 + 管理接口代理
 auth-center:
+  # ⚠️ issuer = **浏览器可见地址**（用于拼 /oauth2/authorize 跳转），必须是公网域名。
   issuer: ${AUTH_CENTER_ISSUER:http://192.168.31.105:8085}
+  # ⚠️ internal-base = **服务端互调地址（内网）**，与 issuer 必须分离。
+  #
+  # 🔴 实测缺陷（2026-09-14，P0）：此前 admin-api 直接回落 issuer（公网域名），而公网
+  #    **未暴露 /auth/login**（`POST https://auth.marschat.online/auth/login` → 404）。
+  #    于是 portal-server 一旦重启（内存 refresh_token 清空）或管理员用密码登录（无 SSO 会话），
+  #    就会走服务身份兜底 → 打 404 → 整个 /admin/** 代理返回
+  #    `{"code":502,"message":"统一认证中心不可达"}` → **门户的用户管理与统一认证中心全量不可用**。
+  #    修法：服务端互调一律走 compose 内网（与 marschat.oidc.jwks-uri 的既有约定一致）。
+  internal-base: ${AUTH_CENTER_INTERNAL_BASE:http://auth-center:8085}
   client-id: ${AUTH_CENTER_CLIENT_ID:marschat-portal}
   client-secret: ${AUTH_CENTER_CLIENT_SECRET:portal-secret-2026}
 

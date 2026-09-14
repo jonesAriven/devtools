@@ -104,6 +104,11 @@ const APPS = [
   { clientId: 'cosmic-studio', label: 'COSMIC 度量表' },
 ]
 
+/** clientId → 友好名（授权矩阵表头 / 账号映射的应用名**共用同一份**，避免两处漂移） */
+const APP_LABELS: Record<string, string> = Object.fromEntries(
+  APPS.map((a) => [a.clientId, a.label])
+)
+
 // ---------------- 页签 ----------------
 const tab = ref('users')
 
@@ -145,6 +150,7 @@ const authzConfig: AuthorizationMatrixConfig = {
   title: '跨应用授权',
   subtitle:
     '全平台统一授权矩阵：纵向是用户，横向是各应用，单元格是该用户在该系统拥有的角色。点击单元格即可分配/回收。',
+  clientLabels: APP_LABELS,
 }
 
 // ---------------- ③ 账号映射（全局） ----------------
@@ -162,14 +168,7 @@ const mappingConfig: AccountMappingConfig = {
     getToken: () => userStore.token,
     onUnauthorized: reauth,
   }),
-  clientLabels: {
-    'marschat-portal': '门户 Portal',
-    'marschat-kbops': '运维后台 kb-ops',
-    'marschat-kbweb': '知识库 kb-web',
-    'marschat-inframon': '基础设施监控',
-    'marschat-activecode': '激活码系统',
-    'cosmic-studio': 'COSMIC 度量表',
-  },
+  clientLabels: APP_LABELS,
   pageSize: 10,
 }
 

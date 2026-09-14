@@ -33,14 +33,30 @@ public class AuthCenterService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** 浏览器可见地址（拼 /oauth2/authorize 跳转用）——必须是公网域名 */
     @Value("${auth-center.issuer:http://192.168.31.105:8085}")
     private String issuer;
+    /**
+     * 服务端互调基址（内网 compose 名）。
+     *
+     * <p>🔴 为什么必须与 {@link #issuer} 分离（2026-09-14 实测 P0 缺陷）：
+     * 公网域名**未暴露 `/auth/login`**（实测 `POST https://auth.marschat.online/auth/login` → 404），
+     * 而服务身份兜底（{@link #getServiceToken()}）恰恰要打它。此前 admin-api 直接回落 issuer，
+     * 于是 portal-server 重启（内存 refresh_token 清空）或密码登录的管理员（无 SSO 会话）一操作，
+     * 就会 404 → 整个 `/admin/**` 代理返回 502「统一认证中心不可达」，
+     * **门户的用户管理与统一认证中心全部不可用**。
+     *
+     * <p>与平台既有约定一致：`marschat.oidc.jwks-uri` 早已显式指向 `http://auth-center:8085`。
+     */
+    @Value("${auth-center.internal-base:http://auth-center:8085}")
+    private String internalBaseCfg;
     @Value("${auth-center.client-id:marschat-portal}")
     private String clientId;
     @Value("${auth-center.client-secret:portal-secret-2026}")
     private String clientSecret;
-    @Value("${auth-center.admin-api:${auth-center.issuer:http://192.168.31.105:8085}}")
-    private String adminApi;
+    /** 管理 API 基址覆盖项（一般留空，走内网基址） */
+    @Value("${auth-center.admin-api:}")
+    private String adminApiOverride;
     @Value("${auth-center.admin-username:admin}")
     private String adminUsername;
     @Value("${auth-center.admin-password:admin123}")
@@ -84,7 +100,7 @@ public class AuthCenterService {
 
     private JsonNode tokenRequest(String form) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(issuer + "/oauth2/token"))
+                .uri(URI.create(internalBase() + "/oauth2/token"))
                 .header("Authorization", basicAuth(clientId, clientSecret))
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(form))
@@ -232,7 +248,7 @@ public class AuthCenterService {
 
     private ProxyResult doAdminCall(String accessToken, String method, String pathWithQuery, String jsonBody) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(adminApi + pathWithQuery))
+                .uri(URI.create(adminBase() + pathWithQuery))
                 .header("Authorization", "Bearer " + accessToken)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(10));
@@ -252,7 +268,7 @@ public class AuthCenterService {
             return serviceToken;
         }
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(issuer + "/auth/login"))
+                .uri(URI.create(internalBase() + "/auth/login"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(
                         objectMapper.writeValueAsString(Map.of("username", adminUsername, "password", adminPassword))))
@@ -271,6 +287,23 @@ public class AuthCenterService {
     }
 
     public record ProxyResult(int status, String body) {}
+
+    /** 去掉尾部斜杠，避免拼出 `//admin` 这类异常路径 */
+    private static String noTrailingSlash(String s) {
+        return s == null ? "" : s.replaceAll("/+$", "");
+    }
+
+    /** 服务端互调基址（内网）；未配置时回落 issuer（本地开发无 compose 网络时仍可用） */
+    private String internalBase() {
+        String cfg = noTrailingSlash(internalBaseCfg);
+        return cfg.isEmpty() ? noTrailingSlash(issuer) : cfg;
+    }
+
+    /** 管理 API 基址：显式覆盖优先，否则内网基址 */
+    private String adminBase() {
+        String override = noTrailingSlash(adminApiOverride);
+        return override.isEmpty() ? internalBase() : override;
+    }
 
     private String basicAuth(String user, String pass) {
         String value = user + ":" + pass;
