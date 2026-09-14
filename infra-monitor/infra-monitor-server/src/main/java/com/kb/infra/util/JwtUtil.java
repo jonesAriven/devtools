@@ -20,8 +20,28 @@ import java.util.Date;
  * 避免"同一验签逻辑四处各抄一份、改一处忘三处"。
  * 该 bean 由 {@code config/OidcConfig} 手动声明（本应用显式排除 auth-core 的自动装配）。
  */
+/**
+ * 本应用 JWT 工具（HS256 自签 + auth-center OIDC RS256 双验签）。
+ *
+ * <p>⚠️ 2026-09-14（统一鉴权收敛）：RS256 验签器改为直接复用公共库
+ * {@link com.marschat.auth.oidc.OidcTokenVerifier}（auth-core），本应用原先的
+ * {@code com.kb.infra.util.OidcTokenVerifier} 副本已删除 —— 与 kb-gateway / kb-ops 同源实现，
+ * 避免"同一验签逻辑四处各抄一份、改一处忘三处"。
+ * 该 bean 由 {@code config/OidcConfig} 手动声明（本应用显式排除 auth-core 的自动装配）。
+ *
+ * <p><b>🔴 2026-09-15 安全修复（P0 密钥分离）</b>：{@code jwt.secret} 此前在 application.yml 里
+ * 留有可用默认值，且与 portal 共用同一把密钥（跨应用 token 互认）。现改为<b>无默认值、只从环境变量
+ * {@code JWT_SECRET} 注入</b>，缺失/过短 → 启动即抛 {@link IllegalStateException}（fail-fast）。
+ *
+ * <p>同时新增 {@link #parseLocalUsername(String)}（只验本应用 HS256）与
+ * {@link #parseOidcUsername(String)}（只验中心 RS256），供 {@code InfraPermissionChecker}
+ * 判定「请求者到底是谁」—— 两种 token 的处置策略不同（见其类注释）。
+ */
 @Component
 public class JwtUtil {
+
+    /** HS256 密钥最小字节数（256 bit）。 */
+    private static final int MIN_SECRET_BYTES = 32;
 
     private final SecretKey key;
     private final long expiration;
@@ -30,9 +50,23 @@ public class JwtUtil {
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration:86400000}") long expiration,
                    OidcTokenVerifier oidcTokenVerifier) {
+        validateSecret(secret);
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiration = expiration;
         this.oidcTokenVerifier = oidcTokenVerifier;
+    }
+
+    /** 密钥缺失/过短 → fail-fast，绝不带病上线（jwt.secret 已无默认值）。 */
+    private void validateSecret(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "jwt.secret 未配置：请通过环境变量 JWT_SECRET 注入（>=32 字节随机值），"
+                            + "infra-monitor 与 portal 必须使用各自独立的密钥");
+        }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "jwt.secret 长度不足 " + MIN_SECRET_BYTES + " 字节，HS256 要求密钥 >= 256 bit");
+        }
     }
 
     public String generate(String username) {
@@ -67,6 +101,47 @@ public class JwtUtil {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * <b>只</b>按本应用 HS256 密钥解析（/auth/login 与邮箱码登录签发的自有会话 token）。
+     *
+     * <p>与 {@link #parseUsername(String)} 的差别：不做 OIDC 回退。鉴权时要据此区分
+     * 「本应用本地会话」与「中心 OIDC 身份」，两者权限判定路径不同。
+     *
+     * @return 本应用自签 token 的用户名；非本应用签发返回 {@code null}
+     */
+    public String parseLocalUsername(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        Claims claims = tryParseHs256(token);
+        if (claims == null) {
+            return null;
+        }
+        String username = claims.get("username", String.class);
+        return username != null ? username : claims.getSubject();
+    }
+
+    /**
+     * <b>只</b>按 auth-center OIDC RS256 验签解析（统一登录用户持有的中心 access token）。
+     *
+     * @return 中心 token 的用户名；非 OIDC token 或验签失败返回 {@code null}
+     */
+    public String parseOidcUsername(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        try {
+            Claims claims = oidcTokenVerifier.verify(token);
+            if (claims == null) {
+                return null;
+            }
+            String username = claims.get("username", String.class);
+            return username != null ? username : claims.getSubject();
         } catch (Exception e) {
             return null;
         }

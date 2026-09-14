@@ -52,12 +52,27 @@ auth-center:
   client-id: ${AUTH_CENTER_CLIENT_ID:marschat-portal}
   client-secret: ${AUTH_CENTER_CLIENT_SECRET:portal-secret-2026}
 
+# ---------------------------------------------------------------------------
+# portal 自有会话 token（HS256）—— 🔴 2026-09-15 安全修复（P0 密钥分离）
+#   · secret **只从环境变量 PORTAL_JWT_SECRET 注入**，此处不留任何可用默认值；
+#     缺失/过短/命中已泄露的共享密钥 → JwtUtil 启动即抛异常（fail-fast）。
+#   · 与 infra-monitor 的 JWT_SECRET 必须**各自独立、绝不共享**（此前两者同为
+#     PortalJwtSecretKey2026!MustBe32Bytes!!，导致跨应用 token 互认）。
+#   · issuer 写入 token 的 iss 声明，JwtInterceptor 据此拒绝非本应用签发的 token。
+# ---------------------------------------------------------------------------
+portal:
+  jwt:
+    secret: ${PORTAL_JWT_SECRET:}
+    issuer: ${PORTAL_JWT_ISSUER:marschat-portal}
+    expire-hours: ${PORTAL_JWT_EXPIRE_HOURS:24}
+
 # 认证公共库 auth-core（com.marschat:auth-core）配置
 marschat:
   auth:
     # HS256 兜底验签密钥（>= 32 字节）。portal 自身不签发/校验 HS256 token，
     # 此处仅满足 TokenProvider 装配所需（auth-core 传递引入 jjwt，AuthJwtAutoConfig 会装配）。
-    secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
+    # 🔴 不再回落到与 infra-monitor 共享的 JWT_SECRET；改为复用 portal 自己的密钥。
+    secret: ${MARSCHAT_AUTH_SECRET:${PORTAL_JWT_SECRET:}}
   # RBAC 接口级鉴权（Phase 9 / G3）：AuthzAutoConfig 的 @RequirePermission 拦截器
   # 仅在 client-id 非空时注册。portal 现在要把「中心权限点」变成管理接口的真实闸门。
   # portal_token 是 HS256（auth-center 不认），故配 PortalPermissionChecker，用**该用户本人的

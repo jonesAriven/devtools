@@ -1,5 +1,6 @@
 package com.kb.infra.controller;
 
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.exception.NotFoundException;
 import com.marschat.common.page.PageResult;
 import com.marschat.common.result.Result;
@@ -20,6 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 凭据管理。
+ *
+ * <p><b>🔴 2026-09-15 安全修复（P1）：写操作补接口级鉴权。</b>
+ * 凭据是本系统最敏感的资产，此前新增/修改/删除裸奔（只有认证），现按权限点闸门：
+ * {@code marschat-inframon:api:credentials:create/update/delete}。
+ */
 @RestController
 @RequestMapping("/credentials")
 @RequiredArgsConstructor
@@ -69,6 +77,7 @@ public class CredentialController {
         return Result.ok(decryptPassword(item));
     }
 
+    @RequirePermission("api:credentials:create")
     @PostMapping
     public Result<InfraItem> create(@Valid @RequestBody InfraItemRequest request) {
         request.setType(TYPE);
@@ -99,6 +108,7 @@ public class CredentialController {
         return Result.ok(maskPassword(saved));
     }
 
+    @RequirePermission("api:credentials:update")
     @PutMapping("/{id}")
     public Result<InfraItem> update(@PathVariable String id, @Valid @RequestBody InfraItemRequest request) {
         InfraItem item = repository.findByIdAndDeleted(id, 0)
@@ -138,6 +148,7 @@ public class CredentialController {
         return Result.ok(maskPassword(saved));
     }
 
+    @RequirePermission("api:credentials:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable String id) {
         InfraItem item = repository.findByIdAndDeleted(id, 0)

@@ -11,18 +11,20 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
-  # 仅引入 auth-core 的菜单上报自动装配（MenuReportAutoConfig）；其余 auth-core 自动装配显式排除，
-  # 保持本应用既有 JWT/Security 行为不变：
+  # 仅引入 auth-core 的菜单上报自动装配（MenuReportAutoConfig）；非菜单且与本应用自有
+  # JWT/Security 实现冲突的自动装配显式排除：
   #   - AuthJwtAutoConfig：会装配 TokenProvider（构造要求 marschat.auth.secret>=32B），本应用自有 JWT 实现，无需
   #   - AuthWebAutoConfig：会装配 @MarsUser 参数解析器，本应用无此用法
-  #   - AuthzAutoConfig：@RequirePermission 拦截器，本应用未用该注解
   #   - AuthFeignAutoConfig：本应用无 OpenFeign
+  #
+  # 🔴 2026-09-15（P1 接口级鉴权）：**AuthzAutoConfig 不再排除**。此前全仓 0 个 @RequirePermission、
+  #    库里 marschat-inframon 的 api 权限点为 0 条，写接口（主机/配置/凭据的增删改、导入）裸奔；
+  #    现接入 @RequirePermission，fail-open 显式 false（见下方 marschat.authz）。
   autoconfigure:
     exclude:
       - com.marschat.auth.AuthJwtAutoConfig
       - com.marschat.auth.AuthWebAutoConfig
       - com.marschat.auth.AuthFeignAutoConfig
-      - com.marschat.auth.authz.AuthzAutoConfig
   data:
     mongodb:
       uri: ${MONGO_URI:mongodb://192.168.31.182:27017/infra_monitor}
@@ -54,18 +56,40 @@ marschat:
   oidc:
     issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
     jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://127.0.0.1:8085/oauth2/jwks}
+  # 🔴 2026-09-15（P1 接口级鉴权）：@RequirePermission 拦截器（auth-core AuthzAutoConfig）。
+  # 权限点由 menu-registry.yml 的 apis 段上报（marschat-inframon:api:<key>），
+  # 判定实现为 InfraPermissionChecker（config/InfraPermissionChecker.java），它要区分
+  # 「本应用自签 HS256 会话」与「中心 OIDC RS256 身份」，故不能用 auth-core 默认 checker。
+  authz:
+    enabled: true
+    client-id: marschat-inframon
+    # 🔴 必须显式 false（默认 true）：中心不可达/拉取失败时默认会**静默放行** = 等于没做鉴权。
+    #    例外：configured=false（本应用尚未配置任何权限点）仍放行，属 R10「未配置=行为不变」。
+    fail-open: false
+    # 本应用 host 网络 → 服务端互调走 127.0.0.1:8085（/auth/permissions 不出公网）
+    issuer: ${MARSCHAT_AUTHZ_ISSUER:http://127.0.0.1:8085}
+    cache-ttl-ms: 60000
 
 crypto:
   aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}
 
 jwt:
-  secret: ${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}
+  # 🔴 2026-09-15（P0 密钥分离）：**无默认值**，只从环境变量 JWT_SECRET 注入；
+  #    与 portal 的 PORTAL_JWT_SECRET 各自独立、绝不共享（此前同为
+  #    PortalJwtSecretKey2026!MustBe32Bytes!!，导致跨应用 token 互认）。
+  #    缺失 → JwtUtil 启动即抛 IllegalStateException（fail-fast）。
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 infra:
   admin:
     username: ${INFRA_ADMIN_USER:admin}
-    password: ${INFRA_ADMIN_PASS:admin123}
+    # 🔴 2026-09-15：删除明文弱口令默认值 admin123，改为必须由环境变量 INFRA_ADMIN_PASS 注入。
+    password: ${INFRA_ADMIN_PASS}
+  # 应急管理员本地会话放行开关（仅对 infra.admin.username 生效，见 InfraPermissionChecker）。
+  # true = 配置式应急管理员走本地账密登录时不受中心权限点约束（否则中心不可达即锁死应急通道）。
+  authz:
+    local-admin-bypass: ${INFRA_AUTHZ_LOCAL_ADMIN_BYPASS:true}
 
 logging:
   level:

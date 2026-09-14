@@ -41,7 +41,18 @@ menus:
 #   （PermissionService.ensureDefaultGrants）只把 type='menu' 的点发给平台 user 角色，
 #   api 点天然不会被发给普通用户 —— 用它做闸门才是「真闸门」。详见 menu 段注释第 14-18 行。
 #
-# 上报为全量覆盖（retire 判定含 menu+api 两类）：本段只增 api:admin，不会误下线上面的 menus。
+# 上报为全量覆盖（retire 判定含 menu+api 两类）：本段只增 api 点，不会误下线上面的 menus。
+#
+# 🔴 2026-09-15 安全修复（P1 敏感接口补鉴权）：
+#   `system:credentials` —— 读取系统凭据明文（GET /api/sys/system/{id}/credentials）。
+#     此前该端点**只有认证没有鉴权**：任何持有有效 portal_token 的普通用户都能读到
+#     所有接入系统的账号密码明文（PortalSystemServiceImpl#getCredentials 会 AES 解密）。
+#   `system:write` —— 系统条目增删改（POST/PUT/DELETE /api/sys/system）。
+#   二者均为 api 类型权限点，不会被 ensureDefaultGrants 发给平台 user 角色 → 真闸门。
 apis:
   - key: admin
     title: 统一认证中心管理台
+  - key: system:write
+    title: 系统条目增删改
+  - key: system:credentials
+    title: 读取系统凭据明文

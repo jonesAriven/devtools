@@ -33,3 +33,27 @@ menus:
     path: /users
     order: 6
     min-role: admin
+
+# 🔴 2026-09-15（P1 接口级鉴权）：api 权限点，随本 yml 全量上报为 type=api
+# （sys_permission.code = 下面的 key，下发全码 = marschat-inframon:api:<key>），
+# 供 @RequirePermission 消费。此前本应用 api 权限点为 **0 条**，写接口（主机/配置/服务/凭据的
+# 增删改、数据导入）只有认证没有鉴权。
+#
+# 命名与 kb-ops 同构（hosts:create / credentials:update ...）。infra 的主机/配置/服务共用
+# 通用 /items?type=... 端点，故统一收敛为 items:* 三个点（type 由请求参数区分）。
+# 判定实现见 config/InfraPermissionChecker.java，fail-open 显式 false。
+apis:
+  - key: items:create
+    title: 新增主机/配置/服务条目
+  - key: items:update
+    title: 编辑主机/配置/服务条目
+  - key: items:delete
+    title: 删除主机/配置/服务条目
+  - key: credentials:create
+    title: 新增凭据
+  - key: credentials:update
+    title: 编辑凭据
+  - key: credentials:delete
+    title: 删除凭据
+  - key: io:import
+    title: 导入数据（覆盖式）

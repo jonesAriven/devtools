@@ -35,9 +35,9 @@ import java.util.Map;
  * </ul>
  *
  * <p><b>为什么邮箱码必须走本服务端代理：</b>infra-monitor-server 的 {@code jwt.secret}
- * 与 auth-center **不同源**（实测 infra 为 {@code PortalJwtSecretKey2026!MustBe32Bytes!!}，
- * auth-center 为另一值），auth-center 直发的 legacy token 本服务验不过；且本应用有自有
- * JwtAuthFilter/白名单体系。故采用与 portal 同构的 BFF 模式：服务端换票 → 签发本应用 token。
+ * 与 auth-center **不同源**（2026-09-15 起两者更是各自独立的随机密钥：infra 用 {@code JWT_SECRET}，
+ * portal 用 {@code PORTAL_JWT_SECRET}，绝不共享），auth-center 直发的 legacy token 本服务验不过；
+ * 且本应用有自有 JwtAuthFilter/白名单体系。故采用与 portal 同构的 BFF 模式：服务端换票 → 签发本应用 token。
  */
 @Slf4j
 @RestController
@@ -57,10 +57,16 @@ public class AuthController {
             .build();
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /**
+     * @param adminPassword 应急管理员口令，来自 {@code infra.admin.password}
+     *                      （环境变量 {@code INFRA_ADMIN_PASS}）。
+     *                      <b>🔴 2026-09-15 安全修复：已删除代码内 {@code admin123} 默认口令</b>，
+     *                      缺失即启动失败（明文弱口令不得入库/入码）。
+     */
     public AuthController(JwtUtil jwtUtil,
                           PasswordEncoder passwordEncoder,
-                          @Value("${infra.admin.username:admin}") String adminUsername,
-                          @Value("${infra.admin.password:admin123}") String adminPassword) {
+                          @Value("${infra.admin.username}") String adminUsername,
+                          @Value("${infra.admin.password}") String adminPassword) {
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.adminUsername = adminUsername;

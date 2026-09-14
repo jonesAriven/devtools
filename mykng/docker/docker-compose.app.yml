@@ -266,6 +266,12 @@ services:
       # 值须与 auth-center 侧 sys_app_client.client_secret 一致；走 ${PORTAL_MENU_REPORT_SECRET} 覆盖，
       # 缺省回退到与库内同值的内联默认。上报失败仅 WARN，不阻断启动。
       - MARSCHAT_MENU_REPORT_SECRET=${PORTAL_MENU_REPORT_SECRET:-880546959a8c2b77bccfd839ed81b10b810f05b346a6a7a9}
+      # 🔴 2026-09-15（P0 密钥分离）：portal 自有 HS256 会话密钥，**只从环境变量注入**，
+      #    与 infra-monitor 的 JWT_SECRET 是两把各自独立的随机值，绝不共享（此前共用一把，
+      #    导致 infra 签发的 token 能被 portal 验过 = 跨应用横向越权）。
+      #    Java 侧已删除代码内默认密钥（portal.jwt.secret 无默认值），缺失/过短即启动失败。
+      #    运维可用宿主环境变量 PORTAL_JWT_SECRET 覆盖。
+      - PORTAL_JWT_SECRET=${PORTAL_JWT_SECRET:-k2SdCe2yGrmVKr2W5dZOydl77jt4Z0NczgJimulUqq3dh0O4}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

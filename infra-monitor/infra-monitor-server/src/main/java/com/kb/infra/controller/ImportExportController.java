@@ -1,5 +1,6 @@
 package com.kb.infra.controller;
 
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.result.Result;
 import com.kb.infra.service.ImportExportService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,8 @@ public class ImportExportController {
     private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
     private static final ObjectWriter YAML_WRITER = YAML_MAPPER.writerWithDefaultPrettyPrinter();
 
+    // 🔴 2026-09-15（P1）：导入是覆盖式写操作，必须走权限点闸门
+    @RequirePermission("api:io:import")
     @PostMapping("/import")
     public Result<Map<String, Object>> importData(@RequestParam("file") MultipartFile file) {
         return Result.ok(importExportService.importData(file));

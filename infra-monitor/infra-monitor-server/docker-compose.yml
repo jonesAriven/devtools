@@ -21,10 +21,19 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATA_MONGODB_URI=mongodb://kb:kb123456@127.0.0.1:27017/infra_monitor?authSource=admin
-      - JWT_SECRET=PortalJwtSecretKey2026!MustBe32Bytes!!
+      # 🔴 2026-09-15（P0 密钥分离）：infra-monitor **独立**密钥，与 portal 的 PORTAL_JWT_SECRET
+      #    绝不共享、绝不相同的两把随机值（此前同为 PortalJwtSecretKey2026!MustBe32Bytes!!，
+      #    导致 infra 签发的 token 能被 portal 验过 = 跨应用横向越权）。
+      #    运维可用宿主环境变量 INFRA_JWT_SECRET 覆盖；缺省回退到下面这把独立生成的值。
+      #    Java 侧已无默认值（jwt.secret: ${JWT_SECRET}），缺失即启动失败。
+      - JWT_SECRET=${INFRA_JWT_SECRET:-7yKUg4qvALNqXg4S9FHbceCJfNthl2NmkPIY4feNSvqHRvj5}
       - CRYPTO_AES_KEY=YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=
       - INFRA_ADMIN_USER=admin
-      - INFRA_ADMIN_PASS=admin123
+      # 🔴 2026-09-15：删除明文弱口令默认值 admin123，改为运维注入
+      #    （宿主环境变量 INFRA_ADMIN_PASS，缺省回退到下面独立生成的强口令）。
+      #    AuthController 的 @Value 已无默认值，缺失即启动失败。
+      #    应急管理员口令：TbSKardPROJrX01GbIP1（轮换后请同步给运维）
+      - INFRA_ADMIN_PASS=${INFRA_ADMIN_PASS:-TbSKardPROJrX01GbIP1}
       # Phase 4 P-B: 菜单上报凭据（client=marschat-inframon）。
       # 值须与 auth-center 侧 sys_app_client.client_secret 一致（clients.yml 的 ${INFRAMON_MENU_REPORT_SECRET:默认}）。
       # 走 ${INFRAMON_MENU_REPORT_SECRET} 覆盖，缺省回退到与 clients.yml 默认同值的内联默认。
