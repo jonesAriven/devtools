@@ -1,9 +1,20 @@
 import { createRequest, createLocalStorageTokenStore } from '@marschat/frontend-common'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { API_BASE_URL, AUTH_BASE_URL } from '@/config'
+import { API_BASE_URL, AUTH_BASE_URL, CONTEXT_PATH } from '@/config'
 import { renewByReauthorize } from '@/utils/sso'
 import { getToken, clearTokens, isOidcToken } from '@/utils/token'
+
+/**
+ * renew 回跳目标 —— 必须是 **router 内部路径**（与 LoginView currentRedirect 同口径）。
+ * location.pathname 含部署前缀（/ops），原样传会在 sso-callback 的
+ * router.replace(base=/ops) 里再拼一次 → /ops/ops/... 落 404（2026-09-14 实测）。
+ */
+function currentSpaPath(): string {
+  const p = window.location.pathname
+  const stripped = p.startsWith(CONTEXT_PATH) ? p.slice(CONTEXT_PATH.length) : p
+  return (stripped || '/') + window.location.search
+}
 
 /**
  * 统一 axios 实例工厂（@marschat/frontend-common）。
@@ -29,7 +40,9 @@ const { request, authRequest } = createRequest({
       //    refresh_token，OIDC 用户必然没有 refresh_token —— 若先清本地再跳登录，
       //    静默重授权永远走不到。renewByReauthorize 会导航离开，会话在则无感续期。
       if (isOidcToken()) {
-        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
+        // 回跳必须传 router 内部路径：pathname 含部署前缀（/ops），原样传会在
+        // sso-callback 的 router.replace(base) 再拼一次 → /ops/ops/... 落 404（2026-09-14 实测）
+        await renewByReauthorize(currentSpaPath())
         return // 已导航离开；若回跳到登录页则交由路由守卫处理
       }
       // ── 分流 2：legacy（本地登录态，无 refresh 端点）→ 清本地 + 跳登录 ──

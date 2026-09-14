@@ -4,8 +4,20 @@ import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOi
 import { renewByReauthorize } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { CONTEXT_PATH } from '@/config'
 
 const ctx = import.meta.env.VITE_CONTEXT_PATH || '/kb'
+
+/**
+ * renew 回跳目标 —— 必须是 **router 内部路径**（与 LoginView currentRedirect 同口径）。
+ * location.pathname 含部署前缀（/kb），原样传会在 sso-callback 的
+ * router.replace(base=/kb) 里再拼一次 → /kb/kb/... 落 404（2026-09-14 实测）。
+ */
+function currentSpaPath(): string {
+  const p = window.location.pathname
+  const stripped = p.startsWith(CONTEXT_PATH) ? p.slice(CONTEXT_PATH.length) : p
+  return (stripped || '/') + window.location.search
+}
 
 const WHITE_LIST_PATHS = ['/auth/login', '/auth/refresh', '/share/verify/', '/share/detail/']
 
@@ -97,7 +109,9 @@ request.interceptors.response.use(
       //   renewByReauthorize 会导航离开，故直接返回。
       if (isOidcToken()) {
         originalRequest._retry = true
-        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
+        // 回跳必须传 router 内部路径：pathname 含部署前缀（/kb），原样传会在
+        // sso-callback 的 router.replace(base) 再拼一次 → /kb/kb/... 落 404（2026-09-14 实测）
+        await renewByReauthorize(currentSpaPath())
         return Promise.reject(error)
       }
 

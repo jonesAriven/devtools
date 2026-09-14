@@ -3,9 +3,21 @@ import { getToken, clearTokens, isOidcToken } from '@/utils/token'
 import { renewByReauthorize } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { API_BASE_URL } from '@/config'
+import { API_BASE_URL, CONTEXT_PATH } from '@/config'
 
 const WHITE_LIST_PATHS = ['/auth/login']
+
+/**
+ * renew 回跳目标 —— 必须是 **router 内部路径**（与 LoginView currentRedirect 同口径）。
+ * location.pathname 含部署前缀（/infra），原样传会在 sso-callback 的
+ * router.replace(base=/infra) 里再拼一次 → /infra/infra/dashboard 落 404
+ * （2026-09-14 换废票实验实测）。
+ */
+function currentSpaPath(): string {
+  const p = window.location.pathname
+  const stripped = p.startsWith(CONTEXT_PATH) ? p.slice(CONTEXT_PATH.length) : p
+  return (stripped || '/') + window.location.search
+}
 
 function isWhiteList(url: string): boolean {
   return WHITE_LIST_PATHS.some(p => url.includes(p))
@@ -75,7 +87,7 @@ request.interceptors.response.use(
       //    直接弹回登录页，静默重授权永远走不到。renewByReauthorize 会导航离开，故直接返回。
       if (isOidcToken()) {
         originalRequest._retry = true
-        await renewByReauthorize(`${window.location.pathname}${window.location.search}`)
+        await renewByReauthorize(currentSpaPath())
         return Promise.reject(error)
       }
 
