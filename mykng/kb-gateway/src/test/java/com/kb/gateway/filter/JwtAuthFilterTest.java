@@ -54,7 +54,7 @@ class JwtAuthFilterTest {
     private GatewayFilterChain chain;
 
     @Mock
-    private com.kb.gateway.filter.OidcTokenVerifier oidcTokenVerifier;
+    private com.marschat.auth.oidc.OidcTokenVerifier oidcTokenVerifier;
 
     private KbGatewayProperties properties;
     private JwtAuthFilter jwtAuthFilter;
