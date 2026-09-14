@@ -25,12 +25,15 @@
  * （portal-server 已把 `/admin/**` 改为**前缀透传**，中心的 keyword/page/size/client
  * 参数都能带到位）。开发态走 vite 代理 `/api`。
  */
-import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
+import { UserManagementPanel, createUserAdminClient, createUserMenuOverrideClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { bffAuthorizeUrl } from '@/utils/sso'
 
 const userStore = useUserStore()
+
+/** BFF 根（与 AdminConsoleView 同口径；开发态走 vite 代理 `/api`） */
+const BFF = import.meta.env.DEV ? '/api' : '/portal/api'
 
 const client = createUserAdminClient({
   // 与 src/utils/permissions.ts 的 BFF_API_BASE 保持同一口径
@@ -57,12 +60,23 @@ const config: UserManagementConfig = {
   currentUsername: userStore.username || null,
   // 应用角色绑定（操作列「本系统角色」按钮）；组件据此拼 `${baseUrl}/admin/...`
   appRoles: {
-    baseUrl: import.meta.env.DEV ? '/api' : '/portal/api',
+    baseUrl: BFF,
     clientId: 'marschat-portal',
     getToken: () => userStore.token,
     onUnauthorized: () => {
       window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/users')
     },
+  },
+  // 用户级菜单减法（Phase 9 / G1）：app 作用域下缺省用 scope.clientId，
+  // 行操作列出现「菜单权限」按钮（角色上限内做减法，永不越权新增）。
+  menuOverrides: {
+    client: createUserMenuOverrideClient({
+      issuer: BFF,
+      getToken: () => userStore.token,
+      onUnauthorized: () => {
+        window.location.href = bffAuthorizeUrl(window.location.origin + '/portal/users')
+      },
+    }),
   },
 }
 </script>

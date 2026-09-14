@@ -74,6 +74,7 @@ import {
   createAccountMappingClient,
   createAccountMappingUserSearch,
   createAuthorizationMatrixClient,
+  createUserMenuOverrideClient,
 } from '@marschat/auth-components'
 import type {
   UserManagementConfig,
@@ -137,6 +138,17 @@ const userConfig: UserManagementConfig = {
     clientId: 'marschat-portal',
     getToken: () => userStore.token,
     onUnauthorized: reauth,
+  },
+  // 用户级菜单减法（Phase 9 / G1）：平台作用域下显式指定门户应用 clientId，
+  // 行操作列据此出现「菜单权限」按钮（只减不加，永不越权新增）。
+  menuOverrides: {
+    client: createUserMenuOverrideClient({
+      issuer: BFF,
+      getToken: () => userStore.token,
+      onUnauthorized: reauth,
+    }),
+    clientId: 'marschat-portal',
+    appName: '门户 Portal',
   },
 }
 
