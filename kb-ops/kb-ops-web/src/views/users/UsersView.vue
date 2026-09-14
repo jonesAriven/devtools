@@ -54,8 +54,12 @@ const currentUserId = (claims?.uid ?? claims?.sub ?? null) as number | string | 
 
 const config: UserManagementConfig = {
   client,
-  title: '用户管理',
-  subtitle: '统一账号池（auth-center）—— 全平台用户在此新增、编辑、停用与重置密码',
+  // Phase 8 双作用域：本页是**应用作用域**（本系统用户），只显示与运维后台有关的用户。
+  // 平台作用域（全平台统一身份 / 跨应用授权 / 账号映射）已迁到门户的「统一认证中心」。
+  scope: { mode: 'app', clientId: SSO_CONFIG.clientId, appName: '运维后台 kb-ops' },
+  title: '本系统用户',
+  subtitle:
+    '仅显示与运维后台有关的用户（在本系统有角色、或有账号映射、或为管理员）。全局身份与全局角色请在门户的「统一认证中心」维护。',
   roles: [
     { value: 'superadmin', label: '超级管理员' },
     { value: 'admin', label: '管理员' },
@@ -110,6 +114,8 @@ const mappingConfig: AccountMappingConfig = {
     'cosmic-studio': 'COSMIC 度量表',
   },
   pageSize: 10,
+  // 应用作用域：默认只看本应用的映射（切「全部应用」仍可看跨系统全貌，但那是中心职责）
+  defaultClient: SSO_CONFIG.clientId,
 }
 </script>
 

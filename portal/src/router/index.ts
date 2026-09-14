@@ -38,10 +38,23 @@ const routes: RouteRecordRaw[] = [
         meta: { perm: permCode('menu', 'manage') }
       },
       {
+        // 「门户用户」= 应用作用域：只看与本门户有关的用户（Phase 8）
         path: 'users',
         name: 'Users',
         component: () => import('@/views/UsersView.vue'),
         meta: { requiresAdmin: true, perm: permCode('menu', 'users') }
+      },
+      {
+        // 「统一认证中心」= 平台作用域：全平台统一身份 / 跨应用授权 / 账号映射 / 角色菜单授权。
+        //
+        // ⚠️ 刻意**不声明 `meta.perm`**：它是平台管理入口，不应作为「可授给普通用户的应用菜单」
+        // 出现在中心授权树里。默认授权种子会把新注册的 menu 权限点绑到平台 `user` 角色，
+        // 一旦注册就等于"发给所有普通用户"。故这里只用 `requiresAdmin` 做本地强闸
+        // （本文件 beforeEach 先于 createAuthGuard 执行，普通用户必被挡回工作台）。
+        path: 'admin',
+        name: 'AdminConsole',
+        component: () => import('@/views/AdminConsoleView.vue'),
+        meta: { requiresAdmin: true }
       }
     ]
   }

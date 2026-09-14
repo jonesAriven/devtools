@@ -6,15 +6,24 @@
 
 <script setup lang="ts">
 /**
- * 用户管理（Phase 6 · 统一用户管理）
+ * 门户用户（Phase 8 · **应用作用域**）
  *
- * 与 kb-web 等应用的差异：portal 是 **OIDC 机密客户端（BFF）**，
- * 用户管理接口由 portal-server 代理到 auth-center（生产 `/portal/api/admin/users`）。
- * 因此这里不复用「直连 auth-center」的数据源，而是指向自家 BFF 路径 ——
- * 同一份面板组件、两种数据源接入方式，UI 零改动。
+ * ## 与「统一认证中心 → 统一用户」的区别（本轮核心设计）
+ * | | 本页（应用） | 统一认证中心（平台） |
+ * |---|---|---|
+ * | 作用域 | `client=marschat-portal` | platform（全量） |
+ * | 列表 | 只含与本门户有关的用户 | 全平台统一身份 |
+ * | 全局角色 | 只读展示，**不可改** | 可改 |
+ * | 删除 | **无**（改为「移出本系统」= 解绑本应用角色） | 可软删除统一身份 |
  *
- * ⚠️ 薄代理模型的好处：portal 不需要让浏览器直连认证中心，
- * 管理动作全部经过门户服务端，天然带服务端鉴权与审计。
+ * 由 `scope.mode='app'` 驱动：组件据此给 `GET /admin/users` 追加 `client` 参数
+ * （服务端强过滤，不是前端过滤），并切换按钮/列语义。
+ *
+ * ## 数据源
+ * portal 是 OIDC **机密客户端（BFF）**：浏览器只有 portal-server 自签的 `portal_token`，
+ * 所有 `/admin/**` 请求经 portal-server 以该用户自己的 auth-center 身份转发
+ * （portal-server 已把 `/admin/**` 改为**前缀透传**，中心的 keyword/page/size/client
+ * 参数都能带到位）。开发态走 vite 代理 `/api`。
  */
 import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
@@ -24,7 +33,7 @@ import { bffAuthorizeUrl } from '@/utils/sso'
 const userStore = useUserStore()
 
 const client = createUserAdminClient({
-  // 与 src/api/request.ts 的 adminBaseURL 保持同一口径（开发走 vite 代理）
+  // 与 src/utils/permissions.ts 的 BFF_API_BASE 保持同一口径
   baseUrl: import.meta.env.DEV ? '/api/admin/users' : '/portal/api/admin/users',
   getToken: () => userStore.token,
   // 401（门户会话过期）→ 重新走 BFF 授权（服务端静默换票），回来后自动重载列表
@@ -35,8 +44,10 @@ const client = createUserAdminClient({
 
 const config: UserManagementConfig = {
   client,
-  title: '用户管理',
-  subtitle: '统一账号池（auth-center）—— 全平台用户在此新增、编辑、停用与重置密码',
+  scope: { mode: 'app', clientId: 'marschat-portal', appName: '门户 Portal' },
+  title: '门户用户',
+  subtitle:
+    '仅显示与本门户有关的用户（在本门户有角色、或有账号映射、或为管理员）。全局身份与全局角色请在「统一认证中心」维护。',
   roles: [
     { value: 'superadmin', label: '超级管理员' },
     { value: 'admin', label: '管理员' },
@@ -44,8 +55,7 @@ const config: UserManagementConfig = {
   ],
   // portal 的 token 不含 uid，用用户名作为「不能删除自己」的判据
   currentUsername: userStore.username || null,
-  // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）；
-  // 组件按其约定拼 `${baseUrl}/admin/...`，故 baseUrl 为 BFF 根（非 /admin/users）
+  // 应用角色绑定（操作列「本系统角色」按钮）；组件据此拼 `${baseUrl}/admin/...`
   appRoles: {
     baseUrl: import.meta.env.DEV ? '/api' : '/portal/api',
     clientId: 'marschat-portal',

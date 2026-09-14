@@ -6,7 +6,7 @@
           <el-icon :size="28"><Menu /></el-icon>
           <span class="logo-text">devtools 看板</span>
         </div>
-        <el-button v-if="isManagePage" class="back-btn" type="primary" plain @click="goBack">
+        <el-button v-if="isFullWidthPage" class="back-btn" type="primary" plain @click="goBack">
           <el-icon><Back /></el-icon>
           返回首页
         </el-button>
@@ -23,9 +23,18 @@
         />
       </div>
       <div class="header-right">
-        <el-button v-if="!isManagePage" type="primary" plain @click="$router.push('/manage')">
+        <el-button v-if="!isFullWidthPage" type="primary" plain @click="$router.push('/manage')">
           <el-icon><Setting /></el-icon>
           管理
+        </el-button>
+        <el-button
+          v-if="userStore.isAdmin && !isConsolePage"
+          type="warning"
+          plain
+          @click="$router.push('/admin')"
+        >
+          <el-icon><Setting /></el-icon>
+          统一认证中心
         </el-button>
         <el-dropdown @command="handleCommand">
           <div class="user-info">
@@ -35,9 +44,15 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item v-if="userStore.isAdmin" command="adminConsole">
+                <el-icon><Setting /></el-icon>
+                统一认证中心
+                <span class="item-hint">平台作用域</span>
+              </el-dropdown-item>
               <el-dropdown-item v-if="userStore.isAdmin" command="users">
                 <el-icon><UserFilled /></el-icon>
-                用户管理
+                门户用户
+                <span class="item-hint">应用作用域</span>
               </el-dropdown-item>
               <el-dropdown-item command="changePassword">
                 <el-icon><Key /></el-icon>
@@ -82,7 +97,7 @@
     </el-dialog>
 
     <el-container class="layout-body">
-      <el-aside v-if="!isManagePage" width="240px" class="layout-aside">
+      <el-aside v-if="!isFullWidthPage" width="240px" class="layout-aside">
         <div class="sidebar">
           <div class="sidebar-section">
             <div class="sidebar-title">
@@ -121,7 +136,7 @@
         </div>
       </el-aside>
 
-      <el-main class="layout-main" :class="{ 'full-width': isManagePage }">
+      <el-main class="layout-main" :class="{ 'full-width': isFullWidthPage }">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="$route.path" />
@@ -193,6 +208,15 @@ const passwordRules: FormRules = {
 const passwordSubmitting = ref(false)
 
 const isManagePage = computed(() => route.name === 'Manage')
+/** 「统一认证中心」页（用于隐藏重复入口按钮） */
+const isConsolePage = computed(() => route.name === 'AdminConsole')
+/**
+ * 全宽页（隐藏门户分类侧边栏）—— 系统管理 / 门户用户 / 统一认证中心
+ * 都属于「后台管理」场景，门户的「系统分类」导航对它们无意义。
+ */
+const isFullWidthPage = computed(
+  () => isManagePage.value || route.name === 'Users' || isConsolePage.value
+)
 
 function handleSearch(value: string) {
   document.dispatchEvent(new CustomEvent('portal-search', { detail: { keyword: value } }))
@@ -227,7 +251,9 @@ function getCategoryCount(cat: SystemCategory): number {
 }
 
 function handleCommand(command: string) {
-  if (command === 'users') {
+  if (command === 'adminConsole') {
+    router.push('/admin')
+  } else if (command === 'users') {
     router.push('/users')
   } else if (command === 'changePassword') {
     passwordForm.oldPassword = ''
@@ -469,5 +495,12 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 下拉项里的作用域提示（区分「平台作用域 / 应用作用域」两个用户管理入口） */
+.item-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #c0c4cc;
 }
 </style>

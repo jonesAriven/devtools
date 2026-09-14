@@ -5,11 +5,20 @@
 #
 # 与其它应用的差异说明：
 #   portal 是「卡片式门户」，侧边栏不是权限驱动的菜单树（是系统分类导航），
-#   故本表只登记 2 个**受权限守卫管辖的路由**（router meta.perm 已声明）：
-#     /manage → permCode('menu','manage')
-#     /users  → permCode('menu','users')（另有 requiresAdmin 本地兜底）
-#   上报后中心授权界面会出现 portal 的权限树，管理员可选择性授权；
-#   未绑定任何角色前 configured=false → R10 fail-open，行为与接入前完全一致。
+#   故本表只登记**受权限守卫管辖的路由**（router meta.perm 已声明）：
+#     /manage         → permCode('menu','manage')
+#     /users          → permCode('menu','users')（另有 requiresAdmin 本地兜底）
+#                       ↑ Phase 8 起语义收窄为「门户用户」= **应用作用域**
+#                         （GET /admin/users?client=marschat-portal，只看与本门户有关的用户）
+#
+#   ⚠️ Phase 8 起 portal 还承载了「统一认证中心」（/admin，平台作用域管理台），
+#      该路由**刻意不登记在本表**：它是平台管理入口，不应出现在「可授予普通用户的应用菜单」中。
+#      默认授权种子（PermissionService.ensureDefaultGrants）会把新注册的 menu 权限点
+#      绑到平台 `user` 角色——一旦登记就等于"发给所有普通用户"。
+#      故 /admin 只用 router 的 `requiresAdmin` 做本地强闸（先于 createAuthGuard 执行）。
+#
+# 上报后中心授权界面会出现 portal 的权限树，管理员可选择性授权；
+# 未绑定任何角色前 configured=false → R10 fail-open，行为与接入前完全一致。
 #
 # 上报通道：auth-core MenuRegistryReporter（启动时 PUT /internal/clients/marschat-portal/menus，
 # 凭据 X-Client-Secret = sys_app_client.client_secret，由 MARSCHAT_MENU_REPORT_SECRET 注入）。
@@ -20,6 +29,6 @@ menus:
     path: /manage
     order: 1
   - key: users
-    title: 用户管理
+    title: 门户用户
     path: /users
     order: 2

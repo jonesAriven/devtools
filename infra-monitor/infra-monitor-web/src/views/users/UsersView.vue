@@ -30,8 +30,11 @@ const currentUserId = (claims?.uid ?? claims?.sub ?? null) as number | string | 
 
 const config: UserManagementConfig = {
   client,
-  title: '用户管理',
-  subtitle: '统一账号池（auth-center）—— 全平台用户在此新增、编辑、停用与重置密码',
+  // Phase 8 双作用域：本页是**应用作用域**（本系统用户），只显示与本监控系统有关的用户。
+  scope: { mode: 'app', clientId: 'marschat-inframon', appName: '基础设施监控' },
+  title: '本系统用户',
+  subtitle:
+    '仅显示与本监控系统有关的用户（在本系统有角色、或有账号映射、或为管理员）。全局身份与全局角色请在门户的「统一认证中心」维护。',
   roles: [
     { value: 'admin', label: '管理员' },
     { value: 'user', label: '普通用户' },
