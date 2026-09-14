@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.39(typescript@5.9.3))
       '@marschat/auth-components':
-        specifier: ^0.7.1
-        version: 0.7.1(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
+        specifier: ^0.7.2
+        version: 0.7.2(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
       '@marschat/frontend-common':
         specifier: 0.3.3
         version: 0.3.3(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
@@ -242,8 +242,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@marschat/auth-components@0.7.1':
-    resolution: {integrity: sha512-wsPj1UL9cwCZsJhsRMII8evktogzAI4hFZZxLBh3ukZbT+N9Jb7DFFRjP0dShNTPPtFNk1CbcGvtdnP0iiTrsQ==}
+  '@marschat/auth-components@0.7.2':
+    resolution: {integrity: sha512-YKSJg74nRjfUKDHd21XCGL0/556UNzVQ+vjDU10UcB9vPbVbOXOZ558hn7NXzn5Kea9DJhIn3jJG4j3vw2xJ1w==}
     peerDependencies:
       element-plus: ^2.6.1
 
@@ -1227,7 +1227,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@marschat/auth-components@0.7.1(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
+  '@marschat/auth-components@0.7.2(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
     dependencies:
       '@element-plus/icons-vue': 2.3.2(vue@3.5.39(typescript@5.9.3))
       element-plus: 2.14.2(vue@3.5.39(typescript@5.9.3))

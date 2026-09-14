@@ -7,6 +7,9 @@
       <el-tab-pane label="菜单授权" name="menus" lazy>
         <MenuPermissionPanel :config="menuPermConfig" />
       </el-tab-pane>
+      <el-tab-pane label="账号映射" name="mappings" lazy>
+        <AccountMappingPanel :config="mappingConfig" />
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -23,9 +26,16 @@ import { ref } from 'vue'
 import {
   UserManagementPanel,
   MenuPermissionPanel,
+  AccountMappingPanel,
   createUserAdminClient,
+  createAccountMappingClient,
+  createAccountMappingUserSearch,
 } from '@marschat/auth-components'
-import type { UserManagementConfig, MenuPermissionConfig } from '@marschat/auth-components'
+import type {
+  UserManagementConfig,
+  MenuPermissionConfig,
+  AccountMappingConfig,
+} from '@marschat/auth-components'
 import { getToken } from '@/utils/token'
 import { decodeOidcClaims, renewByReauthorize, SSO_CONFIG } from '@/utils/sso'
 
@@ -67,6 +77,39 @@ const menuPermConfig: MenuPermissionConfig = {
   clientId: SSO_CONFIG.clientId,
   title: '菜单授权',
   onUnauthorized: () => void renewByReauthorize(),
+}
+
+/**
+ * 账号映射（Phase 7）：统一身份 ↔ 各系统本地账号。
+ *
+ * 数据直连 auth-center `/admin/mappings*`（与用户/角色同一鉴权面：Bearer + ROLE_ADMIN）。
+ * 用途：各应用上报的本地账号在此汇总，"待绑定"的账号可手工认领到中心用户。
+ */
+const mappingClient = createAccountMappingClient({
+  issuer: 'https://auth.marschat.online',
+  getToken: () => getToken(),
+  onUnauthorized: () => void renewByReauthorize(),
+})
+
+const mappingConfig: AccountMappingConfig = {
+  client: mappingClient,
+  title: '账号映射',
+  subtitle:
+    '各系统本地账号 ↔ 中心统一身份。应用启动时自动上报本地账号并尝试自动认领；未认领的可在右侧手工绑定。',
+  searchUsers: createAccountMappingUserSearch({
+    issuer: 'https://auth.marschat.online',
+    getToken: () => getToken(),
+    onUnauthorized: () => void renewByReauthorize(),
+  }),
+  clientLabels: {
+    'marschat-portal': '门户 Portal',
+    'marschat-kbops': '运维后台 kb-ops',
+    'marschat-kbweb': '知识库 kb-web',
+    'marschat-inframon': '基础设施监控',
+    'marschat-activecode': '激活码系统',
+    'cosmic-studio': 'COSMIC 度量表',
+  },
+  pageSize: 10,
 }
 </script>
 
