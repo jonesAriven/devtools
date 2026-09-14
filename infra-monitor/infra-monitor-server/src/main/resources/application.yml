@@ -48,6 +48,12 @@ marschat:
       issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://127.0.0.1:8085}
       client-id: marschat-inframon
       report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # 统一鉴权（Phase 7 收敛）：RS256 验签器复用 auth-core 的 OidcTokenVerifier（见 config/OidcConfig），
+  # 需提供该类的 @Value 键。本应用为 host 网络 → jwks 走 127.0.0.1:8085（auth-center 端口已发布到宿主）；
+  # issuer 必须与 auth-center 签发时一致（公网域名），否则 requireIssuer 校验会失败。
+  oidc:
+    issuer: ${MARSCHAT_OIDC_ISSUER:https://auth.marschat.online}
+    jwks-uri: ${MARSCHAT_OIDC_JWKS_URI:http://127.0.0.1:8085/oauth2/jwks}
 
 crypto:
   aes-key: ${CRYPTO_AES_KEY:YWVzLTI1Ni1nY20ta2V5LTMyLWJ5dGVzISE=}

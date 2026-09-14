@@ -1,5 +1,6 @@
 package com.kb.infra.util;
 
+import com.marschat.auth.oidc.OidcTokenVerifier;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -10,6 +11,15 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * 本应用 JWT 工具（HS256 自签 + auth-center OIDC RS256 双验签）。
+ *
+ * <p>⚠️ 2026-09-14（统一鉴权收敛）：RS256 验签器改为直接复用公共库
+ * {@link com.marschat.auth.oidc.OidcTokenVerifier}（auth-core），本应用原先的
+ * {@code com.kb.infra.util.OidcTokenVerifier} 副本已删除 —— 与 kb-gateway / kb-ops 同源实现，
+ * 避免"同一验签逻辑四处各抄一份、改一处忘三处"。
+ * 该 bean 由 {@code config/OidcConfig} 手动声明（本应用显式排除 auth-core 的自动装配）。
+ */
 @Component
 public class JwtUtil {
 
