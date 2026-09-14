@@ -87,6 +87,27 @@ services:
       - MAIL_FROM=${MAIL_FROM:-marschat@163.com}
       - MAIL_SSL_ENABLE=${MAIL_SSL_ENABLE:-false}
       - MAIL_STARTTLS=${MAIL_STARTTLS:-false}
+      # ── §35 Phase 10 授权默认策略（默认最小权限）──────────────────────────────
+      # 背景（实测）：改造前 PermissionService.ensureDefaultGrants 为把 configured 刷成 true，
+      #   把应用「全部 menu 权限点」绑给平台 user 角色 → 平台普通用户(role_id=8)持有 36 条权限
+      #   （cosmic 8/8 + kbweb 15/15 + inframon 6/6 + portal 2/2 全量 menu + kbops 4 menu
+      #    + api hosts:create 创建主机写权限），而平台管理员(role_id=1) 0 条 —— 配置完全倒挂。
+      #   见 ADR-2026-09-10 §35.2。
+      #
+      # strict：平台 user/admin、应用 user 角色**只持有 public 菜单**（应用在 menu-registry.yml
+      #         标 `public: true` 的「已登录即可见」项，如工作台/看板）；其余 menu 与**所有 api**
+      #         必须由应用角色显式授权。api=动作，任何模式下都不自动授予。
+      # legacy：恢复改造前「默认全量菜单」行为（一键回滚用，幂等、可逆）。
+      #
+      # 灰度（良哥拍板「portal 先试点」）：全局 legacy + strict-clients 列出应用 → 该应用单独走 strict。
+      #   试点验证通过后，把 MARSCHAT_AUTHZ_MODE 改 strict（或把 5 个应用都加进 strict-clients）。
+      # ⚠️ 切到 strict 前必须先让应用上报 public 菜单，否则普通用户登录后菜单全空。
+      # 运维端点（Bearer 超管）：GET /admin/authz/policy（当前模式与各应用生效模式）
+      #   / GET /admin/authz/impact?client=x&mode=strict（影响面预演，只读）
+      #   / POST /admin/authz/migrate?client=x[&force=true]（立即收敛）
+      #   / POST /admin/authz/restore-legacy?client=x（一键回滚）。
+      - MARSCHAT_AUTHZ_MODE=${MARSCHAT_AUTHZ_MODE:-legacy}
+      - MARSCHAT_AUTHZ_STRICT_CLIENTS=${MARSCHAT_AUTHZ_STRICT_CLIENTS:-marschat-portal}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
