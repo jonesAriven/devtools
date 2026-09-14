@@ -246,6 +246,44 @@ public class AuthCenterService {
         }
     }
 
+    /**
+     * 是否持有该 portal 用户的**统一认证（SSO）会话**（内存 refresh_token）。
+     *
+     * <p>用于接口级鉴权（G3）：只有持有 SSO 会话时，才能以**该用户本人**的 RS256 身份
+     * 去中心查权限点。无会话（密码/邮箱码登录，或 portal 重启后内存清空）时，
+     * 调用方按 fail-closed 处理 —— **绝不**回退服务账号（服务账号是 admin，回退等于凭服务账号放行）。
+     */
+    public boolean hasSsoSession(Long portalUserId) {
+        return portalUserId != null && refreshTokens.containsKey(portalUserId);
+    }
+
+    /**
+     * 以**该用户本人的身份**拉取其在本应用的有效权限点（中心 {@code GET /auth/permissions}）。
+     *
+     * <p>语义与 {@link #callAsUser} 一致：无 SSO 会话 / 中心不可达 / 解析失败 → 返回 {@code null}。
+     * 调用方（PortalPermissionChecker）据此按 **fail-closed** 处理（管理面刻意选择，见其注释）。
+     *
+     * @return 中心 Result.data 节点（含 permissions / platformRoles / configured），失败为 null
+     */
+    public JsonNode fetchPermissionsAsUser(Long portalUserId, String clientId) {
+        ProxyResult r = callAsUser(portalUserId, "GET",
+                "/auth/permissions?client=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8), null);
+        if (r.status() != 200) {
+            return null;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(r.body() == null ? "{}" : r.body());
+            if (node.path("code").asInt() != 200) {
+                log.warn("拉取用户权限失败: HTTP {} code={}", r.status(), node.path("code").asInt());
+                return null;
+            }
+            return node.path("data");
+        } catch (Exception e) {
+            log.warn("解析用户权限响应失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private ProxyResult doAdminCall(String accessToken, String method, String pathWithQuery, String jsonBody) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(adminBase() + pathWithQuery))

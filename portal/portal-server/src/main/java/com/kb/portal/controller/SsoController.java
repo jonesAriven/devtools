@@ -8,6 +8,7 @@ import com.kb.portal.mapper.SysUserMapper;
 import com.kb.portal.service.AuthCenterService;
 import com.kb.portal.util.JwtUtil;
 import com.kb.portal.util.PasswordUtil;
+import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.exception.BusinessException;
 import com.marschat.common.result.Result;
 import jakarta.servlet.http.HttpServletRequest;
@@ -220,12 +221,16 @@ public class SsoController {
      * 改为前缀透传后：<b>请求方法、查询串、请求体原样转发</b>，
      * 中心侧新增任何 {@code /admin/**} 端点，portal 零改动即可使用。
      *
-     * <p>安全边界不变：仍然先 {@link #requireAdmin}（portal 角色必须是 admin/superadmin），
-     * 再以**该用户自己的 auth-center 身份**转发（{@link AuthCenterService#callAdmin}）。
+     * <p>安全边界（Phase 9 / G3 收紧）：进入本方法前，auth-core 的 {@code @RequirePermission}
+     * 拦截器先校验 **中心权限点** {@code marschat-portal:api:admin}（"哪些账号有哪些系统权限"
+     * 在这一层真实生效，TTL 60s）；通过后仍保留 {@link #requireAdmin} 作为第二道粗粒度闸。
+     * 鉴权真值由 {@code config/PortalPermissionChecker} 以「用户本人的 RS256 身份」向中心查询，
+     * 失败/无会话按 fail-closed 处理。
      *
      * <p>仅代理 {@code /admin/**} —— {@code /internal/**}（应用上报内网通道）与
      * {@code /auth/**} 不在透传范围内，不会被意外暴露到公网。
      */
+    @RequirePermission("api:admin")
     @RequestMapping("/admin/**")
     public Result<JsonNode> proxyAdminCenter(HttpServletRequest request,
                                              @RequestBody(required = false) String body) {
