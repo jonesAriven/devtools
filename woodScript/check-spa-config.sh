@@ -102,18 +102,22 @@ check_portal_web() {
 #      落 /infra/infra/dashboard → 不匹配路由 → 404 空页。
 #  两类都是「构建期看不出、只有线上点才炸」的配置漂移，故加静态门禁。
 check_nav_base() {
-  local name="$1" src="$2" hit=0
+  local name="$1" src="$2" base="${3:-}" hit=0
   echo "-- $name . nav base --"
   local bad1='(location\.(href|assign|replace)[[:space:]]*=[[:space:]]*|navigateTo\()['"'"'"]/[A-Za-z]'
-  local keep='__MARSCHAT_APP_BASE__|appPath\(|marschatLoginUrl\(|window\.location\.origin'
-  if grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | grep -q .; then
+  local keep='__MARSCHAT_APP_BASE__|appPath\(|window\.location\.origin'
+  # 跳过两类误报：
+  #  ① 注释行（文档里会引用反例写法）
+  #  ② 已带本应用 base 的路径，如 portal 的 '/portal/login?reauth=1' —— 那是**正确**写法
+  local skip=":[0-9]+:[[:space:]]*(//|\*|/\*)|['\"]${base}/"
+  if grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | grep -vE "$skip" | grep -q .; then
     echo "  [FAIL] 根相对跳转（须带 SPA base 或改用 appPath()/router）:"
-    grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | sed "s/^/     /"
+    grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | grep -vE "$skip" | sed "s/^/     /"
     hit=1
   fi
-  if grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | grep -q .; then
+  if grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' | grep -q .; then
     echo "  [FAIL] 模板写死根相对 href:"
-    grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | sed "s/^/     /"
+    grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)' | sed "s/^/     /"
     hit=1
   fi
   if grep -rnE 'router\.(push|replace)\([`"'"'"']?\$\{CONTEXT_PATH\}' "$src" 2>/dev/null | grep -q .; then
@@ -123,13 +127,14 @@ check_nav_base() {
   fi
   if [ "$hit" -eq 0 ]; then echo "  [OK] 导航路径无根相对/双前缀"; else FAIL=1; fi
 }
+
 APPS="${*:-kb-ops-web kb-web infra-monitor-web portal-web}"
 for a in $APPS; do
   case "$a" in
-    kb-ops-web)        check_kb_ops_web; check_nav_base "kb-ops-web" "kb-ops/kb-ops-web/src" ;;
-    kb-web)            check_nav_base "kb-web" "mykng/kb-web/src" ;;
-    infra-monitor-web) check_infra_monitor_web; check_nav_base "infra-monitor-web" "infra-monitor/infra-monitor-web/src" ;;
-    portal-web)        check_portal_web; check_nav_base "portal-web" "portal/src" ;;
+    kb-ops-web)        check_kb_ops_web; check_nav_base "kb-ops-web" "kb-ops/kb-ops-web/src" "/ops" ;;
+    kb-web)            check_nav_base "kb-web" "mykng/kb-web/src" "/kb" ;;
+    infra-monitor-web) check_infra_monitor_web; check_nav_base "infra-monitor-web" "infra-monitor/infra-monitor-web/src" "/infra" ;;
+    portal-web)        check_portal_web; check_nav_base "portal-web" "portal/src" "/portal" ;;
     *) echo "❌ 未知 app: $a (可选: kb-ops-web infra-monitor-web portal-web)"; FAIL=1 ;;
   esac
 done
