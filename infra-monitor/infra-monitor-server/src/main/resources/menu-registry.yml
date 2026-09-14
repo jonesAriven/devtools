@@ -12,6 +12,10 @@ menus:
     title: 总览看板
     path: /dashboard
     order: 1
+    # public=true → 「已登录即可见」：strict 默认最小权限下仍授予默认可见角色
+    # （平台 user/admin + 本应用 user），保证普通用户登录后有落地页而不是一片空白。
+    # 其余菜单与所有 api 点必须由应用角色显式授权（见 ADR §35.2 / AuthzPolicyService）。
+    public: true
   - key: hosts
     title: 主机管理
     path: /hosts
