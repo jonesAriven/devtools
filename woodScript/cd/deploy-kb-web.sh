@@ -71,11 +71,26 @@ server {
     }
 
     # 静态资源（vite base: /kb/s/）
-    location /kb/s/ {
-        alias /usr/share/nginx/html/kb/s/;
+    # 🔴 2026-09-14 回归修复：原 `location /kb/s/ { try_files $uri =404; }` 使裸目录 URI
+    #    /kb/s/ 命中最长前缀 location 后直接 404（/kb/s/index.html 反而 200）。
+    #    拆三段：index.html no-cache（防发版后浏览器拿旧入口）、已哈希产物长缓存、
+    #    其余 /kb/s/* 一律回退 index.html（目录 URI 与 SPA 深链都走这里）。
+    location = /kb/s/index.html {
+        alias /usr/share/nginx/html/kb/s/index.html;
+        add_header Cache-Control "no-cache";
+    }
+
+    location /kb/s/assets/ {
+        alias /usr/share/nginx/html/kb/s/assets/;
         expires 30d;
         add_header Cache-Control "public, immutable";
         try_files $uri =404;
+    }
+
+    location /kb/s/ {
+        alias /usr/share/nginx/html/kb/s/;
+        index index.html;
+        try_files $uri /kb/s/index.html;
     }
 
     # 业务/认证 API 代理：前端 baseURL=/kb/api 与网关路径天然一致，整段转发

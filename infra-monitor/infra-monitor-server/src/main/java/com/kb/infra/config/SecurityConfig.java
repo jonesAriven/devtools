@@ -56,6 +56,14 @@ public class SecurityConfig {
                 .requestMatchers("/auth/mail-login", "/auth/mail-login/send-code").permitAll()
                 .anyRequest().authenticated()
             )
+            // 🔴 2026-09-14 回归修复：未认证（无 token / token 过期 / token 无效）必须 401，
+            //    不能落 Spring Security 默认的 Http403ForbiddenEntryPoint（403）——
+            //    前端 401 拦截器据此触发静默重授权（renewByReauthorize，IdP 会话在则无感续期）；
+            //    返回 403 时拦截器不触发，用户只看到「获取看板数据失败」，token 过期即假死。
+            //    语义对齐 HTTP 规范：401=未认证，403=已认证但无权限。
+            .exceptionHandling(e -> e.authenticationEntryPoint(
+                (request, response, authException) -> response.sendError(
+                    jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
