@@ -202,85 +202,54 @@ public class SsoController {
         return toResult(r);
     }
 
-    // ---------- 用户管理代理（仅 admin）----------
+    // ---------- 统一认证中心管理接口：前缀透传代理（Phase 8 重构）----------
 
-    @GetMapping("/admin/users")
-    public Result<JsonNode> listUsers(@RequestParam(required = false) String realmId, HttpServletRequest request) {
+    /**
+     * 统一认证中心 {@code /admin/**} 通用代理（仅管理员）。
+     *
+     * <h3>为什么从「逐端点声明」重构为「前缀透传」</h3>
+     * 此前这里是 {@code listUsers / createUser / updateUser / deleteUser / resetPassword /
+     * listRoles / userClientRoles / assignUserClientRoles} 八个逐端点方法，有两个硬伤：
+     * <ol>
+     *   <li><b>丢参数（真实缺陷）</b>：{@code GET /admin/users} 只转发了 {@code realmId}，
+     *       把 {@code keyword / page / size / client} 全部丢弃 ——
+     *       导致中心的分页、搜索、以及 Phase 8 新增的 <b>应用作用域过滤</b>在 portal 侧失效。</li>
+     *   <li><b>不可扩展</b>：中心每新增一个 {@code /admin/**} 端点，都必须同步加一个 BFF 方法，
+     *       违背「中心能力升级不动消费方」的初衷（Phase 8 的授权矩阵、账号映射、菜单上报都受影响）。</li>
+     * </ol>
+     * 改为前缀透传后：<b>请求方法、查询串、请求体原样转发</b>，
+     * 中心侧新增任何 {@code /admin/**} 端点，portal 零改动即可使用。
+     *
+     * <p>安全边界不变：仍然先 {@link #requireAdmin}（portal 角色必须是 admin/superadmin），
+     * 再以**该用户自己的 auth-center 身份**转发（{@link AuthCenterService#callAdmin}）。
+     *
+     * <p>仅代理 {@code /admin/**} —— {@code /internal/**}（应用上报内网通道）与
+     * {@code /auth/**} 不在透传范围内，不会被意外暴露到公网。
+     */
+    @RequestMapping("/admin/**")
+    public Result<JsonNode> proxyAdminCenter(HttpServletRequest request,
+                                             @RequestBody(required = false) String body) {
         requireAdmin(request);
-        String qs = realmId == null ? "" : "?realmId=" + URLEncoder.encode(realmId, StandardCharsets.UTF_8);
         AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "GET", "/admin/users" + qs, null);
+                (Long) request.getAttribute("userId"),
+                request.getMethod(),
+                extractAdminPath(request),
+                body);
         return toResult(r);
     }
 
-    @PostMapping("/admin/users")
-    public Result<JsonNode> createUser(@RequestBody String body, HttpServletRequest request) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "POST", "/admin/users", body);
-        return toResult(r);
-    }
-
-    @PutMapping("/admin/users/{userId}")
-    public Result<JsonNode> updateUser(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId, body);
-        return toResult(r);
-    }
-
-    @DeleteMapping("/admin/users/{userId}")
-    public Result<JsonNode> deleteUser(@PathVariable Long userId, HttpServletRequest request) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "DELETE", "/admin/users/" + userId, null);
-        return toResult(r);
-    }
-
-    @PutMapping("/admin/users/{userId}/password")
-    public Result<JsonNode> resetPassword(@PathVariable Long userId, @RequestBody String body, HttpServletRequest request) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "PUT", "/admin/users/" + userId + "/password", body);
-        return toResult(r);
-    }
-
-    // ---------- 授权管理代理（Phase 4 · 应用角色绑定）----------
-
-    /** 角色列表（platform + client 级）→ auth-center GET /admin/roles */
-    @GetMapping("/admin/roles")
-    public Result<JsonNode> listRoles(HttpServletRequest request) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "GET", "/admin/roles", null);
-        return toResult(r);
-    }
-
-    /** 用户在某应用的角色绑定 id 集合 → auth-center GET /admin/users/{id}/client-roles */
-    @GetMapping("/admin/users/{userId}/client-roles")
-    public Result<JsonNode> userClientRoles(@PathVariable Long userId,
-                                            @RequestParam(required = false) String client,
-                                            HttpServletRequest request) {
-        requireAdmin(request);
-        String qs = client == null ? "" : "?client=" + URLEncoder.encode(client, StandardCharsets.UTF_8);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "GET",
-                "/admin/users/" + userId + "/client-roles" + qs, null);
-        return toResult(r);
-    }
-
-    /** 用户在某应用的角色绑定全量覆盖 → auth-center PUT /admin/users/{id}/client-roles */
-    @PutMapping("/admin/users/{userId}/client-roles")
-    public Result<JsonNode> assignUserClientRoles(@PathVariable Long userId,
-                                                  @RequestParam(required = false) String client,
-                                                  @RequestBody String body,
-                                                  HttpServletRequest request) {
-        requireAdmin(request);
-        String qs = client == null ? "" : "?client=" + URLEncoder.encode(client, StandardCharsets.UTF_8);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"), "PUT",
-                "/admin/users/" + userId + "/client-roles" + qs, body);
-        return toResult(r);
+    /**
+     * 从请求 URI 中截出 {@code /admin/...} 部分并拼回原始查询串。
+     *
+     * <p>用 {@code indexOf("/admin/")} 而非 {@code substring("/api".length())}：
+     * 后者在存在 context-path 或反向代理改写时会切错位置。
+     */
+    private String extractAdminPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        int idx = uri.indexOf("/admin/");
+        String path = idx >= 0 ? uri.substring(idx) : "/admin";
+        String qs = request.getQueryString();
+        return (qs == null || qs.isBlank()) ? path : path + "?" + qs;
     }
 
     /**
