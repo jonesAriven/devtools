@@ -83,7 +83,11 @@ export function setupAuthGuard(router: Router): void {
     hasPerm: (code: string) => permissions.check(code),
     onDeny: () => {
       // 落到工作台而不是 403 空白页：权限点被收回时用户仍可用基础功能
-      router.replace(`${CONTEXT_PATH}/dashboard`)
+      // 🔴 必须传**路由内路径**：router 已带 /infra base（createWebHistory(ctx)），
+      //    再拼 CONTEXT_PATH 会落 /infra/infra/dashboard —— 不匹配任何路由 →
+      //    渲染 404 空页（2026-09-14 良哥实测：monitor.marschat.online/infra/infra/services）。
+      //    kb-ops 早已修成 `/dashboard`，本处与 kb-web 是漏推广的两处。
+      router.replace('/dashboard')
     },
   })
 }

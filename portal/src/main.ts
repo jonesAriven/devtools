@@ -6,6 +6,10 @@ import App from './App.vue'
 import router from './router'
 import './styles/index.scss'
 import { useUserStore } from '@/stores/user'
+
+// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址
+//    （写死 '/login' 会跳到域名根 → nginx 404）。portal 的 router base 是 /portal（见 router/index.ts）。
+window.__MARSCHAT_APP_BASE__ = '/portal'
 import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
 import { permissions } from '@/utils/permissions'
 

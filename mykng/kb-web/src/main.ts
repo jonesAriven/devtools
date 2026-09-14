@@ -12,6 +12,13 @@ import { permissions } from '@/utils/permissions'
 import { useModuleStore } from '@/stores/module'
 import { useAppStore } from '@/stores/app'
 import { setupErrorHandler } from '@/utils/errorReporter'
+import { CONTEXT_PATH } from '@/config'
+
+// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库（frontend-common / auth-components）
+//    在需要「跳登录页」时拼出带 base 的正确地址。
+//    背景：公共库若写死「根相对 /login」会跳到**域名根**，
+//    而本 SPA 部署在 /kb 下 → nginx 无该 location → 404（2026-09-14 实测，见 ADR §32.11）。
+window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
 
 setupErrorHandler()
 

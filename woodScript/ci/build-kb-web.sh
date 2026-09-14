@@ -10,6 +10,9 @@ source woodScript/lib-build.sh
 
 setup_pnpm mykng/kb-web
 
+echo ">>> [0/3] SPA config gate <<<"
+bash woodScript/check-spa-config.sh kb-web
+
 echo ">>> [1/3] pnpm build kb-web <<<"
 cd mykng/kb-web
 pnpm install --frozen-lockfile

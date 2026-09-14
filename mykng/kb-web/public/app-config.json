@@ -1,5 +1,5 @@
-// AUTO-GENERATED from apps-registry.yml — DO NOT EDIT
 {
+  "_generated": "# AUTO-GENERATED from apps-registry.yml by scripts/gen-from-registry.py — DO NOT EDIT",
   "clientId": "marschat-kbweb",
   "issuer": "https://auth.marschat.online",
   "entry": "https://kb.marschat.online/kb/",

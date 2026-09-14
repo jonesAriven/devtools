@@ -94,12 +94,42 @@ check_portal_web() {
 }
 
 # ---------- 主入口 ----------
-APPS="${*:-kb-ops-web infra-monitor-web portal-web}"
+# ---------- 导航 base 一致性（静态门禁） ----------
+#  背景（2026-09-14 实测）：
+#   ① 公共库写死 `window.location.href = '/login'` → 子路径部署下跳到域名根
+#      https://kb.marschat.online/login → nginx 404 白页；
+#   ② `router.replace("${CONTEXT_PATH}/dashboard")` → router 已带 base，再拼一次
+#      落 /infra/infra/dashboard → 不匹配路由 → 404 空页。
+#  两类都是「构建期看不出、只有线上点才炸」的配置漂移，故加静态门禁。
+check_nav_base() {
+  local name="$1" src="$2" hit=0
+  echo "-- $name . nav base --"
+  local bad1='(location\.(href|assign|replace)[[:space:]]*=[[:space:]]*|navigateTo\()['"'"'"]/[A-Za-z]'
+  local keep='__MARSCHAT_APP_BASE__|appPath\(|marschatLoginUrl\(|window\.location\.origin'
+  if grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | grep -q .; then
+    echo "  [FAIL] 根相对跳转（须带 SPA base 或改用 appPath()/router）:"
+    grep -rnE "$bad1" "$src" 2>/dev/null | grep -vE "$keep" | sed "s/^/     /"
+    hit=1
+  fi
+  if grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | grep -q .; then
+    echo "  [FAIL] 模板写死根相对 href:"
+    grep -rnE 'href="/[A-Za-z]' "$src" 2>/dev/null | sed "s/^/     /"
+    hit=1
+  fi
+  if grep -rnE 'router\.(push|replace)\([`"'"'"']?\$\{CONTEXT_PATH\}' "$src" 2>/dev/null | grep -q .; then
+    echo "  [FAIL] router 导航重复拼接 CONTEXT_PATH（双 base 前缀）:"
+    grep -rnE 'router\.(push|replace)\([`"'"'"']?\$\{CONTEXT_PATH\}' "$src" 2>/dev/null | sed "s/^/     /"
+    hit=1
+  fi
+  if [ "$hit" -eq 0 ]; then echo "  [OK] 导航路径无根相对/双前缀"; else FAIL=1; fi
+}
+APPS="${*:-kb-ops-web kb-web infra-monitor-web portal-web}"
 for a in $APPS; do
   case "$a" in
-    kb-ops-web)        check_kb_ops_web ;;
-    infra-monitor-web) check_infra_monitor_web ;;
-    portal-web)        check_portal_web ;;
+    kb-ops-web)        check_kb_ops_web; check_nav_base "kb-ops-web" "kb-ops/kb-ops-web/src" ;;
+    kb-web)            check_nav_base "kb-web" "mykng/kb-web/src" ;;
+    infra-monitor-web) check_infra_monitor_web; check_nav_base "infra-monitor-web" "infra-monitor/infra-monitor-web/src" ;;
+    portal-web)        check_portal_web; check_nav_base "portal-web" "portal/src" ;;
     *) echo "❌ 未知 app: $a (可选: kb-ops-web infra-monitor-web portal-web)"; FAIL=1 ;;
   esac
 done

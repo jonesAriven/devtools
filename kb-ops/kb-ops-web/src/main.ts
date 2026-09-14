@@ -9,6 +9,12 @@ import router from './router'
 import { getToken } from '@/utils/token'
 import { startSessionWatcher } from '@/utils/sso'
 import { permissions } from '@/utils/permissions'
+import { CONTEXT_PATH } from '@/config'
+
+// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址。
+//    背景：公共库若写死「根相对 /login」，会跳到 https://kb.marschat.online/login
+//    → nginx 404（本 SPA 实际在 /ops 下）。见 ADR §32.11。
+window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
 
 import './styles/index.scss'
 

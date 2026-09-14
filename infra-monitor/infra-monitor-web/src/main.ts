@@ -8,6 +8,11 @@ import router from './router'
 import { getToken } from '@/utils/token'
 import { startSessionWatcher } from '@/utils/sso'
 import { permissions, setupAuthGuard } from '@/utils/permissions'
+import { CONTEXT_PATH } from '@/config'
+
+// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址
+//    （写死 '/login' 会跳到域名根 → nginx 404）。见 ADR §32.11。
+window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
 
 import './styles/index.scss'
 
