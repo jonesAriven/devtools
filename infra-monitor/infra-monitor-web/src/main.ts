@@ -5,7 +5,7 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
-import { getToken } from '@/utils/token'
+import { getToken, isOidcToken } from '@/utils/token'
 import { startSessionWatcher } from '@/utils/sso'
 import { permissions, setupAuthGuard } from '@/utils/permissions'
 import { CONTEXT_PATH } from '@/config'
@@ -33,8 +33,22 @@ app.use(ElementPlus)
 app.mount('#app')
 
 // Phase 6：已登录则启动会话监视 —— 任一应用统一登出后，本应用随之退出（跨应用单点登出联动）
-if (getToken()) {
-  startSessionWatcher()
+const bootToken = getToken()
+if (bootToken) {
+  // 🔴 2026-09-15 回归修复（Phase 11）：**只有 OIDC 会话才启动会话监视器**。
+  //
+  // 监视器探的是 auth-center `/auth/session`（IdP 会话），账密/邮箱码登录走的是本应用 BFF，
+  // 浏览器里**本就没有 IdP 会话** → 探针恒返回 `authenticated:false` → 组件默认
+  // `confirmCount:1` + `redirectOnLost:true`，且 `start()` 会在 **3 秒后首探**，
+  // 于是每次整页刷新（F5 / 直输网址 / 从门户跳回）都被判「他处已登出」→
+  // `clearLocalAuth()` + 跳 `/infra/login?slo=1`，账密会话活不过 3 秒。
+  //
+  // 线上实测（Edge headless + CDP）：账密登录后本地 `token_kind=legacy`、
+  // `/auth/session` = `{authenticated:false}`，整页刷新后 **3.0s** 落 `/infra/login?slo=1`。
+  // 对这类会话做 SLO 联动本无意义（无 IdP 会话可监视），故按 token 类型分流。
+  if (isOidcToken(bootToken)) {
+    startSessionWatcher()
+  }
   // Phase 2：预取 RBAC 权限点（供菜单过滤 / PermissionGate 消费；路由守卫侧也会 ensure）。
   // 拉取失败一律降级为 configured=false（全放行），绝不阻塞启动。
   void permissions.ensure()
