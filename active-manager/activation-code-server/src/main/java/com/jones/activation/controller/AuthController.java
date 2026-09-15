@@ -141,7 +141,8 @@ public class AuthController {
         // 统一走「映射收敛」判定（同名 → 超管例外 → 中心账号映射 → 403）。
         // 🔴 改造前此处是「未匹配同名则回退到任意本地管理员(LIMIT 1)」—— 等于任何持有有效中心
         //    token 的用户都能以 admin 进入激活码系统（与 cosmic G2 同类的越权默认值），已收敛。
-        return establishSession(ssoUsername, accessToken, session, response);
+        // platformAdminHint=null → 由 establishSession 用该 RS256 令牌查中心平台角色。
+        return establishSession(ssoUsername, accessToken, null, session, response);
     }
 
     @GetMapping("/session")
@@ -291,18 +292,31 @@ public class AuthController {
             return Map.of("success", false, "message", "中心未返回 access_token");
         }
 
-        JWTClaimsSet claims = oidcVerifier.verify(accessToken);
-        if (claims == null) {
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            return Map.of("success", false, "message", "access_token 验签失败");
+        // ⚠️ 血泪坑（2026-09-15 实测踩中）：**不能**用 OidcTokenVerifier 验这个 token。
+        //   `/auth/mail-login` 是 auth-center 的**业务端点**，返回的是它自签的 **HS384** 令牌
+        //   （header {"alg":"HS384"}，见 AuthServiceImpl 的 JwtUtil；用于访问中心业务 API），
+        //   而 OidcTokenVerifier 只认 SAS 签发的 **RS256** OIDC 令牌 —— 两者算法与签发者都不同，
+        //   拿后者验前者必然「验签失败」（表现为：验证码正确、密码也正确，却卡在最后一步）。
+        //   SSO 径（/sso-login）拿到的才是 RS256，所以那里必须验签；
+        //   本径是**服务端互调**（我们直接请求中心内网地址并拿到响应），响应体本身就是可信来源，
+        //   故直接采信 data.user 的身份字段，不做二次验签。
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userNode = (data != null && data.get("user") instanceof Map)
+                ? (Map<String, Object>) data.get("user") : null;
+        String centerUsername = userNode == null ? null : (String) userNode.get("username");
+        if (centerUsername == null || centerUsername.isBlank()) {
+            centerUsername = claimUsernameUnverified(accessToken);
         }
-        String centerUsername = claimUsername(claims);
         if (centerUsername == null || centerUsername.isBlank()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            return Map.of("success", false, "message", "token 中无用户名声明");
+            return Map.of("success", false, "message", "中心响应中缺少用户名");
         }
-        // 超管（marschat@163.com）走「已验证邮箱=身份」的通路，无需本地同名
-        return establishSession(centerUsername, accessToken, session, response);
+        // 平台角色：中心已在 user.role 给出（superadmin / admin / user），无需再查一次
+        String centerRole = userNode == null ? null : (String) userNode.get("role");
+        Boolean platformAdmin = ("superadmin".equals(centerRole) || "admin".equals(centerRole))
+                ? Boolean.TRUE : Boolean.FALSE;
+        log.info("邮箱验证码登录：中心身份已确认 user={}, role={}", centerUsername, centerRole);
+        return establishSession(centerUsername, accessToken, platformAdmin, session, response);
     }
 
     /**
@@ -322,6 +336,7 @@ public class AuthController {
      * 激活码系统。这与 cosmic 已修的 G2（「非本池用户 → admin」）是同一类缺陷，本轮一并收敛。
      */
     private Map<String, Object> establishSession(String centerUsername, String accessToken,
+                                                 Boolean platformAdminHint,
                                                  HttpSession session, HttpServletResponse response) {
         // ① 本地同名
         AdminUser user = adminUserMapper.selectOne(
@@ -329,7 +344,11 @@ public class AuthController {
                         .eq(AdminUser::getUsername, centerUsername));
 
         boolean platformAdmin = false;
-        if (user == null) {
+        if (platformAdminHint != null) {
+            // 邮箱码径：中心响应已带 user.role，直接采信（省一次互调）
+            platformAdmin = platformAdminHint;
+        } else if (user == null) {
+            // SSO 径：RS256 OIDC 令牌可安全用于查中心权限点，取平台角色判定超管例外
             Set<String> roles = fetchPlatformRoles(accessToken);
             platformAdmin = roles.contains("admin") || roles.contains("superadmin");
         }
@@ -415,6 +434,33 @@ public class AuthController {
             }
         }
         return name;
+    }
+
+    /**
+     * **不验签**地从令牌 payload 取用户名 —— 只允许用在「我们自己的服务端互调响应」这类可信来源上，
+     * 作为 {@code data.user} 缺失时的兜底（中心响应结构演进 / 字段改名）。
+     *
+     * <p>⚠️ 严禁用于任何来自浏览器/客户端的令牌 —— 那等于把身份交给了攻击者。
+     * 之所以这里安全：令牌是我们刚刚向中心内网地址请求、并从**响应体**里拿到的，
+     * 且该次调用已由中心完成了验证码校验。
+     */
+    private String claimUsernameUnverified(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length < 2) {
+                return null;
+            }
+            byte[] json = Base64.getUrlDecoder().decode(parts[1]);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = MAPPER.readValue(json, Map.class);
+            Object u = payload.get("username");
+            if (u == null) {
+                u = payload.get("sub");
+            }
+            return u == null ? null : String.valueOf(u);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private boolean isOk(Map<String, Object> res) {
