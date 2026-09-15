@@ -70,12 +70,27 @@ public class JwtUtil {
     }
 
     public String generate(String username) {
-        return Jwts.builder()
+        return generate(username, null);
+    }
+
+    /**
+     * 签发本应用自有 token，并写入 {@code role} 声明。
+     *
+     * <p>2026-09-15（Phase 11）：账密/邮箱码登录统一走认证中心后，身份角色只能从中心响应取得
+     * （中心 admin 的 role 为 {@code superadmin}）。前端 {@code MainLayout.vue} 以 token 的
+     * {@code role} 声明做「用户管理」菜单兜底过滤，缺该声明会导致菜单被误隐藏，故须原样带入。
+     *
+     * @param role 中心返回的角色原值；为空/null 时不写该声明（等价于旧 {@link #generate(String)}）
+     */
+    public String generate(String username, String role) {
+        var builder = Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key)
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + expiration));
+        if (role != null && !role.isBlank()) {
+            builder.claim("role", role);
+        }
+        return builder.signWith(key).compact();
     }
 
     public String parseUsername(String token) {

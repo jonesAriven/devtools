@@ -98,7 +98,9 @@ public class AuthController {
                 return Result.fail(401, "账号已停用");
             }
             String username = user.path("username").asText(request.getUsername().trim());
-            String token = jwtUtil.generate(username);
+            // role 原样取中心值（中心 admin 为 superadmin）：前端「用户管理」菜单按 token role 兜底判定
+            String role = user.path("role").asText("");
+            String token = jwtUtil.generate(username, role);
             return Result.ok(new LoginResponse(token, username));
         } catch (Exception e) {
             log.warn("infra 账密登录失败（认证中心不可达）: {}", e.getMessage());
@@ -144,8 +146,10 @@ public class AuthController {
                 return Result.fail(node.path("code").asInt(400),
                         node.path("message").asText("邮箱验证码登录失败"));
             }
-            String username = node.path("data").path("user").path("username").asText(adminUsername);
-            String token = jwtUtil.generate(username);
+            JsonNode user = node.path("data").path("user");
+            String username = user.path("username").asText(adminUsername);
+            // 同一处兜底：邮箱码登录同样须带中心 role，否则「用户管理」菜单同样被隐藏
+            String token = jwtUtil.generate(username, user.path("role").asText(""));
             log.info("infra 邮箱验证码登录成功: {}", username);
             return Result.ok(new LoginResponse(token, username));
         } catch (Exception e) {
