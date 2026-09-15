@@ -28,7 +28,8 @@ import java.util.Map;
  *
  * <p>统一登录三方式（Phase 7）在本应用的落地：
  * <ul>
- *   <li><b>账密</b>：{@code POST /auth/login} —— 配置式应急管理员（双模中的「超管应急本地账号」）；</li>
+ *   <li><b>账密</b>：{@code POST /auth/login} —— 由本服务端代理 auth-center 校验后签发自有 token
+ *       （原「配置式单管理员」本地比对已于 2026-09-15 移除，见方法注释）；</li>
  *   <li><b>邮箱验证码</b>：{@code POST /auth/mail-login/send-code} + {@code POST /auth/mail-login}
  *       —— 由本服务端代理 auth-center 换票，再签发**本应用自有会话 token**；</li>
  *   <li><b>忘记密码</b>：前端直连 {@code /kb/api/auth/forgot-password}（经 kb-gateway → auth-center）。</li>
@@ -47,6 +48,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final String adminUsername;
+    /** 已改由认证中心校验，保留仅为兼容（构造期仍需 infra.admin.password 存在，避免改配置导致启动失败）。 */
     private final String adminPasswordHash;
 
     @Value("${auth-center.base:http://127.0.0.1:8085}")
@@ -73,14 +75,35 @@ public class AuthController {
         this.adminPasswordHash = passwordEncoder.encode(adminPassword);
     }
 
+    /**
+     * 账密登录：BFF 转发 auth-center {@code /auth/login}，成功后签发本应用自有 token。
+     *
+     * <p>2026-09-15（Phase 11）：原先用 {@code infra.admin.*} 硬编码单管理员做本地比对，
+     * 导致中心 42 个身份除该账号外都无法账密登录、且同一应用存在两套认证源。
+     * 现统一交由认证中心校验（中心是身份与密码的唯一真源），本服务只负责换票 + 签发自有会话。
+     *
+     * <p><b>fail-closed</b>：中心不可达或返回异常一律拒绝，绝不回退本地密码比对。
+     */
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        if (!adminUsername.equals(request.getUsername()) ||
-                !passwordEncoder.matches(request.getPassword(), adminPasswordHash)) {
-            return Result.fail(401, "用户名或密码错误");
+        try {
+            JsonNode node = authCenterPost("/auth/login", Map.of(
+                    "username", request.getUsername().trim(),
+                    "password", request.getPassword()));
+            if (node.path("code").asInt() != 200) {
+                return Result.fail(401, "用户名或密码错误");
+            }
+            JsonNode user = node.path("data").path("user");
+            if (user.path("status").asInt(1) != 1) {
+                return Result.fail(401, "账号已停用");
+            }
+            String username = user.path("username").asText(request.getUsername().trim());
+            String token = jwtUtil.generate(username);
+            return Result.ok(new LoginResponse(token, username));
+        } catch (Exception e) {
+            log.warn("infra 账密登录失败（认证中心不可达）: {}", e.getMessage());
+            return Result.fail(503, "认证中心不可达，请稍后重试");
         }
-        String token = jwtUtil.generate(request.getUsername());
-        return Result.ok(new LoginResponse(token, request.getUsername()));
     }
 
     /** 邮箱验证码 · 发码（代理 auth-center 的 MAIL_LOGIN 业务码）。 */
