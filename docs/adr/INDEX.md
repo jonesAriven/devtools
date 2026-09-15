@@ -1,6 +1,9 @@
-# ADR 反向索引（AUTO-GENERATED，勿手改）
+# ADR 反向索引
 
-本仓库 `/root/devtools` 涉及的 ADR（由 adr-registry.py 扫描生成）：
+> ⚠️ 原说明「AUTO-GENERATED，由 adr-registry.py 扫描生成」已失效——该脚本已不存在于本机与 mykng（2026-09-14 复核）。
+> 本索引现为**手工维护**，与各 ADR 头部状态行保持一致；新增 ADR 时请同步本表。
+
+本仓库 `/root/devtools` 涉及的 ADR（按日期倒序见文末原始清单；外部路径 `/root/hermes-workspace/adr/**` 位于 mykng，未随本仓库版本化）：
 
 | 日期 | ADR | 状态 | 归属 | 位置 |
 |---|---|---|---|---|
@@ -22,4 +25,4 @@
 | 2026-09-08 | ADR-2026-09-08 · 统一认证单点登录（auth-center +  | 已全面实施 | cross-project | `/root/devtools/docs/adr/ADR-2026-09-08-统一认证单点登录.md` |
 | 2026-09-08 | ADR-2026-09-08 · 自研应用仓库地图与公共模块关联机制核实固化 | 已实施 | cross-project | `/root/hermes-workspace/adr/cross-project/ADR-2026-09-08-repo-map-and-shared-modules.md` |
 | 2026-09-09 | ADR-2026-09-09 · 公共组件发布到 Nexus npm 私服 | 已实施 | cross-project | `/root/devtools/docs/adr/ADR-2026-09-09-公共组件发布到Nexus私服.md` |
-| 2026-09-10 | ADR-2026-09-10 · 平台重构：Phase 0 清死代码 → Pha | Phase 6 六应用「免登 / SLO 联动 / | cross-project | `/root/devtools/docs/adr/ADR-2026-09-10-平台重构Phase0清死代码.md` |
+| 2026-09-10 | ADR-2026-09-10 · 平台重构：Phase 0 清死代码 → Pha | ✅ **Phase 0-9 全闭环**（§12-§34：清死代码 / 认证地基 / RBAC / 菜单数据化 / 六应用紧密接入 / 双作用域用户管理 / 五大缺口 + 终态全量回归 §33.13 + 组件接入指南 §34）<br>✅ **Phase 10 权限重构已上线收口**（§35-§36）：默认最小权限 strict 全站生效（平台 user 36→**4**）· superadmin 落库 · infra/portal 密钥分离 E2E 互拒 401 · 邮箱码+忘记密码真发码端到端取证 · SSO 双前缀浮点 404 根治（auth-components 0.8.6 全量部署）。<br>⏳ 余：activecode 接入 / kb-web 接口鉴权（§36.10） | cross-project | `/root/devtools/docs/adr/ADR-2026-09-10-平台重构Phase0清死代码.md` |
