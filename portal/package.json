@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
-    "@marschat/auth-components": "^0.8.5",
+    "@marschat/auth-components": "^0.8.6",
     "@marschat/frontend-common": "^0.3.5",
     "axios": "^1.18.1",
     "element-plus": "^2.7.0",
