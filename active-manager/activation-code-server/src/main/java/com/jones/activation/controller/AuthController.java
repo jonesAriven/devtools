@@ -1,5 +1,6 @@
 package com.jones.activation.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jones.activation.entity.AdminUser;
 import com.jones.activation.mapper.AdminUserMapper;
 import com.jones.activation.util.OidcTokenVerifier;
@@ -8,15 +9,24 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/activecode/api/auth")
@@ -30,6 +40,22 @@ public class AuthController {
         this.adminUserMapper = adminUserMapper;
         this.oidcVerifier = oidcVerifier;
     }
+
+    /**
+     * auth-center 服务端互调基址。
+     * <p>activecode 部署在独立主机（内网 Debian .182）、只挂自己的 compose 网络，
+     * **不能**用容器名 `auth-center`；必须走宿主 LAN 地址（与 LocalAccountReporter 同口径）。
+     */
+    @Value("${marschat.auth-center.base:}")
+    private String authCenterBase;
+
+    private static final String DEFAULT_AUTH_CENTER_BASE = "http://192.168.31.105:8085";
+
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(3))
+            .build();
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody Map<String, String> body, HttpSession session) {
@@ -112,30 +138,10 @@ public class AuthController {
             return Map.of("success", false, "message", "username 与 token 不一致");
         }
 
-        // 优先映射到同名管理员账号；激活码数据无用户隔离，未匹配时回退到既有管理员账号
-        AdminUser user = adminUserMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
-                        .eq(AdminUser::getUsername, ssoUsername)
-        );
-        if (user == null) {
-            user = adminUserMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
-                            .last("LIMIT 1")
-            );
-        }
-        if (user == null) {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            return Map.of("success", false, "message", "未找到可映射的管理员账号");
-        }
-
-        user.setLastLoginTime(LocalDateTime.now());
-        adminUserMapper.updateById(user);
-
-        session.setAttribute("loginUser", user);
-        session.setAttribute("ssoUser", ssoUsername);
-        log.info("SSO 登录成功: ssoUser={}, mappedAdmin={}, sessionId={}", ssoUsername, user.getUsername(), session.getId());
-
-        return Map.of("success", true, "username", user.getUsername(), "ssoUser", ssoUsername);
+        // 统一走「映射收敛」判定（同名 → 超管例外 → 中心账号映射 → 403）。
+        // 🔴 改造前此处是「未匹配同名则回退到任意本地管理员(LIMIT 1)」—— 等于任何持有有效中心
+        //    token 的用户都能以 admin 进入激活码系统（与 cosmic G2 同类的越权默认值），已收敛。
+        return establishSession(ssoUsername, accessToken, session, response);
     }
 
     @GetMapping("/session")
@@ -208,5 +214,248 @@ public class AuthController {
         byte[] salt = new byte[16];
         random.nextBytes(salt);
         return Base64.getEncoder().encodeToString(salt);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 统一登录三方式补齐（L1 / T6，2026-09-15）：邮箱验证码登录 + 忘记密码
+    //
+    // activecode 是 6 个自研应用里唯一掉队的：只支持「本地账密 + SSO」，没有邮箱码登录、
+    // 没有自助改密，UMD 也停在 0.6.9。本段补齐最低线，并顺带收敛一个越权默认值（见 resolveLocalAdmin）。
+    //
+    // 实现方式 = **服务端代理**（与 portal BFF 同思路）：浏览器不接受中心 token，
+    // 由本服务用服务器身份/用户 token 调 auth-center，再把结果换成自有 HttpSession。
+    // 原因：activecode 的会话模型是 HttpSession（非 JWT），且它在独立网络（192.168.31.182），
+    // 中心接口必须走内网地址 192.168.31.105:8085（不能走公网域名，见 .woodpecker 铁律）。
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** 邮箱验证码登录：请求发码（匿名端点，转发 auth-center） */
+    @PostMapping("/mail-login/send-code")
+    public Map<String, Object> sendMailLoginCode(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return Map.of("success", false, "message", "邮箱不能为空");
+        }
+        return proxyJson("/auth/mail-login/send-code", Map.of("email", email), null);
+    }
+
+    /** 忘记密码：请求发码（匿名端点，转发 auth-center；中心侧防枚举，永远返回成功） */
+    @PostMapping("/forgot-password")
+    public Map<String, Object> forgotPassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return Map.of("success", false, "message", "邮箱不能为空");
+        }
+        return proxyJson("/auth/forgot-password", Map.of("email", email), null);
+    }
+
+    /** 忘记密码：用邮箱码重置（匿名端点，转发 auth-center） */
+    @PostMapping("/reset-password")
+    public Map<String, Object> resetPassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String code = body.get("code");
+        String newPassword = body.get("newPassword");
+        if (email == null || email.isBlank() || code == null || code.isBlank()
+                || newPassword == null || newPassword.length() < 6) {
+            return Map.of("success", false, "message", "参数不完整（新密码至少 6 位）");
+        }
+        return proxyJson("/auth/reset-password",
+                Map.of("email", email, "code", code, "newPassword", newPassword), null);
+    }
+
+    /**
+     * 邮箱验证码登录：验码换票 → 验签 → 账号映射 → 建立本应用会话。
+     *
+     * <p>与 {@code /sso-login} 共用同一套「映射收敛」判定（见 {@link #resolveLocalAdmin}），
+     * 两条登录径对「谁能进本应用」的答案是同一个。
+     */
+    @PostMapping("/mail-login")
+    public Map<String, Object> mailLogin(@RequestBody Map<String, String> body,
+                                         HttpSession session, HttpServletResponse response) {
+        String email = body.get("email");
+        String code = body.get("code");
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+            return Map.of("success", false, "message", "邮箱与验证码不能为空");
+        }
+
+        Map<String, Object> res = proxyAjax("/auth/mail-login", Map.of("email", email, "code", code), null);
+        if (!isOk(res)) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", String.valueOf(res.getOrDefault("message", "邮箱验证码登录失败")));
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) res.get("data");
+        String accessToken = data == null ? null : (String) data.get("accessToken");
+        if (accessToken == null || accessToken.isBlank()) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "中心未返回 access_token");
+        }
+
+        JWTClaimsSet claims = oidcVerifier.verify(accessToken);
+        if (claims == null) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "access_token 验签失败");
+        }
+        String centerUsername = claimUsername(claims);
+        if (centerUsername == null || centerUsername.isBlank()) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return Map.of("success", false, "message", "token 中无用户名声明");
+        }
+        // 超管（marschat@163.com）走「已验证邮箱=身份」的通路，无需本地同名
+        return establishSession(centerUsername, accessToken, session, response);
+    }
+
+    /**
+     * 解析「中心身份 → 本应用本地管理员」，并建立 HttpSession。
+     *
+     * <h3>判定顺序（与 cosmic §33.12 同一套，2026-09-15 收敛）</h3>
+     * <ol>
+     *   <li><b>本地同名</b>：本地 admin_user 里有同名账号 → 用它（管理员同时也是中心账号的常见情形）；</li>
+     *   <li><b>超管例外</b>：中心平台 admin/superadmin → 映射到本地管理员（超管本就是每个系统的管理员）；</li>
+     *   <li><b>中心账号映射</b>：查 auth-center {@code /user/mapping?clientId=marschat-activecode}
+     *       （以**用户本人 token** 查询，见 §33.12.1），命中则用映射到的本地账号；</li>
+     *   <li>其余 → <b>403</b>。</li>
+     * </ol>
+     *
+     * <p>🔴 修复的越权默认值：改造前 {@code /sso-login} 在「同名不匹配」时**回退到任意一个本地
+     * 管理员**（{@code LIMIT 1}）—— 等于**任何**持有有效中心 token 的用户都能以 admin 身份进入
+     * 激活码系统。这与 cosmic 已修的 G2（「非本池用户 → admin」）是同一类缺陷，本轮一并收敛。
+     */
+    private Map<String, Object> establishSession(String centerUsername, String accessToken,
+                                                 HttpSession session, HttpServletResponse response) {
+        // ① 本地同名
+        AdminUser user = adminUserMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                        .eq(AdminUser::getUsername, centerUsername));
+
+        boolean platformAdmin = false;
+        if (user == null) {
+            Set<String> roles = fetchPlatformRoles(accessToken);
+            platformAdmin = roles.contains("admin") || roles.contains("superadmin");
+        }
+
+        // ② 超管例外
+        if (user == null && platformAdmin) {
+            user = adminUserMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                            .last("LIMIT 1"));
+        }
+
+        // ③ 中心账号映射（用户本人 token 查自己在本应用的绑定）
+        if (user == null) {
+            String mapped = fetchMappedLocalAccount(accessToken);
+            if (mapped != null && !mapped.isBlank()) {
+                user = adminUserMapper.selectOne(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                                .eq(AdminUser::getUsername, mapped));
+            }
+        }
+
+        if (user == null) {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            return Map.of("success", false,
+                    "message", "账号未绑定：请联系管理员在「统一认证中心 → 账号映射」中完成绑定");
+        }
+
+        user.setLastLoginTime(LocalDateTime.now());
+        adminUserMapper.updateById(user);
+        session.setAttribute("loginUser", user);
+        session.setAttribute("ssoUser", centerUsername);
+        log.info("统一登录成功(邮箱码/SSO): centerUser={}, mappedAdmin={}, sessionId={}",
+                centerUsername, user.getUsername(), session.getId());
+        return Map.of("success", true, "username", user.getUsername(), "ssoUser", centerUsername);
+    }
+
+    /** 取中心平台角色（供超管例外判定）；失败返回空集（退化为「按映射/同名走」）。 */
+    private Set<String> fetchPlatformRoles(String accessToken) {
+        Map<String, Object> res = proxyAjax("/auth/permissions?client=marschat-activecode", null, accessToken);
+        if (!isOk(res)) {
+            return Set.of();
+        }
+        Object dataObj = res.get("data");
+        if (!(dataObj instanceof Map<?, ?> data)) {
+            return Set.of();
+        }
+        Object roles = ((Map<?, ?>) data).get("platformRoles");
+        if (!(roles instanceof List<?> list)) {
+            return Set.of();
+        }
+        Set<String> out = new HashSet<>();
+        for (Object r : list) {
+            out.add(String.valueOf(r));
+        }
+        return out;
+    }
+
+    /** 查「用户本人」在本应用的账号映射（auth-center GET /user/mapping?clientId=...）。 */
+    private String fetchMappedLocalAccount(String accessToken) {
+        Map<String, Object> res = proxyAjax("/user/mapping?clientId=marschat-activecode", null, accessToken);
+        if (!isOk(res)) {
+            return null;
+        }
+        Object dataObj = res.get("data");
+        if (dataObj instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Map<?, ?> first) {
+            Object local = first.get("local_account");
+            if (local == null) {
+                local = first.get("localAccount");
+            }
+            return local == null ? null : String.valueOf(local);
+        }
+        return null;
+    }
+
+    /** token 中的登录用户名：sub 优先，回退 preferred_username（与 /sso-login 同口径）。 */
+    private String claimUsername(JWTClaimsSet claims) {
+        String name = claims.getSubject();
+        if (name == null || name.isBlank()) {
+            try {
+                name = claims.getStringClaim("preferred_username");
+            } catch (Exception e) {
+                name = null;
+            }
+        }
+        return name;
+    }
+
+    private boolean isOk(Map<String, Object> res) {
+        Object code = res == null ? null : res.get("code");
+        return code instanceof Number n && n.intValue() == 200;
+    }
+
+    /** 转发到 auth-center，返回统一的 {@code {success, ...}} 形态（供发码/改密这类无 token 端点）。 */
+    private Map<String, Object> proxyJson(String path, Map<String, Object> payload, String bearer) {
+        Map<String, Object> res = proxyAjax(path, payload, bearer);
+        if (isOk(res)) {
+            return Map.of("success", true, "message", String.valueOf(res.getOrDefault("message", "success")));
+        }
+        return Map.of("success", false, "message", String.valueOf(res.getOrDefault("message", "请求失败")));
+    }
+
+    /** 原始转发：返回 auth-center 的完整响应体（Map）；网络/解析失败返回 code=502。 */
+    private Map<String, Object> proxyAjax(String path, Map<String, Object> payload, String bearer) {
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create((authCenterBase == null || authCenterBase.isBlank()
+                            ? DEFAULT_AUTH_CENTER_BASE : authCenterBase).replaceAll("/+$", "") + path))
+                    .timeout(Duration.ofSeconds(8))
+                    .header("Content-Type", "application/json");
+            if (bearer != null && !bearer.isBlank()) {
+                builder.header("Authorization", "Bearer " + bearer);
+            }
+            if (payload == null) {
+                builder.GET();
+            } else {
+                builder.POST(HttpRequest.BodyPublishers.ofString(
+                        MAPPER.writeValueAsString(payload), StandardCharsets.UTF_8));
+            }
+            HttpResponse<String> resp = HTTP.send(builder.build(),
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = MAPPER.readValue(resp.body(), Map.class);
+            return body;
+        } catch (Exception e) {
+            log.warn("转发 auth-center 失败 path={}: {}", path, e.getMessage());
+            return Map.of("code", 502, "message", "统一认证中心不可达：" + e.getMessage());
+        }
     }
 }

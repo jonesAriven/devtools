@@ -41,6 +41,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/auth/login",
                         "/activecode/api/auth/sso-login",
                         "/activecode/api/auth/session",
+                        // 统一登录三方式补齐（L1，2026-09-15）：邮箱码登录与自助改密都发生在
+                        // 「还没有本地会话」时，必须匿名可达，否则用户根本进不了登录流程。
+                        "/activecode/api/auth/mail-login",
+                        "/activecode/api/auth/mail-login/send-code",
+                        "/activecode/api/auth/forgot-password",
+                        "/activecode/api/auth/reset-password",
                         "/activecode/api/activation/verify",
                         "/activecode/api/activation/generate",
                         "/activecode/api/activation/config/default-expire",

@@ -387,7 +387,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const data = await res.json();
     sessionStorage.removeItem(SESSION_KEYS.state);
     sessionStorage.removeItem(SESSION_KEYS.verifier);
-    const target = sessionStorage.getItem(SESSION_KEYS.redirect) || "/dashboard";
+    const target = toSpaPath(config2, sessionStorage.getItem(SESSION_KEYS.redirect) || "/dashboard");
     sessionStorage.removeItem(SESSION_KEYS.redirect);
     setTokenKind("oidc");
     setToken(data.access_token);
@@ -466,19 +466,21 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     clearLocalAuth();
     window.location.assign(url);
   }
-  async function renewByReauthorize(config2, redirect) {
-    const current = `${window.location.pathname}${window.location.search}`;
-    let target = redirect || current;
-    if (!redirect) {
-      try {
-        const cbPath = new URL(config2.redirectUri, window.location.origin).pathname;
-        const base = cbPath.replace(/\/[^/]*$/, "");
-        if (base && current.startsWith(base)) {
-          target = current.slice(base.length) || "/";
-        }
-      } catch {
+  function toSpaPath(config2, raw) {
+    const v = (raw ?? `${window.location.pathname}${window.location.search}`).trim();
+    if (!v) return "/dashboard";
+    try {
+      const cbPath = new URL(config2.redirectUri, window.location.origin).pathname;
+      const base = cbPath.replace(/\/[^/]*$/, "");
+      if (base && base !== "/" && (v === base || v.startsWith(`${base}/`) || v.startsWith(`${base}?`))) {
+        return v.slice(base.length) || "/";
       }
+    } catch {
     }
+    return v;
+  }
+  async function renewByReauthorize(config2, redirect) {
+    const target = toSpaPath(config2, redirect);
     clearTokens();
     await startSsoLogin(config2, target);
     return new Promise(() => {
@@ -496,6 +498,21 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       localStorage.removeItem("auth_user");
     } catch {
     }
+  }
+  function getAppBase() {
+    try {
+      const raw = window.__MARSCHAT_APP_BASE__;
+      if (typeof raw !== "string") return "";
+      const trimmed = raw.replace(/\/+$/, "");
+      return trimmed === "/" ? "" : trimmed;
+    } catch {
+      return "";
+    }
+  }
+  function appPath(path) {
+    if (/^https?:\/\//i.test(path)) return path;
+    const base = getAppBase();
+    return `${base}${path.startsWith("/") ? path : `/${path}`}`;
   }
   const DEFAULTS = {
     intervalMs: 6e4,
@@ -517,7 +534,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   function createSessionWatcher(config2, options = {}) {
     const opts = { ...DEFAULTS, ...options };
-    const loginUrl = options.loginUrl || config2.loginUrl || "/login";
+    const loginUrl = options.loginUrl || config2.loginUrl || appPath("/login");
     const readToken = options.getToken ?? getToken;
     const clearAuth = options.clearLocalAuth ?? clearLocalAuthSafely;
     let running = false;
@@ -668,8 +685,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       login: (redirect) => startSsoLogin(config2, redirect),
       /** 处理授权回调：用 code + PKCE 换票，返回落地路径 */
       handleCallback: (searchParams) => handleSsoCallback(config2, searchParams),
-      /** 静默续期：重跑一次授权（token 过期 / 收到 401 时调用，不返回） */
-      renew: (redirect) => renewByReauthorize(config2, redirect || `${window.location.pathname}${window.location.search}`),
+      /**
+       * 静默续期：重跑一次授权（token 过期 / 收到 401 时调用，不返回）。
+       *
+       * ⚠️ 不要在这里拼 `window.location.pathname`：它**含部署前缀**（如 `/ops`），
+       * 而回调页是 `router.replace` 落地的（router 自带 base）→ 会拼成 `/ops/ops/...` 落 404。
+       * 不传时由 `renewByReauthorize` 内部经 `toSpaPath()` 统一剥离前缀（2026-09-15 实测修复）。
+       */
+      renew: (redirect) => renewByReauthorize(config2, redirect),
       /** 统一登出（SLO）：销毁 IdP 会话 + 清本地，然后回跳 */
       logout: (options) => ssoLogout(config2, options),
       /** 仅构建登出 URL（需要自己控制跳转时机时用） */
@@ -790,6 +813,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           query: {
             realmId: query.realmId,
             keyword: query.keyword,
+            client: query.client,
             page: query.page ?? 1,
             size: query.size ?? 20
           }
@@ -814,7 +838,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     };
   }
-  const version = "0.6.9";
+  const version = "0.8.6";
   exports2.bootstrapLoginPage = bootstrapLoginPage;
   exports2.buildSloUrl = buildSloUrl;
   exports2.buildSsoAuthorizeUrl = buildSsoAuthorizeUrl;

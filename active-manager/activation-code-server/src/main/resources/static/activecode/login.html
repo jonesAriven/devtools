@@ -38,6 +38,27 @@
         .boot-spinner { width: 34px; height: 34px; border: 3px solid rgba(199,210,254,0.28); border-top-color: #818cf8; border-radius: 50%; animation: bootspin 0.8s linear infinite; }
         @keyframes bootspin { to { transform: rotate(360deg); } }
         .login-card.pending { visibility: hidden; }
+        /* ── 统一登录三方式（L1 补齐，2026-09-15）：邮箱验证码登录 + 忘记密码 ── */
+        .mode-tabs { display: flex; gap: 6px; margin-bottom: 18px; background: #f3f4f6; border-radius: 10px; padding: 4px; }
+        .mode-tabs button { flex: 1; padding: 8px; border: none; background: transparent; border-radius: 7px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .mode-tabs button.active { background: #fff; color: #4338ca; box-shadow: 0 1px 3px rgba(0,0,0,0.09); }
+        .code-row { display: flex; gap: 8px; align-items: stretch; }
+        .code-row input { flex: 1; }
+        .btn-code { padding: 0 12px; border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+        .btn-code:hover { background: #e0e7ff; }
+        .btn-code:disabled { opacity: 0.55; cursor: not-allowed; }
+        .forgot-link { text-align: right; margin: -4px 0 10px; }
+        .forgot-link a { font-size: 12px; color: #4f46e5; cursor: pointer; }
+        .forgot-link a:hover { text-decoration: underline; }
+        .modal-mask { position: fixed; inset: 0; background: rgba(17,24,39,0.55); display: none; align-items: center; justify-content: center; z-index: 30; }
+        .modal-mask.show { display: flex; }
+        .modal { background: #fff; border-radius: 14px; width: 380px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal h2 { font-size: 17px; color: #111827; margin-bottom: 6px; }
+        .modal .hint { font-size: 12px; color: #9ca3af; margin-bottom: 16px; line-height: 1.5; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+        .btn-ghost { flex: 1; padding: 11px; background: #fff; border: 1px solid #d1d5db; border-radius: 9px; font-size: 14px; cursor: pointer; color: #374151; }
+        .btn-primary { flex: 1; padding: 11px; background: #4f46e5; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; }
+        .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -54,6 +75,12 @@
             <p>请登录管理后台</p>
         </div>
         <div class="login-body">
+            <!-- 统一登录三方式（L1 补齐，2026-09-15）：账号密码 / 邮箱验证码；忘记密码在账密表单下方 -->
+            <div class="mode-tabs">
+                <button type="button" class="active" id="tabPwd" onclick="switchMode('pwd')">账号密码</button>
+                <button type="button" id="tabMail" onclick="switchMode('mail')">邮箱验证码</button>
+            </div>
+
             <form id="loginForm">
                 <div class="form-group">
                     <label>用户名</label>
@@ -63,15 +90,61 @@
                     <label>密码</label>
                     <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" required>
                 </div>
+                <div class="forgot-link"><a onclick="openForgot()">忘记密码？</a></div>
                 <button type="submit" class="btn-login" id="btnLogin">登 录</button>
                 <div class="error-msg" id="errorMsg"></div>
             </form>
+
+            <form id="mailForm" style="display:none">
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="mailEmail" placeholder="请输入账号绑定邮箱" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label>邮箱验证码</label>
+                    <div class="code-row">
+                        <input type="text" id="mailCode" placeholder="6 位验证码" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                        <button type="button" class="btn-code" id="btnSendCode" onclick="sendMailCode()">发送验证码</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login" id="btnMailLogin">登 录</button>
+                <div class="error-msg" id="mailErrorMsg"></div>
+            </form>
+
             <div class="sso-divider">或使用统一认证</div>
             <button type="button" class="btn-sso" id="btnSso" onclick="startSsoLogin()">
                 <span>🔐</span> 统一认证登录（SSO）
             </button>
         </div>
         <div class="login-footer">仅限管理员使用 · 如需账号请联系系统管理员</div>
+    </div>
+
+    <!-- 忘记密码（邮箱验证码找回）：邮箱 → 验证码 → 新密码 -->
+    <div class="modal-mask" id="forgotMask">
+        <div class="modal">
+            <h2>重置密码</h2>
+            <p class="hint">通过账号绑定邮箱收取验证码完成重置。重置成功后请用新密码登录。</p>
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="forgotEmail" placeholder="请输入账号绑定邮箱" autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label>邮箱验证码</label>
+                <div class="code-row">
+                    <input type="text" id="forgotCode" placeholder="6 位验证码" maxlength="6" inputmode="numeric">
+                    <button type="button" class="btn-code" id="btnForgotCode" onclick="sendResetCode()">发送验证码</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>新密码</label>
+                <input type="password" id="forgotNewPwd" placeholder="至少 6 位" autocomplete="new-password">
+            </div>
+            <div class="error-msg" id="forgotMsg"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="closeForgot()">取消</button>
+                <button type="button" class="btn-primary" id="btnForgotSubmit" onclick="submitReset()">确认重置</button>
+            </div>
+        </div>
     </div>
 
     <!-- 公共组件：框架无关 UMD 单文件（@marschat/auth-components，见 VENDORED.md） -->
@@ -208,6 +281,162 @@
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             handleLogin(e);
+        });
+
+        // ══════════════════════════════════════════════════════════════════════
+        // 统一登录三方式补齐（L1，2026-09-15）：邮箱验证码登录 + 忘记密码
+        // 全部走本服务代理端点（/activecode/api/auth/*），由后端转发 auth-center ——
+        // 浏览器不直接接触中心端点（activecode 在独立主机，跨域与凭据都更简单）。
+        // ══════════════════════════════════════════════════════════════════════
+        function switchMode(mode) {
+            var pwd = mode === 'pwd';
+            document.getElementById('loginForm').style.display = pwd ? '' : 'none';
+            document.getElementById('mailForm').style.display = pwd ? 'none' : '';
+            document.getElementById('tabPwd').classList.toggle('active', pwd);
+            document.getElementById('tabMail').classList.toggle('active', !pwd);
+            document.getElementById('errorMsg').classList.remove('show');
+            document.getElementById('mailErrorMsg').classList.remove('show');
+        }
+
+        function showErr(id, msg) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        /** 发码按钮 60s 倒计时（登录发码与重置发码共用） */
+        function countdown(btnId, seconds) {
+            var btn = document.getElementById(btnId);
+            if (!btn) return;
+            var original = btn.textContent;
+            var left = seconds;
+            btn.disabled = true;
+            btn.textContent = left + 's 后重发';
+            var t = setInterval(function () {
+                left -= 1;
+                if (left <= 0) {
+                    clearInterval(t);
+                    btn.disabled = false;
+                    btn.textContent = original;
+                    return;
+                }
+                btn.textContent = left + 's 后重发';
+            }, 1000);
+        }
+
+        async function postJson(url, body) {
+            var res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return res.json();
+        }
+
+        /** 发送邮箱登录验证码 */
+        async function sendMailCode() {
+            var email = document.getElementById('mailEmail').value.trim();
+            if (!email) { showErr('mailErrorMsg', '请先填写邮箱'); return; }
+            document.getElementById('mailErrorMsg').classList.remove('show');
+            try {
+                var data = await postJson('/activecode/api/auth/mail-login/send-code', { email: email });
+                if (data.success) {
+                    countdown('btnSendCode', 60);
+                    showErr('mailErrorMsg', '验证码已发送，请查收邮箱');
+                } else {
+                    showErr('mailErrorMsg', data.message || '发送失败');
+                }
+            } catch (e) {
+                showErr('mailErrorMsg', '网络错误，请重试');
+            }
+        }
+
+        /** 邮箱验证码登录 */
+        async function handleMailLogin(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            var btn = document.getElementById('btnMailLogin');
+            var email = document.getElementById('mailEmail').value.trim();
+            var code = document.getElementById('mailCode').value.trim();
+            if (!email || !code) { showErr('mailErrorMsg', '请填写邮箱与验证码'); return; }
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            document.getElementById('mailErrorMsg').classList.remove('show');
+            try {
+                var data = await postJson('/activecode/api/auth/mail-login', { email: email, code: code });
+                if (data.success) {
+                    window.location.href = '/activecode/main.html';
+                } else {
+                    showErr('mailErrorMsg', data.message || '登录失败');
+                }
+            } catch (err) {
+                showErr('mailErrorMsg', '网络错误，请重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登 录';
+            }
+        }
+
+        // ===== 忘记密码（邮箱验证码找回）=====
+        function openForgot() {
+            document.getElementById('forgotMask').classList.add('show');
+            document.getElementById('forgotMsg').classList.remove('show');
+        }
+
+        function closeForgot() {
+            document.getElementById('forgotMask').classList.remove('show');
+        }
+
+        async function sendResetCode() {
+            var email = document.getElementById('forgotEmail').value.trim();
+            if (!email) { showErr('forgotMsg', '请先填写邮箱'); return; }
+            document.getElementById('forgotMsg').classList.remove('show');
+            try {
+                var data = await postJson('/activecode/api/auth/forgot-password', { email: email });
+                if (data.success) {
+                    countdown('btnForgotCode', 60);
+                    showErr('forgotMsg', '验证码已发送，请查收邮箱');
+                } else {
+                    showErr('forgotMsg', data.message || '发送失败');
+                }
+            } catch (e) {
+                showErr('forgotMsg', '网络错误，请重试');
+            }
+        }
+
+        async function submitReset() {
+            var email = document.getElementById('forgotEmail').value.trim();
+            var code = document.getElementById('forgotCode').value.trim();
+            var pwd = document.getElementById('forgotNewPwd').value;
+            if (!email || !code || !pwd) { showErr('forgotMsg', '请填写邮箱、验证码与新密码'); return; }
+            if (pwd.length < 6) { showErr('forgotMsg', '新密码至少 6 位'); return; }
+            var btn = document.getElementById('btnForgotSubmit');
+            btn.disabled = true;
+            btn.textContent = '提交中...';
+            try {
+                var data = await postJson('/activecode/api/auth/reset-password',
+                    { email: email, code: code, newPassword: pwd });
+                if (data.success) {
+                    closeForgot();
+                    switchMode('pwd');
+                    showErr('errorMsg', '密码已重置，请用新密码登录');
+                } else {
+                    showErr('forgotMsg', data.message || '重置失败');
+                }
+            } catch (e) {
+                showErr('forgotMsg', '网络错误，请重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '确认重置';
+            }
+        }
+
+        document.getElementById('mailForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            handleMailLogin(e);
+        });
+        document.getElementById('mailCode').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') handleMailLogin(e);
         });
     </script>
 </body>

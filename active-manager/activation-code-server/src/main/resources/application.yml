@@ -64,3 +64,8 @@ marschat:
       issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
       client-id: marschat-activecode
       report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # 统一认证中心服务端互调基址（L1，2026-09-15）：邮箱验证码登录 / 忘记密码由本服务代理转发。
+  # ⚠️ activecode 部署在独立主机（内网 Debian 192.168.31.182），只挂自己的 compose 网络，
+  #    **不能**用容器名 auth-center；必须走宿主 LAN 地址（与 account.report.issuer 同口径）。
+  auth-center:
+    base: ${MARSCHAT_AUTH_CENTER_BASE:http://192.168.31.105:8085}
