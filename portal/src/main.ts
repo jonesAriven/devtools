@@ -15,6 +15,7 @@ import { CONTEXT_PATH } from '@/config/runtime'
 window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
 import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
 import { permissions } from '@/utils/permissions'
+import { isOidcToken } from '@marschat/auth-components'
 
 // Element Plus 图标 - 全量注册
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
@@ -41,16 +42,30 @@ app.mount('#app')
 //   （2026-09-12 实测：运行期 0 次 `/auth/session` 探针，只能靠 401 拦截器被动跳 ?reauth=1。）
 const userStore = useUserStore(pinia)
 if (userStore.token) {
-  startSessionWatcher({
-    getToken: () => userStore.token,
-    clearLocalAuth: () => userStore.clearSession(),
-    // 身份一致性守卫（auth-components 0.5.4+）：exchange 响应带 authUid（auth-center 用户 id），
-    // 与探针返回的 username（同为 auth uid）比对，错位（共享浏览器换人）→ 清本地后重走 BFF 换票
-    getLocalIdentity: () => userStore.authUid || null,
-    onIdentityMismatch: () => {
-      window.location.href = bffAuthorizeUrl(window.location.origin)
-    },
-  })
+  // 🔴 2026-09-15 回归修复（Phase 11）：**只有 SSO（OIDC）会话才启动会话监视器**。
+  //
+  // 监视器探的是 auth-center `/auth/session`（**IdP 会话**）；而账密 / 邮箱验证码走的是
+  // portal-server 的 **BFF 换票**——auth-center 的 Set-Cookie 落在后端进程里，
+  // **浏览器侧根本没有 IdP 会话** → 探针恒返回 `authenticated:false`。
+  // 组件默认 `confirmCount:1` + `redirectOnLost:true`，且 `start()` 会在 **3 秒后首探**，
+  // 于是每次整页刷新（F5 / 直输网址 / 从门户跳回）都被判「他处已登出」→
+  // `clearSession()` + 跳 `/portal/login?slo=1`，账密会话活不过 3 秒。
+  //
+  // 渠道由 stores/user.ts 的 setSession(kind) 打标（键 `portal_token_kind`）：
+  // ssoExchange → 'oidc'；login / 邮箱码 → 'legacy'。
+  // 同款写法见 infra-monitor-web/src/main.ts（devtools 59343a4d）。
+  if (isOidcToken()) {
+    startSessionWatcher({
+      getToken: () => userStore.token,
+      clearLocalAuth: () => userStore.clearSession(),
+      // 身份一致性守卫（auth-components 0.5.4+）：exchange 响应带 authUid（auth-center 用户 id），
+      // 与探针返回的 username（同为 auth uid）比对，错位（共享浏览器换人）→ 清本地后重走 BFF 换票
+      getLocalIdentity: () => userStore.authUid || null,
+      onIdentityMismatch: () => {
+        window.location.href = bffAuthorizeUrl(window.location.origin)
+      },
+    })
+  }
   // Phase 2：预取 RBAC 权限点（走 portal-server 的 BFF 代理；路由守卫侧也会 ensure）。
   // 拉取失败一律降级为 configured=false（全放行），绝不阻塞启动。
   void permissions.ensure()

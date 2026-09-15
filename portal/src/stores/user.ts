@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { initTokenConfig, setTokenKind } from '@marschat/auth-components'
 import { login as loginApi, ssoExchangeApi, type LoginRequest } from '@/api/auth'
 import { logout as ssoLogoutPortal } from '@/utils/sso'
 
@@ -8,6 +9,19 @@ const USER_KEY = 'portal_user'
 const ROLE_KEY = 'portal_role'
 // auth-center 用户 id：会话监视器「身份一致性守卫」的本地身份依据（0.5.4+）
 const AUTH_UID_KEY = 'portal_auth_uid'
+
+/**
+ * 登录渠道标记（组件库 `token_kind` 约定，同族：infra_token_kind）。
+ *
+ * ★ 为什么必须区分渠道：会话监视器探的是 auth-center `/auth/session`（**IdP 会话**），
+ *   而 portal 的账密 / 邮箱验证码走的是 **portal-server BFF 换票**——auth-center 的
+ *   Set-Cookie 落在后端进程里，**浏览器侧根本没有 IdP 会话**。若对这类会话也启动监视器，
+ *   探针恒返回 `authenticated:false` → 组件默认 `confirmCount:1` + `redirectOnLost:true`
+ *   且 `start()` 会在 3 秒后首探 → 每次整页刷新都被判「他处已登出」→ 跳 `?slo=1`。
+ *   只有浏览器侧真走过 OIDC 授权跳转的会话才值得监视。
+ */
+const TOKEN_KIND_KEY = 'portal_token_kind'
+initTokenConfig({ tokenKindKey: TOKEN_KIND_KEY })
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem(TOKEN_KEY) || '')
@@ -22,7 +36,18 @@ export const useUserStore = defineStore('user', () => {
   //      BFF /portal/api/admin/users 返回 403「需要管理员权限」）。
   const isAdmin = computed(() => role.value === 'admin' || role.value === 'superadmin')
 
-  function setSession(res: { token?: string; accessToken?: string; username?: string; role?: string; authUid?: string }, fallbackUsername?: string) {
+  /**
+   * 写入会话。
+   *
+   * @param kind 登录渠道 —— `'oidc'` 仅由 SSO 回调（`ssoExchange`）传入；
+   *             账密 / 邮箱验证码默认 `'legacy'`（浏览器侧无 IdP 会话）。
+   *             该标记决定 `main.ts` 是否启动会话监视器（SLO 联动）。
+   */
+  function setSession(
+    res: { token?: string; accessToken?: string; username?: string; role?: string; authUid?: string },
+    fallbackUsername?: string,
+    kind: 'oidc' | 'legacy' = 'legacy'
+  ) {
     const tokenVal = res.token || res.accessToken || ''
     token.value = tokenVal
     username.value = res.username || fallbackUsername || ''
@@ -33,17 +58,20 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem(ROLE_KEY, role.value)
     if (authUid.value) localStorage.setItem(AUTH_UID_KEY, authUid.value)
     else localStorage.removeItem(AUTH_UID_KEY)
+    setTokenKind(kind)
   }
 
   async function login(credentials: LoginRequest) {
     const res = await loginApi(credentials)
-    setSession(res as any, credentials.username)
+    // 账密走 portal-server BFF 换票，浏览器侧没有 IdP 会话 → legacy
+    setSession(res as any, credentials.username, 'legacy')
     return res
   }
 
   async function ssoExchange(code: string, state: string) {
     const res = await ssoExchangeApi(code, state)
-    setSession(res as any)
+    // SSO 是浏览器侧 OIDC 授权跳转，确有 IdP 会话 → oidc（可被会话监视器监视）
+    setSession(res as any, undefined, 'oidc')
     return res
   }
 
@@ -62,6 +90,8 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem(USER_KEY)
     localStorage.removeItem(ROLE_KEY)
     localStorage.removeItem(AUTH_UID_KEY)
+    // 渠道标记一并清掉：否则登出后残留 'oidc'，下次账密会话可能被误判为可监视
+    localStorage.removeItem(TOKEN_KIND_KEY)
   }
 
   /**
