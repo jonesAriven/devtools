@@ -25,7 +25,13 @@ import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
 import { API_BASE_URL } from '@/config'
 
 const client = createUserAdminClient({
-  // 同源 BFF：/infra/api/api/admin/users → nginx → infra-monitor-server /infra/api/admin/users
+  // ⚠️ 两层 `/api` 不是笔误，别"修"成一层：
+  //   API_BASE_URL = `/infra/api`（app-config.json 的 apiBase），而 nginx `location /infra/api/`
+  //   → `proxy_pass .../infra/` 会**剥掉一层** `/api`。于是浏览器请求
+  //   `/infra/api/api/admin/users` 到应用内正好是 `/infra/api/admin/users`
+  //   = AdminProxyController 的 `/api/admin/**`（context-path=/infra）。
+  //   2026-09-15 线上实测：`/infra/api/api/admin/users` → 200 带数据；
+  //   `/infra/api/admin/users` → 404「接口不存在: /infra/admin/users」（少一层即打空）。
   baseUrl: `${API_BASE_URL}/api/admin/users`,
   getToken: () => getToken(),
   // 401（本应用会话过期 / 中心会话失效）→ 静默重授权，回来后自动重载列表
