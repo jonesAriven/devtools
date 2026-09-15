@@ -3,6 +3,7 @@ package com.kb.infra.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marschat.common.result.Result;
+import com.kb.infra.service.CenterSessionStore;
 import com.kb.infra.util.JwtUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -50,6 +51,8 @@ public class AuthController {
     private final String adminUsername;
     /** 已改由认证中心校验，保留仅为兼容（构造期仍需 infra.admin.password 存在，避免改配置导致启动失败）。 */
     private final String adminPasswordHash;
+    /** 账密/邮箱码登录换来的中心 accessToken 暂存（供 /api/admin/** 代理以用户本人身份转发）。 */
+    private final CenterSessionStore centerSessions;
 
     @Value("${auth-center.base:http://127.0.0.1:8085}")
     private String authCenterBase;
@@ -67,10 +70,12 @@ public class AuthController {
      */
     public AuthController(JwtUtil jwtUtil,
                           PasswordEncoder passwordEncoder,
+                          CenterSessionStore centerSessions,
                           @Value("${infra.admin.username}") String adminUsername,
                           @Value("${infra.admin.password}") String adminPassword) {
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
+        this.centerSessions = centerSessions;
         this.adminUsername = adminUsername;
         this.adminPasswordHash = passwordEncoder.encode(adminPassword);
     }
@@ -100,6 +105,8 @@ public class AuthController {
             String username = user.path("username").asText(request.getUsername().trim());
             // role 原样取中心值（中心 admin 为 superadmin）：前端「用户管理」菜单按 token role 兜底判定
             String role = user.path("role").asText("");
+            // 中心 accessToken 暂存服务端：「用户管理」需以中心身份调 /admin/**（本应用自签 token 中心不认）
+            rememberCenterSession(username, node.path("data"));
             // uid = 中心用户主键：前端 UsersView 据 claims.uid 禁止删除/禁用自己，缺则自我保护失效
             String token = jwtUtil.generate(username, role, centerUid(user));
             return Result.ok(new LoginResponse(token, username));
@@ -150,6 +157,7 @@ public class AuthController {
             JsonNode user = node.path("data").path("user");
             String username = user.path("username").asText(adminUsername);
             // 同一处兜底：邮箱码登录同样须带中心 role，否则「用户管理」菜单同样被隐藏
+            rememberCenterSession(username, node.path("data"));
             String token = jwtUtil.generate(username, user.path("role").asText(""), centerUid(user));
             log.info("infra 邮箱验证码登录成功: {}", username);
             return Result.ok(new LoginResponse(token, username));
@@ -157,6 +165,26 @@ public class AuthController {
             log.warn("infra 邮箱验证码登录失败: {}", e.getMessage());
             return Result.fail(502, "认证中心不可达，请稍后重试");
         }
+    }
+
+    /**
+     * 记住本次登录换来的**中心** accessToken（{@code data.accessToken}），供
+     * {@code AdminProxyController} 以「该用户本人」的中心身份转发 {@code /admin/**}。
+     *
+     * <p>为什么不由服务端再登一次中心拿 token：那等于用**服务账号**调管理接口，
+     * 中心审计记录不到真实操作者，且一旦兜底就是提权（普通用户拿到管理员能力）。
+     * 这里存的始终是**用户自己账密换来的** token。
+     *
+     * <p>为什么不回传浏览器存 localStorage：那等于把中心管理凭据暴露给页面（XSS 可直接窃取，
+     * 且不受本应用登出控制）。服务端按用户名暂存，与 portal 的 refreshTokens 同一模式。
+     */
+    private void rememberCenterSession(String username, JsonNode data) {
+        String accessToken = data.path("accessToken").asText("");
+        if (accessToken.isEmpty()) {
+            log.warn("中心登录响应未含 accessToken，{} 的用户管理功能将不可用", username);
+            return;
+        }
+        centerSessions.put(username, accessToken, data.path("expiresIn").asLong(0L));
     }
 
     /** 调用 auth-center 的公开 JSON 端点，返回完整 Result 信封（code/message/data）。 */
