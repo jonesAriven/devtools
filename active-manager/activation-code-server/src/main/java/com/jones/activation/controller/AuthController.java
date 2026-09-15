@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/activecode/api/auth")
@@ -57,6 +58,22 @@ public class AuthController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /**
+     * 独立账密登录 —— **身份与密码的唯一真源是 auth-center**（Phase 11，2026-09-15）。
+     *
+     * <p>改造前：查本地 {@code admin_user} → 用本地 salt 做 SHA-256 比对。这让账密与 SSO
+     * 成为两套身份源，违背「统一登录、用户统一管理」。现改为：本服务把账密 **服务端代理转发**
+     * 给 auth-center {@code POST /auth/login}，校验完全由中心完成；本地 {@code admin_user}
+     * 降级为**影子表**（只保留账号存在性与最后登录时间，不再存密码、不再参与校验）。
+     *
+     * <p>🔴 三条硬约束：
+     * <ol>
+     *   <li>中心不可达时**绝不回退本地密码校验** —— 回退等于把「改中心密码/停用账号」失效，
+     *       又造出一个影子真源。宁可登录不可用，也不制造越权。</li>
+     *   <li>中心返回的 {@code data.user.password} 是哈希串，**禁止**读取、落库或透传。</li>
+     *   <li>失败文案统一为「用户名或密码错误」，避免账号枚举。</li>
+     * </ol>
+     */
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody Map<String, String> body, HttpSession session) {
         String username = body.get("username");
@@ -66,27 +83,60 @@ public class AuthController {
             return Map.of("success", false, "message", "用户名和密码不能为空");
         }
 
+        Map<String, Object> res = proxyAjax("/auth/login",
+                Map.of("username", username, "password", password), null);
+
+        // 中心不可达 / 非 200：同一文案，避免账号枚举
+        if (!isOk(res)) {
+            if (isUnreachable(res)) {
+                log.warn("账密登录失败：认证中心不可达 user={}", username);
+                return Map.of("success", false, "message", "认证中心不可达，请稍后重试");
+            }
+            return Map.of("success", false, "message", "用户名或密码错误");
+        }
+
+        Object dataObj = res.get("data");
+        if (!(dataObj instanceof Map<?, ?> data)) {
+            return Map.of("success", false, "message", "用户名或密码错误");
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userNode = (data.get("user") instanceof Map)
+                ? (Map<String, Object>) data.get("user") : null;
+        if (userNode == null) {
+            return Map.of("success", false, "message", "用户名或密码错误");
+        }
+
+        // 账号停用：中心 status=1 为启用
+        Object statusObj = userNode.get("status");
+        if (statusObj != null && !(statusObj instanceof Number n && n.intValue() == 1)) {
+            log.info("账密登录被拒：账号已停用 user={}", username);
+            return Map.of("success", false, "message", "账号已停用");
+        }
+
+        // 收敛本地影子：无则自动建档（不存密码），有则刷新最后登录时间
         AdminUser user = adminUserMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
                         .eq(AdminUser::getUsername, username)
         );
-
         if (user == null) {
-            return Map.of("success", false, "message", "用户名或密码错误");
+            Object nickname = userNode.get("nickname");
+            String displayName = (nickname instanceof String s && !s.isBlank()) ? s : username;
+            user = new AdminUser();
+            user.setUsername(username);
+            user.setCreateTime(LocalDateTime.now());
+            // 密码已改由认证中心校验，本地不再保存任何口令材料：salt/password 仅填随机占位，
+            // 保证即使有人绕过本方法直连本地表也无法用占位值登录（不存在与之匹配的明文）。
+            user.setSalt(generateSalt());
+            user.setPassword(hashPassword(UUID.randomUUID().toString(), user.getSalt()));
+            adminUserMapper.insert(user);
+            log.info("账密登录：中心身份首次进入，本地影子建档 user={}, displayName={}", username, displayName);
         }
-
-        String hashed = hashPassword(password, user.getSalt());
-        if (!hashed.equals(user.getPassword())) {
-            return Map.of("success", false, "message", "用户名或密码错误");
-        }
-
-        // 更新最后登录时间
         user.setLastLoginTime(LocalDateTime.now());
         adminUserMapper.updateById(user);
 
-        // 写入Session
+        // 写入Session（下游 checkSession / changePassword / 各业务端点依赖此属性，保持不变）
         session.setAttribute("loginUser", user);
-        log.info("用户登录成功: {}, IP: {}", username, session.getId());
+        log.info("用户登录成功(认证中心): {}, sessionId={}", username, session.getId());
 
         return Map.of("success", true, "username", username);
     }
@@ -120,15 +170,12 @@ public class AuthController {
             return Map.of("success", false, "message", "access_token 验签失败");
         }
 
-        // SAS access_token 的 sub 即登录用户名；回退 preferred_username
-        String tokenUsername = claims.getSubject();
-        if (tokenUsername == null || tokenUsername.isBlank()) {
-            try {
-                tokenUsername = claims.getStringClaim("preferred_username");
-            } catch (Exception e) {
-                tokenUsername = null;
-            }
-        }
+        // 🔴 遗留缺陷 F2（2026-09-15 修复）：原先取 sub 作为用户名、只在 sub 为空时才回退
+        //    preferred_username。但中心 SAS 令牌的 **sub 是用户 ID**（数字），**username 才是
+        //    登录用户名** —— 拿 sub 去比对会让「用户名一致」校验必然失败（或错把用户 ID 当账号），
+        //    且下游的本地同名 / 中心账号映射都是**按 username 认领**的。
+        //    现改为以 `username` 声明为主，回退 preferred_username，最后才是 sub。
+        String tokenUsername = claimUsername(claims);
         if (tokenUsername == null || tokenUsername.isBlank()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return Map.of("success", false, "message", "token 中无用户名声明");
@@ -423,15 +470,29 @@ public class AuthController {
         return null;
     }
 
-    /** token 中的登录用户名：sub 优先，回退 preferred_username（与 /sso-login 同口径）。 */
+    /**
+     * 从 SAS 令牌取**登录用户名**：{@code username} 声明为主 → {@code preferred_username} → {@code sub}。
+     *
+     * <p>⚠️ 顺序不可颠倒：中心 SAS 令牌的 {@code sub} 是**用户 ID**，不是用户名。
+     * 账号映射表（app_account_mapping）与本地 admin_user 都按 username 认领，用 sub 会全错。
+     * （缺陷 F2，2026-09-15 修复；/sso-login 与 mail-login 兜底共用此口径。）
+     */
     private String claimUsername(JWTClaimsSet claims) {
-        String name = claims.getSubject();
+        String name = null;
+        try {
+            name = claims.getStringClaim("username");
+        } catch (Exception e) {
+            name = null;
+        }
         if (name == null || name.isBlank()) {
             try {
                 name = claims.getStringClaim("preferred_username");
             } catch (Exception e) {
                 name = null;
             }
+        }
+        if (name == null || name.isBlank()) {
+            name = claims.getSubject();
         }
         return name;
     }
@@ -466,6 +527,15 @@ public class AuthController {
     private boolean isOk(Map<String, Object> res) {
         Object code = res == null ? null : res.get("code");
         return code instanceof Number n && n.intValue() == 200;
+    }
+
+    /**
+     * 是否「中心不可达」——{@link #proxyAjax} 在网络/解析失败时统一返回 code=502。
+     * 与「账号密码错」区分开：前者要给用户可操作的提示，后者必须保持不可枚举的统一文案。
+     */
+    private boolean isUnreachable(Map<String, Object> res) {
+        Object code = res == null ? null : res.get("code");
+        return code instanceof Number n && n.intValue() == 502;
     }
 
     /** 转发到 auth-center，返回统一的 {@code {success, ...}} 形态（供发码/改密这类无 token 端点）。 */
