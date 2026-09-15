@@ -1,0 +1,8 @@
+{
+  "_generated": "# AUTO-GENERATED from apps-registry.yml by scripts/gen-from-registry.py — DO NOT EDIT",
+  "clientId": "marschat-portal",
+  "issuer": "https://auth.marschat.online",
+  "entry": "https://main.marschat.online/portal/",
+  "contextPath": "/portal",
+  "apiBase": "/portal/api"
+}

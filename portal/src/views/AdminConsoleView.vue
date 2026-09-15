@@ -84,11 +84,13 @@ import type {
 } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { bffAuthorizeUrl } from '@/utils/sso'
+// T7：BFF 基址唯一真源（运行时配置）
+import { BFF_API_BASE } from '@/config/runtime'
 
 const userStore = useUserStore()
 
-/** BFF 根（与 src/utils/permissions.ts 的 BFF_API_BASE 同口径） */
-const BFF = import.meta.env.DEV ? '/api' : '/portal/api'
+/** BFF 根（与 src/utils/permissions.ts 的 BFF_API_BASE 同口径）—— 取自运行时配置 */
+const BFF = BFF_API_BASE
 
 /** 401（门户会话过期）→ 重走 BFF 授权（服务端静默换票），回到本页后自动重载 */
 function reauth() {

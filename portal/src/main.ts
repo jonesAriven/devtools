@@ -6,10 +6,13 @@ import App from './App.vue'
 import router from './router'
 import './styles/index.scss'
 import { useUserStore } from '@/stores/user'
+// T7 组件收敛（2026-09-15）：部署 base 取自运行时配置（app-config.json ← apps-registry.yml），
+// 不再各处硬编码 '/portal'（此前 main/router/sso/permissions/两个视图共 6 处各写一份）
+import { CONTEXT_PATH } from '@/config/runtime'
 
 // ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址
-//    （写死 '/login' 会跳到域名根 → nginx 404）。portal 的 router base 是 /portal（见 router/index.ts）。
-window.__MARSCHAT_APP_BASE__ = '/portal'
+//    （写死 '/login' 会跳到域名根 → nginx 404）。portal 的 router base 同源于 CONTEXT_PATH。
+window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
 import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
 import { permissions } from '@/utils/permissions'
 

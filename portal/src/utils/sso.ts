@@ -19,17 +19,19 @@ import {
   type SessionWatcher,
   type SessionWatcherOptions,
 } from '@marschat/auth-components'
+// T7 组件收敛（2026-09-15）：issuer / clientId / redirect_uri / base 一律取自运行时配置
+import { CONTEXT_PATH, OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URI, API_BASE_URL } from '@/config/runtime'
 
 /** portal 登录页地址 —— 统一登出回跳地址（必须落在 auth-center 的 post_logout 白名单内） */
-export const PORTAL_LOGIN_URL = `${window.location.origin}/portal/login`
+export const PORTAL_LOGIN_URL = `${window.location.origin}${CONTEXT_PATH}/login`
 
 /** portal-server 的 SSO 授权入口（服务端流） */
-export const PORTAL_AUTHORIZE_PATH = '/portal/api/auth/sso/authorize'
+export const PORTAL_AUTHORIZE_PATH = `${API_BASE_URL}/auth/sso/authorize`
 
 export const SSO_CONFIG: SsoConfig = {
-  issuer: 'https://auth.marschat.online',
-  clientId: 'marschat-portal',
-  redirectUri: `${window.location.origin}/portal/auth/callback`,
+  issuer: OIDC_ISSUER,
+  clientId: OIDC_CLIENT_ID,
+  redirectUri: OIDC_REDIRECT_URI,
   scope: 'openid profile',
   loginUrl: PORTAL_LOGIN_URL,
   silentLogin: true,

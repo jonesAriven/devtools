@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { permCode, setupAuthGuard } from '@/utils/permissions'
+// T7 组件收敛（2026-09-15）：router base 与 main.ts 的 __MARSCHAT_APP_BASE__ 同源于运行时配置，
+// 避免「导航 base 不一致」这类只在二级路由才暴露的空页问题（check-spa-config.sh 有静态门禁）
+import { CONTEXT_PATH } from '@/config/runtime'
 
 /**
  * `meta.perm` = RBAC 权限点全码（Phase 2 三层同源之「路由层」）。
@@ -61,7 +64,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/portal/'),
+  history: createWebHistory(`${CONTEXT_PATH}/`),
   routes
 })
 

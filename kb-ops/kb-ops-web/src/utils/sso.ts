@@ -23,16 +23,23 @@ import {
   type SessionWatcher,
   type SessionWatcherOptions,
 } from '@marschat/auth-components'
+import { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URI, CONTEXT_PATH } from '@/config'
 import { getToken } from './token'
 
-/** kb-ops 的 SSO 配置（唯一真源，供登录页/回调页/登出共用） */
+/**
+ * kb-ops 的 SSO 配置（唯一真源，供登录页/回调页/登出共用）。
+ *
+ * 🔴 2026-09-15（T7 组件收敛）：issuer / clientId / redirect_uri 一律取自 `@/config`
+ * 的**运行时配置**（`public/app-config.json` ← apps-registry.yml 派生），
+ * 不再硬编码域名与路径 —— 否则「接入即配置」是空话：换环境要改代码重新构建。
+ */
 export const SSO_CONFIG: SsoConfig = {
-  issuer: 'https://auth.marschat.online',
-  clientId: 'marschat-kbops',
-  redirectUri: `${window.location.origin}/ops/sso-callback`,
+  issuer: OIDC_ISSUER,
+  clientId: OIDC_CLIENT_ID,
+  redirectUri: OIDC_REDIRECT_URI,
   scope: 'openid profile',
   /** 登录页地址 —— 既是统一登出的回跳地址，也是"没有 IdP 会话"时的落点 */
-  loginUrl: `${window.location.origin}/ops/login`,
+  loginUrl: `${window.location.origin}${CONTEXT_PATH}/login`,
   /** 进入登录页时自动探测 IdP 会话，有则免密进入 */
   silentLogin: true,
 }

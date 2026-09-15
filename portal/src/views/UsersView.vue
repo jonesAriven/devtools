@@ -29,11 +29,13 @@ import { UserManagementPanel, createUserAdminClient, createUserMenuOverrideClien
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { bffAuthorizeUrl } from '@/utils/sso'
+// T7：BFF 基址唯一真源（运行时配置）
+import { BFF_API_BASE } from '@/config/runtime'
 
 const userStore = useUserStore()
 
-/** BFF 根（与 AdminConsoleView 同口径；开发态走 vite 代理 `/api`） */
-const BFF = import.meta.env.DEV ? '/api' : '/portal/api'
+/** BFF 根（与 AdminConsoleView 同口径；开发态走 vite 代理 `/api`）—— 取自运行时配置 */
+const BFF = BFF_API_BASE
 
 const client = createUserAdminClient({
   // 与 src/utils/permissions.ts 的 BFF_API_BASE 保持同一口径

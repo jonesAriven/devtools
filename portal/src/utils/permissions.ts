@@ -32,9 +32,10 @@ import { createAuthGuard } from '@marschat/frontend-common'
 import type { Router } from 'vue-router'
 import { SSO_CONFIG } from './sso'
 import { useUserStore } from '@/stores/user'
+// T7 组件收敛（2026-09-15）：BFF 基址取自运行时配置（开发态自动走 vite 代理）
+import { BFF_API_BASE } from '@/config/runtime'
 
-/** portal-server 的同源 BFF 基址（权限查询代理入口） */
-export const BFF_API_BASE = `${window.location.origin}/portal/api`
+export { BFF_API_BASE }
 
 /**
  * 构造本应用的权限点全码 `<client_id>:<type>:<code>`。
