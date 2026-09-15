@@ -54,10 +54,19 @@ const config: UserManagementConfig = {
     { value: 'user', label: '普通用户' },
   ],
   currentUserId,
-  // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）；组件拼 `${baseUrl}/admin/...`
-  // 同样走 BFF，否则账密会话下该按钮仍会 401 跳 IdP
+  // Phase 4：用户×应用角色绑定（操作列「本系统角色」按钮）；组件拼 `${baseUrl}/admin/...`
+  // 同样走 BFF，否则账密会话下该按钮仍会 401 跳 IdP。
+  //
+  // ⚠️ 这里比 client.baseUrl **多一层 `/api`**，不是笔误：
+  //   client.baseUrl 是「集合基址」（组件直接 GET 它，故写到 `/api/admin/users`）；
+  //   而 appRoles.baseUrl 是「**中心根**」（组件自己再拼 `/admin`），所以要写到 `/api`，
+  //   合成 `/infra/api/api/admin/roles` → nginx 剥一层 → 应用内 `/api/admin/roles` ✅。
+  //   2026-09-15 线上实测：只写到 `/infra/api` 时组件拼出 `/infra/api/admin/roles`，
+  //   nginx 剥一层后落到应用内 `/admin/roles` → 404「接口不存在: /infra/admin/roles」，
+  //   后端日志表现为 `Securing GET /admin/roles`（点「本系统角色」必现）。
+  //   对照：kb-web/kb-ops 写的是中心根 `https://auth.marschat.online`，同一语义。
   appRoles: {
-    baseUrl: API_BASE_URL,
+    baseUrl: `${API_BASE_URL}/api`,
     clientId: 'marschat-inframon',
     getToken: () => getToken(),
     onUnauthorized: () => void renewByReauthorize(),
