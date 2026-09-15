@@ -1,0 +1,64 @@
+# activecode（激活码系统）菜单注册表（menu-permission-management-plan §5 schema）
+# key = 权限点稳定标识（sys_permission.code，下发为 marschat-activecode:menu:<key>），禁止随意改名。
+#
+# 菜单源 = static/activecode/*.html（无构建静态页）：
+#   index.html（激活码校验首页，应用入口）｜ main.html（4 个页签：tool/records/logs/parse）
+#   ｜ downloads.html（工具下载）。login.html / sso-callback.html 为匿名页，不登记。
+#
+# 上报：启动时由 config/MenuRegistryReporter 全量覆盖上报到
+# auth-center PUT /internal/clients/marschat-activecode/menus（X-Client-Secret）。
+# ⚠️ 本应用未引入 com.marschat:auth-core（其自动装配会撞 bean），故 reporter 为本地等价实现。
+client: marschat-activecode
+menus:
+  - key: index
+    title: 激活码校验
+    path: /index.html
+    order: 1
+    # public=true → 「已登录即可见」：strict 默认最小权限下仍授予默认可见角色，
+    # 保证普通用户登录后有落地页而不是一片空白（踩过的坑 #17）。
+    # 全表**有且仅有一个** public 菜单；其余菜单与所有 api 点必须显式授权。
+    public: true
+  - key: tool
+    title: 激活码管理
+    path: /main.html
+    order: 2
+  - key: records
+    title: 激活码记录
+    path: /main.html#records
+    order: 3
+  - key: logs
+    title: 操作日志
+    path: /main.html#logs
+    order: 4
+  - key: parse
+    title: 解析工具
+    path: /main.html#parse
+    order: 5
+  - key: downloads
+    title: 工具下载
+    path: /downloads.html
+    order: 6
+  - key: config
+    title: 系统配置
+    path: /main.html#tool
+    order: 7
+    min-role: admin
+
+# api 粒度权限点（写操作）：随本 yml 全量上报为 type=api
+# （sys_permission.code = 下面的 key，下发全码 = marschat-activecode:api:<key>）。
+# 改造前本应用权限点为 **0 条** —— 中心 sys_permission 里没有 activecode 的任何菜单/api，
+# 跨应用授权、菜单权限、接口闸门全部失效。此处先补齐写操作面（读接口暂不下发，
+# 由菜单点承担访问闸门），命名与 infra-monitor / kb-ops 同构。
+apis:
+  - key: code:generate
+    title: 生成激活码
+  - key: code:delete
+    title: 删除激活码记录
+  - key: code:batch-delete
+    title: 批量删除激活码记录
+  - key: code:alias
+    title: 修改设备别名
+  - key: config:expire
+    title: 修改默认有效期配置
+  - key: config:version-check
+    title: 修改版本校验配置

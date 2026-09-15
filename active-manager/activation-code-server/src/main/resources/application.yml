@@ -64,6 +64,15 @@ marschat:
       issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
       client-id: marschat-activecode
       report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # 菜单/权限点上报（Phase 11，2026-09-15）：启动时把 classpath menu-registry.yml 全量覆盖
+  # 上报到 auth-center PUT /internal/clients/{client-id}/menus，凭据走 X-Client-Secret
+  # （与 account.report 同一个 client secret，由 compose 注入 MARSCHAT_MENU_REPORT_SECRET）。
+  # 上报基址复用下方 auth-center.base（独立主机，必须走宿主 LAN 地址）。
+  menu:
+    report:
+      enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}
+      client-id: marschat-activecode
+      report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
   # 统一认证中心服务端互调基址（L1，2026-09-15）：邮箱验证码登录 / 忘记密码由本服务代理转发。
   # ⚠️ activecode 部署在独立主机（内网 Debian 192.168.31.182），只挂自己的 compose 网络，
   #    **不能**用容器名 auth-center；必须走宿主 LAN 地址（与 account.report.issuer 同口径）。
