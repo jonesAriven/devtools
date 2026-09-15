@@ -230,20 +230,35 @@ public class AuthController {
     }
 
     /**
-     * 初始化默认管理员账号
+     * 确保默认管理员账号在**影子表**中存在（只建不覆盖）。
+     *
+     * <p>🔴 2026-09-15 修正：改造前这里会用硬编码默认口令建档，等于把刚刚拆掉的本地密码体系
+     * 又装回影子表 —— 一个写死在源码里、全网同值的口令随时可能被回潮利用。独立账密登录统一到
+     * 认证中心后，口令由中心持有，**本地不再保存任何口令材料**。
+     *
+     * <p>现语义：仅保证 username 在影子表里有一行（供会话/审计外键引用），password/salt 一律
+     * 填随机占位符（与 {@link #login} 自动建档同口径，不存在与之匹配的明文，因此即使有人绕过
+     * 本服务直连影子表也无法登录）。已有账号**绝不覆盖**其密码字段。
+     *
+     * <p>能否真正登录取决于该 username 在 auth-center 是否存在且启用 —— 本地建档只是影子。
      */
     public void initDefaultAdmin() {
-        Long count = adminUserMapper.selectCount(null);
-        if (count == 0) {
-            AdminUser admin = new AdminUser();
-            admin.setUsername("admin");
-            String salt = generateSalt();
-            admin.setSalt(salt);
-            admin.setPassword(hashPassword("admin123", salt));
-            admin.setCreateTime(LocalDateTime.now());
-            adminUserMapper.insert(admin);
-            log.info("初始化默认管理员账号: admin / admin123");
+        String defaultAdmin = "admin";
+        AdminUser exist = adminUserMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AdminUser>()
+                        .eq(AdminUser::getUsername, defaultAdmin)
+        );
+        if (exist != null) {
+            return;
         }
+        AdminUser admin = new AdminUser();
+        admin.setUsername(defaultAdmin);
+        // 口令已改由认证中心校验，本地不存密码：salt/password 仅填随机占位（同 login() 建档口径）。
+        admin.setSalt(generateSalt());
+        admin.setPassword(hashPassword(UUID.randomUUID().toString(), admin.getSalt()));
+        admin.setCreateTime(LocalDateTime.now());
+        adminUserMapper.insert(admin);
+        log.info("初始化默认管理员影子账号: {}（口令由认证中心持有，本地仅存随机占位）", defaultAdmin);
     }
 
     private String hashPassword(String password, String salt) {
