@@ -66,8 +66,14 @@ public class AuthController {
                 ? username : u.path("nickname").asText(username);
         String role = u.path("role").isMissingNode() || u.path("role").isNull()
                 ? "user" : u.path("role").asText("user");
+        // auth_uid：中心 user.id（与 SsoController.mailLogin 同源同语义；SSO 走的是 token 的 uid/sub claim）
+        String authUid = u.path("id").isMissingNode() || u.path("id").isNull()
+                ? null : u.path("id").asText(null);
+        if (authUid != null && authUid.isBlank()) {
+            authUid = null;
+        }
 
-        SysUser user = shadowUser(username, nickname, role);
+        SysUser user = shadowUser(username, nickname, role, authUid);
 
         String token = jwtUtil.generateToken(user.getId(), user.getUsername(),
                 user.getRole() == null ? "user" : user.getRole());
@@ -81,12 +87,16 @@ public class AuthController {
     }
 
     /**
-     * 收敛本地影子账号：以中心身份为准同步 nickname/role，缺失则自动建档。
+     * 收敛本地影子账号：以中心身份为准同步 nickname/role/auth_uid，缺失则自动建档。
+     *
+     * <p>🔴 为什么必须回填 auth_uid：账密登录与 SSO/邮箱码登录是**同一个中心身份**的两条入口。
+     * 若账密路径不写 auth_uid，SSO 路径就会走「按 username 回填」的存量迁移分支，
+     * 两条路径对同一用户的本地记录视图不一致，身份一致性守卫会误判（甚至重复建档）。
      *
      * <p>按 username 查询（不加 status=1 过滤 —— 否则被停用的存量账号会查不到而
      * 触发重复建档，撞 username 唯一索引）。
      */
-    private SysUser shadowUser(String username, String nickname, String role) {
+    private SysUser shadowUser(String username, String nickname, String role, String authUid) {
         SysUser user = sysUserMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getUsername, username)
@@ -100,8 +110,9 @@ public class AuthController {
             user.setNickname(nickname);
             user.setStatus(1);
             user.setRole(role);
+            user.setAuthUid(authUid);
             sysUserMapper.insert(user);
-            log.info("按认证中心身份自动建档 portal 影子账号: {}", username);
+            log.info("按认证中心身份自动建档 portal 影子账号: {} (authUid={})", username, authUid);
             return user;
         }
         if (user.getStatus() == null || user.getStatus() != 1) {
@@ -114,6 +125,11 @@ public class AuthController {
         }
         if (role != null && !role.equals(user.getRole())) {
             user.setRole(role);
+            dirty = true;
+        }
+        // 存量影子补写（幂等）：已有值不动，避免与 SSO 侧已绑定的标识冲突
+        if (authUid != null && (user.getAuthUid() == null || user.getAuthUid().isBlank())) {
+            user.setAuthUid(authUid);
             dirty = true;
         }
         if (dirty) {
