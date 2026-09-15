@@ -168,6 +168,31 @@ public class AuthCenterService {
         return node.path("data");
     }
 
+    /**
+     * 以「用户本人」账密登录认证中心（BFF 转发，公网未暴露该端点）。
+     *
+     * <p>🔴 与 {@link #getServiceToken()} 的区别：后者用**服务账号**换取调管理 API 的身份，
+     * 这里用**表单里用户自己的账密**换取登录结果 —— portal 的独立登录表单不再查本地
+     * `sys_user.password`（本地表已降级为影子），密码真源收敛到认证中心。
+     * 必须走 {@link #internalBase()}（公网域名未暴露 `/auth/login`，直连必 404）。
+     *
+     * <p>失败（账密错 / 中心拒绝）也返回原始响应，由调用方按 `code` 判定，
+     * 以便对外保持「用户名或密码错误」的统一文案（防账号枚举）。
+     *
+     * @return 中心原始响应 JsonNode；调用方需判断 code
+     */
+    public JsonNode loginAsUser(String username, String password) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(internalBase() + "/auth/login"))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        objectMapper.writeValueAsString(Map.of("username", username, "password", password))))
+                .build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        return objectMapper.readTree(response.body());
+    }
+
     /** 解析 RS256 access token 的 payload（不验签，仅取映射用 claims；安全依赖 exchange 直连 auth-center） */
     public JsonNode parseAccessTokenClaims(String accessToken) throws Exception {
         String[] parts = accessToken.split("\\.");
