@@ -70,7 +70,7 @@ public class JwtUtil {
     }
 
     public String generate(String username) {
-        return generate(username, null);
+        return generate(username, null, null);
     }
 
     /**
@@ -83,12 +83,28 @@ public class JwtUtil {
      * @param role 中心返回的角色原值；为空/null 时不写该声明（等价于旧 {@link #generate(String)}）
      */
     public String generate(String username, String role) {
+        return generate(username, role, null);
+    }
+
+    /**
+     * 签发本应用自有 token，写入 {@code role} 与 {@code uid} 声明。
+     *
+     * <p>2026-09-15（Phase 11 续）：{@code uid} 取认证中心的用户主键（{@code data.user.id}），
+     * 与平台其它应用回填的 {@code auth_uid} 同语义。前端 {@code UsersView.vue} 以
+     * {@code claims.uid} 判定「当前登录人」以禁止删除/禁用自己 —— 缺该声明会使自我保护失效。
+     *
+     * @param uid 中心用户主键；null 时不写该声明（存量旧 token 亦无此声明，需重新登录才生效）
+     */
+    public String generate(String username, String role, Long uid) {
         var builder = Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration));
         if (role != null && !role.isBlank()) {
             builder.claim("role", role);
+        }
+        if (uid != null) {
+            builder.claim("uid", uid);
         }
         return builder.signWith(key).compact();
     }

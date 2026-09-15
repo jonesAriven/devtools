@@ -100,7 +100,8 @@ public class AuthController {
             String username = user.path("username").asText(request.getUsername().trim());
             // role 原样取中心值（中心 admin 为 superadmin）：前端「用户管理」菜单按 token role 兜底判定
             String role = user.path("role").asText("");
-            String token = jwtUtil.generate(username, role);
+            // uid = 中心用户主键：前端 UsersView 据 claims.uid 禁止删除/禁用自己，缺则自我保护失效
+            String token = jwtUtil.generate(username, role, centerUid(user));
             return Result.ok(new LoginResponse(token, username));
         } catch (Exception e) {
             log.warn("infra 账密登录失败（认证中心不可达）: {}", e.getMessage());
@@ -149,7 +150,7 @@ public class AuthController {
             JsonNode user = node.path("data").path("user");
             String username = user.path("username").asText(adminUsername);
             // 同一处兜底：邮箱码登录同样须带中心 role，否则「用户管理」菜单同样被隐藏
-            String token = jwtUtil.generate(username, user.path("role").asText(""));
+            String token = jwtUtil.generate(username, user.path("role").asText(""), centerUid(user));
             log.info("infra 邮箱验证码登录成功: {}", username);
             return Result.ok(new LoginResponse(token, username));
         } catch (Exception e) {
@@ -170,6 +171,17 @@ public class AuthController {
         HttpResponse<String> response = HTTP.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         return MAPPER.readTree(response.body());
+    }
+
+    /**
+     * 取中心用户主键（{@code data.user.id}）用于 token 的 {@code uid} 声明。
+     *
+     * <p>中心响应缺失/非数字时返回 {@code null}（不写该声明）——宁可让前端自我保护退化，
+     * 也不伪造一个错误的 uid 导致误判他人。
+     */
+    private Long centerUid(JsonNode user) {
+        JsonNode id = user.path("id");
+        return id.isNumber() ? id.asLong() : null;
     }
 
     @Data
