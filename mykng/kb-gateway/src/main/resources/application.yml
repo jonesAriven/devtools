@@ -188,6 +188,45 @@ kb:
       - ${KB_CONTEXT:/kb}/v3/api-docs/**
       - ${KB_CONTEXT:/kb}/api/*/v3/api-docs/**
       - ${KB_CONTEXT:/kb}/api/*/swagger-ui/**
+    # ── 接口级权限闸门（T5，2026-09-15）───────────────────────────────────────
+    # kb-web 的写接口此前「只认证不鉴权」：网关只验签，任何有效 token 都能写。
+    # 现在：命中 rules 的**写方法**（POST/PUT/PATCH/DELETE）必须持有
+    # marschat-kbweb:api:<perm> 权限点；读方法、未命中路径、认证端点一律不受影响。
+    # 判定实现 filter/PermissionAuthzFilter.java；权限点在 menu-registry.yml 的 apis 段上报。
+    # 应急开关：KB_GATEWAY_AUTHZ_ENABLED=false 即回到旧行为（只认证不鉴权）。
+    authz:
+      enabled: ${KB_GATEWAY_AUTHZ_ENABLED:true}
+      # 中心不可达时的姿态：false=拒绝（接口=动作，判定不了就不放行动作）。
+      # 只影响命中的写请求；读请求与未命中路径完全不受影响。
+      fail-open: ${KB_GATEWAY_AUTHZ_FAIL_OPEN:false}
+      # 服务端互调走容器网络（禁绕公网域名）
+      issuer: ${KB_GATEWAY_AUTHZ_ISSUER:http://auth-center:8085}
+      client-id: marschat-kbweb
+      cache-ttl-ms: ${KB_GATEWAY_AUTHZ_CACHE_TTL_MS:60000}
+      # pattern 相对 contextPath（如 /api/doc/**）；未列入的资源（如 /api/search/**）不设闸门
+      rules:
+        - pattern: /api/doc/**
+          perm: doc:write
+        - pattern: /api/folder/**
+          perm: folder:write
+        - pattern: /api/file/**
+          perm: file:write
+        - pattern: /api/bucket/**
+          perm: file:write
+        - pattern: /api/space/**
+          perm: space:write
+        - pattern: /api/tag/**
+          perm: tag:write
+        - pattern: /api/share/**
+          perm: share:write
+        - pattern: /api/web/**
+          perm: web:write
+        - pattern: /api/trash/**
+          perm: trash:write
+        - pattern: /api/version/**
+          perm: version:write
+        - pattern: /api/intelligence/**
+          perm: intelligence:write
 
 # auth-center 双验签过渡期（2026-09-07 kb-web OIDC 接入）：
 # token 验签顺序 HS256(legacy) → RS256(OIDC)；jwks-uri 走 compose 内网直连（iss 校验仍用公网 issuer）

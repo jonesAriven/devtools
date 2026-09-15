@@ -71,3 +71,35 @@ menus:
         title: 设置
         path: /settings
         order: 3
+
+# 🔴 2026-09-15（T5 接口级鉴权）：api 权限点，随本 yml 全量上报为 type=api
+#   （sys_permission.code = 下面的 key，下发全码 = marschat-kbweb:api:<key>）。
+#
+# 为什么 kb-web 的写接口必须在**网关**收口：kb-file / kb-knowledge / kb-intelligence
+#   只依赖 common-core（无 auth-core、无 Servlet Security 链），逐个接入 @RequirePermission
+#   成本与回归面远大于在网关一处收口；网关已持有已验签身份与原始 token。
+#   判定实现见 filter/PermissionAuthzFilter.java，规则映射见 application.yml 的 kb.gateway.authz.rules。
+#
+# 命名 = <资源>:write（与 kb-ops 的 hosts:create / infra 的 items:create 同族）。
+# 只覆盖**写**语义；读=可见性，仍由菜单/前端守卫负责。
+apis:
+  - key: doc:write
+    title: 文档增改（kb-knowledge /api/doc/**）
+  - key: folder:write
+    title: 目录增改（/api/folder/**）
+  - key: file:write
+    title: 文件上传与删除（/api/file/**、/api/bucket/**）
+  - key: space:write
+    title: 知识空间增改（/api/space/**）
+  - key: tag:write
+    title: 标签增改（/api/tag/**）
+  - key: share:write
+    title: 分享增改（/api/share/**）
+  - key: web:write
+    title: 网页剪藏增改（/api/web/**）
+  - key: trash:write
+    title: 回收站操作（/api/trash/**）
+  - key: version:write
+    title: 版本操作（/api/version/**）
+  - key: intelligence:write
+    title: 智能能力写操作（/api/intelligence/**）
