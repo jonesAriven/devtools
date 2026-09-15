@@ -3,6 +3,7 @@ package com.jones.activation.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jones.activation.entity.AdminUser;
 import com.jones.activation.mapper.AdminUserMapper;
+import com.jones.activation.service.CenterSessionStore;
 import com.jones.activation.util.OidcTokenVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,10 +37,13 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AdminUserMapper adminUserMapper;
     private final OidcTokenVerifier oidcVerifier;
+    private final CenterSessionStore centerSessions;
 
-    public AuthController(AdminUserMapper adminUserMapper, OidcTokenVerifier oidcVerifier) {
+    public AuthController(AdminUserMapper adminUserMapper, OidcTokenVerifier oidcVerifier,
+                          CenterSessionStore centerSessions) {
         this.adminUserMapper = adminUserMapper;
         this.oidcVerifier = oidcVerifier;
+        this.centerSessions = centerSessions;
     }
 
     /**
@@ -134,6 +138,11 @@ public class AuthController {
         user.setLastLoginTime(LocalDateTime.now());
         adminUserMapper.updateById(user);
 
+        // 暂存中心业务令牌（服务端内存，不下发浏览器）：供 AdminProxyController 以**用户本人
+        // 身份**调中心 /admin/**（本系统用户管理页）。refreshToken 不落任何地方 —— 本应用不做续期，
+        // 令牌过期即让前端重授权，避免在应用侧长期持有可换票的长效凭据。
+        centerSessions.put(username, (String) data.get("accessToken"), asLong(data.get("expiresIn")));
+
         // 写入Session（下游 checkSession / changePassword / 各业务端点依赖此属性，保持不变）
         session.setAttribute("loginUser", user);
         log.info("用户登录成功(认证中心): {}, sessionId={}", username, session.getId());
@@ -141,8 +150,22 @@ public class AuthController {
         return Map.of("success", true, "username", username);
     }
 
+    /** 中心 expiresIn 为毫秒；缺失或非数字时返回 0（由 CenterSessionStore 按 1 小时兜底）。 */
+    private static long asLong(Object v) {
+        return (v instanceof Number n) ? n.longValue() : 0L;
+    }
+
     @PostMapping("/logout")
     public Map<String, Object> logout(HttpSession session) {
+        // 登出即丢弃该用户的中心令牌：本应用不做中心续期，令牌仅服务于本次会话
+        Object ssoUser = session.getAttribute("ssoUser");
+        if (ssoUser instanceof String s) {
+            centerSessions.remove(s);
+        }
+        Object loginUser = session.getAttribute("loginUser");
+        if (loginUser instanceof AdminUser u) {
+            centerSessions.remove(u.getUsername());
+        }
         session.invalidate();
         return Map.of("success", true);
     }
@@ -440,6 +463,10 @@ public class AuthController {
 
         user.setLastLoginTime(LocalDateTime.now());
         adminUserMapper.updateById(user);
+        // 登记中心令牌（SSO 的 RS256 OIDC token / 邮箱码径的中心业务 token 均可调 /admin/**），
+        // 供 AdminProxyController 以用户本人身份访问「本系统用户」。SSO 径拿不到 expiresIn，
+        // 传 0 由 CenterSessionStore 按 1 小时兜底。
+        centerSessions.put(centerUsername, accessToken, 0L);
         session.setAttribute("loginUser", user);
         session.setAttribute("ssoUser", centerUsername);
         log.info("统一登录成功(邮箱码/SSO): centerUser={}, mappedAdmin={}, sessionId={}",

@@ -27,6 +27,18 @@ public class PageController {
         return readStaticFile("activecode/main.html");
     }
 
+    /** 本系统用户管理页：与 main.html 同口径做登录态守卫（未登录直接回登录页）。 */
+    @GetMapping("/activecode/members.html")
+    public ResponseEntity<String> membersPage(HttpServletRequest request) throws IOException {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("loginUser") == null) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header("Location", "/activecode/login.html")
+                    .build();
+        }
+        return readStaticFile("activecode/members.html");
+    }
+
     @GetMapping("/activecode/login.html")
     public ResponseEntity<String> loginPage() throws IOException {
         return readStaticFile("activecode/login.html");

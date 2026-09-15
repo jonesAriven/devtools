@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>本系统用户 - 激活码管理后台</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%234f46e5'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-hover: #4338ca; --primary-soft: #eef2ff;
+            --primary-ring: rgba(79, 70, 229, 0.14); --bg: #f6f7f9; --surface: #ffffff;
+            --border: #e5e7eb; --border-light: #f0f1f4; --text: #111827; --text-2: #6b7280;
+            --text-3: #9ca3af; --green: #059669; --green-soft: #ecfdf5; --red: #dc2626;
+            --red-soft: #fef2f2; --amber: #d97706; --amber-soft: #fffbeb;
+            --radius: 12px; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.05);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .header { background: var(--surface); border-bottom: 1px solid var(--border-light); padding: 0 28px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+        .header-brand { display: flex; align-items: center; gap: 10px; }
+        .header-logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(79,70,229,.3); }
+        .header h1 { color: var(--text); font-size: 16px; font-weight: 600; letter-spacing: .2px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .header-right .user-info { color: var(--text-2); font-size: 13px; background: var(--bg); border: 1px solid var(--border-light); padding: 5px 12px; border-radius: 999px; }
+        .header-right .btn-nav { padding: 6px 14px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .header-right .btn-nav:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+
+        .page { padding: 20px 28px 48px; }
+        .notice { background: var(--primary-soft); border: 1px solid #c7d2fe; color: #3730a3; border-radius: var(--radius); padding: 12px 16px; font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
+        .notice b { font-weight: 600; }
+        .card { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+        .toolbar h3 { font-size: 15px; font-weight: 600; margin-right: auto; display: flex; align-items: center; gap: 8px; }
+        .toolbar h3::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--primary); }
+        .toolbar input[type=text] { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; width: 220px; }
+        .toolbar input[type=text]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+        .btn-primary { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-ghost { padding: 7px 14px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .btn-ghost:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+        .btn-link { background: none; border: none; color: var(--primary); font-size: 13px; cursor: pointer; padding: 2px 4px; }
+        .btn-link:hover { text-decoration: underline; }
+        .btn-link.danger { color: var(--red); }
+        .btn-link:disabled { color: var(--text-3); cursor: not-allowed; text-decoration: none; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text-2); background: #fafbfc; padding: 11px 14px; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+        td { font-size: 13px; padding: 11px 14px; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: middle; }
+        tbody tr:hover { background: #fcfcfd; }
+        .empty { padding: 40px; text-align: center; color: var(--text-3); font-size: 13px; }
+        .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; line-height: 1.6; margin: 2px 4px 2px 0; white-space: nowrap; }
+        .tag-role { background: var(--primary-soft); color: #3730a3; }
+        .tag-none { background: var(--bg); color: var(--text-3); }
+        .tag-on { background: var(--green-soft); color: var(--green); }
+        .tag-off { background: var(--red-soft); color: var(--red); }
+        .muted { color: var(--text-3); }
+        .pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 18px; font-size: 13px; color: var(--text-2); }
+        .pager button { padding: 5px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .pager button:disabled { opacity: .5; cursor: not-allowed; }
+
+        .mask { position: fixed; inset: 0; background: rgba(17,24,39,.45); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .mask.show { display: flex; }
+        .modal { background: var(--surface); border-radius: var(--radius); width: 520px; max-width: 92vw; max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(16,24,40,.24); }
+        .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border-light); font-size: 15px; font-weight: 600; }
+        .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+        .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-desc { font-size: 12.5px; color: var(--text-3); margin-bottom: 12px; line-height: 1.7; }
+        .pick { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer; }
+        .pick:hover { border-color: #c7d2fe; background: #fafaff; }
+        .pick.joined { opacity: .6; cursor: not-allowed; background: var(--bg); }
+        .pick input { accent-color: var(--primary); margin-top: 2px; }
+        .pick .sub { color: var(--text-3); font-size: 12px; margin-top: 2px; }
+        .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; z-index: 99; display: none; }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-brand">
+            <div class="header-logo">🔑</div>
+            <h1>激活码管理后台</h1>
+        </div>
+        <div class="header-right">
+            <span class="user-info" id="userInfo"></span>
+            <a href="/activecode/main.html" class="btn-nav">← 返回激活码管理</a>
+            <a href="/activecode/downloads.html" target="_blank" class="btn-nav">📥 工具下载</a>
+            <button class="btn-nav" onclick="handleLogout()">退出登录</button>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="notice">
+            <b>本系统用户</b> —— 仅显示与<b>激活码系统</b>有关的用户（含超管）。<br>
+            全局身份与全局角色请在门户<b>「统一认证中心 → 统一用户」</b>维护；此处只管「谁能进本系统、在本系统是什么角色」。
+        </div>
+
+        <div class="card">
+            <div class="toolbar">
+                <h3>本系统用户</h3>
+                <input type="text" id="kw" placeholder="搜索用户名 / 昵称 / 邮箱" onkeydown="if(event.key==='Enter')load(1)">
+                <button class="btn-ghost" onclick="load(1)">查询</button>
+                <button class="btn-primary" onclick="openAdd()">＋ 添加已有用户</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:64px">ID</th>
+                        <th style="width:15%">用户名</th>
+                        <th style="width:13%">昵称</th>
+                        <th style="width:18%">邮箱</th>
+                        <th style="width:10%">全局角色</th>
+                        <th style="width:22%">本系统角色</th>
+                        <th style="width:8%">状态</th>
+                        <th style="width:150px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody">
+                    <tr><td colspan="8" class="empty">加载中…</td></tr>
+                </tbody>
+            </table>
+            <div class="pager">
+                <span id="pageInfo">—</span>
+                <button id="btnPrev" onclick="load(page-1)">上一页</button>
+                <button id="btnNext" onclick="load(page+1)">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 本系统角色绑定弹窗 -->
+    <div class="mask" id="roleMask">
+        <div class="modal">
+            <div class="modal-head">本系统角色 — <span id="roleUser"></span></div>
+            <div class="modal-body">
+                <div class="modal-desc">勾选该用户在本系统的角色（全量覆盖语义：取消勾选 = 收回该角色）。<br>
+                    全局角色不在此处修改，请到门户「统一认证中心」。</div>
+                <div id="roleList"></div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeMask('roleMask')">取消</button>
+                <button class="btn-primary" id="btnSaveRoles" onclick="saveRoles()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加已有用户弹窗 -->
+    <div class="mask" id="addMask">
+        <div class="modal">
+            <div class="modal-head">添加已有用户到本系统</div>
+            <div class="modal-body">
+                <div class="modal-desc">从<b>全平台用户池</b>挑选已存在但尚未加入本系统的用户，加入后授予本系统默认角色。<br>
+                    已在系统中的用户显示为「已加入」且不可重复勾选（避免覆盖其既有角色）。</div>
+                <input type="text" id="poolKw" placeholder="搜索用户名 / 昵称 / 邮箱" style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;margin-bottom:12px" onkeydown="if(event.key==='Enter')loadPool()">
+                <div id="poolList"><div class="empty">加载中…</div></div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeMask('addMask')">取消</button>
+                <button class="btn-primary" id="btnAddUsers" onclick="addUsers()">加入本系统</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+    var CLIENT_ID = 'marschat-activecode';
+    var API = '/activecode/api/admin';
+    var page = 1, size = 20, total = 0, rows = [], appRoles = [], poolRows = [], joinedIds = {};
+
+    function toast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(function () { t.classList.remove('show'); }, 2600);
+    }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function closeMask(id) { document.getElementById(id).classList.remove('show'); }
+
+    /** 统一请求：中心 Result 信封 {code,message,data}；401 触发重新登录 */
+    async function api(path, opts) {
+        var res = await fetch(API + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts || {}));
+        if (res.status === 401) {
+            toast('登录已过期，正在返回登录页…');
+            setTimeout(function () { location.href = '/activecode/login.html'; }, 1200);
+            throw new Error('401');
+        }
+        var body = await res.json().catch(function () { return null; });
+        if (!body) throw new Error('响应解析失败 HTTP ' + res.status);
+        if (body.code !== 200) throw new Error(body.message || ('HTTP ' + res.status));
+        return body.data;
+    }
+
+    var ROLE_LABEL = { superadmin: '超级管理员', admin: '管理员', user: '普通用户' };
+    function globalRoleLabel(r) { return ROLE_LABEL[r] || (r || '—'); }
+
+    async function checkSession() {
+        try {
+            var res = await fetch('/activecode/api/auth/session');
+            var data = await res.json();
+            if (data.success) { document.getElementById('userInfo').textContent = '欢迎, ' + data.username; }
+            else { location.href = '/activecode/login.html'; }
+        } catch (e) { location.href = '/activecode/login.html'; }
+    }
+
+    async function load(p) {
+        page = Math.max(1, p || 1);
+        document.getElementById('tbody').innerHTML = '<tr><td colspan="8" class="empty">加载中…</td></tr>';
+        try {
+            var kw = document.getElementById('kw').value.trim();
+            var q = '/users?client=' + encodeURIComponent(CLIENT_ID) + '&page=' + page + '&size=' + size
+                  + (kw ? '&keyword=' + encodeURIComponent(kw) : '');
+            var data = await api(q);
+            rows = (data && data.list) || [];
+            total = (data && data.total) || 0;
+            render();
+        } catch (e) {
+            document.getElementById('tbody').innerHTML = '<tr><td colspan="8" class="empty">加载失败：' + esc(e.message) + '</td></tr>';
+        }
+    }
+
+    function render() {
+        var tb = document.getElementById('tbody');
+        if (!rows.length) {
+            tb.innerHTML = '<tr><td colspan="8" class="empty">本系统暂无用户</td></tr>';
+        } else {
+            tb.innerHTML = rows.map(function (u) {
+                var roles = (u.appRoles && u.appRoles.length)
+                    ? u.appRoles.map(function (r) { return '<span class="tag tag-role">' + esc(r.name || r.code) + '</span>'; }).join('')
+                    : '<span class="tag tag-none">未授予</span>';
+                var st = (u.status === 1) ? '<span class="tag tag-on">启用</span>' : '<span class="tag tag-off">停用</span>';
+                return '<tr>'
+                    + '<td class="muted">' + esc(u.id) + '</td>'
+                    + '<td><b>' + esc(u.username) + '</b></td>'
+                    + '<td>' + (u.nickname ? esc(u.nickname) : '<span class="muted">—</span>') + '</td>'
+                    + '<td>' + (u.email ? esc(u.email) : '<span class="muted">—</span>') + '</td>'
+                    + '<td>' + esc(globalRoleLabel(u.role)) + '</td>'
+                    + '<td>' + roles + '</td>'
+                    + '<td>' + st + '</td>'
+                    + '<td>'
+                    + '  <button class="btn-link" onclick="openRoles(' + u.id + ')">本系统角色</button>'
+                    + '  <button class="btn-link danger" onclick="removeUser(' + u.id + ',\'' + esc(u.username) + '\')">移出本系统</button>'
+                    + '</td>'
+                    + '</tr>';
+            }).join('');
+        }
+        var pages = Math.max(1, Math.ceil(total / size));
+        document.getElementById('pageInfo').textContent = '共 ' + total + ' 条 · 第 ' + page + '/' + pages + ' 页';
+        document.getElementById('btnPrev').disabled = page <= 1;
+        document.getElementById('btnNext').disabled = page >= pages;
+    }
+
+    async function loadRoles() {
+        if (appRoles.length) return appRoles;
+        var all = await api('/roles');
+        appRoles = (all || []).filter(function (r) { return r.scope === 'client' && r.client_id === CLIENT_ID; });
+        return appRoles;
+    }
+
+    var curUser = null;
+    async function openRoles(id) {
+        curUser = rows.filter(function (u) { return u.id === id; })[0];
+        if (!curUser) return;
+        document.getElementById('roleUser').textContent = curUser.username;
+        document.getElementById('roleList').innerHTML = '<div class="empty">加载中…</div>';
+        document.getElementById('roleMask').classList.add('show');
+        try {
+            var roles = await loadRoles();
+            var mine = await api('/users/' + id + '/client-roles?client=' + encodeURIComponent(CLIENT_ID)) || [];
+            document.getElementById('roleList').innerHTML = roles.length ? roles.map(function (r) {
+                var on = mine.indexOf(r.id) >= 0;
+                return '<label class="pick"><input type="checkbox" value="' + r.id + '"' + (on ? ' checked' : '') + '>'
+                    + '<span><b>' + esc(r.name) + '</b><div class="sub">' + esc(r.code) + '</div></span></label>';
+            }).join('') : '<div class="empty">本系统尚未配置角色</div>';
+        } catch (e) {
+            document.getElementById('roleList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+        }
+    }
+
+    async function saveRoles() {
+        var ids = [].slice.call(document.querySelectorAll('#roleList input:checked')).map(function (c) { return Number(c.value); });
+        var btn = document.getElementById('btnSaveRoles');
+        btn.disabled = true;
+        try {
+            await api('/users/' + curUser.id + '/client-roles?client=' + encodeURIComponent(CLIENT_ID),
+                { method: 'PUT', body: JSON.stringify({ roleIds: ids }) });
+            closeMask('roleMask');
+            toast(ids.length ? '已更新本系统角色' : '已清空本系统角色（该用户仍在系统中）');
+            load(page);
+        } catch (e) { toast('保存失败：' + e.message); }
+        finally { btn.disabled = false; }
+    }
+
+    async function removeUser(id, username) {
+        if (!confirm('确认把「' + username + '」移出本系统？\n\n将解绑其在激活码系统的全部角色（全局身份保留，可随时重新加入）。')) return;
+        try {
+            await api('/users/' + id + '/client-roles?client=' + encodeURIComponent(CLIENT_ID),
+                { method: 'PUT', body: JSON.stringify({ roleIds: [] }) });
+            toast('已移出本系统：' + username);
+            load(page);
+        } catch (e) { toast('移出失败：' + e.message); }
+    }
+
+    async function openAdd() {
+        document.getElementById('poolKw').value = '';
+        document.getElementById('addMask').classList.add('show');
+        await loadPool();
+    }
+
+    async function loadPool() {
+        var box = document.getElementById('poolList');
+        box.innerHTML = '<div class="empty">加载中…</div>';
+        try {
+            // ① 本系统现有成员 id（用于标「已加入」）；② 全平台用户池（不带 client）
+            var mine = await api('/users?client=' + encodeURIComponent(CLIENT_ID) + '&page=1&size=200');
+            joinedIds = {};
+            ((mine && mine.list) || []).forEach(function (u) { joinedIds[u.id] = true; });
+
+            var kw = document.getElementById('poolKw').value.trim();
+            var pool = await api('/users?page=1&size=200' + (kw ? '&keyword=' + encodeURIComponent(kw) : ''));
+            poolRows = ((pool && pool.list) || []).filter(function (u) { return !joinedIds[u.id]; });
+            box.innerHTML = poolRows.length ? poolRows.map(function (u) {
+                return '<label class="pick" data-id="' + u.id + '"><input type="checkbox" value="' + u.id + '">'
+                    + '<span><b>' + esc(u.username) + '</b>'
+                    + '<div class="sub">' + esc(u.nickname || '—') + ' · ' + esc(u.email || '—') + ' · 全局角色 ' + esc(globalRoleLabel(u.role)) + '</div></span></label>';
+            }).join('') : '<div class="empty">没有可加入的用户</div>';
+        } catch (e) {
+            box.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+        }
+    }
+
+    /** 默认角色：优先 code='user'，其次任意非 admin，最后兜底第一个（避免「加个人就给管理员」）。 */
+    function defaultRoleId() {
+        var roles = appRoles;
+        var u = roles.filter(function (r) { return r.code === 'user'; })[0];
+        if (u) return u.id;
+        var nonAdmin = roles.filter(function (r) { return r.code !== 'admin'; })[0];
+        if (nonAdmin) return nonAdmin.id;
+        return roles.length ? roles[0].id : null;
+    }
+
+    async function addUsers() {
+        var picked = [].slice.call(document.querySelectorAll('#poolList input:checked')).map(function (c) { return Number(c.value); });
+        if (!picked.length) { toast('请先勾选要加入的用户'); return; }
+        var btn = document.getElementById('btnAddUsers');
+        btn.disabled = true;
+        try {
+            await loadRoles();
+            var rid = defaultRoleId();
+            if (rid == null) throw new Error('本系统尚未配置任何角色，请先在中心创建');
+            for (var i = 0; i < picked.length; i++) {
+                await api('/users/' + picked[i] + '/client-roles?client=' + encodeURIComponent(CLIENT_ID),
+                    { method: 'PUT', body: JSON.stringify({ roleIds: [rid] }) });
+            }
+            closeMask('addMask');
+            toast('已加入本系统 ' + picked.length + ' 人');
+            load(1);
+        } catch (e) { toast('加入失败：' + e.message); }
+        finally { btn.disabled = false; }
+    }
+
+    async function handleLogout() {
+        try { await fetch('/activecode/api/auth/logout', { method: 'POST' }); } catch (e) {}
+        location.href = '/activecode/login.html';
+    }
+
+    checkSession();
+    loadRoles().catch(function () {});
+    load(1);
+</script>
+</body>
+</html>

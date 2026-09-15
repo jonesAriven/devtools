@@ -43,6 +43,14 @@ menus:
     path: /main.html#tool
     order: 7
     min-role: admin
+  - key: members
+    title: 本系统用户
+    path: /members.html
+    order: 8
+    # 应用作用域成员管理（6 应用统一要求）：只显示与激活码系统有关的用户，
+    # 只管「谁能进本系统、在本系统是什么角色」；全局身份/角色在门户「统一认证中心」。
+    # 刻意**不标 public** —— 保持全表只有 index 一个 public 菜单。
+    min-role: admin
 
 # api 粒度权限点（写操作）：随本 yml 全量上报为 type=api
 # （sys_permission.code = 下面的 key，下发全码 = marschat-activecode:api:<key>）。
