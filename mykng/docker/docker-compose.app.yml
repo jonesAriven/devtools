@@ -99,15 +99,19 @@ services:
       #         必须由应用角色显式授权。api=动作，任何模式下都不自动授予。
       # legacy：恢复改造前「默认全量菜单」行为（一键回滚用，幂等、可逆）。
       #
-      # 灰度（良哥拍板「portal 先试点」）：全局 legacy + strict-clients 列出应用 → 该应用单独走 strict。
-      #   试点验证通过后，把 MARSCHAT_AUTHZ_MODE 改 strict（或把 5 个应用都加进 strict-clients）。
-      # ⚠️ 切到 strict 前必须先让应用上报 public 菜单，否则普通用户登录后菜单全空。
+      # 灰度（良哥拍板「portal 先试点」）已按序完成：
+      #   第 1 步 全局 legacy + strict-clients=marschat-portal → 试点 portal（已验收）；
+      #   第 2 步 各应用上报 public 菜单（kb-ops 看板 / kb-web 工作台 / infra 总览看板 /
+      #          cosmic 工作台；portal 两个菜单均为管理项，刻意不标 public）；
+      #   第 3 步（当前）全局 strict —— 普通用户每应用仅持有 landing public 菜单，其余须显式授权。
+      # ⚠️ 若需临时回退：MARSCHAT_AUTHZ_MODE=legacy 重启 auth-center（启动时会把全量 menu 一次性补回，
+      #    已 strict 收敛过的应用会被 resetStrictMigrated 并复原，功能等价、可逆）。
       # 运维端点（Bearer 超管）：GET /admin/authz/policy（当前模式与各应用生效模式）
       #   / GET /admin/authz/impact?client=x&mode=strict（影响面预演，只读）
       #   / POST /admin/authz/migrate?client=x[&force=true]（立即收敛）
       #   / POST /admin/authz/restore-legacy?client=x（一键回滚）。
-      - MARSCHAT_AUTHZ_MODE=${MARSCHAT_AUTHZ_MODE:-legacy}
-      - MARSCHAT_AUTHZ_STRICT_CLIENTS=${MARSCHAT_AUTHZ_STRICT_CLIENTS:-marschat-portal}
+      - MARSCHAT_AUTHZ_MODE=${MARSCHAT_AUTHZ_MODE:-strict}
+      - MARSCHAT_AUTHZ_STRICT_CLIENTS=${MARSCHAT_AUTHZ_STRICT_CLIENTS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
