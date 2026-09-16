@@ -78,3 +78,42 @@ marschat:
   #    **不能**用容器名 auth-center；必须走宿主 LAN 地址（与 account.report.issuer 同口径）。
   auth-center:
     base: ${MARSCHAT_AUTH_CENTER_BASE:http://192.168.31.105:8085}
+  # ── 接口级权限闸门（P0-3，2026-09-16）────────────────────────────────────
+  # 改造前 activecode「有权限点、零闸门」：写接口只认证不鉴权，且 generate /
+  # config/default-expire 被整条排除出鉴权（匿名可达）。现在：命中 rules 的**写方法**
+  # 必须持有 marschat-activecode:api:<perm> 权限点；读方法、未命中路径、匿名单点一律不受影响。
+  # 判定实现 config/PermissionInterceptor.java（Spring MVC，范式同 kb-gateway 的 WebFlux filter）；
+  # 权限点在 menu-registry.yml 的 apis 段上报。
+  # 应急开关：MARSCHAT_AUTHZ_ENABLED=false 即回到旧行为（只认证不鉴权），便于回滚。
+  authz:
+    enabled: ${MARSCHAT_AUTHZ_ENABLED:true}
+    # 中心不可达时的姿态：false=拒绝（接口=动作，判定不了就不放行动作）。
+    # 只影响命中的写请求；读请求与未命中路径完全不受影响。
+    fail-open: ${MARSCHAT_AUTHZ_FAIL_OPEN:false}
+    # 服务端互调走宿主 LAN 地址（activecode 在独立主机 .182，禁走容器名/公网域名）。
+    issuer: ${MARSCHAT_AUTHZ_ISSUER:http://192.168.31.105:8085}
+    client-id: marschat-activecode
+    cache-ttl-ms: ${MARSCHAT_AUTHZ_CACHE_TTL_MS:60000}
+    # 规则表：「方法 + 路径」→ 权限点短码（全码 = marschat-activecode:api:<perm>）。
+    # ⚠️ 比 kb-gateway 多一个可选 method 维度：activecode 的受管端点与**匿名**的
+    #    POST /activation/verify 同处一层单段路径空间（都匹配 /activation/*），
+    #    仅凭路径通配会误伤匿名 verify，故必须按方法精确命中。
+    rules:
+      - pattern: /activecode/api/activation/generate
+        method: POST
+        perm: code:generate
+      - pattern: /activecode/api/activation/batch
+        method: DELETE
+        perm: code:batch-delete
+      - pattern: /activecode/api/activation/*
+        method: DELETE
+        perm: code:delete
+      - pattern: /activecode/api/activation/*/alias
+        method: PUT
+        perm: code:alias
+      - pattern: /activecode/api/activation/config/default-expire
+        method: PUT
+        perm: config:expire
+      - pattern: /activecode/api/activation/version-check
+        method: PUT
+        perm: config:version-check

@@ -14,8 +14,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
 
-    public WebMvcConfig(AuthInterceptor authInterceptor) {
+    private final PermissionInterceptor permissionInterceptor;
+
+    public WebMvcConfig(AuthInterceptor authInterceptor, PermissionInterceptor permissionInterceptor) {
         this.authInterceptor = authInterceptor;
+        this.permissionInterceptor = permissionInterceptor;
     }
 
     @Override
@@ -47,9 +50,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/auth/mail-login/send-code",
                         "/activecode/api/auth/forgot-password",
                         "/activecode/api/auth/reset-password",
+                        // P0-3（2026-09-16）修「匿名洞」：/activation/generate 与
+                        // /activation/config/default-expire 曾整条排除出鉴权 —— 匿名即可
+                        // 生成激活码、读默认有效期配置。二者已从白名单移除，改由
+                        // AuthInterceptor（登录）+ PermissionInterceptor（权限点）共同把关。
+                        // ⚠️ /activation/verify 保留匿名（**待产品确认是否对外**），语义未动。
                         "/activecode/api/activation/verify",
-                        "/activecode/api/activation/generate",
-                        "/activecode/api/activation/config/default-expire",
                         "/activecode/index.html",
                         "/activecode/downloads.html",
                         "/activecode/api/download/**",
