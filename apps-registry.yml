@@ -128,6 +128,24 @@ apps:
   - client-id: cosmic-studio
     name: MarsChat COSMIC Studio
     type: public
+    # 菜单/账号上报凭据（Phase 4 P-B internal 通道 X-Client-Secret；Phase 7 复用为账号登记）。
+    # ⚠️ 与 kbweb/inframon/activecode **不同**：本条**不写明文默认值**，只声明 env 变量名，
+    #    即 `${COSMIC_MENU_REPORT_SECRET:}` 空默认。理由：
+    #      ① cosmic 的既有约定本就是 env 注入（部署机 /root/devtools/cosmic-studio/.env +
+    #         docker-compose.yml 的 `MENU_REPORT_SECRET: ${COSMIC_MENU_REPORT_SECRET:-}`），
+    #         库内 client_secret 为 32 位、由 env 直接决定，并非 48 位生成值；
+    #      ② 避免把明文凭据写进 git（kbweb/inframon/activecode 那三条属 P2，见文末 TODO）。
+    #    派生进 auth-center clients.yml 后由 ClientsYmlLoader.resolveSecret() 解析：
+    #    auth-center 容器内没有该 env → 解析为空串 → 仅 INSERT IGNORE 建行、不写 secret
+    #    （且 syncAppClientSecret ③「库内已有非空值不覆盖」）。
+    # 背景（2026-09-16 线上实测）：cosmic 上报**本来就已生效**——cosmic-api 启动日志
+    #    `菜单上报成功: cosmic-studio (upserted=19 retired=0)`、`账号上报成功 (upserted=2)`，
+    #    中心 sys_app_client.client_secret 非空且与容器 env 同值，/auth/permissions
+    #    返回 configured=true。本条补齐的是**配置真源**：原先缺这个键，会让"换机器/重建环境"
+    #    时 cosmic 静默退化为不上报（fail-soft，无报错）。
+    # TODO(P2)：统一把 kbweb/inframon/activecode 的明文 menu-report-secret 改为本条这种
+    #    env-only 写法，消除"凭据入 git"。
+    menu-report-secret: ${COSMIC_MENU_REPORT_SECRET:}
     auth:
       redirect-uris:
         - https://cosmic.marschat.online/sso-callback
