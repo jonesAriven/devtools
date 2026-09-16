@@ -61,5 +61,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/download/**",
                         "/favicon.ico"
                 );
+
+        // P0-3 (2026-09-16): API-level permission gate (MVC HandlerInterceptor).
+        // Registered AFTER authInterceptor: check 'logged in' first, then 'permission point'.
+        // Only write methods matching marschat.authz.rules are gated; reads/OPTIONS pass.
+        registry.addInterceptor(permissionInterceptor)
+                .addPathPatterns("/activecode/api/**");
     }
 }
