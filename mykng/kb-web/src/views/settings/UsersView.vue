@@ -19,11 +19,11 @@ import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-compo
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { getToken } from '@/utils/token'
 import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
-import { OIDC_CLIENT_ID } from '@/config'
+import { OIDC_CLIENT_ID, API_BASE_URL } from '@/config'
 
 const client = createUserAdminClient({
   // auth-center 是平台唯一账号池；4 个直换票应用统一走这个地址
-  baseUrl: 'https://auth.marschat.online/admin/users',
+  baseUrl: `${API_BASE_URL}/admin/users`,
   getToken: () => getToken(),
   // 401（本地 token 过期但 IdP 会话仍在）→ 静默重授权，回来后自动重载列表
   onUnauthorized: () => void renewByReauthorize(),
@@ -49,7 +49,7 @@ const config: UserManagementConfig = {
   // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）；
   // clientId 取本应用 SSO client（运行时 app-config.json 派生，缺省 marschat-kbweb）
   appRoles: {
-    baseUrl: 'https://auth.marschat.online',
+    baseUrl: API_BASE_URL,
     clientId: OIDC_CLIENT_ID,
     getToken: () => getToken(),
     onUnauthorized: () => void renewByReauthorize(),

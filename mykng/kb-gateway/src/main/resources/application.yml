@@ -108,6 +108,33 @@ spring:
           filters:
             - StripPrefix=2
 
+        # ── Phase 12 · 3.2-A：kb-web 用户管理同源化（本域网关代理，不再跨域直连中心）──
+        # 白名单逐条列（不 /kb/api/admin/** 通配）；带 Method 谓词收紧写方法（与 R2 口径一致：
+        # POST/PUT/DELETE /admin/users、PUT .../password 一律不匹配 → 落 kb-api-not-found 得 404）。
+        # 顺序敏感：必须位于 kb-api-not-found（/kb/api/** → 404）之前。
+        - id: kb-admin-proxy-read
+          uri: lb://auth-center
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/admin/users,${KB_CONTEXT:/kb}/api/admin/users/*,${KB_CONTEXT:/kb}/api/admin/roles
+            - Method=GET
+          filters:
+            - StripPrefix=2
+
+        - id: kb-admin-proxy-scoped
+          uri: lb://auth-center
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/admin/users/*/client-roles,${KB_CONTEXT:/kb}/api/admin/users/*/menu-overrides
+            - Method=GET,PUT
+          filters:
+            - StripPrefix=2
+
+        - id: kb-admin-proxy-clients
+          uri: lb://auth-center
+          predicates:
+            - Path=${KB_CONTEXT:/kb}/api/admin/clients/marschat-kbweb/**
+          filters:
+            - StripPrefix=2
+
         # 前端静态资源路由（/kb/s/）
         - id: kb-web-static
           uri: http://kb-web:80

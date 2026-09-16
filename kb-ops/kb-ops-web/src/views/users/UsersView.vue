@@ -7,7 +7,7 @@
       <el-tab-pane label="菜单授权" name="menus" lazy>
         <MenuPermissionPanel :config="menuPermConfig" />
       </el-tab-pane>
-      <el-tab-pane label="账号映射" name="mappings" lazy>
+      <el-tab-pane label="账号映射" name="mappings" lazy v-if="isPlatformAdmin">
         <AccountMappingPanel :config="mappingConfig" />
       </el-tab-pane>
     </el-tabs>
@@ -39,12 +39,12 @@ import type {
 import { getToken } from '@/utils/token'
 import { decodeOidcClaims, renewByReauthorize, SSO_CONFIG } from '@/utils/sso'
 // 🔴 T7 组件收敛（2026-09-15）：中心基址一律取自运行时配置，不再硬编码域名
-import { OIDC_ISSUER } from '@/config'
+import { API_BASE_URL } from '@/config'
 
 const activeTab = ref('users')
 
 const client = createUserAdminClient({
-  baseUrl: `${OIDC_ISSUER}/admin/users`,
+  baseUrl: `${API_BASE_URL}/admin/users`,
   getToken: () => getToken(),
   // 401（本地 token 过期但 IdP 会话仍在）→ 静默重授权，回来后自动重载列表
   onUnauthorized: () => void renewByReauthorize(),
@@ -53,6 +53,11 @@ const client = createUserAdminClient({
 /** 当前登录用户 id —— 面板据此禁止"删除自己 / 禁用自己" */
 const claims = decodeOidcClaims(getToken() || '')
 const currentUserId = (claims?.uid ?? claims?.sub ?? null) as number | string | null
+
+/** 平台管理员（superadmin）才可见「账号映射」页签；应用管理员（admin）不可见（Phase 12 · 3.2-A）。
+ * 判据取自 auth-center 签发的 OIDC token `role` claim（不另发请求）。
+ * 中心侧 /admin/mappings 由 @PreAuthorize 挡非管理员，BFF 白名单放行 /admin/mappings* 作同源透传。 */
+const isPlatformAdmin = claims?.role === 'superadmin'
 
 const config: UserManagementConfig = {
   client,
@@ -70,7 +75,7 @@ const config: UserManagementConfig = {
   currentUserId,
   // Phase 4：用户×应用角色绑定（操作列「应用角色」按钮）
   appRoles: {
-    baseUrl: OIDC_ISSUER,
+    baseUrl: API_BASE_URL,
     clientId: SSO_CONFIG.clientId,
     getToken: () => getToken(),
     onUnauthorized: () => void renewByReauthorize(),
@@ -78,7 +83,7 @@ const config: UserManagementConfig = {
 }
 
 const menuPermConfig: MenuPermissionConfig = {
-  baseUrl: OIDC_ISSUER,
+  baseUrl: API_BASE_URL,
   getToken: () => getToken(),
   clientId: SSO_CONFIG.clientId,
   title: '菜单授权',
@@ -92,7 +97,7 @@ const menuPermConfig: MenuPermissionConfig = {
  * 用途：各应用上报的本地账号在此汇总，"待绑定"的账号可手工认领到中心用户。
  */
 const mappingClient = createAccountMappingClient({
-  issuer: OIDC_ISSUER,
+  issuer: API_BASE_URL,
   getToken: () => getToken(),
   onUnauthorized: () => void renewByReauthorize(),
 })
@@ -103,7 +108,7 @@ const mappingConfig: AccountMappingConfig = {
   subtitle:
     '各系统本地账号 ↔ 中心统一身份。应用启动时自动上报本地账号并尝试自动认领；未认领的可在右侧手工绑定。',
   searchUsers: createAccountMappingUserSearch({
-    issuer: OIDC_ISSUER,
+    issuer: API_BASE_URL,
     getToken: () => getToken(),
     onUnauthorized: () => void renewByReauthorize(),
   }),
