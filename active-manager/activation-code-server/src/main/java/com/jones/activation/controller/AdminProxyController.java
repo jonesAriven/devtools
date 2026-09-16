@@ -66,8 +66,6 @@ public class AdminProxyController {
     /** 本应用在统一认证中心的 client_id（白名单作用域绑定；中心侧 path 化端点用同一值）。 */
     private static final String CLIENT_ID = "marschat-activecode";
 
-    /** 单用户路径：{@code /admin/users/{id}}（仅放行 PUT 编辑；删/改密被白名单排除）。 */
-    private static final Pattern USER_ONE = Pattern.compile("/admin/users/[^/]+");
     /** 既有「本系统角色」端点：{@code /admin/users/{id}/client-roles}。 */
     private static final Pattern USER_CLIENT_ROLES = Pattern.compile("/admin/users/[^/]+/client-roles");
     /** 既有「菜单减法」端点：{@code /admin/users/{id}/menu-overrides}。 */
@@ -194,17 +192,18 @@ public class AdminProxyController {
      * <ul>
      *   <li>{@code /admin/clients/marschat-activecode/members**}、{@code /admin/clients/marschat-activecode/users/**}
      *       —— 中心侧新增的 path 化成员/应用级端点（client 已钉进 path）。</li>
-     *   <li>{@code GET|POST /admin/users} —— 成员列表 + 「添加已有用户」的全平台用户池（读）；
+     *   <li>{@code GET /admin/users} —— 成员列表 + 「添加已有用户」的全平台用户池（只读）；
      *       若带 {@code client=} 参数，必须等于本应用 {@link #CLIENT_ID}，否则拒绝（防改 client 越界）。</li>
-     *   <li>{@code PUT /admin/users/{id}} —— 编辑统一身份的资料字段（共享面板 app 作用域仍渲染「编辑」按钮）。</li>
      *   <li>{@code GET|PUT /admin/users/{id}/client-roles?client=<本应用>} —— 本系统角色绑定。</li>
      *   <li>{@code GET|PUT /admin/users/{id}/menu-overrides?client=<本应用>} —— 菜单减法。</li>
      *   <li>{@code GET /admin/roles} —— 角色定义（只读；用于渲染「本系统角色」勾选）。</li>
      * </ul>
      *
-     * <p><b>被排除（一律 404）</b>：{@code DELETE /admin/users/{id}}、{@code PUT /admin/users/{id}/password}、
+     * <p><b>被排除（一律 404）</b>：{@code POST /admin/users}、{@code PUT /admin/users/{id}}、
+     * {@code DELETE /admin/users/{id}}、{@code PUT /admin/users/{id}/password}、
      * {@code /admin/mappings/**}、{@code /admin/authorization-matrix}、{@code /admin/authz/**}、
      * {@code /admin/roles} 的写方法、以及**其它 client** 的任何路径。
+     * Phase 12 R2（2026-09-17）：auth-components 0.8.8 后应用台已无新建/编辑入口，故收回透传。
      *
      * @param method HTTP 方法
      * @param path   中心路径（不含查询串）
@@ -220,34 +219,29 @@ public class AdminProxyController {
             return true;
         }
 
-        // ② 成员列表 / 全平台用户池：GET 读、POST 新建身份（共享面板 app 作用域仍渲染「新建用户」）。
+        // ② 成员列表 / 全平台用户池：仅 GET 读（「添加已有用户」候选池）。
         //    带 client= 参数时必须等于本应用，否则拒绝。
         if (path.equals("/admin/users")) {
-            return ("GET".equals(m) || "POST".equals(m)) && clientScopeOk(query);
+            return "GET".equals(m) && clientScopeOk(query);
         }
 
-        // ③ 单用户编辑：仅 PUT（DELETE / DELETE batch / password 均落空 → 拒绝）。
-        if (USER_ONE.matcher(path).matches()) {
-            return "PUT".equals(m);
-        }
-
-        // ④ 既有「本系统角色」端点：GET 读 / PUT 写，且 client 必须等于本应用。
+        // ③ 既有「本系统角色」端点：GET 读 / PUT 写，且 client 必须等于本应用。
         if (USER_CLIENT_ROLES.matcher(path).matches()) {
             return ("GET".equals(m) || "PUT".equals(m)) && clientScopeOk(query);
         }
 
-        // ⑤ 既有「菜单减法」端点：GET 读 / PUT 写，且 client 必须等于本应用。
+        // ④ 既有「菜单减法」端点：GET 读 / PUT 写，且 client 必须等于本应用。
         if (USER_MENU_OVERRIDES.matcher(path).matches()) {
             return ("GET".equals(m) || "PUT".equals(m)) && clientScopeOk(query);
         }
 
-        // ⑥ 角色定义只读：GET /admin/roles（中心各 client 的角色清单，前端据此过滤本应用角色）。
+        // ⑤ 角色定义只读：GET /admin/roles（中心各 client 的角色清单，前端据此过滤本应用角色）。
         if (path.equals("/admin/roles") && "GET".equals(m)) {
             return true;
         }
 
-        // 其余（DELETE /admin/users/{id}、PUT .../password、/admin/mappings/**、
-        //      /admin/authorization-matrix、/admin/authz/**、/admin/roles 写、其它 client）一律拒绝。
+        // 其余（POST /admin/users、PUT /admin/users/{id}、DELETE /admin/users/{id}、PUT .../password、
+        //      /admin/mappings/**、/admin/authorization-matrix、/admin/authz/**、/admin/roles 写、其它 client）一律拒绝。
         return false;
     }
 

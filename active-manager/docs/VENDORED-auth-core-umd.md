@@ -7,7 +7,7 @@
 | 项 | 值 |
 |---|---|
 | 来源包 | `@marschat/auth-components` |
-| 版本 | `0.8.7` |
+| 版本 | `0.8.8` |
 | 源文件 | `packages/auth-components/dist/marschat-auth-core.umd.js` |
 | 落地位置 | `activation-code-server/src/main/resources/static/activecode/marschat-auth-core.umd.js` |
 | 全局变量 | `window.MarschatAuth`（纯 named 导出，无 `.default`） |
