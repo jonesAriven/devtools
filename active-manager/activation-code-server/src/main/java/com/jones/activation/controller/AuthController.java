@@ -203,16 +203,26 @@ public class AuthController {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return Map.of("success", false, "message", "token 中无用户名声明");
         }
-        if (ssoUsername == null || ssoUsername.isBlank() || !ssoUsername.equals(tokenUsername)) {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            return Map.of("success", false, "message", "username 与 token 不一致");
+        // 🔴 缺陷 D1（2026-09-17 修复）：原先要求「请求体 username == 令牌 username 声明」，
+        //    不等即 403。但前端 activecode/sso.js 当时取的是 **id_token 的 sub**，而中心 SAS 的
+        //    **sub 是用户 ID**（实测 "1"）、**username 才是登录名**（实测 "admin"）→ 两者必然不等
+        //    → 整条 SSO 回调恒失败（页面：统一认证登录失败 / username 与 token 不一致）。
+        //    现改为：**身份一律以验签通过的令牌声明为准**，请求体 username 仅作客户端自述，
+        //    不一致时记 WARN 并以令牌为准，不再阻断。
+        //    安全性不降级：会话主体来自 RS256 验签通过的令牌，请求体根本无法影响它；
+        //    反之继续硬校验，只会把「客户端取错字段」放大成「整条 SSO 通道不可用」。
+        if (ssoUsername != null && !ssoUsername.isBlank() && !ssoUsername.equals(tokenUsername)) {
+            log.warn("[SSO] 客户端自述 username={} 与令牌声明不一致，以令牌为准: tokenUsername={} sub={} aud={}",
+                    ssoUsername, tokenUsername, claims.getSubject(), claims.getAudience());
         }
 
         // 统一走「映射收敛」判定（同名 → 超管例外 → 中心账号映射 → 403）。
         // 🔴 改造前此处是「未匹配同名则回退到任意本地管理员(LIMIT 1)」—— 等于任何持有有效中心
         //    token 的用户都能以 admin 进入激活码系统（与 cosmic G2 同类的越权默认值），已收敛。
         // platformAdminHint=null → 由 establishSession 用该 RS256 令牌查中心平台角色。
-        return establishSession(ssoUsername, accessToken, null, session, response);
+        log.info("[SSO] 令牌身份已确认: username={} sub={} aud={}，进入映射收敛判定",
+                tokenUsername, claims.getSubject(), claims.getAudience());
+        return establishSession(tokenUsername, accessToken, null, session, response);
     }
 
     @GetMapping("/session")

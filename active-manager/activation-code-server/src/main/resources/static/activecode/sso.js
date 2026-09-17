@@ -138,17 +138,33 @@
     // 回调（sso-callback.html）
     // ------------------------------------------------------------------
 
-    /** 从 id_token 里取登录主体标识（auth-center 签发 sub=用户ID，id_token 无 preferred_username） */
+    /**
+     * 取登录用户名 —— **必须从 access_token 取**，与后端 /sso-login 完全同口径。
+     *
+     * 🔴 缺陷 D1（2026-09-17 修复）：原实现从 **id_token** 取
+     *    `preferred_username || unique_name || sub`。但中心 SAS 的 id_token **不签发**
+     *    `username` / `preferred_username` / `unique_name`（实测只有 `sub`），于是回退到 `sub`，
+     *    而 **`sub` 是用户 ID**（实测 `"1"`）；后端自 F2（2026-09-15）起改按 **access_token 的
+     *    `username` 声明**（实测 `"admin"`）认身份 → 两者必然不等 → SSO 回调 100% 失败
+     *    （页面提示「SSO 登录后端失败: username 与 token 不一致」）。
+     *
+     * 现与后端同序：access_token 的 `username` → `preferred_username` → `sub`。
+     * 该值同时用于落地 `activecode_sso_user`，故修复后该键也从「1」回到真实登录名。
+     */
     function usernameFromToken() {
+        var access = '';
+        try {
+            access = localStorage.getItem('activecode_oidc_access') || '';
+        } catch (e) {
+            access = '';
+        }
         var claims = {};
         try {
-            claims = MICRO.decodeOidcClaims(MICRO.getIdToken() || '') || {};
+            claims = MICRO.decodeOidcClaims(access) || {};
         } catch (e) {
             claims = {};
         }
-        // 顺序与原实现保持一致：后端 /sso-login 用 access_token 的 sub 做一致性校验，
-        // 而 id_token 与 access_token 的 sub 同源（都是 principal name），故取 sub 最稳。
-        return claims.preferred_username || claims.unique_name || claims.sub || claims.name || '';
+        return claims.username || claims.preferred_username || claims.sub || '';
     }
 
     /**
