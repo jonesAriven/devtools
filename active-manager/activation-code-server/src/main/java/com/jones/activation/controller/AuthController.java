@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -234,32 +235,23 @@ public class AuthController {
         return Map.of("success", false);
     }
 
+    /**
+     * 本地改密端点已下线（Phase 12 · P1-4 / F4）。
+     *
+     * <p>Phase 11 起口令唯一真源在统一认证中心，本库 {@code admin_user} 只是影子。
+     * 历史实现会做「本地 salt+hash 比对 + 本地改密」：用户提交后中心口令纹丝不动，
+     * 只有本机影子被改 —— 表面「修改成功」，实则制造身份分裂（同一用户名两套口令）。
+     *
+     * <p>处置：一律 410 Gone + 引导走中心「忘记密码」。<b>严禁</b>恢复本地比对。
+     */
     @PostMapping("/change-password")
-    public Map<String, Object> changePassword(@RequestBody Map<String, String> body, HttpSession session) {
-        AdminUser user = (AdminUser) session.getAttribute("loginUser");
-        if (user == null) {
-            return Map.of("success", false, "message", "未登录");
-        }
-
-        String oldPassword = body.get("oldPassword");
-        String newPassword = body.get("newPassword");
-
-        if (oldPassword == null || newPassword == null || newPassword.length() < 6) {
-            return Map.of("success", false, "message", "密码不能为空且新密码至少6位");
-        }
-
-        String hashedOld = hashPassword(oldPassword, user.getSalt());
-        if (!hashedOld.equals(user.getPassword())) {
-            return Map.of("success", false, "message", "原密码错误");
-        }
-
-        String newSalt = generateSalt();
-        String newHashed = hashPassword(newPassword, newSalt);
-        user.setSalt(newSalt);
-        user.setPassword(newHashed);
-        adminUserMapper.updateById(user);
-
-        return Map.of("success", true, "message", "密码修改成功");
+    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody(required = false) Map<String, String> body,
+                                                              HttpSession session) {
+        log.warn("[auth] 本地改密端点已下线，拒绝请求（session={}）——口令统一由认证中心管理",
+                session != null && session.getAttribute("loginUser") != null);
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(Map.of("success", false, "code", 410,
+                        "message", "口令由统一认证中心统一管理，请通过登录页「忘记密码」或联系平台管理员重置"));
     }
 
     /**

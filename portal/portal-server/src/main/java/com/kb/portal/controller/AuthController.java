@@ -143,28 +143,24 @@ public class AuthController {
         return Result.ok();
     }
 
+    /**
+     * 本地改密端点已下线（Phase 12 · P1-4 / F4）。
+     *
+     * <p>Phase 11 起口令唯一真源在统一认证中心，本库 {@code sys_user} 只是影子（不决定身份）。
+     * 但历史实现仍在做「本地口令比对 + 本地改密」：用户提交后<b>中心口令纹丝不动</b>，
+     * 只有 portal 影子被改 —— 用户以为改了平台口令，实际制造了身份分裂（同一用户名两套口令）。
+     * 2026-09-17 浏览器实测复现：改密接口返回 200 成功，中心口令不变。
+     *
+     * <p>处置：一律 410 Gone，引导用户走中心「忘记密码」/ 中心管理台重置。
+     * <b>严禁</b>恢复本地比对（等于给身份分裂留后门）。
+     * 正确改密范式见 kb-web：{@code PUT /kb/api/user/password} 经 kb-gateway 代理到中心。
+     */
     @PostMapping("/change-password")
     public Result<Void> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
             HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
-        if (userId == null) {
-            throw new BusinessException(401, "未登录或登录已过期");
-        }
-
-        SysUser user = sysUserMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-
-        if (!passwordUtil.matches(request.getOldPassword(), user.getPassword())) {
-            throw new BusinessException("旧密码错误");
-        }
-
-        user.setPassword(passwordUtil.encode(request.getNewPassword()));
-        sysUserMapper.updateById(user);
-
-        return Result.ok();
+        throw new BusinessException(410,
+                "口令由统一认证中心统一管理，请通过登录页「忘记密码」或联系平台管理员重置");
     }
 
     @GetMapping("/userinfo")
