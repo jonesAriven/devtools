@@ -33,16 +33,19 @@ public class CredentialController {
         return Result.ok(credentialService.getById(id, revealPassword));
     }
 
+    @RequirePermission("api:credentials:create")
     @PostMapping
     public Result<Credential> create(@Valid @RequestBody CredentialRequest request) {
         return Result.ok(credentialService.create(request));
     }
 
+    @RequirePermission("api:credentials:update")
     @PutMapping("/{id}")
     public Result<Credential> update(@PathVariable Long id, @Valid @RequestBody CredentialRequest request) {
         return Result.ok(credentialService.update(id, request));
     }
 
+    @RequirePermission("api:credentials:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         credentialService.delete(id);

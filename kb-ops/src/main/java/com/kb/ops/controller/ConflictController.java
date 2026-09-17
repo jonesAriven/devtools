@@ -21,6 +21,7 @@ public class ConflictController {
     /**
      * 执行一次矛盾检测
      */
+    @RequirePermission("api:conflicts:detect")
     @PostMapping("/detect")
     public Result<Map<String, Integer>> detect() {
         int count = conflictDetectionService.detect();
@@ -39,6 +40,7 @@ public class ConflictController {
     /**
      * 标记矛盾为已解决
      */
+    @RequirePermission("api:conflicts:resolve")
     @PutMapping("/{id}/resolve")
     public Result<Void> resolve(@PathVariable Long id) {
         conflictDetectionService.resolve(id);

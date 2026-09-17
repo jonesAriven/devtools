@@ -33,16 +33,19 @@ public class PortController {
         return Result.ok(portService.getById(id));
     }
 
+    @RequirePermission("api:ports:create")
     @PostMapping
     public Result<Port> create(@Valid @RequestBody PortRequest request) {
         return Result.ok(portService.create(request));
     }
 
+    @RequirePermission("api:ports:update")
     @PutMapping("/{id}")
     public Result<Port> update(@PathVariable Long id, @Valid @RequestBody PortRequest request) {
         return Result.ok(portService.update(id, request));
     }
 
+    @RequirePermission("api:ports:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         portService.delete(id);

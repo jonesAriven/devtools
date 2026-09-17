@@ -33,16 +33,19 @@ public class ServiceController {
         return Result.ok(serviceService.getById(id));
     }
 
+    @RequirePermission("api:services:create")
     @PostMapping
     public Result<OpsService> create(@Valid @RequestBody ServiceRequest request) {
         return Result.ok(serviceService.create(request));
     }
 
+    @RequirePermission("api:services:update")
     @PutMapping("/{id}")
     public Result<OpsService> update(@PathVariable Long id, @Valid @RequestBody ServiceRequest request) {
         return Result.ok(serviceService.update(id, request));
     }
 
+    @RequirePermission("api:services:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         serviceService.delete(id);

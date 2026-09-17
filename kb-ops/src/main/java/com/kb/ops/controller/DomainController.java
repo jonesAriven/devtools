@@ -32,16 +32,19 @@ public class DomainController {
         return Result.ok(domainService.getById(id));
     }
 
+    @RequirePermission("api:domains:create")
     @PostMapping
     public Result<Domain> create(@Valid @RequestBody DomainRequest request) {
         return Result.ok(domainService.create(request));
     }
 
+    @RequirePermission("api:domains:update")
     @PutMapping("/{id}")
     public Result<Domain> update(@PathVariable Long id, @Valid @RequestBody DomainRequest request) {
         return Result.ok(domainService.update(id, request));
     }
 
+    @RequirePermission("api:domains:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         domainService.delete(id);

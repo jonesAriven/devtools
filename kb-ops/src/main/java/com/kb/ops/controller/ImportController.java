@@ -38,6 +38,7 @@ public class ImportController {
     /**
      * 结构化数据导入
      */
+    @RequirePermission("api:import:exec")
     @PostMapping
     public Result<ImportResult> importData(@RequestBody ImportRequest request) {
         return Result.ok(importService.importData(request));
@@ -50,6 +51,7 @@ public class ImportController {
      * @param type     导入类型: HOST / SERVICE / KNOWLEDGE
      * @param override 是否覆盖同名记录
      */
+    @RequirePermission("api:import:csv")
     @PostMapping("/csv")
     public Result<ImportResult> importCsv(@RequestParam("file") MultipartFile file,
                                           @RequestParam(defaultValue = "HOST") String type,

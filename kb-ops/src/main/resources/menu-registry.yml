@@ -84,3 +84,53 @@ apis:
     title: 编辑主机
   - key: hosts:delete
     title: 删除主机
+  - key: services:create
+    title: 新增服务
+  - key: services:update
+    title: 编辑服务
+  - key: services:delete
+    title: 删除服务
+  - key: ports:create
+    title: 新增端口
+  - key: ports:update
+    title: 编辑端口
+  - key: ports:delete
+    title: 删除端口
+  - key: credentials:create
+    title: 新增凭据
+  - key: credentials:update
+    title: 编辑凭据
+  - key: credentials:delete
+    title: 删除凭据
+  - key: domains:create
+    title: 新增域名
+  - key: domains:update
+    title: 编辑域名
+  - key: domains:delete
+    title: 删除域名
+  - key: dependencies:create
+    title: 新增依赖
+  - key: dependencies:update
+    title: 编辑依赖
+  - key: dependencies:delete
+    title: 删除依赖
+  - key: deployments:create
+    title: 新增部署记录
+  - key: conflicts:detect
+    title: 检测冲突
+  - key: conflicts:resolve
+    title: 处理冲突
+  - key: knowledge:create
+    title: 新增知识条目
+  - key: knowledge:update
+    title: 编辑知识条目
+  - key: knowledge:delete
+    title: 删除知识条目
+  - key: import:exec
+    title: 导入数据（JSON）
+  - key: import:csv
+    title: 导入数据（CSV）
+  - key: dashboard:refresh
+    title: 刷新看板快照
+  - key: sync:run
+    title: 触发从知识库同步

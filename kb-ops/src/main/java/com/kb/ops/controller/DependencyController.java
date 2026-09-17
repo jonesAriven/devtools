@@ -31,16 +31,19 @@ public class DependencyController {
         return Result.ok(dependencyService.getById(id));
     }
 
+    @RequirePermission("api:dependencies:create")
     @PostMapping
     public Result<Dependency> create(@Valid @RequestBody DependencyRequest request) {
         return Result.ok(dependencyService.create(request));
     }
 
+    @RequirePermission("api:dependencies:update")
     @PutMapping("/{id}")
     public Result<Dependency> update(@PathVariable Long id, @Valid @RequestBody DependencyRequest request) {
         return Result.ok(dependencyService.update(id, request));
     }
 
+    @RequirePermission("api:dependencies:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         dependencyService.delete(id);

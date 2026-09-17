@@ -34,16 +34,19 @@ public class KnowledgeController {
         return Result.ok(knowledgeService.getById(id));
     }
 
+    @RequirePermission("api:knowledge:create")
     @PostMapping
     public Result<OpsKnowledge> create(@Valid @RequestBody OpsKnowledgeRequest request) {
         return Result.ok(knowledgeService.create(request));
     }
 
+    @RequirePermission("api:knowledge:update")
     @PutMapping("/{id}")
     public Result<OpsKnowledge> update(@PathVariable Long id, @Valid @RequestBody OpsKnowledgeRequest request) {
         return Result.ok(knowledgeService.update(id, request));
     }
 
+    @RequirePermission("api:knowledge:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         knowledgeService.delete(id);

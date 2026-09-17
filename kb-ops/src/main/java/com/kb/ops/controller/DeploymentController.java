@@ -31,6 +31,7 @@ public class DeploymentController {
         return Result.ok(deploymentRecordService.recent(limit));
     }
 
+    @RequirePermission("api:deployments:create")
     @PostMapping
     public Result<DeploymentRecord> create(@Valid @RequestBody DeploymentRecordRequest request) {
         return Result.ok(deploymentRecordService.create(request));

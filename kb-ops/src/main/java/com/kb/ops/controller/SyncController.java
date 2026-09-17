@@ -7,6 +7,7 @@ import com.kb.ops.service.SyncFromIntelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import com.marschat.auth.authz.RequirePermission;
 
 @Slf4j
 @RestController
@@ -16,6 +17,7 @@ public class SyncController {
 
     private final SyncFromIntelService syncFromIntelService;
 
+    @RequirePermission("api:sync:run")
     @PostMapping("/from-intelligence")
     public Result<SyncFromIntelResult> syncFromIntelligence(@RequestBody(required = false) SyncFromIntelRequest request) {
         if (request == null) request = new SyncFromIntelRequest();

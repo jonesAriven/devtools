@@ -26,6 +26,7 @@ public class DashboardController {
     /**
      * 手动刷新看板快照
      */
+    @RequirePermission("api:dashboard:refresh")
     @PostMapping("/snapshot/refresh")
     public Result<Void> refreshSnapshot() {
         dashboardService.refreshSnapshot();
