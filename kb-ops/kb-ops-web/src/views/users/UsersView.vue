@@ -4,7 +4,7 @@
       <el-tab-pane label="用户" name="users">
         <UserManagementPanel :config="config" />
       </el-tab-pane>
-      <el-tab-pane label="菜单授权" name="menus" lazy>
+      <el-tab-pane label="菜单授权" name="menus" lazy v-if="isPlatformAdmin">
         <MenuPermissionPanel :config="menuPermConfig" />
       </el-tab-pane>
       <el-tab-pane label="账号映射" name="mappings" lazy v-if="isPlatformAdmin">

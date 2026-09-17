@@ -23,6 +23,9 @@
 # 上报通道：auth-core MenuRegistryReporter（启动时 PUT /internal/clients/marschat-portal/menus，
 # 凭据 X-Client-Secret = sys_app_client.client_secret，由 MARSCHAT_MENU_REPORT_SECRET 注入）。
 client: marschat-portal
+# WARN: 本应用**有意不设 public 菜单** —— portal 是卡片式门户 + 平台管理台寄生，不存在
+#   「每应用至多一个的落地页」需求。无 public 即普通用户登录后不自动获得任何受管菜单，
+#   符合 strict 默认最小权限；请勿为本表添加 public: true（新增需 ADR 决策）。
 menus:
   - key: manage
     title: 系统管理

@@ -250,8 +250,29 @@ public class AdminProxyController {
      * 用于防止把 {@code client=} 改成其它应用，借本代理越界管理别的 client。
      */
     private boolean clientScopeOk(String query) {
+        // Phase 12 R4（HPP 加固）：queryParam 取「首个」client 键，而转发沿用原始查询串，
+        // 重复键会造成「校验所见 != 转发所得」。故出现 >1 个 client 键时一律拒绝。
+        if (countParam(query, "client") > 1) {
+            return false;
+        }
         String client = queryParam(query, "client");
         return client == null || client.isBlank() || CLIENT_ID.equals(client);
+    }
+
+    /** 统计查询串中指定参数出现的次数（用于识别重复键 / 参数污染）。 */
+    private int countParam(String query, String key) {
+        if (query == null || query.isBlank()) {
+            return 0;
+        }
+        int n = 0;
+        for (String pair : query.split("&")) {
+            int eq = pair.indexOf('=');
+            String k = eq >= 0 ? pair.substring(0, eq) : pair;
+            if (key.equals(k)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     /** 从查询串中取指定参数并 URL 解码；不存在返回 {@code null}。 */

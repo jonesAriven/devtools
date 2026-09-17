@@ -58,6 +58,8 @@ public class AdminProxyController {
     private static final Pattern USER_CLIENT_ROLES = Pattern.compile("/admin/users/[^/]+/client-roles");
     /** 既有「菜单减法」端点：{@code /admin/users/{id}/menu-overrides}。 */
     private static final Pattern USER_MENU_OVERRIDES = Pattern.compile("/admin/users/[^/]+/menu-overrides");
+    /** 平台级「角色 -> 权限点」绑定端点（菜单授权面板用）。 */
+    private static final Pattern ROLE_PERM_CODES = Pattern.compile("/admin/roles/[^/]+/permission-codes");
 
     /** 中心内网基址（与 kb-ops 的 OIDC jwks-uri / 菜单上报同口径：compose 内网直连 auth-center）。 */
     @Value("${marschat.auth-center.base:http://auth-center:8085}")
@@ -156,6 +158,8 @@ public class AdminProxyController {
      *   <li>{@code GET /admin/roles} —— 角色定义（只读）。</li>
      *   <li>{@code /admin/mappings*} —— 账号映射（平台管理员专属；前端页签已对应用管理员隐藏，
      *       中心侧 @PreAuthorize 挡非管理员兜底安全）。</li>
+     *   <li>{@code GET /admin/permissions}、{@code GET|PUT /admin/roles/{id}/permission-codes}
+     *       —— 「菜单授权」面板（平台管理员专属；同上，前端页签已隐藏、中心侧兜底）。</li>
      * </ul>
      *
      * <p><b>被排除（一律 404）</b>：{@code POST /admin/users}、{@code PUT /admin/users/{id}}、
@@ -196,6 +200,16 @@ public class AdminProxyController {
             return true;
         }
 
+        // 7) 「菜单授权」面板（平台管理员专属）：权限点树 + 角色->权限点绑定。
+        //    中心侧 hasRole('ADMIN') 挡非管理员兜底；前端页签已对应用管理员隐藏。
+        //    注：R3 收窄白名单时漏放行这两条，导致平台管理员在 kb-ops 也点不动菜单授权（本轮修复）。
+        if (path.equals("/admin/permissions") && "GET".equals(m)) {
+            return clientScopeOk(query);
+        }
+        if (ROLE_PERM_CODES.matcher(path).matches()) {
+            return "GET".equals(m) || "PUT".equals(m);
+        }
+
         // 其余一律拒绝。
         return false;
     }
@@ -205,8 +219,29 @@ public class AdminProxyController {
      * 用于防止把 {@code client=} 改成其它应用，借本代理越界管理别的 client。
      */
     private boolean clientScopeOk(String query) {
+        // Phase 12 R4（HPP 加固）：queryParam 取「首个」client 键，而转发沿用原始查询串，
+        // 重复键会造成「校验所见 != 转发所得」。故出现 >1 个 client 键时一律拒绝。
+        if (countParam(query, "client") > 1) {
+            return false;
+        }
         String client = queryParam(query, "client");
         return client == null || client.isBlank() || CLIENT_ID.equals(client);
+    }
+
+    /** 统计查询串中指定参数出现的次数（用于识别重复键 / 参数污染）。 */
+    private int countParam(String query, String key) {
+        if (query == null || query.isBlank()) {
+            return 0;
+        }
+        int n = 0;
+        for (String pair : query.split("&")) {
+            int eq = pair.indexOf('=');
+            String k = eq >= 0 ? pair.substring(0, eq) : pair;
+            if (key.equals(k)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     /** 从查询串中取指定参数并 URL 解码；不存在返回 {@code null}。 */
