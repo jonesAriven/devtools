@@ -194,3 +194,6 @@ mykng/vaultwarden_import.json
 /*凭据*.md
 .git.broken*/
 *.timestamp-*.mjs
+
+# 运行时数据库（memory-panel 容器挂载的活库），不入库
+/memory-extract/memory-extracts.db
