@@ -14,7 +14,7 @@ import { CONTEXT_PATH } from '@/config/runtime'
 // ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址
 //    （写死 '/login' 会跳到域名根 → nginx 404）。portal 的 router base 同源于 CONTEXT_PATH。
 window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
-import { startSessionWatcher, bffAuthorizeUrl } from '@/utils/sso'
+import { startSessionWatcher, renewOidcSession } from '@/utils/sso'
 import { permissions } from '@/utils/permissions'
 import { isOidcToken } from '@marschat/auth-components'
 
@@ -62,9 +62,9 @@ if (userStore.token) {
       // 身份一致性守卫（auth-components 0.5.4+）：exchange 响应带 authUid（auth-center 用户 id），
       // 与探针返回的 username（同为 auth uid）比对，错位（共享浏览器换人）→ 清本地后重走 BFF 换票
       getLocalIdentity: () => userStore.authUid || null,
-      onIdentityMismatch: () => {
-        window.location.href = bffAuthorizeUrl(window.location.origin)
-      },
+      // D-1（2026-09-18）：守卫与 401 续期共用同一个 renewOidcSession()（同一 reauthInFlight 单飞），
+      // 两条路径互斥、不叠加跳转。
+      onIdentityMismatch: () => { void renewOidcSession(window.location.origin) },
     })
   }
   // Phase 2：预取 RBAC 权限点（走 portal-server 的 BFF 代理；路由守卫侧也会 ensure）。

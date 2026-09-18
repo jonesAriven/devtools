@@ -118,3 +118,51 @@ export const ssoLogout = (options?: SloOptions) => {
   stopSessionWatcher()
   sso.logout(options)
 }
+
+// ==========================================================================
+// D-1（2026-09-18）：401 续期语义按会话渠道分流 —— 续期单飞 + 统一续期动作
+//
+// 背景：portal 存在**两条**会导航到 IdP 重授权的路径 ——
+//   A. 身份一致性守卫（main.ts onIdentityMismatch）
+//   B. 401 续期（api/request.ts 错误分支）
+// 二者共用本文件的 `renewOidcSession()` 与**同一个** `reauthInFlight` 单飞标志，
+// 从而保证同一文档生命周期内**至多一次续期导航**（互斥、幂等、不叠加跳转）。
+// ==========================================================================
+
+/**
+ * 续期单飞标志（模块级）——「身份一致性守卫」与「401 续期」**共用**，
+ * 保证同一文档生命周期内**至多一次续期导航**。
+ */
+let reauthInFlight = false
+
+/** 是否已有续期在途（供调用方在导航前短路，避免重复跳转） */
+export const isReauthInFlight = () => reauthInFlight
+
+/**
+ * 统一的 OIDC 续期动作（静默重授权）。两条续期入口都必须走它。
+ *
+ * ⚠️ portal 是 **BFF 服务端流**（机密客户端），redirect 的语义与 infra-monitor / kb-ops
+ *    那类「浏览器直换票」**不同** —— 2026-09-18 复核 SsoController + SsoCallbackView 确认：
+ *    - `?redirect=` 交给 portal-server，`SsoController#normalizeOrigin` 只取**裸 origin**做
+ *      白名单校验，**路径部分一律丢弃**（带路径会拼出 /portal/portal/auth/callback 被 SAS 拒）；
+ *    - `SsoCallbackView` 固定 `router.replace('/')`，**不读** redirect。
+ *    ⇒ ① 续期后**一律回首页**，无法保留当前页（infra/kb-ops 能保留路径，portal 不能）；
+ *      ② 传 origin 即可，精心构造 SPA 路径在 portal 上是死代码。
+ *      **不要**照搬 infra/kb-ops 的 `currentSpaPath()` 口径。
+ *
+ * @param redirect 回跳地址（只有 origin 生效，路径会被后端丢弃；缺省即当前 origin）
+ * @returns true = 已发起导航（调用方不要再做别的跳转）；
+ *          false = 未导航（IdP 会话已不在 / 探针异常）——调用方自行降级
+ */
+export async function renewOidcSession(redirect?: string): Promise<boolean> {
+  if (reauthInFlight) return true          // 已有续期在途：视为"已处理"
+  reauthInFlight = true
+  try {
+    const navigated = await bootstrapLoginPage(redirect)   // 复用上方 bootstrapLoginPage（探针→授权入口）
+    if (!navigated) reauthInFlight = false                  // ★ 未导航 → 必须复位（否则之后永久静默失效）
+    return navigated
+  } catch (_e) {
+    reauthInFlight = false                                  // ★ 探针异常 → 复位，交调用方降级
+    return false
+  }
+}
