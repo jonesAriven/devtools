@@ -29,7 +29,9 @@
     var CLIENT_ID = 'marschat-activecode';
     var REDIRECT_URI = ORIGIN + '/activecode/sso-callback.html';
     var LOGIN_URL = ORIGIN + '/activecode/login.html';
-    var DEFAULT_REDIRECT = '/activecode/main.html';
+    /** 本应用部署前缀（context-path）。落地页必须是**带前缀的真实路径** —— 见 normalizeLanding() */
+    var CONTEXT_PATH = '/activecode';
+    var DEFAULT_REDIRECT = CONTEXT_PATH + '/main.html';
     var ISSUER = 'https://auth.marschat.online';
 
     /** 用户名落地键（本应用历史键，保持兼容） */
@@ -175,6 +177,40 @@
      *
      * @returns {Promise<{redirect: string, username: string}>}
      */
+    /**
+     * 落地页归一：把公共组件返回的「SPA 内部路径」还原成**本应用的真实部署路径**。
+     *
+     * 🔴 缺陷（2026-09-19 修复）：公共组件 handleCallback() 内部会走 toSpaPath()，
+     *    它按 redirectUri 推出 base=/activecode，然后把**部署前缀剥掉** ——
+     *    "/activecode/main.html" ⇒ "/main.html"。
+     *
+     *    那套「剥前缀」口径是为 **Vue SPA + router.push()** 设计的（router 会自动补 base），
+     *    而**本应用是 MPA**（多个真实 .html 页），落地走的是
+     *    window.location.replace(**真实路径**) —— 剥掉前缀后 /main.html 在服务端根本不存在。
+     *
+     *    实测后果（nginx 兜底链，2026-09-19 实采）：
+     *      /main.html → 302 → /activecode/ → 302 → /activecode/index.html
+     *    ⇒ SSO 登录后**错误地停在 index.html（激活码校验首页）**，而不是管理后台 main.html。
+     *
+     *    同一个坑也影响「静默续期」路径（renew() 传的是带前缀的 location.pathname，
+     *    回调时同样会被剥），两条路都走本函数，故一处修复即可覆盖。
+     *
+     * 另：组件在 sessionStorage 丢失时会兜底返回 "/dashboard"（本应用无此页），同样必须纠正。
+     */
+    function normalizeLanding(raw) {
+        var v = (raw || '').trim();
+        // ① 已是带前缀的真实路径（含 "/activecode/main.html#records" 这类深链）→ 原样使用
+        if (v.indexOf(CONTEXT_PATH + '/') === 0) {
+            return v;
+        }
+        // ② 组件兜底的 /dashboard、以及空值 → 一律回管理后台
+        if (!v || v === '/' || v === '/dashboard' || v === CONTEXT_PATH) {
+            return DEFAULT_REDIRECT;
+        }
+        // ③ 组件剥了前缀（如 "/main.html"）→ 补回来
+        return CONTEXT_PATH + (v.charAt(0) === '/' ? v : '/' + v);
+    }
+
     function handleSsoCallback() {
         return client().handleCallback().then(function (redirect) {
             var username = usernameFromToken();
@@ -210,7 +246,8 @@
                     throw new Error('SSO 登录后端失败: ' + (loginData.message || '未知错误'));
                 }
                 return {
-                    redirect: redirect || DEFAULT_REDIRECT,
+                    // ★ 不能直接用组件返回值：它已被 toSpaPath() 剥掉部署前缀（详见 normalizeLanding 注释）
+                    redirect: normalizeLanding(redirect),
                     username: username || loginData.username || ''
                 };
             });
