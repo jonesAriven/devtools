@@ -43,12 +43,33 @@ public class JwtUtil {
     private static final int MIN_SECRET_BYTES = 32;
 
     /** 签发方声明名（iss）。 */
-    private static final String CLAIM_ISS = "iss";
+    public static final String CLAIM_ISS = "iss";
 
     /** token 类型声明名（自定义，辅助判归属）。 */
-    private static final String CLAIM_TYP = "typ";
+    public static final String CLAIM_TYP = "typ";
+
+    /** 过期时间声明名（exp）。 */
+    public static final String CLAIM_EXP = "exp";
 
     private static final String TOKEN_TYP = "portal";
+
+    /**
+     * 拒绝/失败原因分类（**仅用于采样日志聚合，不参与任何放行判定**）。
+     *
+     * <p>E0 采样日志据此把「只能看到 HTTP 401」升级为「服务端可断言的失败原因」。
+     */
+    public enum RejectReason {
+        /** 请求根本没有携带 Bearer 头 */
+        NO_BEARER,
+        /** 验签失败，或 token 格式非法无法解码 */
+        BAD_SIGNATURE,
+        /** 签名/格式可解析，但 exp 已过期 */
+        EXPIRED,
+        /** 签名可验、未过期，但 iss 不是本应用 */
+        ISSUER_MISMATCH,
+        /** 签名可验、未过期、iss 正确，但 typ 缺失或不是 portal */
+        TYPE_MISMATCH
+    }
 
     private final JWTSigner signer;
     private final long expireTime;
@@ -182,5 +203,91 @@ public class JwtUtil {
 
     public boolean validateToken(String token) {
         return parseToken(token) != null;
+    }
+
+    // ==========================================================================
+    // D-2 / E0（2026-09-18）：拒绝路径采样日志的**诊断支撑方法**
+    //
+    // ⚠️ 全部**只用于打日志**，**绝不参与任何放行/拒绝判定** —— 判定只能走
+    //    validateToken / isIssuedByPortal。下面这些方法的返回值不可信（可伪造）。
+    //
+    // 背景：portal 的 401 有两个发射点，其中「未登录或登录已过期」那条**原本完全不打日志**，
+    //       导致「线上到底有没有 401、为什么 401」无法断言 —— 这是本次要补的可观测性缺口。
+    // ==========================================================================
+
+    /**
+     * 仅解码、**不验签**（用于拒绝时采样日志取 iss/typ/alg/exp）。
+     *
+     * <p>⚠️ <b>仅用于日志，绝不可用于鉴权判定</b>：它不校验签名，任何人都可以伪造 payload，
+     * 因此返回值<b>不得</b>参与任何放行/拒绝决策。
+     *
+     * @param token JWT 字符串
+     * @return 解码成功返回 JWT；null/空白/格式非法一律返回 null
+     */
+    public JWT decodeUnverified(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        try {
+            return JWTUtil.parseToken(token);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 诊断用：在「<b>签名已验过且未过期</b>」的前提下，判定归属校验（iss/typ）到底哪项不符。
+     *
+     * <p>调用点 = {@code JwtInterceptor} 中 {@code !isIssuedByPortal(token)} 成立时。
+     *
+     * @return {@link RejectReason#ISSUER_MISMATCH} 或 {@link RejectReason#TYPE_MISMATCH}
+     */
+    public RejectReason rejectReasonAfterVerify(String token) {
+        JWT jwt = parseToken(token);
+        if (jwt == null) {
+            // 理论上不可达（调用前 validateToken 已通过），兜底不臆造
+            return RejectReason.BAD_SIGNATURE;
+        }
+        Object iss = jwt.getPayload(CLAIM_ISS);
+        Object typ = jwt.getPayload(CLAIM_TYP);
+        if (iss == null || !issuer.equals(iss.toString())) {
+            return RejectReason.ISSUER_MISMATCH;
+        }
+        if (typ == null || !TOKEN_TYP.equals(typ.toString())) {
+            return RejectReason.TYPE_MISMATCH;
+        }
+        return RejectReason.BAD_SIGNATURE;
+    }
+
+    /**
+     * 诊断用：{@link #validateToken} 已返回 false 时，区分「已过期」与「验签/格式失败」。
+     *
+     * <p>⚠️ {@code parseToken} 把「验签失败」和「已过期」<b>都归并成返回 null</b>，
+     * 调用方无法区分 —— 所以要区分二者<b>必须</b>走 {@link #decodeUnverified} 这条只解码不验签的路径。
+     *
+     * @param token 可为 null（无 Bearer 头时）
+     * @return {@link RejectReason#NO_BEARER} / {@link RejectReason#EXPIRED} / {@link RejectReason#BAD_SIGNATURE}
+     */
+    public RejectReason rejectReasonWhenInvalid(String token) {
+        if (token == null || token.isBlank()) {
+            return RejectReason.NO_BEARER;
+        }
+        JWT jwt = decodeUnverified(token);
+        if (jwt == null) {
+            // 连解码都失败 ⇒ 格式非法，按签名/格式问题计
+            return RejectReason.BAD_SIGNATURE;
+        }
+        Object expObj = jwt.getPayload(CLAIM_EXP);
+        if (expObj != null) {
+            try {
+                long expTime = ((Number) expObj).longValue() * 1000L;
+                if (expTime <= System.currentTimeMillis()) {
+                    return RejectReason.EXPIRED;
+                }
+            } catch (Exception ignored) {
+                // exp 不是数字 ⇒ 无法判定，落到 BAD_SIGNATURE
+            }
+        }
+        return RejectReason.BAD_SIGNATURE;
     }
 }
