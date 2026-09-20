@@ -7,7 +7,8 @@
  *   ③ 组件渲染 —— `<PermissionGate :perm="...">`
  * 三者都读 `@marschat/auth-components` 的同一份模块级权限状态。
  *
- * 权限点由 auth-center `GET /auth/permissions?client=<client_id>` 下发（组件内 60s 缓存）。
+ * 权限点由 auth-center `GET /auth/permissions?client=<client_id>` 下发（组件内 60s 缓存），
+ * 本应用经同源 BFF 代理转发获取（见下方 permOptions 注释）。
  * **R10 默认策略**：auth-center 侧未为本应用配置任何权限点（`configured=false`）→ 全部放行。
  * 因此本文件接入后，存量应用**行为完全不变**；权限点由 Phase 4 菜单上报逐步产生。
  *
@@ -24,7 +25,7 @@ import {
 } from '@marschat/auth-components'
 import { createAuthGuard } from '@marschat/frontend-common'
 import type { Router } from 'vue-router'
-import { CONTEXT_PATH } from '@/config'
+import { API_BASE_URL, CONTEXT_PATH } from '@/config'
 import { SSO_CONFIG } from './sso'
 import { getToken } from './token'
 
@@ -41,13 +42,21 @@ export function permCode(type: 'menu' | 'api', code: string): string {
 /**
  * 本应用的权限语境（菜单 / 路由守卫 / PermissionGate **必须共用同一份**）。
  *
- * `issuer` / `clientId` 直接取 `SSO_CONFIG`（本应用 OIDC 配置的唯一真源），
- * 避免两处硬编码漂移；`getToken` 显式注入本应用的凭据读法 —— 各应用的 localStorage 键
- * 各不相同（`kb_access_token` 等），不注入的话 `/auth/permissions` 请求不带 Bearer → 401
- * → 永远 `configured=false`，权限体系静默失效。
+ * ⚠️ `issuer` 指向**本应用 BFF 的同源代理**（`AuthController#permissions`），而非 auth-center
+ * 直连（对齐 portal `utils/permissions.ts` 先例）：独立登录径下浏览器只持本应用自签 HS384
+ * token，中心验不过（2026-09-20 实测直连必 401，Console 恒带报错、权限体系静默失效）。
+ * 代理端点以「该用户自己的中心身份」转发：SSO 会话透传中心 OIDC token，
+ * 账密/邮箱码会话取服务端 CenterSessionStore 登录时暂存的中心 accessToken。
+ *
+ * `getToken` 显式注入本应用的凭据读法 —— 各应用的 localStorage 键各不相同
+ * （`kb_access_token` 等），代理端点靠它识别「是谁在查权限」。
+ *
+ * 🔴 issuer 必须是**API 根**（portal 先例同款）：auth-components 内部固定拼
+ * `${issuer}/auth/permissions`（0.6.1 dist 实测），带 `/auth` 后缀会 double 成
+ * `/auth/auth/permissions` → 404。
  */
 export const permOptions: UsePermissionsOptions = {
-  issuer: SSO_CONFIG.issuer,
+  issuer: API_BASE_URL,
   clientId: SSO_CONFIG.clientId,
   getToken: () => getToken(),
 }

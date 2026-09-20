@@ -5,15 +5,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marschat.common.result.Result;
 import com.kb.infra.service.CenterSessionStore;
 import com.kb.infra.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -21,6 +26,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.time.Duration;
 import java.util.Map;
 
@@ -165,6 +171,68 @@ public class AuthController {
             log.warn("infra 邮箱验证码登录失败: {}", e.getMessage());
             return Result.fail(502, "认证中心不可达，请稍后重试");
         }
+    }
+
+    /** 本应用在统一认证中心的 client_id（权限探针作用域钉死，防改 {@code client=} 越界）。 */
+    private static final String CLIENT_ID = "marschat-inframon";
+
+    /**
+     * 权限探针同源代理（对齐 portal {@code SsoController#permissions} 先例，2026-09-20）。
+     *
+     * <p>为什么存在：独立登录径下浏览器只持本应用自签 HS384 token，中心验不过（实测直连
+     * {@code /auth/permissions} 必 401）→ 独立登录用户权限体系永远 {@code configured=false}
+     * 静默失效，且 Console 恒带一条 401 报错。前端 {@code utils/permissions.ts} 已把探针
+     * issuer 指向本端点（{@code /infra/api/auth/permissions}）。
+     *
+     * <p>凭据解析与 {@link AdminProxyController} 的 {@code resolveCenterToken} 同口径：
+     * SSO 会话透传浏览器带来的中心 OIDC token；账密/邮箱码会话取 {@link CenterSessionStore}
+     * 登录时暂存的中心 accessToken。<b>两路都拿不到 → 401，绝不回退服务账号（防提权）</b>。
+     *
+     * <p>安全边界：本路径不在 SecurityConfig 匿名白名单（{@code /auth/login} 等为精确匹配），
+     * 走 {@code anyRequest().authenticated()}；{@code client} 参数无视调用方传值、恒钉本应用。
+     */
+    @GetMapping("/permissions")
+    public ResponseEntity<String> permissions(HttpServletRequest request) {
+        String centerToken = resolveCenterToken(request);
+        if (centerToken == null) {
+            return json(401, "{\"code\":401,\"message\":\"无统一认证中心会话，请重新登录\",\"data\":null}");
+        }
+        try {
+            HttpRequest forward = HttpRequest.newBuilder()
+                    .uri(URI.create(authCenterBase + "/auth/permissions?client=" + CLIENT_ID))
+                    .header("Authorization", "Bearer " + centerToken)
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HTTP.send(forward,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            // 状态码与 Result 信封原样透传：组件按 code===200 解析 data，非 200 fail-open
+            return ResponseEntity.status(response.statusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.body());
+        } catch (Exception e) {
+            log.warn("权限探针代理失败: {}", e.getMessage());
+            return json(502, "{\"code\":502,\"message\":\"认证中心不可达，请稍后重试\",\"data\":null}");
+        }
+    }
+
+    /**
+     * 解析本次请求可用的中心 accessToken（与 AdminProxyController 同款逻辑）：
+     * Authorization 非本应用自签（即 SSO 会话的中心 OIDC token）→ 直接透传；
+     * 否则按登录时暂存的用户名从 {@link CenterSessionStore} 取。均无 → {@code null}。
+     */
+    private String resolveCenterToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String presented = (header != null && header.startsWith("Bearer ")) ? header.substring(7).trim() : null;
+        if (presented != null && !presented.isEmpty() && jwtUtil.parseLocalUsername(presented) == null) {
+            return presented;
+        }
+        Principal principal = request.getUserPrincipal();
+        return principal == null ? null : centerSessions.getAccessToken(principal.getName());
+    }
+
+    private static ResponseEntity<String> json(int status, String body) {
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(body);
     }
 
     /**
