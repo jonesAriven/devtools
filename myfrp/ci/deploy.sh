@@ -5,21 +5,22 @@
 # 用法: bash deploy.sh <commit_sha> <branch>
 # 示例: bash deploy.sh abc1234 dev
 #
-# ⚠️ 实际部署位置（基于全链路检查 2026-07-06）:
+# ⚠️ 实际部署位置（2026-10-04 实测确认）:
 #
-#   部署服务器: 内网Debian (192.168.31.182) [推测]
-#   访问路径: tools.marschat.online → FRP:18082 → 内网Debian:18082
+#   部署服务器: 内网Debian (192.168.31.182 / Tailscale 100.105.196.63)
+#   访问路径: https://frp.marschat.online → FRP:18082 → 内网Debian:18082/frp_manager
 #
-#   ⚠️ 注意: mykng 上未发现此服务（无容器、无端口监听）
-#          推测部署在 内网Debian 或其他服务器
-#
-#   如果实际部署位置不同，请修改此脚本的目标服务器配置
+#   实测依据: 本机 curl http://192.168.31.182:18082/frp_manager/api/tunnel/list
+#             → HTTP 403 + Spring Security 响应头（应用存活，未认证被拦）
+#             mykng(192.168.31.105:18082) 无监听 → 不在 mykng 上
+#   上下文路径: /frp_manager（spring.mvc.servlet.context-path）
+#   注意: 前端是独立容器 frp-manager-frontend，后端 / 返回 404 属正常
 #
 # 部署信息:
 #   项目名: frp-manager
 #   端口: 18082 (宿主机和容器相同)
 #   容器名: frp-manager
-#   前端: Vue3 (可能内置在 JAR 中或独立部署)
+#   前端: Vue3 (独立容器 frp-manager-frontend)
 # ============================================================
 
 set -e
@@ -136,14 +137,19 @@ echo ">>> [4/4] 健康检查 <<<"
 
 MAX_RETRIES=8
 for i in $(seq 1 $MAX_RETRIES); do
-  if curl -sf http://localhost:${APP_PORT}/ > /dev/null 2>&1 || \
-     curl -sf http://localhost:${APP_PORT}/actuator/health > /dev/null 2>&1; then
-    echo "✅ FRP管理面板健康! 端口: ${APP_PORT} (尝试 $i/$MAX_RETRIES)"
+  # ⚠️ 不能用 `curl -sf http://localhost:${APP_PORT}/`：应用上下文是 /frp_manager，
+  #    且 Spring Security 对未认证请求一律返回 403 —— 用 -f 判 4xx 会必然失败。
+  #    改为「端口是否有 HTTP 响应」：任何状态码（含 403）都说明 Tomcat + Security 已就绪。
+  HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --noproxy '*' \
+    "http://localhost:${APP_PORT}/frp_manager/" 2>/dev/null || echo "000")
+
+  if [ "${HTTP_CODE}" != "000" ]; then
+    echo "✅ FRP管理面板健康! 端口: ${APP_PORT} (HTTP ${HTTP_CODE}, 尝试 $i/$MAX_RETRIES)"
     break
   fi
   
   if [ $i -eq $MAX_RETRIES ]; then
-    echo "❌ 健康检查失败! ($i/$MAX_RETRIES)"
+    echo "❌ 健康检查失败! ($i/$MAX_RETRIES) —— 端口 ${APP_PORT} 无 HTTP 响应"
     echo "--- 最近日志 ---"
     docker logs --tail=30 ${CONTAINER_NAME}
     exit 1
@@ -160,6 +166,6 @@ echo "  Commit: $(cd /root/devtools && git rev-parse --short HEAD)"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 echo "  📊 服务访问:"
-echo "    FRP面板: http://localhost:${APP_PORT}"
-echo "    公网地址: https://tools.marschat.online/frp (通过FRP:18082)"
+echo "    后端: http://localhost:${APP_PORT}/frp_manager"
+echo "    公网地址: https://frp.marschat.online/ (通过FRP:18082)"
 echo "============================================="
