@@ -1,30 +1,141 @@
 /**
- * 运行时配置（Phase 3 · app-config.json，同 kb-ops 试点模式）
+ * 应用运行时配置 —— **唯一派生点**（Phase 13 配置化接入）
  *
- * 优先级：运行时 public/app-config.json（apps-registry.yml 派生）> 编译期 env > 内置默认。
- * ⚠️ 试点实现用同步 XHR（模块求值时保证填充）；bootstrap 化为后续项。
+ * 配置不再手写：交给 `@marschat/app-kit` 的纯函数 `resolveAppConfig` 派生，
+ * 优先级 `显式选项 > public/app-config.json（apps-registry.yml 派生） > 内置默认`。
+ *
+ * ⚠️ 本文件**刻意不 import `@/router`**：它被 router / stores / views 广泛引用，
+ *    一旦依赖 router 就会形成 `router → MainLayout → stores → request → config → router`
+ *    的循环依赖（模块初始化顺序不确定，`permCode` 可能拿到 undefined）。
+ *    需要 router 的装配单独放在 `src/marschat.ts`。
  */
-let runtime: Record<string, string> = {}
-try {
-  const xhr = new XMLHttpRequest()
-  xhr.open('GET', `${import.meta.env.BASE_URL}app-config.json`, false)
-  xhr.send(null)
-  if (xhr.status === 200) {
-    runtime = JSON.parse(xhr.responseText)
-  }
-} catch {
-  // 拉取失败回落编译期 env/默认值
-}
+import {
+  resolveAppConfig,
+  readRuntimeConfig,
+  deriveTokenKeys,
+  type ResolvedAppConfig,
+  type RuntimeConfig,
+} from '@marschat/app-kit'
+import { createSsoClient, initTokenConfig, type SsoConfig } from '@marschat/auth-components'
+// ⚠️ 必须**先 import 到本地作用域再 export**（不能只写 `export { x } from 'mod'`）：
+//    后者不产生本地绑定，本文件下方的 `permOptions.getToken` 会拿到 undefined。
+import {
+  getToken,
+  setToken,
+  removeToken,
+  getRefreshToken,
+  setRefreshToken,
+  getIdToken,
+  setIdToken,
+  clearTokens,
+  getTokenKind,
+  setTokenKind,
+  isOidcToken,
+  decodeOidcClaims,
+} from '@marschat/auth-components'
 
-export const CONTEXT_PATH = runtime.contextPath ?? import.meta.env.VITE_CONTEXT_PATH ?? '/infra'
-export const API_BASE_URL = runtime.apiBase ?? import.meta.env.VITE_API_BASE_URL ?? '/infra/infra-api'
-export const AUTH_BASE_URL = runtime.authApiBase ?? import.meta.env.VITE_AUTH_BASE_URL ?? '/infra/infra-api'
+/** 本应用的接入选项（对齐 apps-registry.yml 的 client-id / context-path / api-base）。 */
+export const APP_OPTIONS = {
+  appId: 'marschat-inframon',
+  contextPath: '/infra',
+  /**
+   * ⚠️ 历史死路径提醒：曾用 `/infra/infra-api`，那不是真实反代路径。
+   * 真实链路：nginx `location /infra/api/` → `proxy_pass 127.0.0.1:8088/infra/`（**剥一层 /api**）
+   * → 应用 context-path `/infra`。故前端基址必须是 `/infra/api`。
+   */
+  apiBase: '/infra/api',
+  authApiBase: '/infra/api',
+  /**
+   * 令牌键前缀 —— **必须显式传**：infra 历史键是 `infra_*`，
+   * 而由 appId 派生的默认前缀是 `inframon_*`；不传会让所有老用户「登录态消失」。
+   */
+  tokenKeyPrefix: 'infra_',
+} as const
+
+/** 运行时配置（`public/app-config.json`，由 `devtools/scripts/gen-from-registry.py` 生成）。 */
+export const RUNTIME: RuntimeConfig = readRuntimeConfig('/')
+
+/** 派生结果 —— 排查「配置到底生效了没」时的唯一依据。 */
+export const APP_CONFIG: ResolvedAppConfig = resolveAppConfig(
+  APP_OPTIONS,
+  RUNTIME,
+  window.location.origin,
+)
+
+// 令牌存储键绑定（与 APP_OPTIONS.tokenKeyPrefix 同源，避免两处各写一份漂移）
+initTokenConfig(deriveTokenKeys(APP_OPTIONS.appId, APP_OPTIONS.tokenKeyPrefix))
+
+/** 部署前缀（子路径），如 `/infra`。 */
+export const CONTEXT_PATH = APP_CONFIG.contextPath
+/** 业务 API 基址。 */
+export const API_BASE_URL = APP_CONFIG.apiBase
+/** 认证 API 基址。 */
+export const AUTH_BASE_URL = APP_CONFIG.authApiBase
 
 /**
- * auth-center 统一认证（OIDC public client + PKCE，2026-09-07）
- * issuer 公网与内网统一走公网域名（与 auth-center AUTH_ISSUER 一致）；
- * redirect_uri 按 origin 动态生成，公网/LAN/本地开发三环境自适应，并拼接 /infra base 前缀。
+ * 本应用的 OIDC 配置（登录页 / 回调页 / 登出共用）。
+ * issuer / clientId / redirectUri 全部来自运行时配置，不硬编码域名。
  */
-export const OIDC_ISSUER = runtime.issuer ?? import.meta.env.VITE_OIDC_ISSUER ?? 'https://auth.marschat.online'
-export const OIDC_CLIENT_ID = runtime.clientId ?? import.meta.env.VITE_OIDC_CLIENT_ID ?? 'marschat-inframon'
-export const OIDC_REDIRECT_URI = `${window.location.origin}${CONTEXT_PATH}/sso-callback`
+export const SSO_CONFIG: SsoConfig = {
+  issuer: APP_CONFIG.issuer,
+  clientId: APP_CONFIG.clientId,
+  redirectUri: APP_CONFIG.redirectUri,
+  scope: 'openid profile',
+  loginUrl: APP_CONFIG.loginUrl,
+  silentLogin: true,
+}
+
+/** 绑定好配置的 SSO 客户端（应用内单例）。 */
+export const sso = createSsoClient(SSO_CONFIG)
+
+/**
+ * 构造权限点**全码** `<client_id>:<type>:<code>`。
+ * 路由 `meta.perm` / `PermissionGate` 必须传全码（半码永不匹配，坑 #10）。
+ */
+export function permCode(type: 'menu' | 'api', code: string): string {
+  return `${APP_CONFIG.clientId}:${type}:${code}`
+}
+
+/**
+ * 当前页面的**路由内路径**（剥离部署前缀）。
+ *
+ * 🔴 `window.location.pathname` 含前缀（`/infra/...`），而 router 的 base 也是 `/infra`；
+ * 原样传给 `renew` / 回调页的 `router.replace` 会二次拼接成 `/infra/infra/...` → 404
+ * （2026-09-14 换废票实验实测）。所有「拿当前地址去回跳」的地方一律经此函数。
+ */
+export function currentSpaPath(): string {
+  const p = window.location.pathname
+  const stripped = p.startsWith(CONTEXT_PATH) ? p.slice(CONTEXT_PATH.length) : p
+  return (stripped || '/') + window.location.search
+}
+
+/**
+ * 权限语境（菜单 / 路由守卫 / PermissionGate 三层同源共用一份）。
+ * `getToken` 必须显式注入 —— 各应用 localStorage 键不同，不注入则 `/auth/permissions`
+ * 不带 Bearer → 401 → 永远 `configured=false`，权限体系静默失效。
+ */
+export const permOptions = {
+  issuer: APP_CONFIG.issuer,
+  clientId: APP_CONFIG.clientId,
+  getToken: () => getToken(),
+  adminBypass: true,
+}
+
+// ── 令牌便捷出口 ──
+// 唯一实现仍在 `@marschat/auth-components`，此处只是本应用的统一引用点；
+// 不再各应用各抄一份 localStorage 读写（历史：kb-web / kb-ops / infra 三份 key 前缀各不相同）。
+// 注意：这里 export 的是上方 import 进来的**本地绑定**，故本文件内部也能直接用它们。
+export {
+  getToken,
+  setToken,
+  removeToken,
+  getRefreshToken,
+  setRefreshToken,
+  getIdToken,
+  setIdToken,
+  clearTokens,
+  getTokenKind,
+  setTokenKind,
+  isOidcToken,
+  decodeOidcClaims,
+}

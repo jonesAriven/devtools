@@ -3,7 +3,7 @@ package com.jones.activation.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jones.activation.entity.AdminUser;
 import com.jones.activation.mapper.AdminUserMapper;
-import com.jones.activation.service.CenterSessionStore;
+import com.marschat.auth.bff.CenterSessionStore;
 import com.jones.activation.util.OidcTokenVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.http.HttpServletResponse;
@@ -50,7 +50,7 @@ public class AuthController {
     /**
      * auth-center 服务端互调基址。
      * <p>activecode 部署在独立主机（内网 Debian .182）、只挂自己的 compose 网络，
-     * **不能**用容器名 `auth-center`；必须走宿主 LAN 地址（与 LocalAccountReporter 同口径）。
+     * **不能**用容器名 `auth-center`；必须走宿主 LAN 地址（与账号上报同口径）。
      */
     @Value("${marschat.auth-center.base:}")
     private String authCenterBase;
@@ -139,7 +139,7 @@ public class AuthController {
         user.setLastLoginTime(LocalDateTime.now());
         adminUserMapper.updateById(user);
 
-        // 暂存中心业务令牌（服务端内存，不下发浏览器）：供 AdminProxyController 以**用户本人
+        // 暂存中心业务令牌（服务端内存，不下发浏览器）：供 BFF 管理代理以**用户本人
         // 身份**调中心 /admin/**（本系统用户管理页）。refreshToken 不落任何地方 —— 本应用不做续期，
         // 令牌过期即让前端重授权，避免在应用侧长期持有可换票的长效凭据。
         centerSessions.put(username, (String) data.get("accessToken"), asLong(data.get("expiresIn")));

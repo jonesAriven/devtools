@@ -12,9 +12,8 @@ import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
-import { handleSsoCallback, decodeOidcClaims } from '@/utils/sso'
+import { sso, decodeOidcClaims, getToken } from '@/config'
 import { useUserStore } from '@/stores/user'
-import { getToken } from '@/utils/token'
 
 const router = useRouter()
 const route = useRoute()
@@ -22,7 +21,7 @@ const userStore = useUserStore()
 
 onMounted(async () => {
   try {
-    const redirect = await handleSsoCallback(new URLSearchParams(window.location.search))
+    const redirect = await sso.handleCallback(new URLSearchParams(window.location.search))
     
     // 解析用户信息（使用正确的 token key：kb_ops_access_token）
     const token = getToken() || ''

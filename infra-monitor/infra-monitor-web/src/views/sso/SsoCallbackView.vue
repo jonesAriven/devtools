@@ -21,8 +21,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { CircleCloseFilled, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { handleSsoCallback, decodeOidcClaims } from '@/utils/sso'
-import { getToken } from '@/utils/token'
+import { sso, decodeOidcClaims, getToken } from '@/config'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -32,7 +31,7 @@ const error = ref('')
 onMounted(async () => {
   try {
     const query = new URLSearchParams(window.location.search)
-    const target = await handleSsoCallback(query)
+    const target = await sso.handleCallback(query)
     // 优先取授权服务器 token 里的业务 claims 构建会话（infra-monitor 无 /auth/me，免后端查询）
     const claims = decodeOidcClaims(getToken() || '')
     userStore.setOidcSession(claims.username || 'unknown')

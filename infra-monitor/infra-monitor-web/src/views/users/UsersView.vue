@@ -20,9 +20,7 @@
  */
 import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
-import { API_BASE_URL } from '@/config'
+import { API_BASE_URL, getToken, decodeOidcClaims, sso } from '@/config'
 
 const client = createUserAdminClient({
   // ⚠️ 两层 `/api` 不是笔误，别"修"成一层：
@@ -35,7 +33,7 @@ const client = createUserAdminClient({
   baseUrl: `${API_BASE_URL}/api/admin/users`,
   getToken: () => getToken(),
   // 401（本应用会话过期 / 中心会话失效）→ 静默重授权，回来后自动重载列表
-  onUnauthorized: () => void renewByReauthorize(),
+  onUnauthorized: () => void sso.renew(),
 })
 
 /** 当前登录用户 id —— 面板据此禁止"删除自己 / 禁用自己" */
@@ -69,7 +67,7 @@ const config: UserManagementConfig = {
     baseUrl: `${API_BASE_URL}/api`,
     clientId: 'marschat-inframon',
     getToken: () => getToken(),
-    onUnauthorized: () => void renewByReauthorize(),
+    onUnauthorized: () => void sso.renew(),
   },
 }
 </script>

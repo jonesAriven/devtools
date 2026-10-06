@@ -1,23 +1,18 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import { getToken, clearTokens, isOidcToken } from '@/utils/token'
-import { renewByReauthorize } from '@/utils/sso'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { API_BASE_URL, CONTEXT_PATH } from '@/config'
+// Phase 13：令牌读写 / SSO 客户端 / 部署前缀剥离 统一从 `@/config` 取
+// （不再是本应用自建的 utils/token.ts、utils/sso.ts 两份适配层）
+import {
+  API_BASE_URL,
+  getToken,
+  clearTokens,
+  isOidcToken,
+  currentSpaPath,
+  sso,
+} from '@/config'
 
 const WHITE_LIST_PATHS = ['/auth/login']
-
-/**
- * renew 回跳目标 —— 必须是 **router 内部路径**（与 LoginView currentRedirect 同口径）。
- * location.pathname 含部署前缀（/infra），原样传会在 sso-callback 的
- * router.replace(base=/infra) 里再拼一次 → /infra/infra/dashboard 落 404
- * （2026-09-14 换废票实验实测）。
- */
-function currentSpaPath(): string {
-  const p = window.location.pathname
-  const stripped = p.startsWith(CONTEXT_PATH) ? p.slice(CONTEXT_PATH.length) : p
-  return (stripped || '/') + window.location.search
-}
 
 function isWhiteList(url: string): boolean {
   return WHITE_LIST_PATHS.some(p => url.includes(p))
@@ -84,10 +79,10 @@ request.interceptors.response.use(
       // ── 分流 1：OIDC（auth-center RS256，public client）──
       // ⚠️ 必须放在「有没有 refresh_token」判断**之前**：SAS 不给 public client 签发
       //    refresh_token，OIDC 用户必然没有 refresh_token —— 若先判断它，会被当成"续期凭据都没了"
-      //    直接弹回登录页，静默重授权永远走不到。renewByReauthorize 会导航离开，故直接返回。
+      //    直接弹回登录页，静默重授权永远走不到。sso.renew() 会导航离开，故直接返回。
       if (isOidcToken()) {
         originalRequest._retry = true
-        await renewByReauthorize(currentSpaPath())
+        await sso.renew(currentSpaPath())
         return Promise.reject(error)
       }
 

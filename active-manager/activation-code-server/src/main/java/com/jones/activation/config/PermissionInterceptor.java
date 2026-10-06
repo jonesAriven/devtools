@@ -3,7 +3,7 @@ package com.jones.activation.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jones.activation.entity.AdminUser;
-import com.jones.activation.service.CenterSessionStore;
+import com.marschat.auth.bff.CenterSessionStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -67,7 +67,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <h3>为什么令牌取自 CenterSessionStore 而不是请求头</h3>
  * activecode 的会话模型是服务端 {@code HttpSession}，浏览器侧**没有**中心凭据
  * （中心 accessToken 由登录时按用户名暂存在 {@link CenterSessionStore}）。
- * 故本类复用 {@code AdminProxyController#resolveCenterToken} 同口径：
+ * 故本类复用「HttpSession 取用户名 → CenterSessionStore 取中心令牌」同口径：
  * 优先 {@code session.ssoUser}（SSO / 邮箱码径登记的中心用户名），回退
  * {@code session.loginUser.getUsername()}（账密径的影子账号用户名，二者同名）。
  */
@@ -176,7 +176,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
     /**
      * 取本次请求对应的**用户本人**中心 accessToken；无则返回 {@code null}。
      *
-     * <p>与 {@code AdminProxyController#resolveCenterToken} 同口径：优先 {@code ssoUser}
+     * <p>与 BFF 管理代理同口径：优先 {@code ssoUser}
      * （SSO / 邮箱码径登记的中心用户名），回退 {@code loginUser}（账密径影子账号用户名）。
      */
     private String resolveCenterToken(HttpServletRequest request) {

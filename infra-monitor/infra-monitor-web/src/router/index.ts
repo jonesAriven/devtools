@@ -1,9 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { getToken } from '@/utils/token'
 import MainLayout from '@/layouts/MainLayout.vue'
-import { CONTEXT_PATH as ctx } from '@/config'
-import { permCode, setupAuthGuard } from '@/utils/permissions'
+import { getToken, permCode, CONTEXT_PATH as ctx } from '@/config'
 
 /**
  * `meta.perm` = RBAC 权限点全码（Phase 2 三层同源之「路由层」）。
@@ -101,8 +99,8 @@ router.beforeEach((to, _from, next) => {
 })
 
 // Phase 2 · RBAC 路由守卫（三层同源之「路由层」）
-// ⚠️ 必须在 `app.use(router)` 之前注册；只有声明了 meta.perm 的路由受管。
-// 当前 auth-center 侧 sys_permission 为空（configured=false）→ 全放行，行为与接入前一致。
-setupAuthGuard(router)
+// 🔴 Phase 13：守卫注册已上移到 `createMarschatApp()`（src/marschat.ts）内部，
+//    保证「守卫先于 app.use(router)」这条时序由装配层强制，而不是靠每个应用记得调。
+//    本文件不再自行 setupAuthGuard。
 
 export default router

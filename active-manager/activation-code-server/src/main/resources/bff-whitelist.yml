@@ -1,0 +1,44 @@
+# =============================================================================
+# activecode 管理代理白名单（Phase 13 配置化接入）
+# =============================================================================
+#
+# 本文件取代此前硬编码在 AdminProxyController.isAllowed() 里的约 30 行 Java 判定，
+# 语义逐条对齐（**默认拒绝**：未列出的路径一律 404，且不取凭据、不调中心）。
+#
+# 语义与字段说明见 auth-core jar 内 META-INF/marschat/bff-whitelist.template.yml
+#
+# 端点本身仍受本应用自有 AuthInterceptor 保护（addPathPatterns 含 /activecode/api/**）。
+#
+# 铁律：新增中心管理端点 → 必须在此显式登记，否则 404（有意的摩擦）。
+# 永不在此登记（放行等于把平台级权限下发给应用管理员）：
+#   POST /admin/users · PUT|DELETE /admin/users/{id} · PUT /admin/users/{id}/password
+#   /admin/mappings/** · /admin/authorization-matrix · /admin/authz/** · /internal/**
+# =============================================================================
+
+client-id: marschat-activecode
+
+rules:
+
+  # ① 中心侧 path 化端点：client 已钉进 path，天然限定本应用
+  - path: /admin/clients/{clientId}/**
+    client-in-path: true
+
+  # ② 成员列表 + 「添加已有用户」候选池（只读）
+  #    带 ?client= 时必须等于本应用；重复 client 键（HPP）一律拒绝
+  - path: /admin/users
+    methods: [GET]
+    require-client-scope: true
+
+  # ③ 本系统角色绑定（读 + 写）
+  - path: /admin/users/{id}/client-roles
+    methods: [GET, PUT]
+    require-client-scope: true
+
+  # ④ 用户级菜单减法（只能减不能加）
+  - path: /admin/users/{id}/menu-overrides
+    methods: [GET, PUT]
+    require-client-scope: true
+
+  # ⑤ 角色定义只读（渲染「本系统角色」勾选）
+  - path: /admin/roles
+    methods: [GET]

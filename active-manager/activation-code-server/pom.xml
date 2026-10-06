@@ -75,6 +75,19 @@
             <artifactId>logback-kafka-appender</artifactId>
             <version>0.2.0-RC2</version>
         </dependency>
+        <!-- 认证公共库（Phase 13 配置化接入，2026-10-06 首次引入）：
+             BFF 管理代理自动装配（白名单配置化 + 凭据三模式 + 账号上报 SPI），
+             取代本应用手写的 AdminProxyController(297) / CenterSessionStore(71) / LocalAccountReporter(104)。
+
+             ⚠️ 本应用**无 Spring Security**（用自有 MVC 拦截器 AuthInterceptor/PermissionInterceptor 鉴权），
+             且自有 MenuRegistryReporter / PermissionInterceptor —— 故必须在
+             spring.autoconfigure.exclude 中排除 4 个会冲突的自动装配，只保留 MarschatBffAutoConfig。
+             详见 application.yml 的 spring.autoconfigure.exclude 说明。 -->
+        <dependency>
+            <groupId>com.marschat</groupId>
+            <artifactId>auth-core</artifactId>
+            <version>2.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>

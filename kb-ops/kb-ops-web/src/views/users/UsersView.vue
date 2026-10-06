@@ -36,10 +36,9 @@ import type {
   MenuPermissionConfig,
   AccountMappingConfig,
 } from '@marschat/auth-components'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims, renewByReauthorize, SSO_CONFIG } from '@/utils/sso'
 // 🔴 T7 组件收敛（2026-09-15）：中心基址一律取自运行时配置，不再硬编码域名
-import { API_BASE_URL } from '@/config'
+// Phase 13：配置 / SSO 客户端 / 令牌读写统一从 `@/config` 取（不再是各应用自建的适配层）
+import { API_BASE_URL, SSO_CONFIG, sso, getToken, decodeOidcClaims } from '@/config'
 
 const activeTab = ref('users')
 
@@ -47,7 +46,7 @@ const client = createUserAdminClient({
   baseUrl: `${API_BASE_URL}/admin/users`,
   getToken: () => getToken(),
   // 401（本地 token 过期但 IdP 会话仍在）→ 静默重授权，回来后自动重载列表
-  onUnauthorized: () => void renewByReauthorize(),
+  onUnauthorized: () => void sso.renew(),
 })
 
 /** 当前登录用户 id —— 面板据此禁止"删除自己 / 禁用自己" */
@@ -78,7 +77,7 @@ const config: UserManagementConfig = {
     baseUrl: API_BASE_URL,
     clientId: SSO_CONFIG.clientId,
     getToken: () => getToken(),
-    onUnauthorized: () => void renewByReauthorize(),
+    onUnauthorized: () => void sso.renew(),
   },
 }
 
@@ -87,7 +86,7 @@ const menuPermConfig: MenuPermissionConfig = {
   getToken: () => getToken(),
   clientId: SSO_CONFIG.clientId,
   title: '菜单授权',
-  onUnauthorized: () => void renewByReauthorize(),
+  onUnauthorized: () => void sso.renew(),
 }
 
 /**
@@ -99,7 +98,7 @@ const menuPermConfig: MenuPermissionConfig = {
 const mappingClient = createAccountMappingClient({
   issuer: API_BASE_URL,
   getToken: () => getToken(),
-  onUnauthorized: () => void renewByReauthorize(),
+  onUnauthorized: () => void sso.renew(),
 })
 
 const mappingConfig: AccountMappingConfig = {
@@ -110,7 +109,7 @@ const mappingConfig: AccountMappingConfig = {
   searchUsers: createAccountMappingUserSearch({
     issuer: API_BASE_URL,
     getToken: () => getToken(),
-    onUnauthorized: () => void renewByReauthorize(),
+    onUnauthorized: () => void sso.renew(),
   }),
   clientLabels: {
     'marschat-portal': '门户 Portal',

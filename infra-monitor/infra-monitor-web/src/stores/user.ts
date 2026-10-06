@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import request from '@/utils/request'
-import { setToken, setTokenKind, getToken } from '@/utils/token'
-import { ssoLogout } from '@/utils/sso'
+import { setToken, setTokenKind, getToken, sso } from '@/config'
 import router from '@/router'
 
 export interface LoginResponse {
@@ -36,9 +35,8 @@ export const useUserStore = defineStore('user', () => {
     username.value = ''
     isLoggedIn.value = false
     // 统一登出（SLO）：销毁 IdP 会话 + 清本地，然后由组件导航离开。
-    // ⚠️ ssoLogout 内部会 clearLocalAuth() 并跳转，故此处不要再加 router.push。
-    // ⚠️ 签名是「已绑定配置」的 `ssoLogout(options?)`，不要再传 SSO_CONFIG（会当成 options）
-    ssoLogout()
+    // ⚠️ sso.logout 内部会 clearLocalAuth() 并跳转，故此处不要再加 router.push。
+    sso.logout()
   }
 
   return {

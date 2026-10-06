@@ -17,8 +17,7 @@ import { ElMessage } from 'element-plus'
 import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
-import { setToken, setTokenKind } from '@/utils/token'
-import { startSsoLogin, bootstrapLoginPage, SSO_CONFIG } from '@/utils/sso'
+import { setToken, setTokenKind, SSO_CONFIG, sso } from '@/config'
 
 const router = useRouter()
 const route = useRoute()
@@ -81,7 +80,7 @@ onMounted(async () => {
     return
   }
   try {
-    const jumped = await bootstrapLoginPage(currentRedirect())
+    const jumped = await sso.bootstrapLoginPage(currentRedirect())
     if (!jumped) probing.value = false
   } catch {
     // 探针失败一律按"无会话"处理，绝不能因为认证中心抖动把登录页打成白屏
@@ -102,7 +101,7 @@ async function handleLogin(credentials: { username: string; password: string }) 
 
 async function handleSsoLogin() {
   try {
-    await startSsoLogin(currentRedirect())
+    await sso.login(currentRedirect())
   } catch (err: any) {
     ElMessage.error(err?.message || 'SSO 登录发起失败')
   }

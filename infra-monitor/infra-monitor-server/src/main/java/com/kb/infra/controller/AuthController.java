@@ -3,7 +3,7 @@ package com.kb.infra.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marschat.common.result.Result;
-import com.kb.infra.service.CenterSessionStore;
+import com.marschat.auth.bff.CenterSessionStore;
 import com.kb.infra.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -184,7 +184,7 @@ public class AuthController {
      * 静默失效，且 Console 恒带一条 401 报错。前端 {@code utils/permissions.ts} 已把探针
      * issuer 指向本端点（{@code /infra/api/auth/permissions}）。
      *
-     * <p>凭据解析与 {@link AdminProxyController} 的 {@code resolveCenterToken} 同口径：
+     * <p>凭据解析与 auth-core 管理代理 {@code DefaultBffCredentialResolver} 的 AUTO 模式同口径：
      * SSO 会话透传浏览器带来的中心 OIDC token；账密/邮箱码会话取 {@link CenterSessionStore}
      * 登录时暂存的中心 accessToken。<b>两路都拿不到 → 401，绝不回退服务账号（防提权）</b>。
      *
@@ -217,7 +217,7 @@ public class AuthController {
     }
 
     /**
-     * 解析本次请求可用的中心 accessToken（与 AdminProxyController 同款逻辑）：
+     * 解析本次请求可用的中心 accessToken（与 auth-core BFF 的 AUTO 模式同款逻辑）：
      * Authorization 非本应用自签（即 SSO 会话的中心 OIDC token）→ 直接透传；
      * 否则按登录时暂存的用户名从 {@link CenterSessionStore} 取。均无 → {@code null}。
      */
@@ -237,7 +237,7 @@ public class AuthController {
 
     /**
      * 记住本次登录换来的**中心** accessToken（{@code data.accessToken}），供
-     * {@code AdminProxyController} 以「该用户本人」的中心身份转发 {@code /admin/**}。
+     * auth-core 的 BFF 管理代理以「该用户本人」的中心身份转发 {@code /admin/**}。
      *
      * <p>为什么不由服务端再登一次中心拿 token：那等于用**服务账号**调管理接口，
      * 中心审计记录不到真实操作者，且一旦兜底就是提权（普通用户拿到管理员能力）。

@@ -16,10 +16,26 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
+    /**
+     * 🔴 2026-10-05（Phase 13 迁移时修复）：**已移除**指向 monorepo 源码的两条别名：
+     *   "@marschat/auth-components": ["../../../marschat-components/packages/auth-components/src"]
+     *   "@marschat/frontend-common":  ["../../../marschat-components/packages/frontend-common/src"]
+     *
+     * 为什么必须移除：
+     *   ① 这两条别名让 vue-tsc 去**类型检查组件库的源码**（连带其已知的 Element Plus 类型债），
+     *      实测直接导致 TypeScript 内部崩溃：
+     *        Error: Debug Failure. No error for last overload signature
+     *      结果本应用**根本无法类型检查**（`build` 脚本只有 `vite build`，不做类型检查，故长期未被发现）。
+     *   ② 语义也不对：应用是**消费者**，类型检查应当针对「实际依赖并会打包进去的产物」
+     *      （Nexus 上的 `dist/*.d.ts`），而不是开发机的源码快照 ——
+     *      否则本地类型检查通过、线上跑的是另一套类型。
+     *
+     * 移除后：三个 `@marschat/*` 包统一从 node_modules 解析（与 kb-ops 同口径）。
+     * 验证：移除前 vue-tsc 崩溃；移除后 5 个错误，且**全部为存量**
+     *      （MainLayout 模板 4 处索引、LoginView 的 brand.gradient 元组），本次迁移零新增。
+     */
     "paths": {
-      "@/*": ["src/*"],
-      "@marschat/auth-components": ["../../../marschat-components/packages/auth-components/src"],
-      "@marschat/frontend-common": ["../../../marschat-components/packages/frontend-common/src"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],

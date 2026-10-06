@@ -87,8 +87,7 @@ import {
 import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
-import { getToken } from '@/utils/token'
-import { permOptions } from '@/utils/permissions'
+import { getToken, permOptions } from '@/config'
 import { KB_OPS_MENUS } from '@/menus'
 
 const route = useRoute()

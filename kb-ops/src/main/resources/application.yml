@@ -54,6 +54,21 @@ marschat:
       client-id: marschat-kbops
       report-mode: secret
       report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
+  # 管理代理（BFF，Phase 13）：把前端同源的 /kb-ops/admin/** 代理到 auth-center /admin/**，
+  # 以**调用者本人**的中心令牌转发（绝不服务账号兜底）。
+  # 实现已上移到 auth-core 2.2.0 的 MarschatBffAutoConfig；白名单见 classpath:bff-whitelist.yml。
+  bff:
+    enabled: ${MARSCHAT_BFF_ENABLED:true}
+    client-id: marschat-kbops
+    # 容器内网直连（同 oidc.jwks-uri / menu.report.issuer 模式）
+    auth-center-base: ${MARSCHAT_AUTH_CENTER_BASE:http://auth-center:8085}
+    # 本应用对前端暴露的代理前缀。前端请求 /ops-api/admin/** → nginx 剥 /ops-api 加 /kb-ops
+    # → 应用收到 /kb-ops/admin/**（context-path=/kb-ops）→ 转发中心 /admin/**
+    path-prefix: /admin
+    # kb-ops 为纯 SSO 应用（showLocalLogin=false）：浏览器持有的就是中心 OIDC token，直接透传
+    credential-mode: passthrough
+    # 账号上报凭据（与菜单上报同值）；kb-ops 无本地账号表，未提供 BffAccountSource，故实际不上报
+    report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
 
 # 服务间调用 (单机部署，直接 HTTP URL)
 # 独立运行时可选：kb-ops 脱离 mykng 后，以下 Feign 调用 kb-intelligence 为可选依赖。

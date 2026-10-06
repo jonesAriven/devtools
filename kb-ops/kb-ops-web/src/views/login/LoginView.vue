@@ -15,7 +15,7 @@ import { ElMessage } from 'element-plus'
 import { LoginPage, setToken, setRefreshToken } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { useRoute, useRouter } from 'vue-router'
-import { startSsoLogin, bootstrapLoginPage, SSO_CONFIG } from '@/utils/sso'
+import { sso, SSO_CONFIG } from '@/config'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -106,7 +106,7 @@ onMounted(async () => {
     return
   }
   try {
-    const jumped = await bootstrapLoginPage(currentRedirect())
+    const jumped = await sso.bootstrapLoginPage(currentRedirect())
     if (!jumped) probing.value = false
   } catch {
     // 探针失败一律按"无会话"处理，绝不能因为认证中心抖动把登录页打成白屏
@@ -120,7 +120,7 @@ function handlePasswordReset() {
 
 async function handleSsoLogin() {
   try {
-    await startSsoLogin(currentRedirect())
+    await sso.login(currentRedirect())
   } catch (e: any) {
     ElMessage.error(e?.message || 'SSO 登录发起失败')
   }

@@ -79,9 +79,7 @@ import { DataAnalysis, Cpu, Key, Setting, Connection, UserFilled } from '@elemen
 import { useMenus, fetchPermissions } from '@marschat/auth-components'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims } from '@/utils/sso'
-import { permOptions } from '@/utils/permissions'
+import { getToken, decodeOidcClaims, permOptions } from '@/config'
 import { INFRA_MENUS } from '@/menus'
 
 const route = useRoute()

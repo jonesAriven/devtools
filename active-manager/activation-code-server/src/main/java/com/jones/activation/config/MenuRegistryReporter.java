@@ -29,7 +29,7 @@ import java.util.Map;
  *
  * <p><b>为什么不用 com.marschat:auth-core 的 MenuRegistryReporter</b>：activecode 未引入
  * common-core / auth-core，而 auth-core 自带 JWT/Authz 等一整套自动装配，在这里引入有撞 bean
- * 的历史风险（见 ADR §18.10 决策 2）。故按本应用已有的 {@link LocalAccountReporter} 同口径
+ * 的历史风险（见 ADR §18.10 决策 2）。故按本应用已有的账号上报同口径
  * 做等价实现：{@code X-Client-Secret} + internal 端点，零新增依赖。
  *
  * <p>凭据 = {@code sys_app_client.client_secret}（apps-registry 生成、auth-center 幂等写库），

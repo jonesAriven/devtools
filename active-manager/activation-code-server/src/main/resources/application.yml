@@ -7,6 +7,21 @@ server:
 spring:
   application:
     name: activecode
+  # 🔴 Phase 13（2026-10-06）首次引入 auth-core 2.2.0，必须显式排除 4 个会冲突的自动装配：
+  #   - AuthJwtAutoConfig   ：会装配 TokenProvider（构造要求 marschat.auth.secret>=32B）。
+  #                           本应用无该配置、也不用自己的 JWT 签发体系 → 不排除会**启动失败**。
+  #   - AuthWebAutoConfig   ：会注册 @MarsUser 参数解析器，本应用无此用法。
+  #   - AuthzAutoConfig     ：会创建第二个权限检查器，与本应用自有的 PermissionInterceptor 重复拦截。
+  #   - MenuReportAutoConfig：本应用**已有自有 MenuRegistryReporter**（读 marschat.menu.report.*），
+  #                           不排除会**重复上报**菜单与权限点。
+  # 只保留 MarschatBffAutoConfig（由 marschat.bff.enabled 控制）。
+  # 另：AuthFeignAutoConfig 条件为类路径存在 feign.RequestInterceptor —— 本应用无 OpenFeign，不会激活。
+  autoconfigure:
+    exclude:
+      - com.marschat.auth.AuthJwtAutoConfig
+      - com.marschat.auth.AuthWebAutoConfig
+      - com.marschat.auth.authz.AuthzAutoConfig
+      - com.marschat.auth.menu.MenuReportAutoConfig
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
@@ -58,12 +73,23 @@ download:
 # app_account_mapping，由中心自动认领统一身份。secret 经 compose 注入
 # MARSCHAT_MENU_REPORT_SECRET（与 apps-registry.yml 的 menu-report-secret 同值）。
 marschat:
-  account:
-    report:
-      enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
-      issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
-      client-id: marschat-activecode
-      report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # 管理代理（BFF，Phase 13 配置化接入）：把 /activecode/api/admin/** 代理到 auth-center /admin/**，
+  # 以**调用者本人**的中心令牌转发（绝不服务账号兜底）。白名单见 classpath:bff-whitelist.yml。
+  # 本项同时接管原 marschat.account.report（账号上报改由 BffAccountSource + MarschatBffAccountReporter 承担）。
+  # ⚠️ 凭据解析用**自定义 BffCredentialResolver**（config/MarschatBffConfig）——
+  #    本应用无 Spring Security，用户名在 HttpSession 属性而非 getUserPrincipal()，
+  #    故 credential-mode 的内置三模式在此不适用（Bean 覆盖优先）。
+  bff:
+    enabled: ${MARSCHAT_BFF_ENABLED:true}
+    client-id: marschat-activecode
+    # 本应用部署在独立主机（内网 Debian 192.168.31.182），只挂自己的 compose 网络，
+    # **不能**用容器名 auth-center；必须走宿主 LAN 地址（与下方 auth-center.base 同口径）。
+    auth-center-base: ${MARSCHAT_AUTH_CENTER_BASE:http://192.168.31.105:8085}
+    # 本应用无 context-path，控制器直接映射完整路径 /activecode/api/admin/**
+    path-prefix: /activecode/api/admin
+    # 上报凭据（与菜单上报同值）；账号上报开关
+    report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+    account-report-enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
   # 菜单/权限点上报（Phase 11，2026-09-15）：启动时把 classpath menu-registry.yml 全量覆盖
   # 上报到 auth-center PUT /internal/clients/{client-id}/menus，凭据走 X-Client-Secret
   # （与 account.report 同一个 client secret，由 compose 注入 MARSCHAT_MENU_REPORT_SECRET）。

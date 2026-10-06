@@ -11,6 +11,9 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.2(vue@3.5.39(typescript@5.9.3))
+      '@marschat/app-kit':
+        specifier: ^0.1.2
+        version: 0.1.2(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
       '@marschat/auth-components':
         specifier: ^0.8.8
         version: 0.8.8(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
@@ -241,6 +244,11 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@marschat/app-kit@0.1.2':
+    resolution: {integrity: sha512-TArKBteaD03qkT7JrOpOS4E/WkxZzIa1fuBaSXrfMqxe7/VlD2hPYYx/puzpu3A7Y47N9h86d+zoVP4miZBJIg==}
+    peerDependencies:
+      element-plus: ^2.6.1
 
   '@marschat/auth-components@0.8.8':
     resolution: {integrity: sha512-a6iF3Hg1bALbd67Jw/X9sFl648eA/IOGKrsvXUCQp2m7daSocOoJV88kXJ0946hrmDyBwTFqxymRn41vyKwLwQ==}
@@ -1226,6 +1234,18 @@ snapshots:
   '@floating-ui/utils@0.2.11': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@marschat/app-kit@0.1.2(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
+    dependencies:
+      '@marschat/auth-components': 0.8.8(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)
+      '@marschat/frontend-common': 0.3.5(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
+      element-plus: 2.14.2(vue@3.5.39(typescript@5.9.3))
+      vue: 3.5.39(typescript@5.9.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+      - debug
+      - supports-color
+      - typescript
 
   '@marschat/auth-components@0.8.8(element-plus@2.14.2(vue@3.5.39(typescript@5.9.3)))(typescript@5.9.3)':
     dependencies:
