@@ -28,7 +28,7 @@
 import { UserManagementPanel, createUserAdminClient, createUserMenuOverrideClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
-import { bffAuthorizeUrl } from '@/utils/sso'
+import { bffAuthorizeUrl } from '@/config/session'
 // T7：BFF 基址唯一真源（运行时配置）
 import { BFF_API_BASE } from '@/config/runtime'
 

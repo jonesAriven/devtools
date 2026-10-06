@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import { isOidcToken } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
 import { CONTEXT_PATH } from '@/config/runtime'
-import { renewOidcSession, isReauthInFlight } from '@/utils/sso'
+import { renewOidcSession, isReauthInFlight } from '@/config/session'
 
 const authBaseURL = import.meta.env.DEV ? '/api/auth' : '/portal/api/auth'
 const portalBaseURL = import.meta.env.DEV ? '/api/portal' : '/portal/api/sys'

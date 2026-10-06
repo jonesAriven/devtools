@@ -13,7 +13,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { LoginPage } from '@marschat/auth-components'
 import { useUserStore } from '@/stores/user'
-import { bootstrapLoginPage, bffAuthorizeUrl, SSO_CONFIG } from '@/utils/sso'
+import { bootstrapLoginPage, bffAuthorizeUrl, SSO_CONFIG } from '@/config/session'
 
 const router = useRouter()
 const route = useRoute()
@@ -34,6 +34,15 @@ const loginConfig = {
   // 忘记密码（邮箱码找回，经 /portal/auth-api → auth-center）
   showMailLogin: true,
   // 忘记密码 / 重置密码接口前缀（auth-center 业务 API，main 域新增 /portal/auth-api/ 路由）
+  //
+  // 🔴 Phase 13：此处`authApiBase` 与装配层 `config.authApiBase`（派生为 `/portal/api/auth`）
+  //    **同名不同物，刻意不合并**：
+  //      · 本值 `/portal/auth-api` → **portal-server 无此路由**，由 nginx / main 域提供，
+  //        组件拼 `${authApiBase}/forgot-password` 与 `/reset-password`（忘记/重置密码）；
+  //      · 装配层 authApiBase → portal-server `AuthController`（`@RequestMapping("/api/auth")`
+  //        + `context-path:/portal`），供**账密登录** `POST ${authApiBase}/login`。
+  //    若把本值改成 `/portal/api/auth`，密码重置会打到不存在的
+  //    `/portal/api/auth/reset-password` ⇒ 404。**迁移时本行必须原样保留。**
   authApiBase: '/portal/auth-api',
   // SSO 走 portal 自己的服务端流（机密客户端，回调 /portal/auth/callback）
   onSsoLogin: handleSsoLogin,

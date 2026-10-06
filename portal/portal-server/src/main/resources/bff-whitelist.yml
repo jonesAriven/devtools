@@ -1,0 +1,200 @@
+# =============================================================================
+# portal 管理代理白名单（Phase 13 配置化接入）
+# =============================================================================
+#
+# 本文件取代此前硬编码在 `SsoController#proxyAdminCenter` 的
+# `@RequestMapping("/admin/**")` **全路径通配转发**（默认放行一切）。
+# 语义：默认拒绝 —— 未列出的路径一律 404，且**不取凭据、不调中心**。
+#
+# 语义与字段说明见 auth-core jar 内 META-INF/marschat/bff-whitelist.template.yml
+#
+# 铁律：新增中心管理端点 → 必须在此显式登记，否则 404（有意的摩擦）。
+# 枚举在白名单 = **保留**该能力（portal 承载平台中心台，见下文「口径差异」）。
+# 永不在此登记（放行等于把平台运维通道暴露给门户管理员）：
+#   /admin/authz/**   授权策略运维（AdminAuthzPolicyController，平台专属）
+#   /internal/**      上报内网通道（带 X-Client-Secret，proxy 前缀根本到不了）
+#   POST /admin/clients/{cid}/roles  建应用角色（防自造角色提权；本应用也不调用）
+#   /admin/auth/list   全局审计日志（平台运维，不下沉到门户）
+#
+# =============================================================================
+# 🔴🔴 四条已知边界 —— **第一眼必读**（③已恢复三道闸；①②④为能力口径，勿「顺手修好」）
+# =============================================================================
+#
+# ① 旧「服务身份兜底」能力已**有意废弃**（配置与代码同时移除）
+#    迁移前 `AuthCenterService#callAdmin` 在无 SSO 会话时会回退到服务账号
+#    （`auth-center.admin-username` / `admin-password`，账号即 admin）。
+#    该配置键与代码路径**已一并删除**，新resolver 绝不兜底。
+#    🔴 后人请勿"补回"：服务账号是 admin，回退即等于凭服务账号放行（提权），
+#    且中心审计到的是服务账号而非真实操作者（审计失真）。
+#
+# ② 管理面（BFF 代理）仅对 **SSO 统一登录** 的管理员可用
+#    账密 / 邮箱验证码登录的本地管理员调 /api/admin/** 会返 401 ——
+#    因为 auth-center 的 SAS refresh_token **只在 SSO exchange 时签发**
+#    （`SsoController.exchange:70` 调 `storeRefreshToken`；
+#      `AuthController.login:48` 走 `loginAsUser` 后**不调**；
+#      `SsoController.mailLogin` 同样不调 —— 邮箱码是 legacy token，不入 SSO 会话池）。
+#    这是**审计正确的选择**（理由同①）。⇒ 使用指引：管理功能请用「统一认证登录」进入。
+#    拦截点：方案 A 下由 `PortalAdminGateInterceptor` 前置 `hasSsoSession` 判定
+#    （早于第②道权限点校验）⇒ 返 401 并带「请使用统一认证登录」文案，
+#    前端 `request.ts:68` 收到 401 会自动跳 SSO 重授权，管理员**可自助恢复**。
+#
+# ③ 管理面闸门：迁移前后**同等三道**，无收窄
+#    ① 本地 role ∈ {admin, superadmin}（PortalAdminGateInterceptor，.order(1)）
+#    ② 中心权限点 api:admin（AuthzConfig 注册的 PermissionChecker Bean；superadmin 豁免）
+#    ③ 中心侧 AdminUserController:22 @PreAuthorize("hasRole('ADMIN')")，服务端强制不可绕过
+#
+#    ⚠️ 已知残余盲区（**最终防线是真机 P0，不是静态断言**）：
+#        若第②道的权限点被改成另一个「同样存在但更宽」的点（如 api:read），
+#        该闸会形同虚设，而 VerifyBff 的 8 条静态契约**全部照样通过**。
+#        刻意不加断言（会陷入「断言拼字符串」的无限加固）；此类改动必改字符串常量
+#        ⇒ git 可见、code review 可抓。兜底靠 QA #11 的 admin(SSO)→200 / superadmin→200。
+#
+#    实现说明：第②道的注解驱动（@RequirePermission）因库内 BFF 控制器不带该注解而失效，
+#    但**闸门本身未失效** —— PermissionChecker#hasPermission 是 public方法，
+#    故由 PortalAdminGateInterceptor 直接调用恢复。**零 auth-core 改动。**
+#    superadmin 豁免的实现位置在 PortalPermissionChecker:92-96
+#    （`if ("superadmin".equals(role)) return true;`），**不在**拦截器内 ——
+#    避免两处真源漂移；这是 2026-09-13「超管被误挡」事故后的产物，必须保留。
+#
+#    ⚠️ 判权限点失败时返回 **401 而非 403** —— 语义是「会话无法验证」，
+#       前端 401 会自动跳 SSO 重授权（见 ②），管理员可自助恢复；
+#       若返 403 则前端无路可走，管理员被永久卡死。
+#       日志会区分「无 SSO 会话（场景③）」与「中心不可达/无权限（场景②）」：
+#         · 场景③ 账密/邮箱码登录（无 refresh_token）⇒ hasSsoSession 前置拦截
+#         · 场景② 中心不可达 / 权限点已被回收⇒ hasPermission 拦截
+#       两者状态码相同（语义统一），但日志文案不同，便于线上区分。
+#
+# ④ 已知能力边界（平台中心台的写操作**故意保留** —— 从「永不放行」放宽为「有条件放行」）
+#
+#    ⚠️ 收窄口径必须分两层看，**合起来说「严格收窄」是不准确的**：
+#      · 整体（路径空间）：迁移前 `/admin/**` **全通配**（放行一切）
+#                          → 现在 15 条**显式清单** ⇒ 这一层是**严格收窄** ✅
+#      · 平台级写端点这一类：迁移前它们在应用里也是全通配可调用的，
+#                          但**本文件的设计意图**是「永不放行」
+#                          → 现为**有条件放行** ⇒ 这一类是**放宽**，不是收窄 ⚠️
+#    （kb-ops / infra-monitor / activecode 因只有应用台，确为纯收窄；portal 不是。）
+#
+#    放行的 6 条写端点，逐条列明（供安全评审与故障定位直接引用）：
+#      ① POST   /admin/users                      新建身份
+#      ② PUT    /admin/users/{id}                 编辑身份（全局 role/status/nickname/email）
+#      ③ DELETE /admin/users/{id}                 删除身份（软删除墓碑）
+#      ④ PUT    /admin/users/{id}/password        重置口令
+#      ⑤ PUT    /admin/roles/{id}/permission-codes 角色→权限点绑定（菜单授权保存）
+#      ⑥ POST   /admin/mappings/{id}/bind | /unbind  账号映射手工认领 / 解绑
+#      （另有 GET /admin/authorization-matrix、GET|PUT /admin/users/{id}/client-roles
+#        等跨应用**读/绑定**端点，同属平台台职责，见 rules 段②。）
+#
+#    依据：`AdminConsoleView.vue:128` 是 `scope: { mode: 'platform' }` 的
+#    **平台中心台**（路由 `/portal/admin`），跨应用角色绑定是它的职责。
+#    这与「应用本系统用户」页口径不同 —— 后者按 Phase 12 定型**不提供**这些操作。
+#    仍生效的边界：中心的类级 `@PreAuthorize("hasRole('ADMIN')")`（服务端强制、
+#    不可绕过）+ 本地 role 闸门（见边界③）。
+#    ⇒ 若日后产品决定收紧，需**同步下线平台管理台对应按钮**，否则「点了就报错」。
+# =============================================================================
+#
+# ── 口径差异（为何本文件比 kb-ops / infra-monitor / activecode 宽）─────────
+# 那三个应用只有「本系统用户」（应用台）一个面板；**portal 额外承载「统一认证中心」
+# 平台管理台**（`src/views/AdminConsoleView.vue`，路由 `/portal/admin`，
+# `scope: { mode: 'platform' }`，刻意不声明 meta.perm —— 见 src/router/index.ts）。
+# 该页签的「新建/ 编辑 / 停用 / 重置密码 / 删除」按设计就是平台级动作
+# （ADR-2026-09-16-Phase12 §D-1 功能对照表：平台管理台 ✅ / 应用台 ❌）。
+# 不登记 ⇒ 平台管理台核心功能「点了就报错」。
+# ⚠️ 收窄口径分两层（详见边界④）：**路径空间**从全通配收敛为 15 条显式清单 = 严格收窄；
+#    但**平台级写端点这一类**属「有条件放行」= 放宽。两层合称「严格收窄」不准确。
+#    中心的类级 `@PreAuthorize("hasRole('ADMIN')")` 与本地 role 闸门照旧生效。
+# =============================================================================
+
+client-id: marschat-portal
+
+rules:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ① 应用作用域：本系统用户（`/portal/users` → UsersView，scope.mode='app'）
+  # ─────────────────────────────────────────────────────────────────────────
+
+  # 成员列表 + 「添加已有用户」候选池。
+  #   · UsersView 列表：      GET /admin/users?client=marschat-portal&...
+  #   · appRoles 候选池：     GET /admin/users?client=marschat-portal&page=1&size=200
+  #   · 账号映射面板用户搜索：GET /admin/users?keyword=xx&page=1&size=20（无 client）
+  # 三种调用形态都命中本条；带 client 时必须等于本应用，重复 client 键（HPP）一律拒绝。
+  - path: /admin/users
+    methods: [GET]
+    require-client-scope: true
+
+  # 「本系统角色」绑定（UsersView 行操作列 + UserMenuOverridePanel 的角色上限渲染）。
+  # ⚠️ 本条**不设** require-client-scope：AdminConsoleView 的「跨应用授权」矩阵
+  #    （CrossAppAuthPanel）会对**列出的每一个应用**调本端点
+  #    （?client=marschat-kbops / marschat-kbweb / ... / cosmic-studio），
+  #    加了作用域校验会直接打断该页签。跨应用授权本身是平台级能力，
+  #    其边界由中心的 hasRole('ADMIN') + 本地 role 闸门 + 中心权限点 api:admin
+  #    三道闸保证（见文件头边界③）。
+  - path: /admin/users/{id}/client-roles
+    methods: [GET, PUT]
+
+  # 用户级菜单减法（只能减不能加）。两处调用方（UsersView / AdminConsoleView）
+  # 都显式传 client=marschat-portal，故作用域校验可加。
+  - path: /admin/users/{id}/menu-overrides
+    methods: [GET, PUT]
+    require-client-scope: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # ② 平台作用域：统一认证中心（`/portal/admin` → AdminConsoleView）
+  #
+  # 口径差异见文件头「口径差异」块：portal 额外承载平台管理台，故此处登记
+  # 平台级写端点。中心的类级 `@PreAuthorize("hasRole('ADMIN')")` 仍生效，
+  # 本地 role 闸门 + 中心权限点 api:admin 见 PortalAdminGateInterceptor（见文件头边界③）。
+  # ─────────────────────────────────────────────────────────────────────────
+
+  # 统一用户：新建身份（平台管理台「新建用户」表单）
+  - path: /admin/users
+    methods: [POST]
+
+  # 统一用户：编辑身份（全局 role / status / nickname / email）、删除身份（墓碑）
+  - path: /admin/users/{id}
+    methods: [PUT, DELETE]
+
+  # 统一用户：重置口令（平台管理台专属；应用台无此按钮）
+  - path: /admin/users/{id}/password
+    methods: [PUT]
+
+  # 角色定义（appRoles 下拉、矩阵角色清单、MenuPermissionPanel 角色树）
+  # ⚠️ 本条为**平台中心台职责范围内的只读查询，故故意不收窄 client**：
+  #    AdminConsoleView 需要列出**全部应用**的角色（矩阵列头、角色树、
+  #    「角色与菜单授权」页签的应用切换器都依赖全量角色）。
+  #    越权判定：只读、非写；且 portal 本身即平台级中心台，查看全平台角色是其职责。
+  - path: /admin/roles
+    methods: [GET]
+
+  # 权限点树（MenuPermissionPanel 的角色→权限点绑定）
+  # ⚠️ 不设 require-client-scope：AdminConsoleView 的「角色与菜单授权」页签
+  #    用 el-select 在 APPS 全表（6 个应用）间切换 clientId。
+  - path: /admin/permissions
+    methods: [GET]
+
+  # 角色→权限点绑定（读 + 写；保存后最迟 60s 生效）
+  - path: /admin/roles/{id}/permission-codes
+    methods: [GET, PUT]
+
+  # 跨应用授权矩阵（行=人，列=应用；单元格改绑即上面的 client-roles PUT）
+  - path: /admin/authorization-matrix
+    methods: [GET]
+
+  # 账号映射：列表 / 概览 / 按用户查
+  - path: /admin/mappings
+    methods: [GET]
+  - path: /admin/mappings/summary
+    methods: [GET]
+  - path: /admin/users/{id}/mappings
+    methods: [GET]
+
+  # 账号映射：手工认领 / 解绑
+  - path: /admin/mappings/{id}/bind
+    methods: [POST]
+  - path: /admin/mappings/{id}/unbind
+    methods: [POST]
+
+# ── 以下端点**永不放行**，即使平台管理台当前页面未调用 ────────────────
+#   /admin/authz/**                    授权策略运维（平台专属，Bearer 超管）
+#   /internal/**                       上报内网通道（带 X-Client-Secret）
+#   /admin/clients/{cid}/roles  POST   建应用角色（防自造角色提权）
+#   /admin/auth/list                    全局审计日志（平台运维，不下沉到门户）

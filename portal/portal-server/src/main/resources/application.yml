@@ -104,12 +104,44 @@ marschat:
       client-id: marschat-portal
       report-mode: secret
       report-secret: ${MARSCHAT_MENU_REPORT_SECRET:}
-  # 账号映射上报（Phase 7）：把 portal 的本地账号（含超管应急账号）全量登记到中心
-  # app_account_mapping，由中心按 username/email 自动认领统一身份。
-  # secret 复用菜单上报同一个（容器已注入 MARSCHAT_MENU_REPORT_SECRET），无需新增服务器密钥。
-  account:
-    report:
-      enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
-      issuer: ${MARSCHAT_ACCOUNT_REPORT_ISSUER:http://auth-center:8085}
-      client-id: marschat-portal
-      report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # ── BFF 管理面代理（Phase 13 · auth-core 2.2.0）─────────────────────────
+  # 承接原 SsoController#proxyAdminCenter 的 `/admin/**` 前缀透传：
+  # 请求方法 / 查询串 / 请求体原样转发到 auth-center，以**调用者本人的身份**鉴权。
+  #
+  # 🔴 开启顺序铁律：`enabled: true` 之前必须**先删掉** SsoController 的
+  #    `@RequestMapping("/admin/**")`。删前两者都映射 `/api/admin/**`，
+  #    同时存在会被 Spring 判为 `Ambiguous mapping` 而**启动崩溃**。
+  #    本次迁移已先删方法、再开此开关（见 SsoController 的 Phase 13 注释）。
+  #    观察期回滚：MARSCHAT_BFF_ENABLED=false 即可关代理（不需回滚镜像）。
+  #
+  # ⚠️ 白名单是**默认拒绝**清单：未登记的路径一律 404 且不做任何中心调用，
+  #    文件缺失 = 管理面全 404。清单见同目录 bff-whitelist.yml。
+  bff:
+    enabled: ${MARSCHAT_BFF_ENABLED:true}
+    client-id: marschat-portal
+    # 中心内网基址（compose 服务名）。与 auth-center.internal-base 同源；
+    # 严禁写公网域名 —— 公网未暴露 /auth/login（实测 404，见上方 P0 注释）。
+    auth-center-base: ${AUTH_CENTER_INTERNAL_BASE:http://auth-center:8085}
+    # 代理前缀。🔴 此处**不含 context-path**（/portal）：Spring 的 @RequestMapping
+    #    按「context-path 剥离后的路径」匹配，写成 /portal/api 会让全部请求 404。
+    #    auth-core 用 uri.indexOf(path-prefix) 从**含 context-path 的 getRequestURI()**
+    #    截取剩余段，故 /portal/api/admin/users → 中心 /admin/users。
+    path-prefix: /api/admin
+    # 中心侧管理端点前缀（一般不改）
+    center-path-prefix: /admin
+    # 调用者身份的取法：portal 无 Spring Security，三种内置 credential-mode
+    # 全不适用（证据见 MarschatPortalBffConfig 类注释），实际生效的是自定义
+    # BffCredentialResolver。显式声明以免默认值歧义；**改这一项不改变行为**。
+    credential-mode: PASSTHROUGH
+    # ── 本地账号上报（承接被删除的 config/LocalAccountReporter）──
+    # 上报动作（PUT /internal/clients/{id}/accounts + X-Client-Secret、异常只 WARN
+    # 不阻断启动）由 auth-core 的 MarschatBffAccountReporter 承担；
+    # 账号清单来自本应用的 BffAccountSource（sys_user 活跃账号）。
+    account-report-enabled: ${MARSCHAT_ACCOUNT_REPORT_ENABLED:true}
+    # secret 沿用既有环境变量口径（与菜单上报同值），无需新增服务器密钥
+    report-secret: ${MARSCHAT_ACCOUNT_REPORT_SECRET:${MARSCHAT_MENU_REPORT_SECRET:}}
+  # 账号映射上报（Phase 7 · 旧 LocalAccountReporter 的配置，已随其删除）
+  # ✅ 本地账号上报已迁到上方 marschat.bff.{account-report-enabled, report-secret}，
+  #    由 auth-core 的 MarschatBffAccountReporter 承担，**行为与旧实现一致**。
+  #    旧键 marschat.account.report.* 已移除（其唯一读取方 LocalAccountReporter 已删）。
+  #    环境变量 MARSCHAT_ACCOUNT_REPORT_ENABLED / _SECRET 口径不变。

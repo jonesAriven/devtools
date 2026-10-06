@@ -11,6 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final PortalAdminGateInterceptor portalAdminGateInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -22,6 +23,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/auth/sso/**",
                         "/actuator/**"
                 );
+
+        // Phase 13：补回随 SsoController#proxyAdminCenter 一同消失的管理面角色闸门。
+        // 依赖 JwtInterceptor 写入的 role attribute，故必须显式 order(1) 晚于它
+        // （JwtInterceptor 与 auth-core 的 RequirePermissionInterceptor 均为默认 order 0）。
+        registry.addInterceptor(portalAdminGateInterceptor)
+                .addPathPatterns("/api/admin/**")
+                .order(1);
     }
 
     @Override

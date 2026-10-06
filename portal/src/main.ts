@@ -4,21 +4,13 @@ import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import 'element-plus/dist/index.css'
 import App from './App.vue'
-import router from './router'
 import './styles/index.scss'
 import { useUserStore } from '@/stores/user'
-// T7 组件收敛（2026-09-15）：部署 base 取自运行时配置（app-config.json ← apps-registry.yml），
-// 不再各处硬编码 '/portal'（此前 main/router/sso/permissions/两个视图共 6 处各写一份）
-import { CONTEXT_PATH } from '@/config/runtime'
-
-// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库在「跳登录页」时拼出带 base 的地址
-//    （写死 '/login' 会跳到域名根 → nginx 404）。portal 的 router base 同源于 CONTEXT_PATH。
-window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
-import { startSessionWatcher, renewOidcSession } from '@/utils/sso'
-import { permissions } from '@/utils/permissions'
 import { isOidcToken } from '@marschat/auth-components'
+import { startSessionWatcher, renewOidcSession } from '@/config/session'
+import { marschat } from '@/marschat'
 
-// Element Plus 图标 - 全量注册
+// Element Plus 图标 -全量注册
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 const app = createApp(App)
@@ -30,7 +22,10 @@ for (const [name, comp] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
-app.use(router)
+// 🔴 顺序铁律：必须经 `marschat.install(app)` 挂 router —— 路由权限守卫已在
+//    `createMarschatApp()` 内注册（早于首次导航），自行 `app.use(router)` 会让守卫漏掉首屏。
+//    同时 `__MARSCHAT_APP_BASE__` 也由装配层在此之前声明（跳登录页要拼 base，否则落域名根 404）。
+marschat.install(app)
 app.use(ElementPlus, { locale: zhCn })
 app.mount('#app')
 
@@ -43,7 +38,7 @@ app.mount('#app')
 //   （2026-09-12 实测：运行期 0 次 `/auth/session` 探针，只能靠 401 拦截器被动跳 ?reauth=1。）
 const userStore = useUserStore(pinia)
 if (userStore.token) {
-  // 🔴 2026-09-15 回归修复（Phase 11）：**只有 SSO（OIDC）会话才启动会话监视器**。
+  // 🔴 2026-09-15 回归修复（Phase 11，Phase 13 迁移时原样保留）：**只有 SSO（OIDC）会话才启动会话监视器**。
   //
   // 监视器探的是 auth-center `/auth/session`（**IdP 会话**）；而账密 / 邮箱验证码走的是
   // portal-server 的 **BFF 换票**——auth-center 的 Set-Cookie 落在后端进程里，
@@ -54,7 +49,11 @@ if (userStore.token) {
   //
   // 渠道由 stores/user.ts 的 setSession(kind) 打标（键 `portal_token_kind`）：
   // ssoExchange → 'oidc'；login / 邮箱码 → 'legacy'。
-  // 同款写法见 infra-monitor-web/src/main.ts（devtools 59343a4d）。
+  //
+  // ⚠️ Phase 13：装配层传了 `watchSession: false`，分流判据**刻意留在应用侧**。
+  //    app-kit 0.1.4虽支持函数式 `watchSession: () => isOidcToken()`，但它只控制「是否启动」，
+  //    注入的仍是装配层硬编码项（`getLocalIdentity` 解 `portal_token` 的 HS256 JWT ⇒ sub恒 undefined、
+  //    `onIdentityMismatch` 走 `sso.renew()` 浏览器直换票），对机密客户端 BFF 全部不适用。
   if (isOidcToken()) {
     startSessionWatcher({
       getToken: () => userStore.token,
@@ -69,5 +68,6 @@ if (userStore.token) {
   }
   // Phase 2：预取 RBAC 权限点（走 portal-server 的 BFF 代理；路由守卫侧也会 ensure）。
   // 拉取失败一律降级为 configured=false（全放行），绝不阻塞启动。
-  void permissions.ensure()
+  // 权限语境由装配层注入 `permissionsIssuer: '/portal/api'`（不能直连 auth-center，见 runtime.ts）。
+  marschat.bootstrap()
 }

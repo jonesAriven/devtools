@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { permCode, setupAuthGuard } from '@/utils/permissions'
+import { permCode } from '@/config/session'
 // T7 组件收敛（2026-09-15）：router base 与 main.ts 的 __MARSCHAT_APP_BASE__ 同源于运行时配置，
 // 避免「导航 base 不一致」这类只在二级路由才暴露的空页问题（check-spa-config.sh 有静态门禁）
 import { CONTEXT_PATH } from '@/config/runtime'
@@ -85,8 +85,12 @@ router.beforeEach((to, _from, next) => {
 })
 
 // Phase 2 · RBAC 路由守卫（三层同源之「路由层」）
-// ⚠️ 必须在 `app.use(router)` 之前注册；只有声明了 meta.perm 的路由受管。
+// 🔴 Phase 13：守卫注册已上移到 `createMarschatApp()`（`src/marschat.ts`）内部，
+//    保证「守卫先于 `app.use(router)`」这条时序由装配层强制 —— main.ts 现在经
+//    `marschat.install(app)` 挂载 router，守卫在挂载前已注册，不会漏掉首屏导航。
+//    本文件不再自行 setupAuthGuard。
+// ⚠️ 下方这段 beforeEach 是 **portal 自有的登录态 / 管理员判定**（与 RBAC 无关）：
+//    它管「有没有本地 token」与「isAdmin」，RBAC 守卫管「这个 token 有没有这个权限点」，两者都要保留。
 // 当前 auth-center 侧 sys_permission 为空（configured=false）→ 全放行，行为与接入前一致。
-setupAuthGuard(router)
 
 export default router

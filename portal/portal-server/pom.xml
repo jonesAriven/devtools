@@ -88,14 +88,23 @@
             <version>1.1.6</version>
         </dependency>
             <!-- 认证公共库（独立仓库 com.marschat:auth-core）——Phase 4 P-B 菜单上报。
-                 仅用其 MenuReportAutoConfig（@ConditionalOnProperty enabled=true 才装配）。
-                 注意：auth-core 会传递引入 jjwt（非 optional），故 AuthJwtAutoConfig/AuthWebAutoConfig
-                 会正常装配（TokenProvider + @MarsUser 解析器）；AuthzAutoConfig 的 @RequirePermission
-                 拦截器仅在配置 marschat.authz.client-id 时注册——portal 刻意不配，保持零行为变化。 -->
+                 auth-core 会传递引入 jjwt（非 optional），故 AuthJwtAutoConfig / AuthWebAutoConfig
+                 会正常装配（TokenProvider + @MarsUser 解析器）。
+
+                 portal 依赖 auth-core 的**四个**自动装配，均**不可排除**：
+                   · AuthzAutoConfig     —— PortalSystemController 的 4 个 @RequirePermission 在用
+                                            （判定实现见 config/AuthzConfig）
+                   · MenuReportAutoConfig —— menu-registry.yml 启动上报在用
+                   · AuthJwtAutoConfig / AuthWebAutoConfig —— 上述两者前置
+                   · MarschatBffAutoConfig —— Phase 13 BFF 管理代理（本次目标）
+                 排除其中任何一个都会造成功能回归（详见 PHASE13 迁移记录）。 -->
+        <!-- Phase 13：2.1.6 → 2.2.0 —— 2.2.0 引入 BFF 模块（MarschatBffAutoConfig），
+             portal 的 /admin/** 前缀透传改由其承接（原 SsoController#proxyAdminCenter 已删）。
+             自定义 BffCredentialResolver 见 MarschatPortalBffConfig。 -->
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>auth-core</artifactId>
-            <version>2.1.6</version>
+            <version>2.2.0</version>
         </dependency>
     </dependencies>
 

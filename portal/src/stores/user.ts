@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { initTokenConfig, setTokenKind } from '@marschat/auth-components'
+import { setTokenKind } from '@marschat/auth-components'
 import { login as loginApi, ssoExchangeApi, type LoginRequest } from '@/api/auth'
-import { logout as ssoLogoutPortal } from '@/utils/sso'
+import { logout as ssoLogoutPortal } from '@/config/session'
 
 const TOKEN_KEY = 'portal_token'
 const USER_KEY = 'portal_user'
@@ -20,8 +20,19 @@ const AUTH_UID_KEY = 'portal_auth_uid'
  *   且 `start()` 会在 3 秒后首探 → 每次整页刷新都被判「他处已登出」→ 跳 `?slo=1`。
  *   只有浏览器侧真走过 OIDC 授权跳转的会话才值得监视。
  */
+/**
+ * 登录渠道标记（组件库 `token_kind` 约定）的存储键。
+ *
+ * Phase 13：此处原有`initTokenConfig({ tokenKindKey })`，**已删除** ——
+ * 令牌键绑定改由装配层 `createMarschatApp` 统一完成（它内部调`initTokenConfig(config.tokenKeys)`），
+ * 本store 不再是第二个配置源。
+ *原写法并未把四键重置（组件实现是 `{...DEFAULT, ...options}` 对象展开，未传的键保留默认值），
+ * 删除的收益是**消除重复绑定**、避免两处配置漂移。
+ *
+ * 该键的**值**不变：由装配层按 `tokenKeyPrefix` 派生出 `portal_token_kind`，
+ * 与此前的硬编码完全一致。
+ */
 const TOKEN_KIND_KEY = 'portal_token_kind'
-initTokenConfig({ tokenKindKey: TOKEN_KIND_KEY })
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem(TOKEN_KEY) || '')
@@ -114,6 +125,15 @@ export const useUserStore = defineStore('user', () => {
     authUid,
     isLoggedIn,
     isAdmin,
+    // 🔴 既存缺陷修复（2026-10-06，Phase 13 迁移期间发现，已被覆盖过一次故补第二次）：
+    // `setSession` 定义在本文件第 57 行但**长期漏了导出**，而 `views/LoginView.vue:131`
+    // 的邮箱验证码登录路径正在调它 ⇒ 运行期必抛
+    // `TypeError: userStore.setSession is not a function` ⇒ **邮箱码登录整条链路不可用**。
+    //
+    // 经 `git show HEAD:portal/src/stores/user.ts` 确认**迁移前即如此**，非本次迁移引入。
+    // ⚠️ 本行曾于 12:26 被一次整体重写覆盖掉（QA 复验时发现），故此处注释务必保留，
+    //    下次改本文件时请确认这行仍在。
+    setSession,
     login,
     ssoExchange,
     clearSession,

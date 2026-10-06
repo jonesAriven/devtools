@@ -8,7 +8,6 @@ import com.kb.portal.mapper.SysUserMapper;
 import com.kb.portal.service.AuthCenterService;
 import com.kb.portal.util.JwtUtil;
 import com.kb.portal.util.PasswordUtil;
-import com.marschat.auth.authz.RequirePermission;
 import com.marschat.common.exception.BusinessException;
 import com.marschat.common.result.Result;
 import jakarta.servlet.http.HttpServletRequest;
@@ -203,74 +202,21 @@ public class SsoController {
         return toResult(r);
     }
 
-    // ---------- 统一认证中心管理接口：前缀透传代理（Phase 8 重构）----------
-
-    /**
-     * 统一认证中心 {@code /admin/**} 通用代理（仅管理员）。
-     *
-     * <h3>为什么从「逐端点声明」重构为「前缀透传」</h3>
-     * 此前这里是 {@code listUsers / createUser / updateUser / deleteUser / resetPassword /
-     * listRoles / userClientRoles / assignUserClientRoles} 八个逐端点方法，有两个硬伤：
-     * <ol>
-     *   <li><b>丢参数（真实缺陷）</b>：{@code GET /admin/users} 只转发了 {@code realmId}，
-     *       把 {@code keyword / page / size / client} 全部丢弃 ——
-     *       导致中心的分页、搜索、以及 Phase 8 新增的 <b>应用作用域过滤</b>在 portal 侧失效。</li>
-     *   <li><b>不可扩展</b>：中心每新增一个 {@code /admin/**} 端点，都必须同步加一个 BFF 方法，
-     *       违背「中心能力升级不动消费方」的初衷（Phase 8 的授权矩阵、账号映射、菜单上报都受影响）。</li>
-     * </ol>
-     * 改为前缀透传后：<b>请求方法、查询串、请求体原样转发</b>，
-     * 中心侧新增任何 {@code /admin/**} 端点，portal 零改动即可使用。
-     *
-     * <p>安全边界（Phase 9 / G3 收紧）：进入本方法前，auth-core 的 {@code @RequirePermission}
-     * 拦截器先校验 **中心权限点** {@code marschat-portal:api:admin}（"哪些账号有哪些系统权限"
-     * 在这一层真实生效，TTL 60s）；通过后仍保留 {@link #requireAdmin} 作为第二道粗粒度闸。
-     * 鉴权真值由 {@code config/PortalPermissionChecker} 以「用户本人的 RS256 身份」向中心查询，
-     * 失败/无会话按 fail-closed 处理。
-     *
-     * <p>仅代理 {@code /admin/**} —— {@code /internal/**}（应用上报内网通道）与
-     * {@code /auth/**} 不在透传范围内，不会被意外暴露到公网。
-     */
-    @RequirePermission("api:admin")
-    @RequestMapping("/admin/**")
-    public Result<JsonNode> proxyAdminCenter(HttpServletRequest request,
-                                             @RequestBody(required = false) String body) {
-        requireAdmin(request);
-        AuthCenterService.ProxyResult r = authCenterService.callAdmin(
-                (Long) request.getAttribute("userId"),
-                request.getMethod(),
-                extractAdminPath(request),
-                body);
-        return toResult(r);
-    }
-
-    /**
-     * 从请求 URI 中截出 {@code /admin/...} 部分并拼回原始查询串。
-     *
-     * <p>用 {@code indexOf("/admin/")} 而非 {@code substring("/api".length())}：
-     * 后者在存在 context-path 或反向代理改写时会切错位置。
-     */
-    private String extractAdminPath(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        int idx = uri.indexOf("/admin/");
-        String path = idx >= 0 ? uri.substring(idx) : "/admin";
-        String qs = request.getQueryString();
-        return (qs == null || qs.isBlank()) ? path : path + "?" + qs;
-    }
-
-    /**
-     * 管理员校验。
-     *
-     * <p>⚠️ 必须同时认 {@code superadmin}：auth-center 的超管账号（{@code user.role='superadmin'}，§22.1）
-     * 是平台唯一的最高权限账号。只比 {@code "admin"} 会把超管挡在 portal 用户管理之外
-     * （2026-09-13 浏览器实测：超管登录 portal 后 {@code /portal/users} 被重定向，
-     * BFF {@code /portal/api/admin/users} 返回 403「需要管理员权限」）。
-     */
-    private void requireAdmin(HttpServletRequest request) {
-        Object role = request.getAttribute("role");
-        if (!"admin".equals(role) && !"superadmin".equals(role)) {
-            throw new BusinessException(403, "需要管理员权限");
-        }
-    }
+    // ---------- 统一认证中心管理接口 ----------
+    //
+    // Phase 13：原 `proxyAdminCenter`（`@RequestMapping("/admin/**")` 前缀透传代理）**已删除**，
+    // 改由 auth-core 2.2.0 的 BFF 模块（`marschat.bff.enabled` + `bff-whitelist.yml`）承接。
+    //
+    // 🔴 顺序铁律：必须**先删本方法、再开 `enabled`** —— 两者都映射 `/api/admin/**`，
+    //    同时存在会被 Spring 判为 `Ambiguous mapping` 而**启动崩溃**。
+    //
+    // 随本方法一并删除的还有两个私有辅助方法（`extractAdminPath` / `requireAdmin`），
+    // 它们只被该方法引用。`AuthCenterService#callAdmin` 予以保留：其 Javadoc 被
+    // `callAsUser` 以 `{@link #callAdmin}` 引用，且它仍是服务身份链路的既有公共能力。
+    //
+    // ⚠️ 两处闸门随本方法一同消失，已在 `config/PortalAdminGateInterceptor` 补偿
+    //    （role ∈ {admin, superadmin}，含 superadmin 兼容）。
+    //    `/api/admin/**` 本身仍受 `JwtInterceptor` 保护（见 `config/WebMvcConfig`）。
 
     private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 

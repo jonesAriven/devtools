@@ -37,6 +37,16 @@ export default defineConfig({
         target: 'https://main.marschat.online',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/portal/, '/portal')
+      },
+      // Phase 13：装配层的 `permissionsIssuer: '/portal/api'` 指向 portal-server 同源代理。
+      // dev 态下 vite dev server（:3000）没有这条转发，权限请求会 404 ⇒ configured=false
+      // ⇒ 权限体系静默全放行（菜单全出来、按钮全可点，不报任何错）。
+      // `/api/auth` 那条规则指向的是 **kb.marschat.online**（不是 portal-server），对本代理无效，
+      // 故这里显式补一条到 portal-server 本机端口。
+      // ⚠️ 零生产影响：仅 dev server 生效；生产由 nginx 同源转发 /portal/api。
+      '/portal/api': {
+        target: 'http://localhost:8087',
+        changeOrigin: true
       }
     }
   },
