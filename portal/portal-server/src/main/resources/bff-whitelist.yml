@@ -27,16 +27,19 @@
 #    🔴 后人请勿"补回"：服务账号是 admin，回退即等于凭服务账号放行（提权），
 #    且中心审计到的是服务账号而非真实操作者（审计失真）。
 #
-# ② 管理面（BFF 代理）仅对 **SSO 统一登录** 的管理员可用
-#    账密 / 邮箱验证码登录的本地管理员调 /api/admin/** 会返 401 ——
-#    因为 auth-center 的 SAS refresh_token **只在 SSO exchange 时签发**
-#    （`SsoController.exchange:70` 调 `storeRefreshToken`；
-#      `AuthController.login:48` 走 `loginAsUser` 后**不调**；
-#      `SsoController.mailLogin` 同样不调 —— 邮箱码是 legacy token，不入 SSO 会话池）。
-#    这是**审计正确的选择**（理由同①）。⇒ 使用指引：管理功能请用「统一认证登录」进入。
-#    拦截点：方案 A 下由 `PortalAdminGateInterceptor` 前置 `hasSsoSession` 判定
-#    （早于第②道权限点校验）⇒ 返 401 并带「请使用统一认证登录」文案，
-#    前端 `request.ts:68` 收到 401 会自动跳 SSO 重授权，管理员**可自助恢复**。
+# ② 管理面（BFF 代理）的凭据来源：**SSO 统一登录 / 账密 / 邮箱验证码 三种渠道均已支持**
+#    （2026-10-06 修正。此前写的「仅 SSO 可用、账密返 401」是**错误结论**。）
+#    纠正依据（实测 auth-center 源码）：
+#      · `AuthServiceImpl.login:93-95` 与 SSO 换票**走同一个 jwtTokenProvider**，
+#        对 `data` 同样返回 `accessToken + refreshToken`（dto/LoginResponse:13-16）；
+#      · `JwtAuthenticationFilter:50-58` 明确接受 legacy(HS256) 分支并校验
+#        `type == "access"` ⇒ 该 access_token 能直接调 `/admin/**`。
+#    ⇒ 此前 401 的真因不是「架构必然」，而是**portal 没把已拿到的 access_token 留下来**。
+#    现由 `AuthCenterService.storeLoginAccessToken` 在账密/邮箱码登录时留存，
+#    resolver 经 `resolveAccessToken` 按渠道自动取池，**凭据链与 SSO 完全统一**，
+#    且中心审计到的仍是**本人**而非服务账号（①的审计失真问题依然不存在）。
+#    拦截点：`PortalAdminGateInterceptor` 前置 `hasSsoSession`（已同步看两个池），
+#    早于第②道权限点校验；三渠道均有凭据 ⇒ 不会因登录渠道而被误拒。
 #
 # ③ 管理面闸门：迁移前后**同等三道**，无收窄
 #    ① 本地 role ∈ {admin, superadmin}（PortalAdminGateInterceptor，.order(1)）

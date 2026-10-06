@@ -62,11 +62,29 @@ public class AuthCenterService {
     @Value("${auth-center.admin-password:admin123}")
     private String adminPassword;
 
-    /** portal 用户 id -> refresh_token */
+    /** portal 用户 id -> refresh_token（**仅 SSO exchange 路径**才有，SAS 换票才签发 refresh_token） */
     private final Map<Long, String> refreshTokens = new ConcurrentHashMap<>();
     /** state -> redirect origin（5 分钟有效） */
     private final Map<String, StateEntry> states = new ConcurrentHashMap<>();
-    /** 服务级 legacy token 缓存（密码登录的管理员没有 SSO 会话，用服务身份兜底调管理 API） */
+    /**
+     * portal 用户 id -> **账密/邮箱码登录**时中心签发的 access_token。
+     *
+     * <p>🔴 2026-10-06 新增（Phase 13 迁移期间发现此前结论有误）：中心的
+     * {@code AuthServiceImpl.login} 与 SSO 换票**走同一个 {@code jwtTokenProvider}**，
+     * 对 {@code data} 同样返回 {@code accessToken + refreshToken}；而
+     * {@code JwtAuthenticationFilter:50} 明确支持 legacy（HS256）分支并校验
+     * {@code type == "access"} ⇒ <b>账密登录返回的 access_token 能直接调 /admin/**</b>。
+     *
+     * <p>此前「账密管理员无法访问管理面」的结论是错的 —— 缺的不是能力，
+     * 而是<b>没把已经拿到的 access_token 留下来</b>。
+     *
+     * <p><b>为何不与 {@link #refreshTokens} 合并</b>：那个池存的是 refresh_token，
+     * {@link #refreshAccessToken} 会拿它去中心换 access_token；若把 access_token 塞进去，
+     * 会「拿 access_token 当 refresh_token 去换」⇒ 必然失败。
+     * 两个池按登录渠道各存各的，resolver 按来源取。
+     */
+    private final Map<Long, String> loginAccessTokens = new ConcurrentHashMap<>();
+    /** 服务级 legacy token 缓存（保留字段但**不再作为管理面兜底**，见类注释「安全不变式」） */
     private volatile String serviceToken;
     private volatile long serviceTokenExpiresAt;
 
@@ -138,6 +156,43 @@ public class AuthCenterService {
         if (tokenJson.has("refresh_token")) {
             refreshTokens.put(portalUserId, tokenJson.get("refresh_token").asText());
         }
+    }
+
+    /**
+     * 保存<b>账密/邮箱码登录</b>时中心签发的 access_token（Phase 13 补齐）。
+     *
+     * <p>与 {@link #storeRefreshToken} 的区别：那条存的是 refresh_token（供
+     * {@link #refreshAccessToken} 再换一次），本条存的是**已经可直接用于调
+     * {@code /admin/**} 的 access_token**，无需再换。
+     *
+     * @param resp 中心 {@code loginAsUser} / 邮箱码登录的原始响应（读 {@code data.accessToken}）
+     */
+    public void storeLoginAccessToken(Long portalUserId, JsonNode resp) {
+        JsonNode token = resp.path("data").path("accessToken");
+        if (portalUserId != null && !token.isMissingNode() && !token.isNull()
+                && !token.asText().isBlank()) {
+            loginAccessTokens.put(portalUserId, token.asText());
+        }
+    }
+
+    /**
+     * 取该用户当前可用的中心 access_token（按登录渠道自动选择，无需调用方区分）。
+     *
+     * <p>取值优先级：
+     * <ol>
+     *   <li>{@link #loginAccessTokens} —— 账密/邮箱码登录时中心直接签发，<b>直接可用</b>；</li>
+     *   <li>{@link #refreshTokens} —— SSO exchange 存的是 refresh_token，需换一次
+     *       （{@link #refreshAccessToken} 内部已有「失效即清池」的逻辑）。</li>
+     * </ol>
+     *
+     * @return 中心 access token；两个渠道都没有可用凭据时抛异常（调用方 fail-closed 返401）
+     */
+    public String resolveAccessToken(Long portalUserId) throws Exception {
+        String direct = loginAccessTokens.get(portalUserId);
+        if (direct != null && !direct.isBlank()) {
+            return direct;
+        }
+        return refreshAccessToken(portalUserId);
     }
 
     /**
@@ -274,12 +329,42 @@ public class AuthCenterService {
     /**
      * 是否持有该 portal 用户的**统一认证（SSO）会话**（内存 refresh_token）。
      *
-     * <p>用于接口级鉴权（G3）：只有持有 SSO 会话时，才能以**该用户本人**的 RS256 身份
-     * 去中心查权限点。无会话（密码/邮箱码登录，或 portal 重启后内存清空）时，
+     * <p>用于接口级鉴权（G3）：只有持有**可用中心凭据**时，才能以**该用户本人**的身份
+     * 去中心查权限点。无凭据（从未登录成功，或 portal 重启后内存清空）时，
      * 调用方按 fail-closed 处理 —— **绝不**回退服务账号（服务账号是 admin，回退等于凭服务账号放行）。
+     *
+     * <p>🔴 2026-10-06 语义扩展：原先只看 {@code refreshTokens}（仅 SSO exchange 填充），
+     * 导致<b>账密/邮箱码登录的管理员被当成「无会话」而拿不到管理面</b>。
+     * 修正后同时看 {@link #loginAccessTokens} —— 那是中心在账密登录时直接签发的 access_token
+     * （与 SSO 同源同签发路径，见该字段注释）。
      */
+    /**
+     * 清除该用户的**全部**中心凭据（登出时调用）。
+     *
+     * <p>🔴 2026-10-06 新增 {@link #loginAccessTokens} 后必须同步清理 ——
+     * 否则登出后服务端仍留着可直调 {@code /admin/**} 的 access_token，
+     * 构成**凭据残留**漏洞（用户以为已登出，实际服务端侧仍可被利用）。
+     *
+     * <p>⚠️ 前端 {@code /auth/logout} 端点当前是空实现（凭据由客户端清），
+     * 所以此方法当前无调用方；一旦该端点恢复真实语义，**必须**在此处调用。
+     */
+    public void clearUserCredentials(Long portalUserId) {
+        if (portalUserId == null) {
+            return;
+        }
+        refreshTokens.remove(portalUserId);
+        loginAccessTokens.remove(portalUserId);
+    }
+
     public boolean hasSsoSession(Long portalUserId) {
-        return portalUserId != null && refreshTokens.containsKey(portalUserId);
+        if (portalUserId == null) {
+            return false;
+        }
+        String direct = loginAccessTokens.get(portalUserId);
+        if (direct != null && !direct.isBlank()) {
+            return true;
+        }
+        return refreshTokens.containsKey(portalUserId);
     }
 
     /**

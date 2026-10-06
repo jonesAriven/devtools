@@ -106,6 +106,10 @@ public class SsoController {
                 throw new BusinessException("统一认证返回的用户信息不完整");
             }
             SysUser portalUser = upsertPortalUser(authUid, username, role, nickname);
+            // 🔴 2026-10-06 Phase 13：与 AuthController.login 同理，保存中心签发的 access_token
+            //    （中心的 mail-login 也返回 LoginResponse，与账密/SSO 同源同签发路径）。
+            //    否则邮箱码登录的管理员调管理面会因无凭据而 401。
+            authCenterService.storeLoginAccessToken(portalUser.getId(), data);
             log.info("portal 邮箱验证码登录成功: {} (authUid={})", username, authUid);
             return Result.ok(toLoginResponse(portalUser, authUid));
         } catch (BusinessException e) {

@@ -75,6 +75,15 @@ public class AuthController {
 
         SysUser user = shadowUser(username, nickname, role, authUid);
 
+        // 🔴 2026-10-06 Phase 13：保存中心在账密登录时签发的 access_token。
+        //    此前只保留了 portal 自签的 HS256 会话 token，导致账密/邮箱码登录的**管理员
+        //    调管理面必 401**（无 SSO refresh_token 可换）。而中心的 loginAsUser 与 SSO 换票
+        //    走同一个 jwtTokenProvider、同样返回可直调 /admin/** 的 access_token
+        //    （JwtAuthenticationFilter 明确支持 legacy 分支 + type==access 校验）。
+        //    ⇒ 这里存下来，凭据链与 SSO 路径完全统一，且中心审计到的是**本人**而非服务账号
+        //    （旧 callAdmin 的服务身份兜底会审计失真，已废弃）。
+        authCenterService.storeLoginAccessToken(user.getId(), resp);
+
         String token = jwtUtil.generateToken(user.getId(), user.getUsername(),
                 user.getRole() == null ? "user" : user.getRole());
         LoginResponse response = new LoginResponse(

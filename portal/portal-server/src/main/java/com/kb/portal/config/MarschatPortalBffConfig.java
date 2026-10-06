@@ -105,8 +105,12 @@ public class MarschatPortalBffConfig {
     /**
      * 从 request attribute 取 portal 用户 id，换取中心 access token。
      *
-     * @return 中心 access token；<b>无 SSO 会话 / 换取失败时返回 {@code null}</b>
-     *         （上层据此 401，绝不兜底服务账号）
+     * <p>🔴 2026-10-06 Phase 13：改用 {@code resolveAccessToken}（按登录渠道自动选池），
+     * 不再只走「SSO refresh_token 换票」这一条 —— 否则账密/邮箱码登录的管理员
+     * 恒 401，而他们**本该能用**用户管理页（中心在那两种登录时就已签发可用access_token）。
+     *
+     * @return 中心 access token；<b>无可用凭据 / 换取失败时返回 {@code null}</b>
+     *（上层据此 401，绝不兜底服务账号）
      */
     private String resolveCenterToken(HttpServletRequest request) {
         if (request == null) {
@@ -119,10 +123,10 @@ public class MarschatPortalBffConfig {
             return null;
         }
         try {
-            String accessToken = authCenterService.refreshAccessToken(portalUserId);
+            String accessToken = authCenterService.resolveAccessToken(portalUserId);
             return (accessToken == null || accessToken.isBlank()) ? null : accessToken;
         } catch (Exception e) {
-            // refresh_token 过期 / 被撤销 / 认证中心侧会话丢失 → fail-closed
+            // 凭据过期 / 被撤销 / 认证中心侧会话丢失 → fail-closed
             log.warn("BFF 换取中心凭据失败（返回 401，不回退服务账号）：userId={} cause={}",
                     portalUserId, e.getMessage());
             return null;
