@@ -1,5 +1,6 @@
 import { reportError } from '@/api/errorLog'
-import { getToken } from './token'
+// Phase 13：令牌读取统一走 `@/config`（原 `./token` 适配层已删除）
+import { getToken } from '@/config'
 
 let errorQueue: any[] = []
 let isReporting = false

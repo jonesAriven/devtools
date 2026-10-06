@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { R } from '@/types'
-import { getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOidcToken } from '@/utils/token'
-import { renewByReauthorize } from '@/utils/sso'
+import {
+  getToken, getRefreshToken, setToken, setRefreshToken, clearTokens, isOidcToken, sso,
+} from '@/config'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { CONTEXT_PATH } from '@/config'
@@ -111,7 +112,7 @@ request.interceptors.response.use(
         originalRequest._retry = true
         // 回跳必须传 router 内部路径：pathname 含部署前缀（/kb），原样传会在
         // sso-callback 的 router.replace(base) 再拼一次 → /kb/kb/... 落 404（2026-09-14 实测）
-        await renewByReauthorize(currentSpaPath())
+        await sso.renew(currentSpaPath())
         return Promise.reject(error)
       }
 

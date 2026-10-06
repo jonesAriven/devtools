@@ -21,8 +21,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { CircleCloseFilled, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { handleSsoCallback, decodeOidcClaims } from '@/utils/sso'
-import { getToken } from '@/utils/token'
+import { sso, getToken } from '@/config'
 import { useUserStore } from '@/stores/user'
 import { getUserProfile } from '@/api/user'
 import type { User } from '@/types'
@@ -34,9 +33,9 @@ const error = ref('')
 onMounted(async () => {
   try {
     const query = new URLSearchParams(window.location.search)
-    const target = await handleSsoCallback(query)
+    const target = await sso.handleCallback(query)
     // 优先取授权服务器 token 里的业务 claims 构建会话；/auth/me 失败不阻塞进入
-    const claims = decodeOidcClaims(getToken() || '')
+    const claims = sso.decodeClaims(getToken() || '')
     userStore.isLoggedIn = true
     try {
       const res = await getUserProfile()

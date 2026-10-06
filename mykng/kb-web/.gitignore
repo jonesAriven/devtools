@@ -2,3 +2,12 @@
 # 禁止 npm 生成 package-lock.json 污染仓库：CI 走 pnpm install --frozen-lockfile，
 # 仅认 pnpm-lock.yaml。npm/pnpm 混用会互相拍平 node_modules，见 ADR §15.9。
 package-lock.json
+
+# Vite 加载 TS 配置时的临时产物（`vite.config.ts.timestamp-*.mjs`）。
+# 每次 dev/build 都会新建一份、且**永不自动清理**（配置热重载失败时残留），
+# 会在 git status 里堆出几十条噪声，掩盖真实改动。
+# Phase 13 迁移实测：一次构建 + 多次 dev 后残留 25 个 / 约 200K。
+vite.config.ts.timestamp-*.mjs
+
+# 注：pnpm 的 `_tmp_*` 规则**不在本层**——那些文件产生在 mykng/ 根（上一级目录），
+# 而 .gitignore 只向下生效，故该规则已上移至 mykng/.gitignore，此处保留会空转。

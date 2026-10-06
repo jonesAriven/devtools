@@ -1,3 +1,17 @@
+/**
+ * 应用入口（Phase 13 配置化接入）
+ *
+ * 接入相关的全部工作在 `src/marschat.ts` 的一行装配里完成，本文件只负责
+ * 「创建 Vue 应用 + 保留 kb-web 独有的初始化 + 按正确顺序挂载插件」。
+ *
+ * 顺序铁律：路由权限守卫已在 `createMarschatApp()` 内注册，因此必须经
+ * `marschat.install(app)` 挂 router —— 不能自行 `app.use(router)`，
+ * 否则守卫晚于首次导航注册，首屏会跳过权限判定（坑 #5）。
+ *
+ * ⚠️ 部署 base（`window.__MARSCHAT_APP_BASE__`）已由装配层声明，且必须**先于**
+ *    守卫/组件跳登录 —— 公共库据此拼出带 base 的正确地址，否则会跳到域名根 `/login`
+ *    （本 SPA 部署在 /kb 下 → nginx 无该 location → 404，2026-09-14 实测，见 ADR §32.11）。
+ */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
@@ -6,26 +20,17 @@ import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
-import router from './router'
-import { getToken, isOidcToken } from '@/utils/token'
-import { startSessionWatcher } from '@/utils/sso'
-import { permissions } from '@/utils/permissions'
+import { getToken, isOidcToken, startSessionWatcher } from '@/config'
 import { useModuleStore } from '@/stores/module'
 import { useAppStore } from '@/stores/app'
 import { setupErrorHandler } from '@/utils/errorReporter'
-import { CONTEXT_PATH } from '@/config'
-
-// ⚠️ 统一声明本应用的**部署 base（子路径）**，供公共库（frontend-common / auth-components）
-//    在需要「跳登录页」时拼出带 base 的正确地址。
-//    背景：公共库若写死「根相对 /login」会跳到**域名根**，
-//    而本 SPA 部署在 /kb 下 → nginx 无该 location → 404（2026-09-14 实测，见 ADR §32.11）。
-window.__MARSCHAT_APP_BASE__ = CONTEXT_PATH
-
-setupErrorHandler()
+import { marschat } from '@/marschat'
 
 import './styles/index.scss'
 import './styles/mobile.scss'
 import './styles/dark.scss'
+
+setupErrorHandler()
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -35,7 +40,7 @@ for (const [name, comp] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
-app.use(router)
+marschat.install(app) // 挂 router（守卫已先注册；部署 base 也已由装配层声明）
 app.use(ElementPlus, { locale: zhCn })
 app.mount('#app')
 
@@ -46,7 +51,8 @@ useAppStore(pinia).initThemeOnBoot()
 const bootToken = getToken()
 if (bootToken) {
   useModuleStore(pinia).fetchModules()
-  // 🔴 2026-09-15 回归修复：**只有 OIDC 会话才启动会话监视器**（与 infra-monitor 同修法）。
+
+  // 🔴 2026-09-15 回归修复（Phase 13 迁移时原样保留）：**只有 OIDC 会话才启动会话监视器**。
   //
   // 监视器探的是 auth-center `/auth/session`（IdP 会话），而账密/邮箱码登录得到的是
   // 本应用自签 token（`token_kind=legacy`），浏览器里**本就没有 IdP 会话** →
@@ -55,12 +61,16 @@ if (bootToken) {
   // 每次整页刷新（F5 / 直输网址 / 从门户跳回）都被判「他处已登出」→
   // `clearLocalAuth()` + 跳 `<base>/login?slo=1`，账密会话活不过 3 秒。
   //
-  // 对无 IdP 会话的登录方式做 SLO 联动本无意义（没有会话可监视），故按 token 类型分流。
-  if (isOidcToken(bootToken)) {
+  // ⚠️ 装配层 `bootstrap()` 内置的 `watchSession` 分流判据是 `sessionMode`（**应用级常量**），
+  //    判不出「本会话是账码还是 OIDC」，而 kb-web 两种登录方式并存 ⇒ 必须关掉装配层的
+  //    自动监视（`watchSession: false`，见 `marschat.ts`），改由本文件按 `isOidcToken()`
+  //    逐令牌精确分流。语义与迁移前完全一致。
+  if (isOidcToken()) {
     // Phase 6：启动会话监视 —— 任一应用统一登出后，本应用会随之退出（跨应用单点登出联动）
     startSessionWatcher()
   }
+
   // Phase 2：预取 RBAC 权限点（供菜单过滤 / PermissionGate 消费；路由守卫侧也会 ensure）。
   // 拉取失败一律降级为 configured=false（全放行），绝不阻塞启动。
-  void permissions.ensure()
+  marschat.bootstrap()
 }

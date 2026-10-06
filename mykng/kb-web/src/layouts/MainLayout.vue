@@ -203,9 +203,7 @@ import { useUserStore } from '@/stores/user'
 import { useSpaceStore } from '@/stores/space'
 import { useModuleStore } from '@/stores/module'
 import { useAuth } from '@/composables/useAuth'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims } from '@/utils/sso'
-import { permOptions } from '@/utils/permissions'
+import { getToken, sso, permOptions } from '@/config'
 import { createKbMenus } from '@/menus'
 import BackToTop from '@/components/BackToTop.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
@@ -237,7 +235,7 @@ const kbGroupReason = computed(() => [kbKnowledgeReason.value, kbFileReason.valu
  * `AdminUserController` 的 `@PreAuthorize("hasRole('ADMIN')")`。
  */
 const isAdmin = computed(() => {
-  const claims = decodeOidcClaims(getToken() || '')
+  const claims = sso.decodeClaims(getToken() || '')
   return claims?.role === 'admin' || claims?.role === 'superadmin'
 })
 

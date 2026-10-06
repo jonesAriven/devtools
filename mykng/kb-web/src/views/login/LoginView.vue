@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { LoginPage, setToken, setRefreshToken } from '@marschat/auth-components'
 import { useAuth } from '@/composables/useAuth'
-import { bootstrapLoginPage, startSsoLogin, SSO_CONFIG } from '@/utils/sso'
+import { sso, SSO_CONFIG } from '@/config'
 
 const router = useRouter()
 const { loading, login } = useAuth()
@@ -67,7 +67,10 @@ onMounted(async () => {
     return
   }
   try {
-    const jumped = await bootstrapLoginPage(currentRedirect())
+    // ⚠️ 必须用**已绑定配置**的 `sso.bootstrapLoginPage(redirect)`，不能用组件库裸函数
+    //    `bootstrapLoginPage(config, redirect)` —— 后者会把 redirect 字符串当config 传进去，
+    //    授权 URL 变成 `client_id=undefined`，**静默免登静默失效且不报错**（历史最难查的一类 bug）。
+    const jumped = await sso.bootstrapLoginPage(currentRedirect())
     if (!jumped) probing.value = false
   } catch {
     // 探针失败一律按"无会话"处理，绝不能因为认证中心抖动把登录页打成白屏
@@ -87,7 +90,7 @@ async function handleLogin(credentials: { username: string; password: string }) 
 
 async function handleSsoLogin() {
   try {
-    await startSsoLogin(currentRedirect())
+    await sso.login(currentRedirect())
   } catch (err: any) {
     ElMessage.error(err?.message || 'SSO 登录发起失败')
   }

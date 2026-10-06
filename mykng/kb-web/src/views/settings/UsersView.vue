@@ -17,27 +17,25 @@
  */
 import { UserManagementPanel, createUserAdminClient } from '@marschat/auth-components'
 import type { UserManagementConfig } from '@marschat/auth-components'
-import { getToken } from '@/utils/token'
-import { decodeOidcClaims, renewByReauthorize } from '@/utils/sso'
-import { OIDC_CLIENT_ID, API_BASE_URL } from '@/config'
+import { getToken, sso, API_BASE_URL, APP_CONFIG } from '@/config'
 
 const client = createUserAdminClient({
   // auth-center 是平台唯一账号池；4 个直换票应用统一走这个地址
   baseUrl: `${API_BASE_URL}/admin/users`,
   getToken: () => getToken(),
   // 401（本地 token 过期但 IdP 会话仍在）→ 静默重授权，回来后自动重载列表
-  onUnauthorized: () => void renewByReauthorize(),
+  onUnauthorized: () => void sso.renew(),
 })
 
 /** 当前登录用户 id —— 面板据此禁止"删除自己 / 禁用自己" */
-const claims = decodeOidcClaims(getToken() || '')
+const claims = sso.decodeClaims(getToken() || '')
 const currentUserId = (claims?.uid ?? claims?.sub ?? null) as number | string | null
 
 const config: UserManagementConfig = {
   client,
   // Phase 8 双作用域：本页是**应用作用域**（本系统用户），只显示与本知识库有关的用户。
   // 平台作用域（全平台统一身份 / 跨应用授权 / 账号映射）在门户的「统一认证中心」。
-  scope: { mode: 'app', clientId: OIDC_CLIENT_ID, appName: '知识库 kb-web' },
+  scope: { mode: 'app', clientId: APP_CONFIG.clientId, appName: '知识库 kb-web' },
   title: '本系统用户',
   subtitle:
     '仅显示与本知识库有关的用户（在本系统有角色、或有账号映射、或为管理员）。全局身份与全局角色请在门户的「统一认证中心」维护。',
@@ -50,9 +48,9 @@ const config: UserManagementConfig = {
   // clientId 取本应用 SSO client（运行时 app-config.json 派生，缺省 marschat-kbweb）
   appRoles: {
     baseUrl: API_BASE_URL,
-    clientId: OIDC_CLIENT_ID,
+    clientId: APP_CONFIG.clientId,
     getToken: () => getToken(),
-    onUnauthorized: () => void renewByReauthorize(),
+    onUnauthorized: () => void sso.renew(),
   },
 }
 </script>

@@ -1,9 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { getToken } from '@/utils/token'
+import { getToken, permCode, CONTEXT_PATH as ctx } from '@/config'
 import MainLayout from '@/layouts/MainLayout.vue'
-import { CONTEXT_PATH as ctx } from '@/config'
-import { permCode, setupAuthGuard } from '@/utils/permissions'
 
 /**
  * `meta.perm` = RBAC 权限点全码（Phase 2 三层同源之「路由层」）。
@@ -174,8 +172,11 @@ router.beforeEach((to, _from, next) => {
 })
 
 // Phase 2 · RBAC 路由守卫（三层同源之「路由层」）
-// ⚠️ 必须在 `app.use(router)` 之前注册；只有声明了 meta.perm 的路由受管。
-// 当前 auth-center 侧 sys_permission 为空（configured=false）→ 全放行，行为与接入前一致。
-setupAuthGuard(router)
+// 🔴 Phase 13：守卫注册已上移到 `createMarschatApp()`（src/marschat.ts）内部，
+//    保证「守卫先于 app.use(router)」这条时序由装配层强制，而不是靠每个应用记得调。
+//    本文件不再自行 setupAuthGuard。
+//    当前 auth-center 侧 sys_permission 为空（configured=false）→ 全放行，行为与接入前一致。
+// ⚠️ 下方这段`requiresAuth` 守卫是 **kb-web 自有登录态判定**（与 RBAC 无关）：
+//    它管「有没有本地 token」，RBAC 守卫管「这个 token 有没有这个权限点」，两者都要保留。
 
 export default router

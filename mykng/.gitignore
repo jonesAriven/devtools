@@ -32,6 +32,13 @@ desktop.ini
 *.swp
 *~
 
+# pnpm 安装过程产生的 0 字节临时文件（pnpm 异常退出时残留）。
+# ⚠️ 必须放在**本层**（mykng/）而非 kb-web/：这些文件产生在 mykng/ 根，
+# 而 .gitignore 规则只向下生效、不向上生效 —— 写在 kb-web/ 里对本层文件无效。
+# Phase 13 实测：kb-web/.gitignore 中的同名规则对 mykng/_tmp_* 完全空转
+# （git check-ignore 返回 EXIT=1），须由本条覆盖。
+_tmp_*
+
 # 自动生成的测试报告（每次运行覆盖，不入库）
 tests/*-test-report.json
 tests/screenshots/

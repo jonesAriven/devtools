@@ -3,8 +3,7 @@ import { ref } from 'vue'
 import type { User } from '@/types'
 import { login as loginApi, logout as logoutApi } from '@/api/auth'
 import { getUserProfile } from '@/api/user'
-import { setToken, setRefreshToken, getToken, setTokenKind } from '@/utils/token'
-import { ssoLogout } from '@/utils/sso'
+import { setToken, setRefreshToken, getToken, setTokenKind, ssoLogout } from '@/config'
 
 export const useUserStore = defineStore('user', () => {
   const accessToken = ref<string | null>(getToken())
@@ -41,8 +40,8 @@ export const useUserStore = defineStore('user', () => {
    * 与旧实现的区别：旧版只 `clearTokens()` + 跳 /login，**IdP 会话仍然活着**，
    * 于是再打开本应用或任一兄弟应用，静默免登会把你**直接免密登回去** —— 表现为"根本退不出去"。
    *
-   * 现在改为走 `SLO_CONFIG` 指向的 auth-center `/auth/slo`：
-   * 清 SSO Cookie → 带 id_token_hint 跳 `/connect/logout` 销毁 IdP 会话 → 回跳登录页。
+   * 现在改为走 auth-center `/auth/slo`：
+   * 清SSO Cookie → 带 id_token_hint 跳 `/connect/logout` 销毁 IdP 会话 → 回跳登录页。
    * ⚠️ `ssoLogout` 会导航离开，所以后面不需要再 router.push。
    */
   async function logout() {
@@ -55,8 +54,10 @@ export const useUserStore = defineStore('user', () => {
     refreshToken.value = null
     profile.value = null
     isLoggedIn.value = false
-    // 内部已 clearLocalAuth()，无需再 clearTokens()
-    // ⚠️ 签名是「已绑定配置」的 `ssoLogout(options?)`，不要再传 SSO_CONFIG（会当成 options）
+    // ⚠️ 必须用 `ssoLogout`（= stopSessionWatcher + sso.logout），**不能直接调 `sso.logout()`**：
+    //    登出会导航离开，若此时会话监视器仍在跑，它可能在跳转途中再判定一次「会话已失」
+    //    → 造成多余的二次跳转。旧 `utils/sso.ts` 的 `ssoLogout` 正是这个语义，迁移后不能丢。
+    //    内部已 clearLocalAuth()，无需再 clearTokens()。
     ssoLogout()
   }
 

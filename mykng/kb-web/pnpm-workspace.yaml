@@ -6,6 +6,7 @@ allowBuilds:
   esbuild: true
   vue-demi: true
 minimumReleaseAgeExclude:
+  - '@marschat/app-kit'
   - '@marschat/auth-components'
   - '@marschat/frontend-common'
 onlyBuiltDependencies:
