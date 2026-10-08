@@ -35,7 +35,10 @@ export const portalRequest = axios.create({
 // ==========================================================================
 
 // 登录/换票自身路径：绝不触发续期，防递归（I-D1-3）
-const AUTH_WHITELIST = ['/auth/sso/', '/auth/login', '/auth/mail-login', '/auth/slo', '/auth/session']
+// T-ENG-8（2026-10-07）：加入 '/auth/logout' —— 登出接口自身绝不能被 401 分支接管。
+//   否则 token 恰好过期时点「退出登录」会先走 clearSession + 「登录已过期」硬跳登录页，
+//   与随后的 SLO 跳转形成竞态（且 clearSession 抢先把 token 清掉，服务端反拿不到 userId 清凭据）。
+const AUTH_WHITELIST = ['/auth/sso/', '/auth/login', '/auth/mail-login', '/auth/slo', '/auth/session', '/auth/logout']
 const isAuthWhitelist = (url: string) => AUTH_WHITELIST.some(p => (url || '').includes(p))
 
 function addTokenInterceptor(instance: AxiosInstance) {

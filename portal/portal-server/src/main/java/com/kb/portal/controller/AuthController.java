@@ -147,8 +147,49 @@ public class AuthController {
         return user;
     }
 
+    /**
+     * 登出 —— 服务端侧凭据清理（T-ENG-8，2026-10-07）。
+     *
+     * <p>🔴 <b>修复前的缺陷</b>：本端点此前是<b>空实现</b>（直接 {@code Result.ok()}），
+     * 而前端 {@code userStore.logout()} 也<b>根本没调它</b>（只清 localStorage + 跳 SLO）。
+     * 后果是 2026-10-06 新增 {@link AuthCenterService#loginAccessTokens} 后，
+     * <b>用户点了「退出登录」，服务端仍握着一枚可直调 {@code /admin/**} 的中心 access_token</b>
+     * —— 客户端以为已登出，服务端侧凭据却原封不动（凭据残留）。
+     *
+     * <p><b>现在的链路</b>（服务端这一段在 SLO 跳转<b>之前</b>由前端主动调用）：
+     * <ol>
+     *   <li>取本进程持有的中心 access_token（账密池优先，其次 refresh 池换票）；</li>
+     *   <li>调中心 {@code POST /auth/logout} 把它写进 {@code jwt_blacklist}（吊销）；</li>
+     *   <li>清本进程两个凭据池 —— <b>无论第 2 步成功与否都要清</b>；</li>
+     *   <li>客户端清 localStorage → SLO 销毁 IdP 会话。</li>
+     * </ol>
+     *
+     * <p>⚠️ <b>本端点全程 best-effort</b>：任何一步失败都<b>不影响</b>返回 200。
+     * 用户"退得掉"是硬需求，不能因为中心抖动就卡住登出。
+     *
+     * <p>⚠️ 依赖 {@code JwtInterceptor} 注入的 {@code userId}（见 WebMvcConfig：本路径已被拦截）。
+     * 拿不到 userId（如 token 已失效被拦截器挡下）时静默返回 200 —— 此时本就没有凭据可清。
+     */
     @PostMapping("/logout")
-    public Result<Void> logout() {
+    public Result<Void> logout(HttpServletRequest request) {
+        Object rawUserId = request == null ? null : request.getAttribute("userId");
+        if (!(rawUserId instanceof Long userId)) {
+            // 无 userId ⇒ 拦截器已判定会话不可用，本进程不会有该用户的残留凭据
+            return Result.ok();
+        }
+
+        String accessToken = null;
+        try {
+            accessToken = authCenterService.resolveAccessToken(userId);
+        } catch (Exception e) {
+            log.warn("登出：取中心凭据失败（跳过吊销，仅清本地池）: {}", e.getMessage());
+        }
+
+        boolean revoked = authCenterService.revokeAccessToken(accessToken);
+        // 无论吊销是否成功都要清池：池是本进程的可利用面，优先级高于中心的拉黑结果
+        authCenterService.clearUserCredentials(userId);
+        log.info("登出：服务端凭据已清理 userId={} hadToken={} revoked={}",
+                userId, accessToken != null && !accessToken.isBlank(), revoked);
         return Result.ok();
     }
 

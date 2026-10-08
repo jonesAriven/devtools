@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { setTokenKind } from '@marschat/auth-components'
-import { login as loginApi, ssoExchangeApi, type LoginRequest } from '@/api/auth'
+import { login as loginApi, logout as logoutApi, ssoExchangeApi, type LoginRequest } from '@/api/auth'
 import { logout as ssoLogoutPortal } from '@/config/session'
 
 const TOKEN_KEY = 'portal_token'
@@ -112,8 +112,23 @@ export const useUserStore = defineStore('user', () => {
    * portal 或任一兄弟应用都会被静默免登**直接免密登回去** —— "退不掉"。
    * 现在交给 auth-center `/auth/slo`：清 SSO Cookie → 销毁 IdP 会话 → 回跳登录页。
    * ⚠️ 会导航离开，调用方不要再 router.push。
+   *
+   * 🔴 T-ENG-8（2026-10-07）：补上**服务端侧清凭据**这一环。
+   *   此前 `@/api/auth` 里虽定义了 `logout()`，但**没有任何调用方**（死代码），
+   *   而后端 `/api/auth/logout` 又是空实现 ⇒ 双重缺失：
+   *   用户点了退出，portal-server 手里那枚可直调 `/admin/**` 的中心 access_token **原封不动**。
+   *   现在登出链路补全为：服务端吊销+清池 → 客户端清本地 → SLO。
+   *
+   * ⚠️ 服务端调用必须 **best-effort**：失败/401/中心不可达都**不得阻断**登出 ——
+   *   "退得掉"是硬需求，不能因为后端抖一下就把用户锁在登录态里。
+   *   （`request.ts` 已把 `/auth/logout` 加入 401 白名单，避免与 SLO 跳转抢导航。）
    */
-  function logout() {
+  async function logout() {
+    try {
+      await logoutApi()
+    } catch {
+      // 故意吞掉：登出不应被服务端故障卡住（后端自身也是 best-effort 返回 200）
+    }
     clearSession()
     ssoLogoutPortal()
   }

@@ -345,8 +345,10 @@ public class AuthCenterService {
      * 否则登出后服务端仍留着可直调 {@code /admin/**} 的 access_token，
      * 构成**凭据残留**漏洞（用户以为已登出，实际服务端侧仍可被利用）。
      *
-     * <p>⚠️ 前端 {@code /auth/logout} 端点当前是空实现（凭据由客户端清），
-     * 所以此方法当前无调用方；一旦该端点恢复真实语义，**必须**在此处调用。
+     * <p>✅ 2026-10-07（T-ENG-8）：{@code POST /api/auth/logout} 已恢复真实语义，
+     * 本方法是其调用方之一 —— 登出链路 =
+     * <b>① 吊销中心 access_token（拉黑）→ ② 清本进程两个凭据池 → ③ 客户端清本地 → ④ SLO 销毁 IdP 会话</b>。
+     * 缺 ① 则中心 token 在其剩余有效期内仍可用；缺 ② 则本进程仍可凭残留 token 代调 {@code /admin/**}。
      */
     public void clearUserCredentials(Long portalUserId) {
         if (portalUserId == null) {
@@ -354,6 +356,42 @@ public class AuthCenterService {
         }
         refreshTokens.remove(portalUserId);
         loginAccessTokens.remove(portalUserId);
+    }
+
+    /**
+     * 吊销一枚中心 access_token（中心 {@code POST /auth/logout} → 写 {@code jwt_blacklist}）。
+     *
+     * <p><b>为什么必须做这一步</b>：只清本进程内存池，中心签发的 token 在其剩余有效期内
+     * 依然是一枚合法凭证（谁拿到都能直调 {@code /admin/**}）。真正的登出必须让中心把它拉黑。
+     *
+     * <p>🔴 <b>降级铁律</b>：本方法<b>绝不抛异常</b>。登出是用户"必须能退得掉"的路径，
+     * 中心不可达 / 网络抖动 / token 已过期都只记 WARN 并返回 {@code false}，
+     * 调用方<b>不得</b>因吊销失败就阻断后续清理或阻断登出流程。
+     *
+     * @param accessToken 中心签发的 access_token（可为 null / 空白，此时直接返回 false）
+     * @return 中心返回 200 为 true；其余（含异常）一律 false
+     */
+    public boolean revokeAccessToken(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            return false;
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(internalBase() + "/auth/logout"))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .timeout(Duration.ofSeconds(5))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                log.warn("中心吊销 access_token 失败: HTTP {}", response.statusCode());
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            log.warn("中心吊销 access_token 异常（不阻断登出）: {}", e.getMessage());
+            return false;
+        }
     }
 
     public boolean hasSsoSession(Long portalUserId) {
