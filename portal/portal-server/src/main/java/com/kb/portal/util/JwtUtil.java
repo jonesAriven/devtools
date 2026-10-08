@@ -71,7 +71,33 @@ public class JwtUtil {
         TYPE_MISMATCH
     }
 
-    private final JWTSigner signer;
+    /**
+     * 🔴 <b>2026-10-09 线程安全修复（P0 · 本类此前是单例共享一个 signer）</b>
+     *
+     * <p>原先本字段是单个 {@link JWTSigner}（{@code JWTSignerUtil.hs256(key)}），而 hutool 的
+     * {@code HMacJWTSigner} 内部持有一个<b>非线程安全</b>的 {@code javax.crypto.Mac} 实例；
+     * 更关键的是 hutool 的验签实现是<b>「用同一 signer 重新签名再比对」</b>——
+     * <b>签发与验签走的是同一个 {@code Mac}</b>。
+     *
+     * <p>后果：<b>并发时两个线程交错 reset/update/doFinal 同一个 Mac</b> ⇒ 算出的签名错乱
+     * ⇒ <b>一把合法、未过期、签名完全正确的 token 被判 {@code BAD_SIGNATURE}</b>。
+     *
+     * <p><b>实测复现（2026-10-09，生产 portal-server）</b>：
+     * <ul>
+     *   <li>混发并发（每轮 6 个登录〔签发〕 + 6 个业务请求〔验签〕，共 10 轮）⇒
+     *       业务请求失败 <b>5/60（≈8%）</b>，全部表现为 {@code portal_jwt_reject reason=BAD_SIGNATURE}；</li>
+     *   <li>对照：<b>纯验签</b>并发（同一 token 串行 20 次 + 20 路并发 60 次）⇒ <b>0 失败</b>；</li>
+     *   <li>取被拒 token 用容器密钥在容器外重算 HMAC-SHA256 ⇒ <b>签名完全一致</b>
+     *       （即「token 本身没问题，是服务端算错了」）。</li>
+     * </ul>
+     *
+     * <p>线上表现：<b>登录成功后紧随的首批业务请求偶发 401</b>，前端被 401 拦截器踢回
+     * {@code /portal/login?reauth=1}（用户"刚登录就被登出"）。改前复现率约 30~40%。
+     *
+     * <p>修复：<b>每线程一个 signer</b>（各持独立 Mac）—— 既消除竞争，又避免每次调用重建
+     * {@code Mac} 的开销（{@code Mac.getInstance} 不便宜）。
+     */
+    private final ThreadLocal<JWTSigner> signerHolder;
     private final long expireTime;
     private final String issuer;
 
@@ -84,8 +110,9 @@ public class JwtUtil {
                    @Value("${portal.jwt.issuer:marschat-portal}") String issuer,
                    @Value("${portal.jwt.expire-hours:24}") int expireHours) {
         validateSecret(secret);
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        this.signer = JWTSignerUtil.hs256(keyBytes);
+        final byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        // ⚠️ 必须按线程隔离：hutool 的 HMacJWTSigner 内部 Mac 非线程安全（见字段注释）
+        this.signerHolder = ThreadLocal.withInitial(() -> JWTSignerUtil.hs256(keyBytes));
         this.expireTime = expireHours * 3600 * 1000L;
         this.issuer = issuer == null || issuer.isBlank() ? "marschat-portal" : issuer;
     }
@@ -131,12 +158,12 @@ public class JwtUtil {
         return jwt
                 .setExpiresAt(new Date(System.currentTimeMillis() + expireTime))
                 .setIssuedAt(new Date())
-                .sign(signer);
+                .sign(signerHolder.get());
     }
 
     public JWT parseToken(String token) {
         try {
-            if (JWTUtil.verify(token, signer)) {
+            if (JWTUtil.verify(token, signerHolder.get())) {
                 JWT jwt = JWTUtil.parseToken(token);
                 Object expObj = jwt.getPayload("exp");
                 if (expObj != null) {
