@@ -167,13 +167,55 @@
 **全程 best-effort**：吊销失败只记 WARN，**绝不阻断登出**；并把 `/auth/logout` 加入 401 白名单，
 避免 token 恰好过期时 401 分支抢先 `clearSession` + 硬跳登录页，与 SLO 形成竞态。
 
+**上线与验证证据（2026-10-08，流水线 #841 / #842）**
+
+| # | 验证项 | 结果 |
+|---|---|---|
+| 1 | 真实 HTTP 端到端 | 登出前 `GET /api/admin/users` **200** → `POST /api/auth/logout` **200** → 同一枚 token 再调 **401**「无统一认证会话，请使用统一认证登录」→ 重新登录 **200** |
+| 2 | 服务端日志 | `登出：服务端凭据已清理 userId=1 hadToken=true revoked=true` |
+| 3 | 中心黑名单 | `marschat_auth.jwt_blacklist` **4 → 5 条**（新增 `max_id=22`，`expire_at` 与登出时刻吻合） |
+| 4 | 前端产物 | 线上入口 chunk 内含 `auth/logout` 字符串（证明新代码已上线，非旧包） |
+| 5 | 真浏览器完整路径 | `/portal/` → 账密登录（`portal_token_kind=legacy`）→ `/portal/users` 渲染 **2 行真实数据** → 用户菜单「退出登录」→ 确认弹窗 → 回登录页 → **localStorage 全空** |
+
+> ⚠️ 真浏览器验证的两个硬要求（否则误判）：headless + `--no-proxy-server`（沙箱内公网域名 DNS 不可用）、
+> 视口 ≥ 1440×900（否则落移动端断点，桌面侧边栏 DOM 不挂载）、`Network.setCacheDisabled`（常驻 profile 会跑旧 bundle）。
+
 ---
 
-## 8. 遗留
+## 8. 排查记录：部署窗口内「登录后偶发 401」
+
+**现象**：部署完成（#841 23:43 / #842 23:47）后约 3~9 分钟内，真浏览器**能成功登录并拿到 token**，
+但紧随其后的首个业务请求被判 401，前端被 401 拦截器踢回 `/portal/login?reauth=1`。
+服务端日志：`portal_jwt_reject reason=BAD_SIGNATURE uri=/portal/api/sys/system/all iss=marschat-portal typ=portal alg=HS256`。
+
+**排查过程（全部只读，未改动生产配置，未重启服务）**：
+
+| # | 假设 | 验证方式 | 结论 |
+|---|---|---|---|
+| 1 | token 被改写/传错 | 从登录响应日志取 token 算 `sha256`，与被拒日志的 `token_fp` 比对 | **完全一致**（同一枚） |
+| 2 | nginx 多 upstream 轮询 | 同一 token 连打 20 次 + 60 路并发（20 并行） | **20/20、60/60 全 200** ⇒ 单实例 |
+| 3 | 密钥被改动 | 取容器 env 的 `PORTAL_JWT_SECRET`，用 Python 重算 HS256 签名 | **签名一致** ⇒ 该 token 就是用当前密钥签的 |
+| 4 | 签名器并发竞争 | 见 #2（60 并发无失败） | 未复现 |
+| 5 | 前端串了别的 token | CDP 层抓包（`Network.requestWillBeSent` + `getResponseBody`，不注入页面脚本） | 失败窗口内未取到（token 已被拦截器清除） |
+| 6 | 可复现性 | 完全复刻原流程连跑 5 次（`diag_browser6.js`） | **5/5 成功** ⇒ 现象已消失 |
+
+**结论（未证实，不粉饰）**：现象**只在部署后 ~9 分钟窗口内出现 3 次**；其后同一流程 5/5 稳定通过、60 并发零失败。
+最可能的解释是**部署切换窗口内的残留连接/残留实例**（新旧 portal-server 并存期，签发与校验落到了持有不同密钥的实例），
+**但未取得直接证据**（切换期容器已被删除，无法回溯），故按"未证实瞬态"登记而非定性。
+
+**若线上再现的处置**：用 CDP 抓「实际发送的 token」与「登录响应 token」逐字比对，再据此定性（前端串 token / 服务端多实例）。
+
+**⚠️ 与本次改动的关系**：失败发生在**登录之后的普通业务请求**上，而本次改动只涉及 `/auth/logout` 端点与
+401 白名单，二者无因果关系；同一现象在改动前的部署窗口是否出现过**未做对照**，故不排除先前已存在。
+
+---
+
+## 9. 遗留
 
 | # | 项 | 状态 |
 |---|---|---|
 | 1 | `role=admin` 是否补中心 `api:admin` 授权 | 待拍板（T-ENG-7，现实影响为零） |
-| 2 | `clearUserCredentials` 的中心 refresh_token 未真正吊销 | 已通过拉黑 access_token 覆盖；如需彻底可再调中心 revoke refresh |
+| 2 | 中心 refresh_token 未单独吊销 | 已通过 `revokeAccessToken` 把 access_token 写入 `jwt_blacklist` 覆盖；refresh_token 本身无直调 `/admin/**` 能力，如需彻底可再调中心 revoke |
 | 3 | `MainLayout` 登出后仍跟着一句 `router.push('/login')` | SLO 会导航离开，该句是冗余；未改（不在本次范围） |
 | 4 | `LoginView.vue` 既有类型告警 1 处（`brand.gradient`） | 存量，CI 不跑 `vue-tsc`，不阻塞 |
+| 5 | 部署窗口内「登录后偶发 401」 | **未证实瞬态**，见 §8；复现方法已随文档给出 |
