@@ -211,8 +211,12 @@
         fetch('/activecode/api/activation/config/default-expire')
             .then(function(r) { return r.json(); })
             .then(function(d) {
-                if (d.success && document.getElementById('defaultExpireTag')) {
-                    document.getElementById('defaultExpireTag').textContent = d.defaultExpireLabel;
+                // ⚠️ 2026-10-12 修「有效期永远卡在加载中」：原逻辑只在 d.success 为真时赋值，
+                //    而接口异常（HTTP 401/500）时 json() 仍能解析成功 ⇒ 走 then 而非 catch，
+                //    success=false 时既不赋值也不抛错 ⇒ UI 假死。现补 else 分支兜底。
+                if (document.getElementById('defaultExpireTag')) {
+                    document.getElementById('defaultExpireTag').textContent =
+                        (d && d.success && d.defaultExpireLabel) ? d.defaultExpireLabel : '1 个月';
                 }
             })
             .catch(function() {

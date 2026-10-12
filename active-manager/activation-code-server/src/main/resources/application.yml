@@ -125,9 +125,13 @@ marschat:
     #    POST /activation/verify 同处一层单段路径空间（都匹配 /activation/*），
     #    仅凭路径通配会误伤匿名 verify，故必须按方法精确命中。
     rules:
-      - pattern: /activecode/api/activation/generate
-        method: POST
-        perm: code:generate
+      # ⚠️ 2026-10-12：原「/activecode/api/activation/generate + POST → perm: code:generate」规则已删除。
+      #    该端点是对外自助页 /activecode/index.html 的依赖接口（给外模块/客户端用），
+      #    现由 AuthInterceptor 的方法级匿名白名单放行（见 AuthInterceptor#ANONYMOUS_ENDPOINTS）。
+      #    🔴 收回匿名权时必须**同时改两处**（本规则恢复 + AuthInterceptor 白名单移除），
+      #       只改一处会出现「白名单放行了但权限点仍拦」的假性失效。
+      #    ⚠️ config/default-expire 的 PUT 规则保留不动：GET 已按方法级放开给公开页，
+      #       PUT（改默认有效期）仍是管理功能，必须继续受保护。
       - pattern: /activecode/api/activation/batch
         method: DELETE
         perm: code:batch-delete
