@@ -52,8 +52,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/activecode/api/auth/reset-password",
                         // P0-3（2026-09-16）修「匿名洞」：/activation/generate 与
                         // /activation/config/default-expire 曾整条排除出鉴权 —— 匿名即可
-                        // 生成激活码、读默认有效期配置。二者已从白名单移除，改由
-                        // AuthInterceptor（登录）+ PermissionInterceptor（权限点）共同把关。
+                        // 生成激活码、读默认有效期配置。二者当时被移出本白名单。
+                        //
+                        // 🔄 2026-10-12 回退（本次）：/activecode/index.html 是给外模块 /
+                        //    客户端提供的公开自助页（页面本身一直在本白名单内），依赖的正是
+                        //    这两个接口。收口后「页面打得开，但生成按钮必 401、有效期永远卡
+                        //    在『加载中...』」—— 页面放行与接口收口自相矛盾。
+                        //    现改为 {@link AuthInterceptor#ANONYMOUS_ENDPOINTS} 方法级白名单，
+                        //    按「路径 + 方法」放行：POST /generate、GET /config/default-expire。
+                        //    🔴 若日后要收回匿名权：必须**同时**改 AuthInterceptor 白名单与
+                        //       application.yml 的 authz 规则表，只改一处会假性失效。
                         // ⚠️ /activation/verify 保留匿名（**待产品确认是否对外**），语义未动。
                         "/activecode/api/activation/verify",
                         "/activecode/index.html",
