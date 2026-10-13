@@ -28,6 +28,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // ⚠️ 2026-10-13 订正（排查「HTML 无缓存头」时的关键背景，勿再怀疑本配置未注册）：
+        //    本配置**只服务静态资产**（css/js/img，如 sso.js、marschat-auth-core.umd.js）——
+        //    它们不在 PageController 的映射里，由本 resource handler 提供，
+        //    实测响应带齐 Last-Modified + Cache-Control: no-cache, must-revalidate + Accept-Ranges。
+        // 🔴 HTML 页面（main/index/login/sso-callback/downloads/members.html）全部由
+        //    PageController 以 @RestController 直出，抢在本 handler 之前命中
+        //    （RequestMappingHandlerMapping order=0 < SimpleUrlHandlerMapping 的
+        //    LOWEST_PRECEDENCE-1），本处的 setCacheControl 对 HTML 路径不生效。
+        //    HTML 的缓存头必须在 PageController#readStaticFile 单独设置（no-store，2026-10-13）。
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.noCache().mustRevalidate());
