@@ -204,6 +204,15 @@ docker run -d --name activecode \
 2. **端口映射**：宿主机 `18080` → 容器 `8080`，避免与宿主机上其他服务冲突。
 3. **`--restart unless-stopped`**：主机重启后容器自动恢复运行。
 4. **公网访问**：如需公网访问，需在云服务器安全组中放行18080端口，并配置Nginx反向代理。
+5. **放开登录校验的配置化（2026-10-14）**：匿名白名单统一配置在 `application.yml` 的
+   `marschat.auth.anonymous` 段：
+   - `paths`：路径级，整条路径不拦截（Ant 通配），默认含 index.html / downloads.html / api/download/** / api/activation/verify
+   - `endpoints`：方法级，路径仍鉴权、仅列出方法放行（精确路径，无通配），默认含 POST generate、GET config/default-expire
+   - **写值即整体替换**（配置即真相）；不写则沿用代码默认值（与线上一致）
+   - 🔒 登录保底集（login / sso / mail-login / session / favicon）在代码内合并，**配置删不掉**——防误配把登录链路打断导致没人能登录
+   - 收放匿名权 = 改 yml → 走流水线发版；另可配合 `marschat.authz.rules`（权限点规则，同口径已配置化）
+   - ⚠️ 收回 generate/default-expire 匿名权时勿只删 endpoints：若同时恢复了 authz rules 的 `code:generate` 权限点，两处必须配套，只改一处会假性失效
+   - 临时验证手段：容器内 `/activecode/config/application.yml`（Spring Boot 外置配置，优先于 JAR 内，重启生效）；⚠️ CI 重新部署会重建容器，**外置文件不持久**，仅用于验证，生产收放请改 JAR 内 yml 走流水线
 
 ## 7. 问题排查记录
 
