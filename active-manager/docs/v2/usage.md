@@ -64,12 +64,20 @@ mvn spring-boot:run
 - 解析激活码：输入激活码，查看序列号、设备ID、过期时间、初始序列号、机器码
 - 解析序列号：输入序列号，查看初始序列号和机器码，关联数据库显示记录详情
 
-### 1.4 独立生成页面（http://localhost:8080/activecode/index.html）
+### 1.4 独立生成页面（/activecode/index.html）
 
-简洁的单卡片页面，仅提供生成激活码功能：
-- 使用步骤说明（3步流程）
-- 有效期最长30天（快捷按钮：5分钟/1小时/1天/30天）
-- 适合日常快速生成场景
+**定位**：给外模块 / 客户端提供的**公开自助页**（无需登录，可嵌入 iframe 或直接转发链接）。
+
+功能与行为：
+- 简洁的单卡片页面，仅提供生成激活码功能（使用步骤说明 3 步流程）
+- 有效期快捷按钮：5分钟 / 1小时 / 1天 / 30天；页面顶部显示服务端当前默认有效期
+  （由管理端「默认有效期」配置决定，如「3.0 个月」，非固定值）
+- 该页匿名可用的接口：`POST /activecode/api/activation/generate`（生成）、
+  `GET /activecode/api/activation/config/default-expire`（读默认有效期）、
+  `POST /activecode/api/activation/verify`（验证）
+- ⚠️ 修改默认有效期（`PUT .../config/default-expire`）是管理功能，匿名调用返回 401
+- 页面响应带 `Cache-Control: no-store`，浏览器每次访问都会取最新版；
+  若页面行为异常（如「有效期」显示加载中），先 Ctrl+F5 硬刷新再排查
 
 ---
 
@@ -252,7 +260,17 @@ var info = DeviceInfo.ParseSerialNumber("加密序列号");    // 解析序列�
 
 按 Ctrl+Shift+R 强制刷新浏览器缓存。
 
-### Q7：服务端启动报错Whitelabel Error Page
+### Q7：独立生成页「有效期」一直显示「加载中」
+
+1. 先 Ctrl+F5 硬刷新页面（2026-10-13 起页面响应已带 `Cache-Control: no-store`，
+   硬刷新即可拿到最新版；此前的旧版本浏览器可能缓存了无兜底逻辑的旧页面）
+2. 仍异常时打开浏览器开发者工具 → Network，查看
+   `GET /activecode/api/activation/config/default-expire` 的响应：
+   - 200 且 `success:true` → 应正常显示默认有效期
+   - 401 → 检查反代/网关是否给该路径加了登录拦截
+3. 生成按钮无响应时，同法查看 `POST /activecode/api/activation/generate` 的状态码
+
+### Q8：服务端启动报错Whitelabel Error Page
 
 检查数据库连接配置，确认MySQL服务正常运行，数据库`tools`已创建。
 
