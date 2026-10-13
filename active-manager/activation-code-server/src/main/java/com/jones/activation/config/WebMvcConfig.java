@@ -16,9 +16,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final PermissionInterceptor permissionInterceptor;
 
-    public WebMvcConfig(AuthInterceptor authInterceptor, PermissionInterceptor permissionInterceptor) {
+    private final AnonymousAuthProperties anonymousAuth;
+
+    public WebMvcConfig(AuthInterceptor authInterceptor, PermissionInterceptor permissionInterceptor,
+                        AnonymousAuthProperties anonymousAuth) {
         this.authInterceptor = authInterceptor;
         this.permissionInterceptor = permissionInterceptor;
+        this.anonymousAuth = anonymousAuth;
     }
 
     @Override
@@ -44,40 +48,27 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 🔓 2026-10-14：路径级匿名清单从配置读取（marschat.auth.anonymous.paths），
+        //    并与代码内「登录保底集」合并（保底不可清空，防误配打断登录链路）。
+        //    业务性放开/收回只改 yml 重启生效，详见 AnonymousAuthProperties。
+        //
+        //    🧭 历史脉络（排查时必读）：
+        //    - 2026-09-16 P0-3 修「匿名洞」：/activation/generate 与
+        //      /activation/config/default-expire 曾被整条排除出鉴权（匿名可生成/可读配置），
+        //      当时从本白名单移除，改由登录 + 权限点把关。
+        //    - 2026-10-12 回退：/activecode/index.html 是给外模块/客户端提供的公开自助页，
+        //      依赖上述两个接口 ⇒ 改为 AuthInterceptor 的方法级白名单（路径+方法），
+        //      GET default-expire 公开、PUT 仍是管理功能（authz rules: config:expire）。
+        //    - 2026-10-14 配置化：两级白名单（paths / endpoints）统一收敛到
+        //      marschat.auth.anonymous，代码只保留登录保底集。
+        //    🔴 收回匿名权的纪律（勿只改一处，会假性失效）：generate/default-expire 的
+        //       匿名权由 yml 两段共同决定 —— marschat.auth.anonymous.endpoints（放行）
+        //       + marschat.authz.rules（POST generate 的 code:generate 权限点规则，当前已删）。
+        //       若恢复 POST generate 的权限点拦截，只删 endpoints 不放规则 = 接口裸奔。
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/activecode/main.html")
                 .addPathPatterns("/activecode/api/**")
-                .excludePathPatterns(
-                        "/activecode/login.html",
-                        "/activecode/sso-callback.html",
-                        "/activecode/api/auth/login",
-                        "/activecode/api/auth/sso-login",
-                        "/activecode/api/auth/session",
-                        // 统一登录三方式补齐（L1，2026-09-15）：邮箱码登录与自助改密都发生在
-                        // 「还没有本地会话」时，必须匿名可达，否则用户根本进不了登录流程。
-                        "/activecode/api/auth/mail-login",
-                        "/activecode/api/auth/mail-login/send-code",
-                        "/activecode/api/auth/forgot-password",
-                        "/activecode/api/auth/reset-password",
-                        // P0-3（2026-09-16）修「匿名洞」：/activation/generate 与
-                        // /activation/config/default-expire 曾整条排除出鉴权 —— 匿名即可
-                        // 生成激活码、读默认有效期配置。二者当时被移出本白名单。
-                        //
-                        // 🔄 2026-10-12 回退（本次）：/activecode/index.html 是给外模块 /
-                        //    客户端提供的公开自助页（页面本身一直在本白名单内），依赖的正是
-                        //    这两个接口。收口后「页面打得开，但生成按钮必 401、有效期永远卡
-                        //    在『加载中...』」—— 页面放行与接口收口自相矛盾。
-                        //    现改为 {@link AuthInterceptor#ANONYMOUS_ENDPOINTS} 方法级白名单，
-                        //    按「路径 + 方法」放行：POST /generate、GET /config/default-expire。
-                        //    🔴 若日后要收回匿名权：必须**同时**改 AuthInterceptor 白名单与
-                        //       application.yml 的 authz 规则表，只改一处会假性失效。
-                        // ⚠️ /activation/verify 保留匿名（**待产品确认是否对外**），语义未动。
-                        "/activecode/api/activation/verify",
-                        "/activecode/index.html",
-                        "/activecode/downloads.html",
-                        "/activecode/api/download/**",
-                        "/favicon.ico"
-                );
+                .excludePathPatterns(anonymousAuth.effectivePaths().toArray(new String[0]));
 
         // P0-3 (2026-09-16): API-level permission gate (MVC HandlerInterceptor).
         // Registered AFTER authInterceptor: check 'logged in' first, then 'permission point'.

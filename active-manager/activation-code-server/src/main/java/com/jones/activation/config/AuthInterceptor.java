@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,7 +24,7 @@ public class AuthInterceptor implements HandlerInterceptor {
      * {@code /api/activation/config/default-expire} 从 {@code WebMvcConfig} 的
      * {@code excludePathPatterns} 移除，改由登录 + 权限点把关。
      * 但 {@code /activecode/index.html} 是<b>给外模块 / 客户端提供的公开自助页</b>
-     * （该页面本身仍在白名单内，见 {@code WebMvcConfig} 第 59 行），它依赖的正是这两个接口。
+     * （该页面本身仍在白名单内，见 {@code WebMvcConfig}），它依赖的正是这两个接口。
      * ⇒ 页面打得开，但「生成激活码」必然 401、「有效期」永远卡在「加载中...」
      * （前端 {@code d.success=false} 时既不设置也不走 catch，故 UI 假死）。
      *
@@ -35,17 +34,19 @@ public class AuthInterceptor implements HandlerInterceptor {
      * 规则表（{@code perm=config:expire}）保护。若用路径级 exclude 会连 PUT 一起放开
      * ⇒ <b>匿名可改系统配置</b>（越权）。故这里以「路径 + 方法」为键。
      *
+     * <p>🔄 2026-10-14：白名单从本类硬编码迁移到配置
+     * {@code marschat.auth.anonymous.endpoints}（{@link AnonymousAuthProperties}），
+     * 收放匿名权只改 yml 重启即可，不再需要改代码发版。
+     *
      * <p>⚠️ <b>放开后的风险与缓解</b>：「匿名可生成激活码」。约束仍在：序列号必须由客户端
      * 软件产生、服务端校验有效性（无效即拒 {@code SERIAL_INVALID}）。如需进一步收紧
      * （频控 / 验证码），另立工单，**不要靠把接口重新关回去**来解决。
      */
-    private static final Map<String, Set<String>> ANONYMOUS_ENDPOINTS = buildAnonymousEndpoints();
+    private final Map<String, Set<String>> anonymousEndpoints;
 
-    private static Map<String, Set<String>> buildAnonymousEndpoints() {
-        Map<String, Set<String>> m = new HashMap<>();
-        m.put("/activecode/api/activation/generate", Set.of("POST"));
-        m.put("/activecode/api/activation/config/default-expire", Set.of("GET"));
-        return m;
+    public AuthInterceptor(AnonymousAuthProperties anonymousAuth) {
+        // 启动时快照一次配置（收放匿名权后需重启生效，符合部署预期）
+        this.anonymousEndpoints = anonymousAuth.endpointMap();
     }
 
     @Override
@@ -87,7 +88,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     /** 白名单判定：路径命中且 HTTP 方法（大写）命中才放行。 */
     private boolean isAnonymousEndpoint(String uri, String method) {
-        Set<String> methods = ANONYMOUS_ENDPOINTS.get(uri);
+        Set<String> methods = anonymousEndpoints.get(uri);
         return methods != null && method != null && methods.contains(method.toUpperCase());
     }
 }

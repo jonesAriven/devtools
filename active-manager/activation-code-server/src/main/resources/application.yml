@@ -147,3 +147,24 @@ marschat:
       - pattern: /activecode/api/activation/version-check
         method: PUT
         perm: config:version-check
+  # ── 放开登录校验配置（2026-10-14）──────────────────────────────────────────
+  # 收放匿名权只改本段 + 重启，无需改代码（实现见 AnonymousAuthProperties）。
+  # ⚠️ 登录保底集（login/sso/mail-login/session/favicon 等）在代码内合并、本段删不掉，
+  #    防误配把登录链路打断导致没人能登录；业务性放开只配下面两项。
+  # ⚠️ 写 paths/endpoints 即「整体替换」对应清单（配置即真相）；不写则沿用代码默认值
+  #    （与 2026-10-14 线上清单一致）。
+  auth:
+    anonymous:
+      # 路径级：整条路径不拦截（支持 Ant 通配，如 /**）。默认 = 改造前 excludePathPatterns 业务部分。
+      paths:
+        - /activecode/index.html
+        - /activecode/downloads.html
+        - /activecode/api/download/**
+        - /activecode/api/activation/verify
+      # 方法级：路径仍走登录拦截，仅列出的 HTTP 方法放行（精确路径匹配，不支持通配）。
+      # 用于「GET 公开 / PUT 鉴权」这类必须按方法拆分的场景；当前默认 = 对外自助页依赖接口。
+      endpoints:
+        - path: /activecode/api/activation/generate
+          methods: [POST]
+        - path: /activecode/api/activation/config/default-expire
+          methods: [GET]
