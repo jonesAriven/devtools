@@ -100,11 +100,14 @@
                  排除其中任何一个都会造成功能回归（详见 PHASE13 迁移记录）。 -->
         <!-- Phase 13：2.1.6 → 2.2.0 —— 2.2.0 引入 BFF 模块（MarschatBffAutoConfig），
              portal 的 /admin/** 前缀透传改由其承接（原 SsoController#proxyAdminCenter 已删）。
-             自定义 BffCredentialResolver 见 MarschatPortalBffConfig。 -->
+             自定义 BffCredentialResolver 见 MarschatPortalBffConfig。
+             Phase 14：2.2.0 → 2.3.0 —— 2.3.0 上沉 AnonymousAuthProperties（登录校验放行
+             配置化白名单），portal 的 excludePathPatterns 硬编码三项改读
+             marschat.auth.anonymous.paths（见 WebMvcConfig + application.yml）。 -->
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>auth-core</artifactId>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
         </dependency>
     </dependencies>
 

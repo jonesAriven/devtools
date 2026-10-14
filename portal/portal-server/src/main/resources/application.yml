@@ -73,6 +73,26 @@ marschat:
     # 此处仅满足 TokenProvider 装配所需（auth-core 传递引入 jjwt，AuthJwtAutoConfig 会装配）。
     # 🔴 不再回落到与 infra-monitor 共享的 JWT_SECRET；改为复用 portal 自己的密钥。
     secret: ${MARSCHAT_AUTH_SECRET:${PORTAL_JWT_SECRET:}}
+    # ── 放开登录校验配置（2026-10-15 · auth-core 2.3.0）─────────────────────────
+    # 收放匿名权只改本段 + 重启，无需改代码（实现见 com.marschat.auth.anonymous.AnonymousAuthProperties）。
+    # ⚠️ 登录保底集（login/sso-login/mail-login/session/refresh/favicon 等）在公共库
+    #    代码内合并、本段删不掉——防误配把登录链路打断导致没人能登录；业务性放开只配 paths。
+    # ⚠️ 写 paths 即「整体替换」该清单（配置即真相）；不写则为空（仅保底集生效）。
+    # 🧭 路径口径：JwtInterceptor 按「context-path 剥离后」的路径匹配
+    #    （浏览器 /portal/api/** → nginx 透传 → Spring 剥 /portal → /api/**），
+    #    故本段一律写**剥离后**形态，且**不设 context-path**（设了只会多生成一份
+    #    永不命中的 /portal/api/** 副本，无害但误导；对照 activecode 无 context-path、
+    #    后端可见完整 /activecode/api/** 前缀，那边才必须显式配 context-path）。
+    # 📌 方法级放行（endpoints：路径仍走登录拦截、仅列出方法放行）本应用暂无场景，
+    #    需要时用法同 activecode（AuthInterceptor 读 endpointMap 判定）。
+    anonymous:
+      # 路径级：整条路径不拦截（支持 Ant 通配）。当前 = 改造前 WebMvcConfig
+      # excludePathPatterns 的声明性三项（sso 换票链 + actuator 健康检查；
+      # /api/auth/login 为历史声明，portal 无此实体端点，保留作意图文档）。
+      paths:
+        - /api/auth/login
+        - /api/auth/sso/**
+        - /actuator/**
   # RBAC 接口级鉴权（Phase 9 / G3）：AuthzAutoConfig 的 @RequirePermission 拦截器
   # 仅在 client-id 非空时注册。portal 现在要把「中心权限点」变成管理接口的真实闸门。
   # portal_token 是 HS256（auth-center 不认），故配 PortalPermissionChecker，用**该用户本人的

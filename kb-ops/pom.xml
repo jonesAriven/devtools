@@ -49,11 +49,14 @@
         </dependency>
         <!-- 认证公共库（独立仓库 com.marschat:auth-core）
              2.2.0：新增 BFF 管理代理自动装配（白名单配置化 + 凭据三模式 + 账号上报 SPI），
-             取代本应用此前手写的 AdminProxyController（266 行）。见 docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md -->
+             取代本应用此前手写的 AdminProxyController（266 行）。见 docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md
+             2.3.0：上沉 AnonymousAuthProperties（登录校验放行配置化白名单），本应用
+             SecurityConfig 的 permitAll("/actuator/**") 硬编码改读
+             marschat.auth.anonymous.paths（见 SecurityConfig + application.yml）。 -->
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>auth-core</artifactId>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
         </dependency>
     </dependencies>
     </dependencyManagement>

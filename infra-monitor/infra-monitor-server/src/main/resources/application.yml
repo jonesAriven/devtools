@@ -35,6 +35,22 @@ spring:
 # infra-monitor 以 host 网络运行于 mykng(192.168.31.105)，auth-center 端口已发布到宿主 8085，
 # 故内网直连走 127.0.0.1（/internal/** 不在公网 nginx 白名单，secret 不出公网）。
 marschat:
+  # ── 放开登录校验配置（2026-10-15 · auth-core 2.3.0）─────────────────────────
+  # 收放匿名权只改本段 + 重启，无需改代码（实现见 com.marschat.auth.anonymous.AnonymousAuthProperties）。
+  # ⚠️ 登录保底集（login/sso-login/mail-login/session/refresh/favicon 等，均为 /api/auth/* 形态）
+  #    在公共库代码内合并、本段删不掉——防误配把登录链路打断导致没人能登录。
+  # ⚠️ 本应用的登录端点是 /auth/* 形态（**不带 /api**，context-path=/infra 剥离后，
+  #    见 AuthController），保底集覆盖不到 ⇒ 必须在 paths 显式声明（保底集是安全网不是真相源）。
+  # 🔴 /auth/permissions（权限探针）故意不在清单：保持 authenticated 保护
+  #    （AuthController#permissions 安全边界），勿写 "/auth/**" 粗粒度模式。
+  # 🧭 路径口径：requestMatchers 按「context-path 剥离后」匹配，故写剥离后形态、不设 context-path。
+  auth:
+    anonymous:
+      paths:
+        - /auth/login
+        - /auth/mail-login
+        - /auth/mail-login/send-code
+        - /actuator/**
   menu:
     report:
       enabled: ${MARSCHAT_MENU_REPORT_ENABLED:true}

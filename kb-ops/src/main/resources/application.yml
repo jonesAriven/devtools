@@ -32,6 +32,19 @@ crypto:
 marschat:
   auth:
     secret: ${MARSCHAT_AUTH_SECRET:${JWT_SECRET:YourSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong!!}}
+    # ── 放开登录校验配置（2026-10-15 · auth-core 2.3.0）─────────────────────────
+    # 收放匿名权只改本段 + 重启，无需改代码（实现见 com.marschat.auth.anonymous.AnonymousAuthProperties）。
+    # ⚠️ 登录保底集（login/sso-login/mail-login/session/refresh/favicon 等，均为 /api/auth/* 形态）
+    #    在公共库代码内合并、本段删不掉——防误配把登录链路打断导致没人能登录；业务性放开只配 paths。
+    # ⚠️ 写 paths 即「整体替换」该清单（配置即真相）；不写则为空（仅保底集生效）。
+    # 🧭 路径口径：requestMatchers 按「context-path 剥离后」匹配（本应用 context-path=/kb-ops），
+    #    故本段一律写**剥离后**形态，且**不设** context-path（设了只会多生成一份永不命中的
+    #    /kb-ops/** 副本；对照 activecode/portal 同理）。
+    # 📌 kb-ops 为纯 SSO 应用（showLocalLogin=false，无本地登录端点，登录链路在 auth-center 侧），
+    #    当前开放面仅 actuator 健康检查；保底集在此为安全网（本应用无对应端点，零行为变化）。
+    anonymous:
+      paths:
+        - /actuator/**
   # OIDC RS256 双验签（auth-core 2.0.0）：对接 auth-center 签发的 RS256 token。
   # 过渡期内 HS256（历史自签 token）与 RS256（auth-center）并存，TokenProvider 自动先 RS256 后回退 HS256。
   # issuer 必须与 auth-center 签发方一致；jwks-uri 走 compose 内网直连 auth-center 绕过公网回环。

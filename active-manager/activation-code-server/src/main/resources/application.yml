@@ -155,6 +155,10 @@ marschat:
   #    （与 2026-10-14 线上清单一致）。
   auth:
     anonymous:
+      # 本应用部署前缀：登录保底段会按它再生成一份带前缀形态（本应用后端可见 /activecode/ 前缀）。
+      # 2026-10-15 起 Properties 类上沉 auth-core 2.3.0（com.marschat.auth.anonymous），
+      # 本段语义不变；登录保底集由公共库代码合并，配置不可清空。
+      context-path: /activecode
       # 路径级：整条路径不拦截（支持 Ant 通配，如 /**）。默认 = 改造前 excludePathPatterns 业务部分。
       paths:
         - /activecode/index.html

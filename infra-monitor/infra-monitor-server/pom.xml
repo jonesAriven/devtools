@@ -99,12 +99,16 @@
             <version>1.1.6</version>
         </dependency>
 
-        <!-- 认证公共库（com.marschat:auth-core）：仅用 MenuRegistryReporter 上报 infra-monitor 菜单树；
-             非菜单的 auth-core 自动装配（AuthJwt/AuthWeb/AuthFeign/Authz）已在 application.yml 显式排除。 -->
+        <!-- 认证公共库（com.marschat:auth-core）：MenuRegistryReporter 上报 infra-monitor 菜单树
+             + AnonymousAuthProperties（2.3.0，登录校验放行配置化白名单，见 SecurityConfig
+             的 marschat.auth.anonymous.paths）；非菜单且与本应用自有 JWT/Security 实现冲突的
+             自动装配（AuthJwt/AuthWeb/AuthFeign）已在 application.yml 显式排除，
+             AuthzAutoConfig 自 2026-09-15 起启用（P1 接口级鉴权）。
+             ⚠️ AnonymousAuthAutoConfig **不排除**（servlet 环境自动装配 Properties，正是本应用所需）。 -->
         <dependency>
             <groupId>com.marschat</groupId>
             <artifactId>auth-core</artifactId>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
         </dependency>
     </dependencies>
 

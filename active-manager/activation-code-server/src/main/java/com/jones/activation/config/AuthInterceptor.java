@@ -1,6 +1,7 @@
 package com.jones.activation.config;
 
 import com.jones.activation.entity.AdminUser;
+import com.marschat.auth.anonymous.AnonymousAuthProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
