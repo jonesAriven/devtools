@@ -1,7 +1,7 @@
 # portal 配置化接入迁移记录（Phase 13 · 第 6 个应用 · 收官）
 
 > **定位**：portal 从「手写接入胶水」迁移到「三处配置 + 一行装配」的落地记录，含**三道闸**与**凭据链路**两次修复。
-> **上游**：`marschat-components/docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md`（设计与全平台口径）
+> **上游**：`marschat-components/docs/Phase13-配置化接入.md`（设计与全平台口径）
 > **日期**：2026-10-08 ｜ 状态：**已上线**（#839 portal-server / #840 portal-web）+ 登出清理待上线（T-ENG-8）
 > **提交**：`e6b478f7 feat(portal): 前后端迁移到配置化接入 —— 三道闸齐备、迁移前后无收窄`
 > 　　　　`57ddb04f fix(portal): 账密/邮箱码管理员恢复用户管理页 + 三应用统一 app-kit 0.1.4`

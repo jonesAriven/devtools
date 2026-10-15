@@ -1,7 +1,7 @@
 # kb-web 配置化接入迁移记录（Phase 13 · 第 4 个应用）
 
 > **定位**：kb-web 从「手写接入胶水」迁移到「三处配置 + 一行装配」的落地记录。
-> **上游**：`marschat-components/docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md`（设计与全平台口径）
+> **上游**：`marschat-components/docs/Phase13-配置化接入.md`（设计与全平台口径）
 > **日期**：2026-10-08 ｜ 状态：**已上线**（Woodpecker 流水线 #838 SUCCESS）
 > **提交**：`21319eb1 feat(kb-web): 前端迁移到 @marschat/app-kit —— 删 258 行手写胶水`
 

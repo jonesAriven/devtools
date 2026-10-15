@@ -54,10 +54,10 @@
 | **平台状态与遗留待办** | 🥇 **现行态**：P0/P1/P2 待办 + 待拍板 + 已知取舍（接手先读） | `marschat-components/docs/STATUS.md` |
 | **配置项与环境变量全表** | 🥇 现行态：apps-registry 字段 / env / 端点 / 已注册 client | `marschat-components/docs/CONFIG-REFERENCE.md` |
 | 排查手册（症状 → 定位 → 根因） | 🥈 现行态：含取证命令集与「已知误判清单」 | `marschat-components/docs/TROUBLESHOOTING.md` |
-| Phase 12 全量验证报告（102 用例 / 0 真实失败） | 🥉 快照（2026-09-17） | `marschat-components/docs/VERIFY-REPORT-2026-09-17.md` |
-| Phase 12 R6 多轮浏览器回归与缺陷修复 | 🥉 快照（2026-09-18） | `marschat-components/docs/PHASE12-ROUND6-2026-09-18.md` |
-| Phase 12 收口汇总 | ⏳ 历史快照（结论已吸收进 `STATUS.md`，勿单独引用待办） | `marschat-components/docs/PHASE12-SUMMARY-2026-09-17.md` |
-| Phase 12 进度交接快照 | ⏳ 历史快照（已被 SUMMARY 取代） | `marschat-components/docs/PHASE12-PROGRESS-2026-09-16.md` |
+| Phase 12 全量验证报告（102 用例 / 0 真实失败） | 🥉 快照（2026-09-17） | `marschat-components/docs/archive/phase12/Phase12全量验证报告-2026-09-17.md` |
+| Phase 12 R6 多轮浏览器回归与缺陷修复 | 🥉 快照（2026-09-18） | `marschat-components/docs/archive/phase12/R6多轮浏览器回归与缺陷修复-2026-09-18.md` |
+| Phase 12 收口汇总 | ⏳ 历史快照（结论已吸收进 `STATUS.md`，勿单独引用待办） | `marschat-components/docs/archive/phase12/Phase12收口汇总-2026-09-17.md` |
+| Phase 12 进度交接快照 | ⏳ 历史快照（已被收口汇总取代） | `marschat-components/docs/archive/phase12/Phase12进度交接快照-2026-09-16.md` |
 | CI/CD 配置指南（Gitee Go / Woodpecker / Zadig） | 环境配置，与认证主题无关 | `docs/gitee-go-setup.md`、`docs/woodpecker-cicd-setup.md`、`docs/zadig-setup.md` |
 
 ---

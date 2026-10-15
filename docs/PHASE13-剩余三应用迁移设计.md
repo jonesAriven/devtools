@@ -1,6 +1,6 @@
 # Phase 13 · 剩余三应用（kb-web / portal / cosmic-studio）迁移增量设计
 
-> **定位**：本文是 `PHASE13-CONFIG-DRIVEN-ONBOARDING.md` 与 kb-ops 迁移记录的**增量**部分，
+> **定位**：本文是 `marschat-components/docs/Phase13-配置化接入.md` 与 kb-ops 迁移记录的**增量**部分，
 > 只写「剩余 3 个应用」与已迁 3 个应用不同的地方，不重复已有内容。
 > **日期**：2026-10-06 ｜ **状态**：设计完成，待工程师实施
 > **证据标注约定**：🔵 = 我本机实测（有文件路径 + 行号）；🟡 = 推断，需工程师验证

@@ -2,7 +2,7 @@
 
 > **定位**：本文件是 activecode 的迁移落地记录。**它同时是「配置化接入」适用边界的实证** ——
 > 后端完全可迁（且是本轮唯一需要**首次引入 auth-core** 的应用），**前端则完全不适用 `@marschat/app-kit`**。
-> **上游**：`marschat-components/docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md`
+> **上游**：`marschat-components/docs/Phase13-配置化接入.md`
 > **前两个应用**：`kb-ops/` · `infra-monitor/` 的 `docs/PHASE13-配置化接入迁移记录.md`
 > **日期**：2026-10-06 ｜ 状态：**后端代码完成 + 本地验证通过；前端无法迁移（见 §4）**
 

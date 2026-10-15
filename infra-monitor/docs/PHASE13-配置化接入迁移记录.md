@@ -1,7 +1,7 @@
 # infra-monitor 配置化接入迁移记录（Phase 13 · 第 2 个应用）
 
 > **定位**：本文件是 infra-monitor 从「手写接入胶水」迁移到「三处配置 + 一行装配」的落地记录与验证证据。
-> **上游**：`marschat-components/docs/PHASE13-CONFIG-DRIVEN-ONBOARDING.md`（设计与全平台口径）
+> **上游**：`marschat-components/docs/Phase13-配置化接入.md`（设计与全平台口径）
 > **前一个试点**：`kb-ops/docs/PHASE13-配置化接入迁移记录.md`
 > **日期**：2026-10-06 ｜ 状态：**代码完成 + 本地验证通过，待发版部署与真浏览器回归**
 
