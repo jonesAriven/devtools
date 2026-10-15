@@ -101,6 +101,9 @@ public class AuthCenterService {
 
     /** 校验并消费 state，返回发起时的 origin */
     public String consumeState(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
         StateEntry entry = states.remove(state);
         if (entry == null || entry.expiresAt() < System.currentTimeMillis()) {
             return null;
