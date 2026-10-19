@@ -13,7 +13,7 @@ importers:
         version: 2.3.2(vue@3.5.39)
       '@marschat/app-kit':
         specifier: ^0.1.4
-        version: 0.1.4(element-plus@2.14.2)(typescript@5.9.3)
+        version: 0.1.7(element-plus@2.14.2)(typescript@5.9.3)
       '@marschat/auth-components':
         specifier: ^0.8.8
         version: 0.8.8(element-plus@2.14.2)(typescript@5.9.3)
@@ -367,8 +367,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: false
 
-  /@marschat/app-kit@0.1.4(element-plus@2.14.2)(typescript@5.9.3):
-    resolution: {integrity: sha512-c02Z9PBacbZi/IcTl4DZtlAvj96yYAIQr45yhH6P2ku2/8QHGEUsl9Zk++Nol/iGuvkbxXcwChLjyf5fDgtEVA==}
+  /@marschat/app-kit@0.1.7(element-plus@2.14.2)(typescript@5.9.3):
+    resolution: {integrity: sha512-eoAvJTjuHfJPRrDtKjkkBcDDsvRy8mD3Kwfw+qS/fmqVwcjukox8BB4DGcQG1j0ubY1i13RKPKYdV5pMLZO0bg==}
     peerDependencies:
       element-plus: ^2.6.1
     dependencies:
