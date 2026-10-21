@@ -30,7 +30,7 @@ minio:
   bucket: kb-file
 
 meilisearch:
-  host: ${MEILI_HOST:http://meilisearch:7700}
+  host: ${MEILI_HOST:http://platform-meilisearch:7700}
   api-key: ${MEILI_KEY:}
 
 jwt:
