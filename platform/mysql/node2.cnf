@@ -36,12 +36,12 @@ transaction_write_set_extraction = XXHASH64
 server-id = 2
 report_host = 192.168.31.182
 
-# Group Replication 多主模式
+# Group Replication 单主模式（2026-10-20 切换，指定主=node1 192.168.31.105:3306）
 # 注意: plugin_load_add 已移除，插件通过 INSTALL PLUGIN 持久化到 mysql.plugin 表
 group_replication_group_name = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 group_replication_local_address = "192.168.31.182:33061"
 group_replication_group_seeds = "192.168.31.105:33061,192.168.31.182:33061,192.168.31.182:33062"
 group_replication_bootstrap_group = OFF
 group_replication_start_on_boot = OFF
-group_replication_single_primary_mode = OFF
+group_replication_single_primary_mode = ON
 group_replication_enforce_update_everywhere_checks = ON
