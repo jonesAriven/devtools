@@ -193,7 +193,7 @@ services:
     networks:
       - kb-app-net
       - platform-net
-    mem_limit: 384m
+    mem_limit: 512m
 
   # ========== 知识引擎服务 ==========
   kb-intelligence:
