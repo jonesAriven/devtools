@@ -30,8 +30,8 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 meilisearch:
-  host: http://192.168.31.182:7700
-  api-key: masterKey
+  host: ${MEILI_HOST:http://platform-meilisearch:7700}
+  api-key: ${MEILI_KEY:}
 
 kb:
   intelligence:

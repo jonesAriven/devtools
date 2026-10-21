@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: kb-intelligence
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_HOST:platform-nacos}:${NACOS_PORT:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        file-extension: yaml
+        refresh-enabled: true

@@ -190,7 +190,7 @@ kb:
         ttl-days: ${KB_MODULES_EVER_SEEN_TTL_DAYS:30}
     jwt:
       # 与 auth-center 保持一致的 HMAC-SHA 密钥
-      secret: YourSuperSecretKeyForJwtTokenGenerationMustBe256BitsLong!!
+      secret: ${JWT_SECRET:}
       header: Authorization
     # 鉴权白名单（使用 KB_CONTEXT 变量）
     whitelist:
