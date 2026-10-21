@@ -3,10 +3,12 @@ package com.kb.file.config;
 import io.minio.MinioClient;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Data
+@RefreshScope
 @Configuration
 @ConfigurationProperties(prefix = "minio")
 public class MinioConfig {

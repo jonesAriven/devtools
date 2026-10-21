@@ -6,6 +6,8 @@ spring:
     name: kb-file
   profiles:
     active: dev
+  config:
+    import: optional:nacos:kb-file-prod.yaml
   servlet:
     multipart:
       max-file-size: 200MB
@@ -21,6 +23,13 @@ spring:
         group: ${NACOS_GROUP:DEFAULT_GROUP}
         username: ${NACOS_USERNAME:nacos}
         password: ${NACOS_PASSWORD:nacos123}
+      config:
+        server-addr: ${NACOS_HOST:platform-nacos}:${NACOS_PORT:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        file-extension: yaml
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -43,7 +52,7 @@ minio:
 # MeiliSearch 配置
 meilisearch:
   host: http://127.0.0.1:7700
-  api-key: kbMeiliKey2026!!Secure
+  api-key: ${MEILI_KEY:}
 
 # Redis 事件通道
 kb:
