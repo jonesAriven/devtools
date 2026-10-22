@@ -108,9 +108,18 @@ export function currentSpaPath(): string {
  * 权限语境（菜单 / 路由守卫 / PermissionGate 三层同源共用一份）。
  * `getToken` 必须显式注入 —— 各应用 localStorage 键不同，不注入则 `/auth/permissions`
  * 不带 Bearer → 401 → 永远 `configured=false`，权限体系静默失效。
+ *
+ * 🔴 `issuer` 必须走**同源代理**（apiBase）而不是认证中心域名（T-ENG-17，2026-10-22）：
+ * MainLayout 的 `fetchPermissions(permOptions)` 是 app-kit 装配层之外的遗留活跃调用
+ * （infra/kb-web 同处只 import 未调用，唯独 kb-ops 仍在调），且 60s 缓存与装配层预热
+ * **共享**：登录页 bootstrap 预取无票 401 不预热 ⇒ SPA 登录后 MainLayout 挂载时缓存仍冷
+ * ⇒ 这一发就会以 `APP_CONFIG.issuer`（跨域 auth.marschat.online）直连中心 —— R15-O
+ * 实测抓到该跨域请求（恰好 CORS 放行才 200；一旦中心收紧 CORS 即静默 fail-open）。
+ * 改用 apiBase 后与 app-kit `resolvePermissionsIssuer` 缺省策略同路：
+ * `/ops-api/auth/permissions` → 宿主 nginx → kb-gateway → auth-center（同源、无跨域）。
  */
 export const permOptions = {
-  issuer: APP_CONFIG.issuer,
+  issuer: APP_CONFIG.apiBase,
   clientId: APP_CONFIG.clientId,
   getToken: () => getToken(),
   adminBypass: true,
