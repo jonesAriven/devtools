@@ -10,6 +10,7 @@
  * 其能力分别由 `@marschat/app-kit` 与 `@marschat/auth-components` 提供，本应用不再持有副本。
  */
 import { createMarschatApp } from '@marschat/app-kit'
+import { isOidcToken } from '@marschat/auth-components'
 import router from '@/router'
 import { KB_OPS_MENUS } from '@/menus'
 import { APP_OPTIONS, RUNTIME } from '@/config'
@@ -25,6 +26,22 @@ export const marschat = createMarschatApp({
    * 装配层只负责「管道」（配置 / 令牌 / SSO / 401 / 守卫 / 会话监视 / 权限预取）。
    */
   autoRoutes: false,
+  /**
+   * 🔴 双模应用的会话监视必须传**函数式判据**（app-kit `types.ts` 明确推荐）：
+   * 本应用同时存在 SSO（oidc）与独立账密（legacy）两种会话。若沿用缺省判据
+   * `(watchSession ?? true) && sessionMode === 'oidc'`（本应用未传 watchSession
+   * 且未设 sessionMode ⇒ 缺省 'oidc' ⇒ 恒真），则账密登录后令牌照落
+   * `kb_ops_access_token`，**全页面重载时 bootstrap 见票即启动 sessionWatcher**：
+   *   watcher 3s 首探 auth-center `/auth/session` → legacy 登录根本没有 IdP
+   *   会话 ⇒ `authenticated:false` ⇒ `clearAuth()` 清令牌 +
+   *   `location.assign('/ops/login?slo=1')` ⇒ **在线用户被误踢**（重载才触发：
+   *   SPA 内登录不重启 watcher；SSO 路径有真 IdP 会话故不触发）。
+   *   实证见 marschat-components `docs/TROUBLESHOOTING.md` 坑 #47（R14-L 轮
+   *   infra 同款漏配已修，R15 轮普查确认 kb-ops 为第二例）。
+   * portal / kb-web / cosmic 的等价处置是 `sessionMode:'bff' + watchSession:false`；
+   * 本应用取同义的函数式写法（与 infra 一致）：仅当本地令牌为 OIDC 类型时才启动监视。
+   */
+  watchSession: () => isOidcToken(),
 })
 
 export const { config, sso, request, permissions } = marschat
