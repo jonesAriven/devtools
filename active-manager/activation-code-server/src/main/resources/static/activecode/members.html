@@ -8,77 +8,9 @@
     <meta http-equiv="Expires" content="0">
     <title>本系统用户 - 激活码管理后台</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%234f46e5'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
-    <style>
-        :root {
-            --primary: #4f46e5; --primary-hover: #4338ca; --primary-soft: #eef2ff;
-            --primary-ring: rgba(79, 70, 229, 0.14); --bg: #f6f7f9; --surface: #ffffff;
-            --border: #e5e7eb; --border-light: #f0f1f4; --text: #111827; --text-2: #6b7280;
-            --text-3: #9ca3af; --green: #059669; --green-soft: #ecfdf5; --red: #dc2626;
-            --red-soft: #fef2f2; --amber: #d97706; --amber-soft: #fffbeb;
-            --radius: 12px; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.05);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-        .header { background: var(--surface); border-bottom: 1px solid var(--border-light); padding: 0 28px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
-        .header-brand { display: flex; align-items: center; gap: 10px; }
-        .header-logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(79,70,229,.3); }
-        .header h1 { color: var(--text); font-size: 16px; font-weight: 600; letter-spacing: .2px; }
-        .header-right { display: flex; align-items: center; gap: 10px; }
-        .header-right .user-info { color: var(--text-2); font-size: 13px; background: var(--bg); border: 1px solid var(--border-light); padding: 5px 12px; border-radius: 999px; }
-        .header-right .btn-nav { padding: 6px 14px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
-        .header-right .btn-nav:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
-
-        .page { padding: 20px 28px 48px; }
-        .notice { background: var(--primary-soft); border: 1px solid #c7d2fe; color: #3730a3; border-radius: var(--radius); padding: 12px 16px; font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
-        .notice b { font-weight: 600; }
-        .card { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-        .toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
-        .toolbar h3 { font-size: 15px; font-weight: 600; margin-right: auto; display: flex; align-items: center; gap: 8px; }
-        .toolbar h3::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--primary); }
-        .toolbar input[type=text] { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; width: 220px; }
-        .toolbar input[type=text]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
-        .btn-primary { padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
-        .btn-ghost { padding: 7px 14px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; }
-        .btn-ghost:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
-        .btn-link { background: none; border: none; color: var(--primary); font-size: 13px; cursor: pointer; padding: 2px 4px; }
-        .btn-link:hover { text-decoration: underline; }
-        .btn-link.danger { color: var(--red); }
-        .btn-link:disabled { color: var(--text-3); cursor: not-allowed; text-decoration: none; }
-
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text-2); background: #fafbfc; padding: 11px 14px; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
-        td { font-size: 13px; padding: 11px 14px; border-bottom: 1px solid var(--border-light); color: var(--text); vertical-align: middle; }
-        tbody tr:hover { background: #fcfcfd; }
-        .empty { padding: 40px; text-align: center; color: var(--text-3); font-size: 13px; }
-        .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; line-height: 1.6; margin: 2px 4px 2px 0; white-space: nowrap; }
-        .tag-role { background: var(--primary-soft); color: #3730a3; }
-        .tag-none { background: var(--bg); color: var(--text-3); }
-        .tag-on { background: var(--green-soft); color: var(--green); }
-        .tag-off { background: var(--red-soft); color: var(--red); }
-        .muted { color: var(--text-3); }
-        .pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 18px; font-size: 13px; color: var(--text-2); }
-        .pager button { padding: 5px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; cursor: pointer; font-size: 13px; }
-        .pager button:disabled { opacity: .5; cursor: not-allowed; }
-
-        .mask { position: fixed; inset: 0; background: rgba(17,24,39,.45); display: none; align-items: center; justify-content: center; z-index: 50; }
-        .mask.show { display: flex; }
-        .modal { background: var(--surface); border-radius: var(--radius); width: 520px; max-width: 92vw; max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(16,24,40,.24); }
-        .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border-light); font-size: 15px; font-weight: 600; }
-        .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
-        .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 10px; }
-        .modal-desc { font-size: 12.5px; color: var(--text-3); margin-bottom: 12px; line-height: 1.7; }
-        .pick { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer; }
-        .pick:hover { border-color: #c7d2fe; background: #fafaff; }
-        .pick.joined { opacity: .6; cursor: not-allowed; background: var(--bg); }
-        .pick input { accent-color: var(--primary); margin-top: 2px; }
-        .pick .sub { color: var(--text-3); font-size: 12px; margin-top: 2px; }
-        .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; z-index: 99; display: none; }
-        .toast.show { display: block; }
-    </style>
+    <link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
+<body class="pg-members">
     <div class="header">
         <div class="header-brand">
             <div class="header-logo">🔑</div>
@@ -124,8 +56,19 @@
             </table>
             <div class="pager">
                 <span id="pageInfo">—</span>
-                <button id="btnPrev" onclick="load(page-1)">上一页</button>
-                <button id="btnNext" onclick="load(page+1)">下一页</button>
+                <div class="pager-size">
+                    每页
+                    <select id="pageSizeSel" onchange="changeSize(this.value)">
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    条
+                </div>
+                <div class="pager-btns">
+                    <button id="btnPrev" onclick="load(page-1)">上一页</button>
+                    <button id="btnNext" onclick="load(page+1)">下一页</button>
+                </div>
             </div>
         </div>
     </div>
@@ -169,6 +112,8 @@
     var CLIENT_ID = 'marschat-activecode';
     var API = '/activecode/api/admin';
     var page = 1, size = 20, total = 0, rows = [], appRoles = [], poolRows = [], joinedIds = {};
+
+    function changeSize(v) { size = parseInt(v) || 20; load(1); }
 
     function toast(msg) {
         var t = document.getElementById('toast');

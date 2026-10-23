@@ -8,60 +8,9 @@
     <meta http-equiv="Expires" content="0">
     <title>登录 - 激活码管理系统</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%234f46e5'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='11' r='7' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='11' r='2.5' fill='url(%23g)'/%3E%3Cline x1='20.5' y1='15.5' x2='22' y2='17' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='17' x2='22' y2='28' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='19' y1='24' x2='25' y2='24' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"/>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif; background: linear-gradient(160deg, #18181b 0%, #1e1b4b 48%, #312e81 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-font-smoothing: antialiased; }
-        .login-card { background: #fff; border-radius: 16px; box-shadow: 0 24px 70px rgba(0,0,0,0.35); width: 400px; overflow: hidden; }
-        .login-header { padding: 34px 32px 8px; text-align: center; }
-        .login-logo { width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 12px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 6px 16px rgba(79,70,229,0.35); }
-        .login-header h1 { font-size: 21px; color: #111827; font-weight: 700; letter-spacing: 0.3px; }
-        .login-header p { font-size: 13px; color: #9ca3af; margin-top: 7px; }
-        .login-body { padding: 22px 32px 32px; }
-        .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 7px; }
-        .form-group input { width: 100%; padding: 11px 14px; border: 1px solid #d1d5db; border-radius: 9px; font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
-        .form-group input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.14); }
-        .btn-login { width: 100%; padding: 12px; background: #4f46e5; color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s, box-shadow 0.15s; margin-top: 6px; }
-        .btn-login:hover { background: #4338ca; box-shadow: 0 4px 14px rgba(79,70,229,0.35); }
-        .btn-login:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
-        .error-msg { color: #dc2626; font-size: 13px; margin-top: 12px; text-align: center; display: none; }
-        .error-msg.show { display: block; }
-        .sso-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; color: #9ca3af; font-size: 12px; }
-        .sso-divider::before, .sso-divider::after { content: ''; flex: 1; height: 1px; background: #eceef2; }
-        .btn-sso { width: 100%; padding: 12px; background: #fff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s, box-shadow 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-sso:hover { background: #eef2ff; box-shadow: 0 4px 14px rgba(79,70,229,0.18); }
-        .btn-sso:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
-        .login-footer { text-align: center; padding: 14px; font-size: 12px; color: #c4c9d4; background: #f9fafb; border-top: 1px solid #f0f1f4; }
-        /* 静默免登探测期间的启动遮罩：避免"登录框闪一下又被免登跳走"的抖动 */
-        .boot-mask { position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(24,24,27,0.92); color: #e5e7eb; font-size: 13px; letter-spacing: 0.3px; }
-        .boot-mask.hide { display: none; }
-        .boot-spinner { width: 34px; height: 34px; border: 3px solid rgba(199,210,254,0.28); border-top-color: #818cf8; border-radius: 50%; animation: bootspin 0.8s linear infinite; }
-        @keyframes bootspin { to { transform: rotate(360deg); } }
-        .login-card.pending { visibility: hidden; }
-        /* ── 统一登录三方式（L1 补齐，2026-09-15）：邮箱验证码登录 + 忘记密码 ── */
-        .mode-tabs { display: flex; gap: 6px; margin-bottom: 18px; background: #f3f4f6; border-radius: 10px; padding: 4px; }
-        .mode-tabs button { flex: 1; padding: 8px; border: none; background: transparent; border-radius: 7px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; transition: background 0.15s, color 0.15s; }
-        .mode-tabs button.active { background: #fff; color: #4338ca; box-shadow: 0 1px 3px rgba(0,0,0,0.09); }
-        .code-row { display: flex; gap: 8px; align-items: stretch; }
-        .code-row input { flex: 1; }
-        .btn-code { padding: 0 12px; border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
-        .btn-code:hover { background: #e0e7ff; }
-        .btn-code:disabled { opacity: 0.55; cursor: not-allowed; }
-        .forgot-link { text-align: right; margin: -4px 0 10px; }
-        .forgot-link a { font-size: 12px; color: #4f46e5; cursor: pointer; }
-        .forgot-link a:hover { text-decoration: underline; }
-        .modal-mask { position: fixed; inset: 0; background: rgba(17,24,39,0.55); display: none; align-items: center; justify-content: center; z-index: 30; }
-        .modal-mask.show { display: flex; }
-        .modal { background: #fff; border-radius: 14px; width: 380px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .modal h2 { font-size: 17px; color: #111827; margin-bottom: 6px; }
-        .modal .hint { font-size: 12px; color: #9ca3af; margin-bottom: 16px; line-height: 1.5; }
-        .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
-        .btn-ghost { flex: 1; padding: 11px; background: #fff; border: 1px solid #d1d5db; border-radius: 9px; font-size: 14px; cursor: pointer; color: #374151; }
-        .btn-primary { flex: 1; padding: 11px; background: #4f46e5; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; }
-        .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
-    </style>
+    <link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
+<body class="pg-login">
     <!-- 启动遮罩：静默免登探测期间显示；探针返回"无会话"后才露出登录框 -->
     <div class="boot-mask" id="bootMask">
         <div class="boot-spinner"></div>
