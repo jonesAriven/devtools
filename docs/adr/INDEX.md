@@ -61,6 +61,8 @@
 | **平台状态与遗留待办** | 🥇 **现行态**：P0/P1/P2 待办 + 待拍板 + 已知取舍（接手先读） | `marschat-components/docs/STATUS.md` |
 | **配置项与环境变量全表** | 🥇 现行态：apps-registry 字段 / env / 端点 / 已注册 client | `marschat-components/docs/CONFIG-REFERENCE.md` |
 | 排查手册（症状 → 定位 → 根因） | 🥈 现行态：含取证命令集与「已知误判清单」 | `marschat-components/docs/TROUBLESHOOTING.md` |
+| Phase 13 · 配置化接入（三处配置 + 一行装配） | 🥉 决策与落地记录（2026-10-07，迁移收官 5/6 应用上线）· 现行接入口径以 `README.md` 第二篇为准 | `marschat-components/docs/Phase13-配置化接入.md` |
+| Phase 14 · 登录校验放行配置化（`marschat.auth.anonymous` / `anonymous-paths.json`） | 🥉 决策与落地记录（2026-10-15，含上线验证）· 现行接入口径以 `README.md` 第二篇为准 | `marschat-components/docs/Phase14-登录校验放行配置化.md` |
 | Phase 12 全量验证报告（102 用例 / 0 真实失败） | 🥉 快照（2026-09-17） | `marschat-components/docs/archive/phase12/Phase12全量验证报告-2026-09-17.md` |
 | Phase 12 R6 多轮浏览器回归与缺陷修复 | 🥉 快照（2026-09-18） | `marschat-components/docs/archive/phase12/R6多轮浏览器回归与缺陷修复-2026-09-18.md` |
 | Phase 12 收口汇总 | ⏳ 历史快照（结论已吸收进 `STATUS.md`，勿单独引用待办） | `marschat-components/docs/archive/phase12/Phase12收口汇总-2026-09-17.md` |
@@ -69,5 +71,5 @@
 
 ---
 
-> **登记情况**：本目录 10 份 ADR + 2 份其它仓库 ADR + 16 份外部 ADR 均已登记（2026-10-22 R18 后核对，无遗漏）。
+> **登记情况**：本目录 10 份 ADR + 2 份其它仓库 ADR + 16 份外部 ADR 均已登记；§四另含 Phase13/Phase14 两份决策落地记录（2026-10-23 补登核对，无遗漏）。
 > ⚠️ 表内状态行若与 ADR 头部状态不一致，以 **ADR 头部 + `STATUS.md`** 为准，并顺手回写本表。
