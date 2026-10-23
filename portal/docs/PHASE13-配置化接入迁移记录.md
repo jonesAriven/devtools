@@ -187,7 +187,7 @@
 > **2026-10-08 更新**：本节原结论「未证实瞬态、疑似部署窗口残留实例」**已被推翻**。
 > 真因是 **hutool `HMacJWTSigner` 内部 `Mac` 非线程安全**，并发下「签发」与「验签」互相踩踏 ⇒ 合法 token 被判 `BAD_SIGNATURE`。
 > 已修（`JwtUtil` 改 `ThreadLocal<JWTSigner>`，提交 `bd83f1d0`，流水线 #843），修复后同一混发实验 **120 次 0 失败**（修复前 5/60）。
-> 完整方法论见 `marschat-components/docs/TROUBLESHOOTING.md` §9。原文保留作决策史。
+> 完整方法论见 `marschat-components/docs/排查手册.md` §9。原文保留作决策史。
 
 **现象**：部署完成（#841 23:43 / #842 23:47）后约 3~9 分钟内，真浏览器**能成功登录并拿到 token**，
 但紧随其后的首个业务请求被判 401，前端被 401 拦截器踢回 `/portal/login?reauth=1`。
@@ -244,4 +244,4 @@
 | 2 | 中心 refresh_token 未单独吊销 | 已通过 `revokeAccessToken` 把 access_token 写入 `jwt_blacklist` 覆盖；refresh_token 本身无直调 `/admin/**` 能力，如需彻底可再调中心 revoke |
 | 3 | `MainLayout` 登出后仍跟着一句 `router.push('/login')` | SLO 会导航离开，该句是冗余；未改（不在本次范围） |
 | 4 | `LoginView.vue` 既有类型告警 1 处（`brand.gradient`） | 存量，CI 不跑 `vue-tsc`，不阻塞 |
-| 5 | 部署窗口内「登录后偶发 401」 | ✅ **已结案**：真因 hutool 签名器并发非线程安全，已修并上线（#843），见 §8.1；`TROUBLESHOOTING.md` §9 |
+| 5 | 部署窗口内「登录后偶发 401」 | ✅ **已结案**：真因 hutool 签名器并发非线程安全，已修并上线（#843），见 §8.1；`排查手册.md` §9 |

@@ -3,7 +3,7 @@
 - **状态**：✅ 已实施并复验闭环（2026-10-22）
 - **归属**：devtools 仓库（infra-monitor 前端）+ marschat-components 文档
 - **作者**：WorkBuddy AI（良哥授权全权执行）
-- **一手材料**：本会话 R14-L/M 全程记录；`marschat-components/docs/STATUS.md` T-ENG-20 / T-LOW-22；`docs/TROUBLESHOOTING.md` §16；证据 `mykng:/root/verify/r14/r14_l.py` / `r14_m.py`
+- **一手材料**：本会话 R14-L/M 全程记录；`marschat-components/docs/状态与待办.md` T-ENG-20 / T-LOW-22；`docs/排查手册.md` §16；证据 `mykng:/root/verify/r14/r14_l.py` / `r14_m.py`
 
 ---
 
@@ -53,7 +53,7 @@
 
 ## 5. 副产品：坑 #46 补丁（页面内包装的导航竞态丢失）
 
-R14-L 取证时页面内 fetch 包装抓到 SSO 的 `/auth/session` 探针、却漏抓账密的——CDP 层证明后者确实发出。根因：watcher 判失后 `location.assign` **先于**包装的 `.then` push 发生 ⇒ 页面销毁、记录丢失。**固化判据**：console 类断言靠页面内包装（CDP 不报 console API）；网络类断言靠 CDP Network 层（页面内包装怕导航竞态）——**两层互不替代**。已写入 `TROUBLESHOOTING.md` §16.2。
+R14-L 取证时页面内 fetch 包装抓到 SSO 的 `/auth/session` 探针、却漏抓账密的——CDP 层证明后者确实发出。根因：watcher 判失后 `location.assign` **先于**包装的 `.then` push 发生 ⇒ 页面销毁、记录丢失。**固化判据**：console 类断言靠页面内包装（CDP 不报 console API）；网络类断言靠 CDP Network 层（页面内包装怕导航竞态）——**两层互不替代**。已写入 `排查手册.md` §16.2。
 
 ## 6. 遗留与后续
 

@@ -6,7 +6,7 @@
 > `/root/devtools` → `D:\huliang\java\ideaworkspace\devtools`｜`/root/auth-center` → `D:\huliang\java\ideaworkspace\auth-center`。
 > `/root/hermes-workspace/adr/**` **未随本仓库版本化**（在 mykng 上，本地无副本）。
 >
-> 🧭 **查"当前该怎么设计/怎么接入"** → 请看 `marschat-components/docs/README.md`（权威手册），**不要**从 ADR 反推现行态；ADR 只回答"当初为何这样定"。
+> 🧭 **查"当前该怎么设计/怎么接入"** → 请看 `marschat-components/docs/统一认证平台手册.md`（权威手册），**不要**从 ADR 反推现行态；ADR 只回答"当初为何这样定"。
 
 ---
 
@@ -14,8 +14,8 @@
 
 | 日期 | ADR | 状态 | 位置 |
 |---|---|---|---|
-| 2026-09-10 | 平台重构：Phase 0 清死代码 → Phase 10 权限收口（含 Phase 1–9 全部过程） | ✅ Phase 0–10 全闭环（§12–§37）<br>⚠️ 但其 §37「无 P0/P1 遗留」「初衷达成」**经 Phase 11/12 复核判定为高估** —— 发现「独立账密仍为应用本地校验（D1–D18）」与「服务端未真正区分平台/应用管理员（C1–C5）」两类遗留。**现行结论请看 `docs/STATUS.md` 与下方两份 Phase ADR** | `ADR-2026-09-10-平台重构Phase0清死代码.md` |
-| 2026-09-15 | Phase 11：统一登录与用户/权限管理收敛（双用户管理菜单 + 账密真源归一） | 🟡 实施中 → **主体已落地**：账密真源归一（六应用，含 §1.2 **D8 更正**：kb 系无需改造）· 双用户管理菜单定型 · D9–D18 全部修复。剩余待办见 `STATUS.md` | `ADR-2026-09-15-Phase11-统一登录与用户管理收敛.md` |
+| 2026-09-10 | 平台重构：Phase 0 清死代码 → Phase 10 权限收口（含 Phase 1–9 全部过程） | ✅ Phase 0–10 全闭环（§12–§37）<br>⚠️ 但其 §37「无 P0/P1 遗留」「初衷达成」**经 Phase 11/12 复核判定为高估** —— 发现「独立账密仍为应用本地校验（D1–D18）」与「服务端未真正区分平台/应用管理员（C1–C5）」两类遗留。**现行结论请看 `docs/状态与待办.md` 与下方两份 Phase ADR** | `ADR-2026-09-10-平台重构Phase0清死代码.md` |
+| 2026-09-15 | Phase 11：统一登录与用户/权限管理收敛（双用户管理菜单 + 账密真源归一） | 🟡 实施中 → **主体已落地**：账密真源归一（六应用，含 §1.2 **D8 更正**：kb 系无需改造）· 双用户管理菜单定型 · D9–D18 全部修复。剩余待办见 `状态与待办.md` | `ADR-2026-09-15-Phase11-统一登录与用户管理收敛.md` |
 | 2026-09-16 | Phase 12：统一认证权限治理（三层权限 API + 两类菜单边界下沉 + activecode 闸门） | 🟡 实施中（P0-1/P0-2/P0-3 已上线；三层 API 地基已交付，**应用侧 path 化收窄待执行**） | `ADR-2026-09-16-Phase12-统一认证权限治理.md` |
 | 2026-10-21 | MySQL GR 集群切单主模式（node1 指定主 member_weight=60） | ✅ 已实施（10-20 09:10 运行时切换并全链验证；10-21 仓库 `3b8201a1` + 宿主机 my.cnf 固化。应用侧零改造；遗留：node2/3 同驻 182 应拆机、node1 512m 独扛写） | `ADR-2026-10-21-MySQL-GR切单主.md` |
 | 2026-10-22 | app-kit 0.1.8 发布与五应用落地 + 回归库两缺陷修复（R14 收官） | ✅ 已实施并全链验证：Nexus #78 发布 → 五应用锁文件 `e3d39639`/`08bd718` 双推 → 流水线 #861–#864 + #127 全 success → 在线 chunk 签名 5/5；**生产效果闭环**（kb-ops 归因告警自证 T-ENG-17 现场、四应用零告警）；**回归库实修两真缺陷**（坑 #46 CDP 不上报页面 console API → 页面内包装；坑 #45 ElMessage toast 3s 时序伪影 → 实时轮询） | `ADR-2026-10-22-app-kit-0.1.8发布与五应用落地.md` |
@@ -49,27 +49,27 @@
 | 2026-08-07 | Docker 容器重启恢复策略：@reboot | 已实施 | mykng | `.../mykng/ADR-2026-08-07-docker-restart-after-boot.md` |
 | 2026-08-12 | cosmic-system：我的工具箱，不是替代品（原始设计文档） | 部分实施（2026-09-10 从 cosmic/ 归档入册；未按标准 ADR 模板补全「考虑过的方案 / 回滚」章节） | cosmic | `.../cosmic/ADR-2026-08-12-cosmic-skill-system-architecture.md` |
 | 2026-08-23 | memory-extract 面板空转修复 | 已实施 | hermes-agent | `.../hermes-agent/ADR-2026-08-23-memory-extract-panel-fix.md` |
-| 2026-09-08 | **统一认证单点登录（auth-center + OIDC）** | ✅ 已实施 → **已并入归档**：实现形态被终态取代（IdP 会话 Cookie + OIDC PKCE + localStorage 存票）。决策推演归档于 ADR-2026-09-10 §38；**现行设计/接入口径 = `marschat-components/docs/README.md`** | cross-project | ~~本目录原文件已删~~ → ADR-2026-09-10 §38（原文存 git 历史） |
+| 2026-09-08 | **统一认证单点登录（auth-center + OIDC）** | ✅ 已实施 → **已并入归档**：实现形态被终态取代（IdP 会话 Cookie + OIDC PKCE + localStorage 存票）。决策推演归档于 ADR-2026-09-10 §38；**现行设计/接入口径 = `marschat-components/docs/统一认证平台手册.md`** | cross-project | ~~本目录原文件已删~~ → ADR-2026-09-10 §38（原文存 git 历史） |
 | 2026-09-08 | 自研应用仓库地图与公共模块关联机制核实固化 | 已实施 | cross-project | `.../cross-project/ADR-2026-09-08-repo-map-and-shared-modules.md` |
-| 2026-09-09 | **公共组件发布到 Nexus npm 私服** | ✅ 已实施（持续有效）→ **已并入归档**：决策与教训归档于 ADR-2026-09-10 §38；**现行发版流程 = `marschat-components/docs/README.md` 第三篇 §5** | cross-project | ~~本目录原文件已删~~ → ADR-2026-09-10 §38（原文存 git 历史） |
+| 2026-09-09 | **公共组件发布到 Nexus npm 私服** | ✅ 已实施（持续有效）→ **已并入归档**：决策与教训归档于 ADR-2026-09-10 §38；**现行发版流程 = `marschat-components/docs/统一认证平台手册.md` 第三篇 §5** | cross-project | ~~本目录原文件已删~~ → ADR-2026-09-10 §38（原文存 git 历史） |
 
 ## 四、相关文档（非 ADR，但同属认证平台文档体系）
 
 | 文档 | 定位（权威级别） | 位置 |
 |---|---|---|
-| **统一认证平台手册** | 🥇 **现行设计与接入的唯一权威**（设计 / 接入 / 使用运维） | `marschat-components/docs/README.md` |
-| **平台状态与遗留待办** | 🥇 **现行态**：P0/P1/P2 待办 + 待拍板 + 已知取舍（接手先读） | `marschat-components/docs/STATUS.md` |
-| **配置项与环境变量全表** | 🥇 现行态：apps-registry 字段 / env / 端点 / 已注册 client | `marschat-components/docs/CONFIG-REFERENCE.md` |
-| 排查手册（症状 → 定位 → 根因） | 🥈 现行态：含取证命令集与「已知误判清单」 | `marschat-components/docs/TROUBLESHOOTING.md` |
-| Phase 13 · 配置化接入（三处配置 + 一行装配） | 🥉 决策与落地记录（2026-10-07，迁移收官 5/6 应用上线）· 现行接入口径以 `README.md` 第二篇为准 | `marschat-components/docs/Phase13-配置化接入.md` |
-| Phase 14 · 登录校验放行配置化（`marschat.auth.anonymous` / `anonymous-paths.json`） | 🥉 决策与落地记录（2026-10-15，含上线验证）· 现行接入口径以 `README.md` 第二篇为准 | `marschat-components/docs/Phase14-登录校验放行配置化.md` |
+| **统一认证平台手册** | 🥇 **现行设计与接入的唯一权威**（设计 / 接入 / 使用运维） | `marschat-components/docs/统一认证平台手册.md` |
+| **平台状态与遗留待办** | 🥇 **现行态**：P0/P1/P2 待办 + 待拍板 + 已知取舍（接手先读） | `marschat-components/docs/状态与待办.md` |
+| **配置项与环境变量全表** | 🥇 现行态：apps-registry 字段 / env / 端点 / 已注册 client | `marschat-components/docs/配置参考.md` |
+| 排查手册（症状 → 定位 → 根因） | 🥈 现行态：含取证命令集与「已知误判清单」 | `marschat-components/docs/排查手册.md` |
+| Phase 13 · 配置化接入（三处配置 + 一行装配） | 🥉 决策与落地记录（2026-10-07，迁移收官 5/6 应用上线）· 现行接入口径以 `marschat-components/docs/统一认证平台手册.md` 第二篇为准 | `marschat-components/docs/Phase13-配置化接入.md` |
+| Phase 14 · 登录校验放行配置化（`marschat.auth.anonymous` / `anonymous-paths.json`） | 🥉 决策与落地记录（2026-10-15，含上线验证）· 现行接入口径以 `marschat-components/docs/统一认证平台手册.md` 第二篇为准 | `marschat-components/docs/Phase14-登录校验放行配置化.md` |
 | Phase 12 全量验证报告（102 用例 / 0 真实失败） | 🥉 快照（2026-09-17） | `marschat-components/docs/archive/phase12/Phase12全量验证报告-2026-09-17.md` |
 | Phase 12 R6 多轮浏览器回归与缺陷修复 | 🥉 快照（2026-09-18） | `marschat-components/docs/archive/phase12/R6多轮浏览器回归与缺陷修复-2026-09-18.md` |
-| Phase 12 收口汇总 | ⏳ 历史快照（结论已吸收进 `STATUS.md`，勿单独引用待办） | `marschat-components/docs/archive/phase12/Phase12收口汇总-2026-09-17.md` |
+| Phase 12 收口汇总 | ⏳ 历史快照（结论已吸收进 `状态与待办.md`，勿单独引用待办） | `marschat-components/docs/archive/phase12/Phase12收口汇总-2026-09-17.md` |
 | Phase 12 进度交接快照 | ⏳ 历史快照（已被收口汇总取代） | `marschat-components/docs/archive/phase12/Phase12进度交接快照-2026-09-16.md` |
 | CI/CD 配置指南（Gitee Go / Woodpecker / Zadig） | 环境配置，与认证主题无关 | `docs/gitee-go-setup.md`、`docs/woodpecker-cicd-setup.md`、`docs/zadig-setup.md` |
 
 ---
 
 > **登记情况**：本目录 10 份 ADR + 2 份其它仓库 ADR + 16 份外部 ADR 均已登记；§四另含 Phase13/Phase14 两份决策落地记录（2026-10-23 补登核对，无遗漏）。
-> ⚠️ 表内状态行若与 ADR 头部状态不一致，以 **ADR 头部 + `STATUS.md`** 为准，并顺手回写本表。
+> ⚠️ 表内状态行若与 ADR 头部状态不一致，以 **ADR 头部 + `状态与待办.md`** 为准，并顺手回写本表。

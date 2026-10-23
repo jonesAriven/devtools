@@ -115,7 +115,7 @@ onDeny: () => { void options.router.replace(config.homePath) }   // → replace(
 3. ✅ **cosmic**：`homePath: '/'`（🔵 对齐迁移前 `permissions.js:77`；engineer-cosmic 已落地）
 4. 🔴 **回归必加一条**：三个应用各跑一次「进门户/知识库 → 让管理员在中心摘掉一个 menu 权限点
    → 重新点该入口 → **必须落回工作台，不能是空白页**」
-5. 🟡 **建议在 `docs/README.md` 坑表加一条编号坑**（当前最高编号 #39 ⇒ 建议 **#40**）：
+5. 🟡 **建议在 `docs/统一认证平台手册.md` 坑表加一条编号坑**（当前最高编号 #39 ⇒ 建议 **#40**）：
    > **`homePath` 默认值 `/dashboard` 是 kb-ops 家族约定，不是平台默认** ——
    > 守卫 `onDeny` 跳不存在的路由 ⇒ 权限点被收回时白屏，且只在低频路径出现、常规回归测不出。
    > 接入方**必须显式传**本应用真实首页。
@@ -1335,13 +1335,13 @@ T3.5 的白名单等价性脚本**依赖 T3 的 `bff-whitelist.yml` 已定稿**�
 
 | 项 | 内容 |
 |---|---|
-| **改动文件** | `marschat-components/docs/STATUS.md`（§1.2 加 T-ENG-3d/e/f + §1.4 登记 3 条边界）· `devtools/docs/PHASE13-剩余三应用迁移设计.md`（本文，补「实施后实测」段）· 各应用 `docs/PHASE13-*.md` |
+| **改动文件** | `marschat-components/docs/状态与待办.md`（§1.2 加 T-ENG-3d/e/f + §1.4 登记 3 条边界）· `devtools/docs/PHASE13-剩余三应用迁移设计.md`（本文，补「实施后实测」段）· 各应用 `docs/PHASE13-*.md` |
 | **依赖** | T1 · T2 · T3.6 |
 | **内容** | ① 三应用五通道回归汇总表；② STATUS 边界登记（§6）；③ 坑 #30/31 的实测记录 |
 
 ---
 
-# 6. 边界登记建议（写入 `marschat-components/docs/STATUS.md`）
+# 6. 边界登记建议（写入 `marschat-components/docs/状态与待办.md`）
 
 ## 6.1 免迁登记
 
@@ -1365,11 +1365,11 @@ T3.5 的白名单等价性脚本**依赖 T3 的 `bff-whitelist.yml` 已定稿**�
 
 | # | 事项 | 归属 | 说明 |
 |---|---|---|---|
-| **T-LOW-19**（建议新增） | 🟠 **kb-web 网关白名单比 kb-ops 宽**：`kb-admin-proxy-read` 的 Path 含 `/kb/api/admin/users/*` 单段通配 + `Method=GET` | `STATUS.md` §1.4 | 🟡 若中心存在 `GET /admin/users/{id}` 端点且不应暴露 → 需收窄。**属网关配置审计，建议单独立项**（不在 T-ENG-3 范围） |
-| **T-LOW-20**（建议新增） | 🟠 **portal 与 cosmic 不参与 T-LOW-14（`SidebarMenu` 复活）收敛** | `STATUS.md` §1.4 | 两者 `menus: []` + 不启用 `createShell()`。原因：portal 是「系统卡片目录 + 收藏 + 分类」、cosmic 是「后端三重过滤动态菜单」，与 `menus` 树形语义不同构，硬套=砸功能。⇒ **收敛后仍是 4 套外壳**（kb-ops / infra / kb-web / activecode 迁完 + portal / cosmic 保留 = 实际 5 套），T-LOW-11 的 16 项视觉债**不会因本次迁移而清零** |
-| **T-LOW-21**（建议新增） | 🟡 **app-kit 的 `menus` 只支持静态数组，无法表达后端动态下发** | `STATUS.md` §1.2 或 §1.4 | cosmic 的菜单来自 `GET /api/studio/menus`（角色下限 + 用户减法 + 中心权限点三重过滤）。若未来有更多应用是动态菜单，`menus` 的静态假设会成为路径缺失 |
-| **T-LOW-22**（建议新增） | 🟡 **`marschat.request` 句柄在三应用中均未使用** | `STATUS.md` §1.4 | kb-web（手写 axios 含业务信封判定）、portal（3 个不同 baseURL 实例）、cosmic（`/api` 单实例 + blob 下载）。**这是有意的**（避免为迁移而重写业务请求层），但**「一行装配」的名声与实际覆盖面有差距**，README 应说明装配层**不接管业务请求实例** |
-| **T-LOW-23**（建议新增） | 🔴 **`DEFAULTS.homePath='/dashboard'` 是 kb-ops 家族约定，被误当作平台默认** | `STATUS.md` §1.2 或 `docs/README.md` 坑表（建议编号 **#40**） | 🔵 `app-kit/src/config.ts:19` + `createMarschatApp.ts:154` 守卫 `onDeny` 跳 `config.homePath`。kb-ops/infra/kb-web 巧合有 `/dashboard` ⇒ 存量无碍；但**kb-web 之外的新应用（portal `/`、cosmic `/`）会白屏**。**建议两条**：① README 加编号坑（坑位文案见 §1.4.1 第 5 条）；② **长期看应把 `DEFAULTS.homePath` 改为 `'/'`**（更符合语义），但那会让 kb-ops/infra/kb-web 的「未显式传」路径行为变化 ⇒ 需与三应用同步显式化后再改，**建议 Phase 14 评估** |
+| **T-LOW-19**（建议新增） | 🟠 **kb-web 网关白名单比 kb-ops 宽**：`kb-admin-proxy-read` 的 Path 含 `/kb/api/admin/users/*` 单段通配 + `Method=GET` | `状态与待办.md` §1.4 | 🟡 若中心存在 `GET /admin/users/{id}` 端点且不应暴露 → 需收窄。**属网关配置审计，建议单独立项**（不在 T-ENG-3 范围） |
+| **T-LOW-20**（建议新增） | 🟠 **portal 与 cosmic 不参与 T-LOW-14（`SidebarMenu` 复活）收敛** | `状态与待办.md` §1.4 | 两者 `menus: []` + 不启用 `createShell()`。原因：portal 是「系统卡片目录 + 收藏 + 分类」、cosmic 是「后端三重过滤动态菜单」，与 `menus` 树形语义不同构，硬套=砸功能。⇒ **收敛后仍是 4 套外壳**（kb-ops / infra / kb-web / activecode 迁完 + portal / cosmic 保留 = 实际 5 套），T-LOW-11 的 16 项视觉债**不会因本次迁移而清零** |
+| **T-LOW-21**（建议新增） | 🟡 **app-kit 的 `menus` 只支持静态数组，无法表达后端动态下发** | `状态与待办.md` §1.2 或 §1.4 | cosmic 的菜单来自 `GET /api/studio/menus`（角色下限 + 用户减法 + 中心权限点三重过滤）。若未来有更多应用是动态菜单，`menus` 的静态假设会成为路径缺失 |
+| **T-LOW-22**（建议新增） | 🟡 **`marschat.request` 句柄在三应用中均未使用** | `状态与待办.md` §1.4 | kb-web（手写 axios 含业务信封判定）、portal（3 个不同 baseURL 实例）、cosmic（`/api` 单实例 + blob 下载）。**这是有意的**（避免为迁移而重写业务请求层），但**「一行装配」的名声与实际覆盖面有差距**，README 应说明装配层**不接管业务请求实例** |
+| **T-LOW-23**（建议新增） | 🔴 **`DEFAULTS.homePath='/dashboard'` 是 kb-ops 家族约定，被误当作平台默认** | `状态与待办.md` §1.2 或 `docs/统一认证平台手册.md` 坑表（建议编号 **#40**） | 🔵 `app-kit/src/config.ts:19` + `createMarschatApp.ts:154` 守卫 `onDeny` 跳 `config.homePath`。kb-ops/infra/kb-web 巧合有 `/dashboard` ⇒ 存量无碍；但**kb-web 之外的新应用（portal `/`、cosmic `/`）会白屏**。**建议两条**：① README 加编号坑（坑位文案见 §1.4.1 第 5 条）；② **长期看应把 `DEFAULTS.homePath` 改为 `'/'`**（更符合语义），但那会让 kb-ops/infra/kb-web 的「未显式传」路径行为变化 ⇒ 需与三应用同步显式化后再改，**建议 Phase 14 评估** |
 
 ## 6.3 T-LOW-15 / 16 / 17 / 18 的本轮处置
 
